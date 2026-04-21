@@ -1,0 +1,161 @@
+Build a polished, lightweight web app MVP for a venture concept called Juniper.
+
+Core concept:
+Juniper is a decision-support tool for newlywed or young couples who are trying to figure out whether they can afford a home purchase while carrying student debt and other financial obligations. The core user question is: “Can we buy this house, and should we?” This aligns with the key pain points identified in research around housing affordability, debt and loan eligibility, down payments, and how couples split financial responsibility. :contentReference[oaicite:0]{index=0}
+
+Goal of the MVP:
+Create a clean, modern, consumer-friendly calculator and scenario planner that helps couples understand:
+1. Whether they can reasonably afford a target home
+2. How student debt impacts mortgage affordability
+3. Whether buying now or waiting and paying down debt is the better move
+
+Tech requirements:
+- Use a simple full-stack Replit app
+- Frontend: clean responsive UI, modern and minimal, friendly fintech feel
+- Backend: lightweight server logic for calculations
+- Keep the code easy to understand and easy to extend
+- Include clear comments throughout
+- Use realistic but simple assumptions where needed
+- No authentication needed
+- No database needed for v1
+- Make it a single-user MVP prototype
+
+Brand/style:
+- Name: Juniper
+- Tone: calm, trustworthy, modern, non-corporate
+- Design: soft, polished fintech UI
+- Think “consumer decision support,” not “bank portal”
+- Use rounded cards, clean spacing, subtle shadows, and a professional but approachable look
+- Avoid clutter
+- Make it feel like something a young couple would actually use
+
+Main page structure:
+Create a single-page app with the following sections:
+
+1. Hero section
+- Headline: “Can you buy that house — and should you?”
+- Subheadline: “A simple decision tool for couples balancing student debt, down payments, and home affordability.”
+- CTA button: “Run the numbers”
+
+2. Input section
+Organize inputs into clean cards with labels and helper text.
+
+A. Income
+- Partner 1 annual income
+- Partner 2 annual income
+- Optional checkbox for “Use take-home pay instead of gross income”
+- If checked, allow monthly take-home inputs instead
+
+B. Debt
+- Partner 1 student debt balance
+- Partner 1 monthly student loan payment
+- Partner 2 student debt balance
+- Partner 2 monthly student loan payment
+- Other monthly debt payments (car, credit cards, personal loans)
+
+C. House target
+- Target house price
+- Down payment amount
+- Interest rate
+- Loan term (default 30 years)
+- Estimated annual property tax
+- Estimated annual insurance
+- HOA/monthly fees optional
+
+3. Results section
+After the user enters data and clicks calculate, show:
+
+A. Summary cards
+- Estimated monthly mortgage payment
+- Estimated all-in monthly housing cost
+- Total monthly debt obligations
+- Estimated debt-to-income ratio
+- Remaining monthly budget buffer
+
+B. Recommendation card
+Generate a clear recommendation:
+- “Looks comfortable”
+- “Possible, but tight”
+- “Probably not advisable yet”
+
+Also include a short plain-English explanation of why
+
+Example:
+“Your projected debt-to-income ratio is high once student loans are included. Buying at this price point may leave very little monthly flexibility.”
+
+4. Scenario comparison section
+This is the most important feature.
+
+Create a comparison toggle with:
+- Scenario A: Buy now
+- Scenario B: Wait 2 years and pay down debt
+
+For Scenario B, assume:
+- Users continue making current monthly student loan payments
+- Optional extra monthly debt paydown input
+- Home price appreciation assumption default = 3% annually
+- Savings growth assumption for down payment default = 2% annually
+
+Then compare:
+- Estimated DTI now vs later
+- Estimated monthly payment now vs later
+- Estimated down payment position later
+- Estimated home price later
+- A plain-English conclusion:
+  “Waiting may improve affordability, but rising home prices could offset some benefit”
+  or
+  “Paying down debt first materially improves your borrowing position”
+
+5. Couple contribution section
+Include a simple “shared ownership / contribution” module:
+- Partner 1 down payment contribution
+- Partner 2 down payment contribution
+
+Display:
+- Percentage contribution by each partner
+- Suggested equity split based purely on contribution
+- A disclaimer that this is not legal advice
+
+6. Footer disclaimer
+Include a small footer note:
+“This tool is for educational planning only and does not constitute financial, tax, or legal advice.”
+
+Calculation logic:
+Implement basic mortgage and affordability logic:
+- Monthly mortgage payment using standard amortization formula
+- Housing cost = mortgage + monthly property tax + monthly insurance + HOA
+- Total debt obligations = student loans + other monthly debt + housing cost
+- DTI = total monthly debt obligations / gross monthly income
+- Recommendation thresholds:
+  - under 36% DTI = comfortable
+  - 36% to 43% = possible but tight
+  - over 43% = probably not advisable
+- Show all formulas cleanly in code
+
+UX requirements:
+- Make the calculator feel intuitive and non-intimidating
+- Add helper text under key fields
+- Show results only after clicking calculate
+- Validate inputs
+- Prevent crashes on blank or malformed values
+- Use sensible defaults for tax, insurance, and rate fields
+- Include a “Reset” button
+- Make the layout mobile-friendly
+
+Nice-to-have enhancements if easy:
+- Add a donut bar or progress-style visualization for DTI
+- Add a small “What’s driving this result?” expandable explanation
+- Add a “Lower the house price until comfortable” quick suggestion
+- Add a “Download summary” button that exports a simple text or PDF summary
+
+Important:
+- Keep the MVP focused
+- Do not add logins, dashboards, or unnecessary complexity
+- Prioritize clarity, trust, and useful output over feature bloat
+- The core value is helping a couple make a better housing decision under debt constraints
+
+Deliverables:
+- Working Replit app
+- Clean project structure
+- Clear README with setup and explanation
+- Sample default values populated so the prototype is easy to demo

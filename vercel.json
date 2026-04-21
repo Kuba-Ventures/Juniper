@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter @workspace/juniper run build",
+  "outputDirectory": "artifacts/juniper/dist",
+  "installCommand": "pnpm install",
+  "framework": null
+}
