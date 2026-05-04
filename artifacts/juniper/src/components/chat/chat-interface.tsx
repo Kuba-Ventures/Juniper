@@ -1,57 +1,44 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SendHorizontal, RotateCcw, AlertCircle, ArrowUp } from "lucide-react";
+import { ArrowUp, Check } from "lucide-react";
 import { CalculatorFormValues, calculatorSchema } from "@/lib/schema";
 import { calculateResults, CalculationResults } from "@/lib/calculator";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-// Import result card components
+import { Artifact } from "@/components/app-sidebar";
 import { ResultsCard } from "./results-card";
 import { ScenarioCard } from "./scenario-card";
 import { ContributionCard } from "./contribution-card";
 
-type MessageRole = "juniper" | "user" | "system";
+// ── Design tokens ──────────────────────────────────────────────────────────
+const sage = "#5C7A65";
+const cream = "#FAF7F2";
+const ink = "#2A2A2A";
+const muted = "#6B6B6B";
+const border = "#E8E2D6";
+const serif = "'Fraunces', Georgia, serif";
+const sans = "'Inter', sans-serif";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+type MessageRole = "juniper" | "user";
 
 export type ChatMessage = {
   id: string;
   role: MessageRole;
   content?: string;
-  type?: "text" | "typing" | "results" | "scenario" | "contribution";
+  type?: "text" | "results" | "scenario" | "contribution";
   isError?: boolean;
+  savedLabel?: string;
 };
 
-type Step = 
-  | "welcome"
-  | "p1Income"
-  | "p2Income"
-  | "p1StudentDebt"
-  | "p1StudentDebtPayment"
-  | "p2StudentDebt"
-  | "p2StudentDebtPayment"
-  | "otherMonthlyDebt"
-  | "housePrice"
-  | "downPayment"
-  | "interestRate"
-  | "loanTermYears"
-  | "annualPropertyTax"
-  | "annualInsurance"
-  | "monthlyHoa"
-  | "calculating"
-  | "showResults"
-  | "askScenario"
-  | "scenarioBExtraPaydown"
-  | "showScenario"
-  | "askContributions"
-  | "p1Contribution"
-  | "p2Contribution"
-  | "showContributions"
-  | "finished";
+type Step =
+  | "welcome" | "p1Income" | "p2Income" | "p1StudentDebt" | "p1StudentDebtPayment"
+  | "p2StudentDebt" | "p2StudentDebtPayment" | "otherMonthlyDebt" | "housePrice"
+  | "downPayment" | "interestRate" | "loanTermYears" | "annualPropertyTax"
+  | "annualInsurance" | "monthlyHoa" | "calculating" | "showResults" | "askScenario"
+  | "scenarioBExtraPaydown" | "showScenario" | "askContributions" | "p1Contribution"
+  | "p2Contribution" | "showContributions" | "finished";
 
 const questions: Record<Step, { text: string; placeholder?: string; isYesNo?: boolean }> = {
   welcome: { text: "" },
-  p1Income: { text: "Hi there! I'm Juniper. Let's figure out if buying a home makes sense for you right now. First, tell me about your income. What's Partner 1's annual gross income?", placeholder: "$75,000" },
+  p1Income: { text: "Hi there. I'm Juniper. Let's figure out if buying a home makes sense for you right now. First, tell me about your income. What's Partner 1's annual gross income?", placeholder: "$75,000" },
   p2Income: { text: "And Partner 2's annual gross income?", placeholder: "$65,000" },
   p1StudentDebt: { text: "Now let's talk about student debt. What's Partner 1's total student loan balance?", placeholder: "$35,000" },
   p1StudentDebtPayment: { text: "What's Partner 1's monthly student loan payment?", placeholder: "$350" },
@@ -84,15 +71,56 @@ function parseNumber(input: string): number | null {
   return isNaN(num) ? null : num;
 }
 
-export function ChatInterface() {
+// ── Starter chips ──────────────────────────────────────────────────────────
+const CHIPS = [
+  {
+    heading: "Help us understand our finances together",
+    sub: "A guided conversation to map out where you both stand today.",
+  },
+  {
+    heading: "We're thinking about buying a home",
+    sub: "Model what's affordable based on your income, debt, and savings.",
+  },
+  {
+    heading: "We want to tackle our debt",
+    sub: "Build a payoff plan that works for both of you.",
+  },
+  {
+    heading: "We're planning our next chapter",
+    sub: "Think through marriage, a baby, or a big move with confidence.",
+  },
+];
+
+// ── J logo mark ────────────────────────────────────────────────────────────
+function JLogo({ size = 24 }: { size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", background: sage, flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <span style={{ fontFamily: serif, fontSize: size * 0.54, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
+    </div>
+  );
+}
+
+// ── Props ──────────────────────────────────────────────────────────────────
+type Props = {
+  userName: string;
+  onConversationStart: (title: string) => void;
+  onArtifactSaved: (artifact: Artifact) => void;
+};
+
+// ── ChatInterface ──────────────────────────────────────────────────────────
+export function ChatInterface({ userName, onConversationStart, onArtifactSaved }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [inputValue, setInputValue] = useState("");
   const [answers, setAnswers] = useState<Partial<CalculatorFormValues>>({});
   const [isTyping, setIsTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<CalculationResults | null>(null);
+  const [conversationStarted, setConversationStarted] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -100,28 +128,31 @@ export function ChatInterface() {
     }
   }, []);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, scrollToBottom]);
+  useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
-  const addJuniperMessage = useCallback((content: string, type: ChatMessage["type"] = "text", isError = false) => {
-    setMessages((prev) => [...prev, { id: Date.now().toString(), role: "juniper", content, type, isError }]);
+  const addJuniperMessage = useCallback((
+    content: string,
+    type: ChatMessage["type"] = "text",
+    isError = false,
+    savedLabel?: string,
+  ) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random()}`, role: "juniper", content, type, isError, savedLabel },
+    ]);
   }, []);
 
   const advanceStep = useCallback((nextStep: Step) => {
     setCurrentStep(nextStep);
-    
     if (nextStep === "finished") {
       addJuniperMessage(questions[nextStep].text);
       return;
     }
-    
     if (questions[nextStep].text && nextStep !== "calculating") {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
         addJuniperMessage(questions[nextStep].text);
-        
         if (nextStep === "askContributions") {
           setTimeout(() => advanceStep("p1Contribution"), 1500);
         }
@@ -129,67 +160,75 @@ export function ChatInterface() {
     }
   }, [addJuniperMessage]);
 
-  const handleStart = useCallback(() => {
+  const handleStart = useCallback((firstMessage?: string) => {
     setMessages([]);
     setAnswers({});
     setResults(null);
     setCurrentStep("p1Income");
-    advanceStep("p1Income");
-  }, [advanceStep]);
-
-  useEffect(() => {
-    if (currentStep === "welcome") {
-      // Intentionally empty waiting for user to start
+    if (!conversationStarted) {
+      const title = firstMessage
+        ? firstMessage.slice(0, 52) + (firstMessage.length > 52 ? "..." : "")
+        : "Home buying conversation";
+      onConversationStart(title);
+      setConversationStarted(true);
     }
-  }, [currentStep]);
+    advanceStep("p1Income");
+  }, [advanceStep, conversationStarted, onConversationStart]);
 
   const handleCalculating = useCallback((latestAnswers: Partial<CalculatorFormValues>) => {
     setCurrentStep("calculating");
     setIsTyping(true);
-    
     setTimeout(() => {
       setIsTyping(false);
       addJuniperMessage("Let me crunch the numbers...");
-      
       setTimeout(() => {
-        const formValues = calculatorSchema.parse({
-          ...calculatorSchema.parse({}),
-          ...latestAnswers
-        });
-        
+        const formValues = calculatorSchema.parse({ ...calculatorSchema.parse({}), ...latestAnswers });
         const res = calculateResults(formValues);
         setResults(res);
-        
         setCurrentStep("showResults");
-        setMessages((prev) => [...prev, { id: Date.now().toString(), role: "juniper", type: "results" }]);
-        
-        setTimeout(() => {
-          advanceStep("askScenario");
-        }, 1500);
-        
+        const artifactId = `results-${Date.now()}`;
+        const monthlyLabel = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(res.monthlyHousingCost);
+        onArtifactSaved({
+          id: artifactId,
+          type: "calculation",
+          title: "Home Affordability",
+          subtitle: `${monthlyLabel}/mo`,
+          savedAt: new Date(),
+        });
+        setMessages((prev) => [
+          ...prev,
+          { id: artifactId, role: "juniper", type: "results", savedLabel: "Saved to your plan." },
+        ]);
+        setTimeout(() => advanceStep("askScenario"), 1500);
       }, 1500);
     }, 600);
-  }, [addJuniperMessage, advanceStep]);
+  }, [addJuniperMessage, advanceStep, onArtifactSaved]);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = useCallback((e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
-    if (currentStep === "askScenario") return; // Handled by buttons
-    if (currentStep === "welcome" || currentStep === "showResults" || currentStep === "showScenario" || currentStep === "showContributions" || currentStep === "finished") return;
-
+    if (
+      currentStep === "askScenario" || currentStep === "welcome" ||
+      currentStep === "showResults" || currentStep === "showScenario" ||
+      currentStep === "showContributions" || currentStep === "finished"
+    ) return;
     if (!inputValue.trim()) return;
 
     const val = inputValue.trim();
     setInputValue("");
-    
-    setMessages((prev) => [...prev, { id: Date.now().toString(), role: "user", content: val }]);
+
+    if (currentStep === "p1Income" && !conversationStarted) {
+      onConversationStart(val.slice(0, 52) + (val.length > 52 ? "..." : ""));
+      setConversationStarted(true);
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: "user", content: val, type: "text" },
+    ]);
 
     const numValue = parseNumber(val);
-    
     if (numValue === null) {
-      setTimeout(() => {
-        addJuniperMessage("Hmm, I didn't catch that. Can you enter a number?", "text", true);
-      }, 500);
+      setTimeout(() => addJuniperMessage("I didn't catch that. Can you enter a number?", "text", true), 500);
       return;
     }
 
@@ -213,15 +252,17 @@ export function ChatInterface() {
       case "monthlyHoa": handleCalculating(nextAnswers); break;
       case "scenarioBExtraPaydown": {
         setCurrentStep("showScenario");
-        const updatedFormVals = calculatorSchema.parse({
-          ...calculatorSchema.parse({}),
-          ...nextAnswers
-        });
-        const updatedRes = calculateResults(updatedFormVals);
+        const formVals = calculatorSchema.parse({ ...calculatorSchema.parse({}), ...nextAnswers });
+        const updatedRes = calculateResults(formVals);
         setResults(updatedRes);
+        const scenarioId = `scenario-${Date.now()}`;
+        onArtifactSaved({ id: scenarioId, type: "scenario", title: "Debt Paydown Scenario", savedAt: new Date() });
         setTimeout(() => {
-           setMessages((prev) => [...prev, { id: Date.now().toString(), role: "juniper", type: "scenario" }]);
-           setTimeout(() => advanceStep("askContributions"), 2000);
+          setMessages((prev) => [
+            ...prev,
+            { id: scenarioId, role: "juniper", type: "scenario", savedLabel: "Saved to your plan." },
+          ]);
+          setTimeout(() => advanceStep("askContributions"), 2000);
         }, 1000);
         break;
       }
@@ -229,208 +270,348 @@ export function ChatInterface() {
       case "p2Contribution": {
         setCurrentStep("showContributions");
         setAnswers(nextAnswers);
+        const contribId = `contrib-${Date.now()}`;
+        onArtifactSaved({ id: contribId, type: "chart", title: "Down Payment Split", savedAt: new Date() });
         setTimeout(() => {
-           setMessages((prev) => [...prev, { id: Date.now().toString(), role: "juniper", type: "contribution" }]);
-           setTimeout(() => advanceStep("finished"), 2000);
+          setMessages((prev) => [
+            ...prev,
+            { id: contribId, role: "juniper", type: "contribution", savedLabel: "Saved to your plan." },
+          ]);
+          setTimeout(() => advanceStep("finished"), 2000);
         }, 1000);
         break;
       }
     }
+  }, [currentStep, inputValue, answers, conversationStarted, advanceStep, handleCalculating, addJuniperMessage, onConversationStart]);
+
+  const handleScenarioChoice = (want: boolean) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: "user", content: want ? "Yes" : "No", type: "text" },
+    ]);
+    advanceStep(want ? "scenarioBExtraPaydown" : "askContributions");
   };
 
-  const handleScenarioChoice = (wantScenario: boolean) => {
-    setMessages((prev) => [...prev, { id: Date.now().toString(), role: "user", content: wantScenario ? "Yes" : "No" }]);
-    if (wantScenario) {
-      advanceStep("scenarioBExtraPaydown");
-    } else {
-      advanceStep("askContributions");
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
-  const showInput = currentStep !== "welcome" && 
-                    currentStep !== "calculating" && 
-                    currentStep !== "showResults" && 
-                    currentStep !== "askScenario" && 
-                    currentStep !== "showScenario" && 
-                    currentStep !== "askContributions" && 
-                    currentStep !== "showContributions" && 
-                    currentStep !== "finished";
+  const showInput = !["welcome", "calculating", "showResults", "askScenario", "showScenario", "askContributions", "showContributions", "finished"].includes(currentStep);
 
+  // ── STATE 1: Welcome ─────────────────────────────────────────────────────
   if (currentStep === "welcome") {
     return (
-      <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-20 flex flex-col items-center justify-center text-center animate-in fade-in duration-700">
-        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-8 shadow-sm">
-          <span className="text-primary-foreground font-serif font-bold text-3xl italic">J</span>
-        </div>
-        <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight text-foreground leading-[1.1] mb-6">
-          Helping you reach life's milestones, at your own pace
-        </h1>
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10">
-          An intelligent chatbot that walks you through the financial decisions of early marriage, from student debt to home buying, one question at a time.
-        </p>
-        <form
-          onSubmit={(e) => { e.preventDefault(); handleStart(); }}
-          className="w-full max-w-xl"
-        >
-          <div className="relative">
-            <textarea
-              placeholder="We have $63k in student debt and want to afford a $425k house. Between the two of us, we make about $140k a year. How much do we need to save for a down payment, and can we handle the monthly mortgage?"
-              className="w-full rounded-2xl border border-border bg-background px-6 py-4 pr-14 text-base text-foreground placeholder:text-muted-foreground/60 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
-              rows={4}
-              onFocus={handleStart}
-              data-testid="button-start-chat"
-              readOnly
-            />
-            <button
-              type="submit"
-              className="absolute right-3 bottom-3 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity"
-              aria-label="Start conversation"
-            >
-              <ArrowUp className="h-5 w-5" />
-            </button>
+      <div style={{ height: "100%", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", padding: "48px 24px 32px", maxWidth: 760,
+          margin: "0 auto", width: "100%",
+        }}>
+          {/* Logo + greeting */}
+          <JLogo size={64} />
+          <h1 style={{
+            fontFamily: serif, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 400,
+            color: ink, margin: "24px 0 14px", letterSpacing: "-0.02em", textAlign: "center",
+          }}>
+            Welcome, {userName}.
+          </h1>
+          <p style={{
+            fontSize: 17, color: muted, lineHeight: 1.65, maxWidth: 480,
+            textAlign: "center", margin: "0 0 44px",
+          }}>
+            I'm here to help you and your partner plan with clarity. Ask me anything, or pick a place to start.
+          </p>
+
+          {/* Starter chips */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 14, width: "100%", marginBottom: 44,
+          }}>
+            {CHIPS.map((chip) => (
+              <button
+                key={chip.heading}
+                onClick={() => handleStart(chip.heading)}
+                style={{
+                  background: cream, border: `1.5px solid rgba(92,122,101,0.3)`,
+                  borderRadius: 12, padding: "22px 20px", textAlign: "left",
+                  cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
+                  fontFamily: sans,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = sage;
+                  e.currentTarget.style.boxShadow = "0 2px 10px rgba(92,122,101,0.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(92,122,101,0.3)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <p style={{ fontFamily: serif, fontSize: 15, color: ink, margin: "0 0 6px", lineHeight: 1.3, fontWeight: 400 }}>
+                  {chip.heading}
+                </p>
+                <p style={{ fontSize: 13, color: muted, margin: 0, lineHeight: 1.5 }}>
+                  {chip.sub}
+                </p>
+              </button>
+            ))}
           </div>
-        </form>
+
+          {/* Chat input */}
+          <div style={{ width: "100%", maxWidth: 680 }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (inputValue.trim()) {
+                  setMessages([{ id: "user-0", role: "user", content: inputValue.trim(), type: "text" }]);
+                  handleStart(inputValue.trim());
+                  setInputValue("");
+                }
+              }}
+            >
+              <div style={{
+                position: "relative", background: cream,
+                border: `1.5px solid ${sage}`, borderRadius: 16, overflow: "hidden",
+              }}>
+                <textarea
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (inputValue.trim()) {
+                        setMessages([{ id: "user-0", role: "user", content: inputValue.trim(), type: "text" }]);
+                        handleStart(inputValue.trim());
+                        setInputValue("");
+                      }
+                    }
+                  }}
+                  placeholder="Ask Juniper anything about your financial life..."
+                  rows={3}
+                  style={{
+                    width: "100%", border: "none", background: "transparent",
+                    padding: "16px 56px 16px 18px", fontFamily: sans, fontSize: 16,
+                    color: ink, resize: "none", outline: "none", lineHeight: 1.55,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!inputValue.trim()}
+                  aria-label="Send message"
+                  style={{
+                    position: "absolute", right: 12, bottom: 12,
+                    width: 36, height: 36, borderRadius: "50%",
+                    background: inputValue.trim() ? sage : "rgba(92,122,101,0.25)",
+                    border: "none", cursor: inputValue.trim() ? "pointer" : "default",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  <ArrowUp size={18} color="#fff" strokeWidth={2.5} />
+                </button>
+              </div>
+            </form>
+            <p style={{ fontSize: 12, color: muted, textAlign: "center", margin: "10px 0 0" }}>
+              Juniper is a thinking partner, not a financial advisor.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ── STATE 2: Active chat ─────────────────────────────────────────────────
   return (
-    <div className="flex-1 w-full max-w-3xl mx-auto flex flex-col h-full relative" data-testid="chat-interface">
-      <div className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur z-10 sticky top-0">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground font-serif font-bold italic">J</AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="font-serif font-medium leading-none">Juniper</h2>
-            <p className="text-xs text-muted-foreground mt-1">Financial Advisor</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleStart} className="text-muted-foreground" data-testid="button-start-over">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Start over
-        </Button>
-      </div>
-
-      <div 
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
+      {/* Messages */}
+      <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-6 pb-32 scroll-smooth"
+        style={{ flex: 1, overflowY: "auto", padding: "32px 24px 160px" }}
       >
-        {messages.map((msg, index) => (
-          <div 
-            key={msg.id} 
-            className={cn(
-              "flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300",
-              msg.role === "user" ? "justify-end" : "justify-start"
-            )}
-          >
-            {msg.role === "juniper" && (
-              <Avatar className="h-8 w-8 mr-3 mt-1 shrink-0">
-                <AvatarFallback className="bg-primary text-primary-foreground font-serif font-bold italic text-xs">J</AvatarFallback>
-              </Avatar>
-            )}
-            
-            <div className={cn(
-              "max-w-[85%] rounded-2xl px-5 py-3",
-              msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm",
-              msg.isError && "bg-destructive/10 text-destructive border border-destructive/20"
-            )}>
+        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 32 }}>
+          {messages.map((msg) => (
+            <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+              {msg.role === "juniper" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <JLogo size={24} />
+                  <span style={{ fontSize: 12, color: muted, fontWeight: 500, letterSpacing: "0.01em" }}>Juniper</span>
+                </div>
+              )}
+
+              {/* Message body */}
               {msg.type === "text" && (
-                <div className="whitespace-pre-wrap flex items-start gap-2">
-                  {msg.isError && <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />}
-                  <span>{msg.content}</span>
+                <div style={{
+                  maxWidth: msg.role === "user" ? "80%" : "100%",
+                  background: msg.role === "user" ? "rgba(92,122,101,0.13)" : "transparent",
+                  borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : 0,
+                  padding: msg.role === "user" ? "12px 16px" : 0,
+                  color: msg.isError ? "#b94040" : ink,
+                  fontSize: 16, lineHeight: 1.65, fontFamily: sans,
+                }}>
+                  {msg.content}
                 </div>
               )}
+
               {msg.type === "results" && results && (
-                <div className="-mx-2 sm:-mx-4 -my-1">
-                  <ResultsCard results={results} />
+                <div style={{ width: "100%" }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: muted, margin: "0 0 8px" }}>
+                    Calculation
+                  </p>
+                  <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: 12, overflow: "hidden" }}>
+                    <ResultsCard results={results} />
+                  </div>
                 </div>
               )}
+
               {msg.type === "scenario" && results && (
-                <div className="-mx-2 sm:-mx-4 -my-1">
-                  <ScenarioCard results={results} />
+                <div style={{ width: "100%" }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: muted, margin: "0 0 8px" }}>
+                    Scenario
+                  </p>
+                  <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: 12, overflow: "hidden" }}>
+                    <ScenarioCard results={results} />
+                  </div>
                 </div>
               )}
+
               {msg.type === "contribution" && (
-                <div className="-mx-2 sm:-mx-4 -my-1">
-                  <ContributionCard 
-                    housePrice={answers.housePrice || 0}
-                    p1Contrib={answers.p1Contribution || 0}
-                    p2Contrib={answers.p2Contribution || 0}
-                  />
+                <div style={{ width: "100%" }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: muted, margin: "0 0 8px" }}>
+                    Chart
+                  </p>
+                  <div style={{ background: cream, border: `1px solid ${border}`, borderRadius: 12, overflow: "hidden" }}>
+                    <ContributionCard
+                      housePrice={answers.housePrice || 0}
+                      p1Contrib={answers.p1Contribution || 0}
+                      p2Contrib={answers.p2Contribution || 0}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Saved confirmation */}
+              {msg.savedLabel && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8 }}>
+                  <Check size={12} color={sage} strokeWidth={2.5} />
+                  <span style={{ fontSize: 12, color: muted }}>{msg.savedLabel}</span>
                 </div>
               )}
             </div>
-          </div>
-        ))}
-        
-        {isTyping && (
-          <div className="flex w-full justify-start animate-in fade-in">
-            <Avatar className="h-8 w-8 mr-3 shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground font-serif font-bold italic text-xs">J</AvatarFallback>
-            </Avatar>
-            <div className="bg-muted text-foreground rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" />
+          ))}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <JLogo size={24} />
+                <span style={{ fontSize: 12, color: muted, fontWeight: 500 }}>Juniper</span>
+              </div>
+              <div style={{ display: "flex", gap: 5, padding: "4px 0" }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 7, height: 7, borderRadius: "50%", background: sage,
+                      animation: "bounce 1.2s ease-in-out infinite",
+                      animationDelay: `${i * 0.2}s`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pt-10">
-        {currentStep === "askScenario" && !isTyping && (
-          <div className="flex gap-3 justify-center max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4">
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="flex-1 bg-background"
-              onClick={() => handleScenarioChoice(false)}
-              data-testid="button-scenario-no"
-            >
-              No, skip this
-            </Button>
-            <Button 
-              size="lg" 
-              className="flex-1"
-              onClick={() => handleScenarioChoice(true)}
-              data-testid="button-scenario-yes"
-            >
-              Yes, show me
-            </Button>
-          </div>
-        )}
+      {/* Sticky bottom */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        background: `linear-gradient(to top, ${cream} 72%, transparent)`,
+        padding: "32px 24px 24px",
+      }}>
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          {/* Yes/No buttons */}
+          {currentStep === "askScenario" && !isTyping && (
+            <div style={{ display: "flex", gap: 12, marginBottom: 0 }}>
+              <button
+                onClick={() => handleScenarioChoice(false)}
+                style={{
+                  flex: 1, height: 46, background: "#fff", border: `1.5px solid ${border}`,
+                  borderRadius: 10, fontFamily: sans, fontSize: 14, color: ink,
+                  cursor: "pointer", fontWeight: 500, transition: "border-color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = sage)}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = border)}
+              >
+                No, skip this
+              </button>
+              <button
+                onClick={() => handleScenarioChoice(true)}
+                style={{
+                  flex: 1, height: 46, background: sage, border: "none",
+                  borderRadius: 10, fontFamily: sans, fontSize: 14, color: "#fff",
+                  cursor: "pointer", fontWeight: 500, transition: "opacity 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                Yes, show me
+              </button>
+            </div>
+          )}
 
-        {showInput && !isTyping && (
-          <form 
-            onSubmit={handleSubmit}
-            className="flex gap-2 max-w-2xl mx-auto items-end animate-in fade-in slide-in-from-bottom-2"
-          >
-            <div className="relative flex-1">
-              <Input
+          {/* Text input */}
+          {showInput && !isTyping && (
+            <div style={{
+              position: "relative", background: cream,
+              border: `1.5px solid ${sage}`, borderRadius: 14,
+            }}>
+              <textarea
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder={questions[currentStep]?.placeholder || "Type a number..."}
-                className="h-14 rounded-full pl-6 pr-12 text-base shadow-sm bg-background"
+                onKeyDown={handleKeyDown}
+                placeholder={questions[currentStep]?.placeholder || "Type your answer..."}
+                rows={1}
                 autoFocus
-                type="text"
-                inputMode="decimal"
-                data-testid={`input-${currentStep}`}
+                style={{
+                  width: "100%", border: "none", background: "transparent",
+                  padding: "14px 52px 14px 18px", fontFamily: sans, fontSize: 16,
+                  color: ink, resize: "none", outline: "none", lineHeight: 1.5,
+                  boxSizing: "border-box",
+                }}
               />
+              <button
+                onClick={() => handleSubmit()}
+                disabled={!inputValue.trim()}
+                aria-label="Send"
+                style={{
+                  position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: inputValue.trim() ? sage : "rgba(92,122,101,0.25)",
+                  border: "none", cursor: inputValue.trim() ? "pointer" : "default",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 0.15s",
+                }}
+              >
+                <ArrowUp size={16} color="#fff" strokeWidth={2.5} />
+              </button>
             </div>
-            <Button 
-              type="submit" 
-              size="icon" 
-              className="h-14 w-14 rounded-full shrink-0 shadow-sm"
-              disabled={!inputValue.trim()}
-              data-testid="button-send"
-            >
-              <SendHorizontal className="h-5 w-5" />
-            </Button>
-          </form>
-        )}
+          )}
+        </div>
       </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+          40% { transform: translateY(-5px); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
