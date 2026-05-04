@@ -241,7 +241,7 @@ export default function Landing() {
         className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12"
         style={{
           height: 68,
-          background: `${cream}ee`,
+          background: "#FAF7F2",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderBottom: `1px solid ${border}`,
