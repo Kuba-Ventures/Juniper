@@ -55,10 +55,10 @@ const questions: Record<Step, { text: string; placeholder?: string; isYesNo?: bo
   p2Income: { text: "And Partner 2's annual gross income?", placeholder: "$65,000" },
   p1StudentDebt: { text: "Now let's talk about student debt. What's Partner 1's total student loan balance?", placeholder: "$35,000" },
   p1StudentDebtPayment: { text: "What's Partner 1's monthly student loan payment?", placeholder: "$350" },
-  p2StudentDebt: { text: "What about Partner 2 — total student loan balance?", placeholder: "$28,000" },
+  p2StudentDebt: { text: "What about Partner 2: total student loan balance?", placeholder: "$28,000" },
   p2StudentDebtPayment: { text: "And Partner 2's monthly payment?", placeholder: "$280" },
   otherMonthlyDebt: { text: "Any other monthly debt payments? (car loans, credit cards, personal loans)", placeholder: "$0" },
-  housePrice: { text: "Great. Now the fun part — the house. What's the target home price you're looking at?", placeholder: "$425,000" },
+  housePrice: { text: "Great. Now the fun part: the house. What's the target home price you're looking at?", placeholder: "$425,000" },
   downPayment: { text: "How much do you have for a down payment?", placeholder: "$60,000" },
   interestRate: { text: "What interest rate are you expecting? (current average is around 6.5%)", placeholder: "6.5" },
   loanTermYears: { text: "How many years for the loan term?", placeholder: "30" },
@@ -70,7 +70,7 @@ const questions: Record<Step, { text: string; placeholder?: string; isYesNo?: bo
   askScenario: { text: "Want to see what happens if you wait 2 years to pay down debt?", isYesNo: true },
   scenarioBExtraPaydown: { text: "How much extra could you put toward debt each month beyond minimums?", placeholder: "$500" },
   showScenario: { text: "" },
-  askContributions: { text: "One more thing — let's look at how the down payment splits between you two." },
+  askContributions: { text: "One more thing: let's look at how the down payment splits between you two." },
   p1Contribution: { text: "How much is Partner 1 contributing to the down payment?", placeholder: "$30,000" },
   p2Contribution: { text: "And Partner 2?", placeholder: "$30,000" },
   showContributions: { text: "" },
@@ -266,7 +266,7 @@ export function ChatInterface() {
           Helping you reach life's milestones, at your own pace
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10">
-          An intelligent chatbot that walks you through the financial decisions of early marriage — from student debt to home buying — one question at a time.
+          An intelligent chatbot that walks you through the financial decisions of early marriage, from student debt to home buying, one question at a time.
         </p>
         <form
           onSubmit={(e) => { e.preventDefault(); handleStart(); }}
