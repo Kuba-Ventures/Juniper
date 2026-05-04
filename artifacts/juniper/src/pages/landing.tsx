@@ -4,11 +4,12 @@ import { Compass, MessageSquare, Clock } from "lucide-react";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
-const cream = "#FAF7F2";
+const cream = "#D0E8D2";
 const ink = "#2A2A2A";
 const muted = "#6B6B6B";
-const border = "#E8E2D6";
-const sagePale = "#EFF4F1";
+const border = "#B8D4BA";
+const sagePale = "#E4F4E6";
+const offWhite = "#F2FAF3";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
@@ -27,7 +28,7 @@ const stagger = {
 const fieldBase: React.CSSProperties = {
   height: 52,
   padding: "0 16px",
-  border: `1px solid ${border}`,
+  border: `1px solid #9DBFA0`,
   borderRadius: 8,
   background: "#fff",
   fontFamily: sans,
@@ -312,7 +313,7 @@ export default function Landing() {
       </section>
 
       {/* ── 3. EMPATHY ─────────────────────────────────────────────────── */}
-      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: offWhite }}>
         <div className="max-w-[1100px] mx-auto">
           <motion.div
             initial="hidden"
@@ -426,7 +427,7 @@ export default function Landing() {
       </section>
 
       {/* ── 5. STATS ───────────────────────────────────────────────────── */}
-      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: offWhite }}>
         <div className="max-w-[1100px] mx-auto">
           <motion.div
             initial="hidden"
@@ -461,7 +462,17 @@ export default function Landing() {
               { stat: "40%", caption: "of marriages now include a prenup" },
               { stat: "36%", caption: "of Gen Z would marry someone just to afford a home" },
             ].map(({ stat, caption }) => (
-              <motion.div key={stat} variants={fadeUp} className="flex flex-col gap-4">
+              <motion.div
+                key={stat}
+                variants={fadeUp}
+                className="flex flex-col gap-4"
+                style={{
+                  background: cream,
+                  border: `1px solid ${border}`,
+                  borderRadius: 20,
+                  padding: "40px 36px",
+                }}
+              >
                 <span
                   style={{
                     fontFamily: serif,
@@ -530,7 +541,7 @@ export default function Landing() {
                 key={label}
                 variants={fadeUp}
                 style={{
-                  background: "#fff",
+                  background: offWhite,
                   border: `1.5px solid ${border}`,
                   borderRadius: 16,
                   padding: "28px 32px",
@@ -556,7 +567,7 @@ export default function Landing() {
       </section>
 
       {/* ── 7. FOUNDERS ────────────────────────────────────────────────── */}
-      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: offWhite }}>
         <div className="max-w-[1100px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-14 md:gap-20 items-center">
             {/* Photo */}
@@ -696,7 +707,7 @@ export default function Landing() {
       </section>
 
       {/* ── 9. FINAL CTA ───────────────────────────────────────────────── */}
-      <section className="px-6 md:px-12 py-24 md:py-40 text-center" style={{ background: "#fff" }}>
+      <section className="px-6 md:px-12 py-24 md:py-40 text-center" style={{ background: offWhite }}>
         <div className="max-w-[600px] mx-auto">
           <motion.div
             initial="hidden"
