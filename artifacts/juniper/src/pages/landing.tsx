@@ -81,7 +81,7 @@ function WaitlistForm({ id }: { id: string }) {
         }}
       >
         <p style={{ fontFamily: serif, fontSize: 20, color: sage, fontWeight: 500, marginBottom: 4, margin: "0 0 4px" }}>
-          Thanks — we'll be in touch.
+          Thanks. We'll be in touch.
         </p>
         <p style={{ color: muted, fontSize: 14, margin: 0 }}>You're on the early-access list.</p>
       </div>
@@ -141,9 +141,6 @@ function WaitlistForm({ id }: { id: string }) {
       >
         {loading ? "Sending…" : "Get early access"}
       </button>
-      <p style={{ fontSize: 13, color: muted, textAlign: "center", margin: 0 }}>
-        One thoughtful email a month. No spam, ever.
-      </p>
     </form>
   );
 }
@@ -227,7 +224,7 @@ export default function Landing() {
     },
     {
       q: "How is this different from a budgeting app?",
-      a: "Budgeting apps track what you've spent. Juniper helps you decide what to do next — model scenarios, weigh tradeoffs, and align with your partner on what matters.",
+      a: "Budgeting apps track what you've spent. Juniper helps you decide what to do next: model scenarios, weigh tradeoffs, and align with your partner on what matters.",
     },
     {
       q: "Do both partners need to use it?",
@@ -290,7 +287,7 @@ export default function Landing() {
                 variants={fadeUp}
                 style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 520, margin: "0 0 40px 0" }}
               >
-                Juniper is the financial planning partner for engaged and newly married couples — helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
+                Juniper is the financial planning partner for engaged and newly married couples, helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
               </motion.p>
               <motion.div variants={fadeUp}>
                 <WaitlistForm id="hero" />
@@ -350,12 +347,12 @@ export default function Landing() {
               {
                 icon: <Compass size={26} strokeWidth={1.5} />,
                 title: "You don't know where to start",
-                body: "Student loans, savings, a future home — the decisions pile up fast, and no one teaches you the order.",
+                body: "Student loans, savings, a future home. The decisions pile up fast, and no one teaches you the order.",
               },
               {
                 icon: <MessageSquare size={26} strokeWidth={1.5} />,
                 title: "Money conversations get tense",
-                body: "Talking about debt, prenups, or budgeting with your partner can feel loaded — even when you agree.",
+                body: "Talking about debt, prenups, or budgeting with your partner can feel loaded, even when you agree.",
               },
               {
                 icon: <Clock size={26} strokeWidth={1.5} />,
@@ -410,7 +407,7 @@ export default function Landing() {
           >
             {[
               { num: "01", title: "Tell us your goals", body: "Share where you are and where you're headed. Juniper meets you both there." },
-              { num: "02", title: "Model your options", body: "Run scenarios on debt, savings, and home buying — all in plain language." },
+              { num: "02", title: "Model your options", body: "Run scenarios on debt, savings, and home buying, all in plain language." },
               { num: "03", title: "Decide with confidence", body: "Walk into big choices aligned, informed, and on the same page." },
             ].map(({ num, title, body }) => (
               <motion.div key={num} variants={fadeUp} className="flex flex-col gap-4">
@@ -608,7 +605,7 @@ export default function Landing() {
                 variants={fadeUp}
                 style={{ color: muted, fontSize: 17, lineHeight: 1.75, margin: "0 0 16px 0", maxWidth: 520 }}
               >
-                Most financial tools are built for people decades older than us, or for people who already have it figured out. Couples in our stage of life — merging finances, paying down debt, dreaming about a first home — are left to figure it out alone, or pay advisors who don't take us seriously.
+                Most financial tools are built for people decades older than us, or for people who already have it figured out. Couples in our stage of life, merging finances, paying down debt, dreaming about a first home, are left to figure it out alone, or pay advisors who don't take us seriously.
               </motion.p>
               <motion.p
                 variants={fadeUp}
@@ -620,7 +617,7 @@ export default function Landing() {
                 variants={fadeUp}
                 style={{ fontSize: 15, color: muted, fontStyle: "italic", margin: 0 }}
               >
-                — The Juniper Team
+                The Juniper Team
               </motion.p>
             </motion.div>
           </div>
