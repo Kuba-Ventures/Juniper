@@ -295,17 +295,18 @@ export default function Landing() {
               </motion.div>
             </motion.div>
 
-            {/* Right: photo */}
+            {/* Right: watercolor illustration */}
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.25 }}
-              style={{ aspectRatio: "4/5", boxShadow: "0 24px 80px rgba(42,42,42,0.1)", borderRadius: 20, overflow: "hidden" }}
+              style={{ aspectRatio: "4/5", borderRadius: 20, overflow: "hidden" }}
             >
-              <Photo
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80&fit=crop"
-                alt="Couple planning their finances together over coffee"
-                eager
+              <img
+                src="/hero-illustration.svg"
+                alt="A couple embracing in front of their first home with a juniper tree"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                loading="eager"
               />
             </motion.div>
           </div>
