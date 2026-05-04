@@ -265,51 +265,65 @@ export default function Landing() {
       </header>
 
       {/* ── 2. HERO ────────────────────────────────────────────────────── */}
-      <section className="px-6 md:px-12 py-20 md:py-36">
-        <div className="max-w-[1100px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
-            {/* Left: text + form */}
-            <motion.div initial="hidden" animate="visible" variants={stagger} className="flex flex-col">
-              <motion.h1
-                variants={fadeUp}
-                style={{
-                  fontFamily: serif,
-                  fontSize: "clamp(40px, 5vw, 66px)",
-                  fontWeight: 400,
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.025em",
-                  color: ink,
-                  margin: "0 0 24px 0",
-                }}
-              >
-                Build your financial future, together.
-              </motion.h1>
-              <motion.p
-                variants={fadeUp}
-                style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 520, margin: "0 0 40px 0" }}
-              >
-                Juniper is the financial planning partner for engaged and newly married couples. Helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
-              </motion.p>
-              <motion.div variants={fadeUp}>
-                <WaitlistForm id="hero" />
-              </motion.div>
-            </motion.div>
-
-            {/* Right: watercolor illustration */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.25 }}
-              style={{ aspectRatio: "4/5", borderRadius: 20, overflow: "hidden" }}
+      <section style={{ position: "relative", minHeight: "92vh", overflow: "hidden", display: "flex", alignItems: "center" }}>
+        {/* Full-bleed background illustration */}
+        <img
+          src="/hero-illustration.svg"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            display: "block",
+          }}
+        />
+        {/* Left gradient overlay for text legibility */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(100deg, rgba(208,232,210,0.97) 0%, rgba(208,232,210,0.92) 30%, rgba(208,232,210,0.65) 55%, rgba(208,232,210,0.0) 80%)",
+          }}
+        />
+        {/* Content */}
+        <div className="relative px-6 md:px-16 py-24 md:py-40" style={{ width: "100%", zIndex: 1 }}>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={stagger}
+            className="flex flex-col"
+            style={{ maxWidth: 540 }}
+          >
+            <motion.h1
+              variants={fadeUp}
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(40px, 5vw, 66px)",
+                fontWeight: 400,
+                lineHeight: 1.05,
+                letterSpacing: "-0.025em",
+                color: ink,
+                margin: "0 0 24px 0",
+              }}
             >
-              <img
-                src="/hero-illustration.svg"
-                alt="A couple embracing in front of their first home with a juniper tree"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                loading="eager"
-              />
+              Build your financial future, together.
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 480, margin: "0 0 40px 0" }}
+            >
+              Juniper is the financial planning partner for engaged and newly married couples. Helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
+            </motion.p>
+            <motion.div variants={fadeUp}>
+              <WaitlistForm id="hero" />
             </motion.div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
