@@ -287,7 +287,7 @@ export default function Landing() {
                 variants={fadeUp}
                 style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 520, margin: "0 0 40px 0" }}
               >
-                Juniper is the financial planning partner for engaged and newly married couples, helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
+                Juniper is the financial planning partner for engaged and newly married couples. Helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
               </motion.p>
               <motion.div variants={fadeUp}>
                 <WaitlistForm id="hero" />
