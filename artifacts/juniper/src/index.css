@@ -123,7 +123,7 @@
   --chart-5: 10 20% 50%;
 
   --app-font-sans: 'Inter', sans-serif;
-  --app-font-serif: Georgia, serif;
+  --app-font-serif: 'Fraunces', Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.75rem;
   --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.02);

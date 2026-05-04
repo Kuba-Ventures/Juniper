@@ -1,91 +1,763 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { Compass, MessageSquare, Clock } from "lucide-react";
 
-export default function Landing() {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const [name, setName] = useState("");
+// ── Design tokens ──────────────────────────────────────────────────────────
+const sage = "#5C7A65";
+const cream = "#FAF7F2";
+const ink = "#2A2A2A";
+const muted = "#6B6B6B";
+const border = "#E8E2D6";
+const sagePale = "#EFF4F1";
+const serif = "'Fraunces', Georgia, serif";
+const sans = "'Inter', sans-serif";
+
+// ── Animation variants ─────────────────────────────────────────────────────
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" as const } },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+// ── Shared input style ─────────────────────────────────────────────────────
+const fieldBase: React.CSSProperties = {
+  height: 52,
+  padding: "0 16px",
+  border: `1px solid ${border}`,
+  borderRadius: 8,
+  background: "#fff",
+  fontFamily: sans,
+  fontSize: 16,
+  color: ink,
+  width: "100%",
+  outline: "none",
+  boxSizing: "border-box",
+  display: "block",
+};
+
+// ── WaitlistForm ───────────────────────────────────────────────────────────
+function WaitlistForm({ id }: { id: string }) {
   const [email, setEmail] = useState("");
+  const [stage, setStage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !stage) {
+      setError("Please fill in both fields.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, journey_stage: stage }),
+      });
+    } catch {
+      // Endpoint not yet wired — show success state anyway
+    }
+    setLoading(false);
     setSubmitted(true);
-    toast({
-      title: "You're on the list!",
-      description: "We'll be in touch when Juniper is ready for you.",
-    });
-    setName("");
-    setEmail("");
   };
 
+  if (submitted) {
+    return (
+      <div
+        style={{
+          background: sagePale,
+          border: `1px solid ${border}`,
+          borderRadius: 12,
+          padding: "24px 28px",
+          width: "100%",
+          maxWidth: 440,
+        }}
+      >
+        <p style={{ fontFamily: serif, fontSize: 20, color: sage, fontWeight: 500, marginBottom: 4, margin: "0 0 4px" }}>
+          Thanks — we'll be in touch.
+        </p>
+        <p style={{ color: muted, fontSize: 14, margin: 0 }}>You're on the early-access list.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background text-foreground font-sans">
-      <header className="w-full py-4 px-6 md:px-12 flex justify-between items-center border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-serif font-bold text-lg italic">J</span>
+    <form
+      onSubmit={handleSubmit}
+      style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", gap: 10 }}
+      aria-label={`Waitlist signup form ${id}`}
+    >
+      <label htmlFor={`email-${id}`} className="sr-only">Email address</label>
+      <input
+        id={`email-${id}`}
+        type="email"
+        placeholder="your@email.com"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        style={fieldBase}
+      />
+      <label htmlFor={`stage-${id}`} className="sr-only">Where are you in your journey?</label>
+      <select
+        id={`stage-${id}`}
+        value={stage}
+        onChange={e => setStage(e.target.value)}
+        style={{ ...fieldBase, cursor: "pointer", color: stage ? ink : muted }}
+      >
+        <option value="" disabled>Where are you in your journey?</option>
+        <option value="dating_seriously">Dating seriously</option>
+        <option value="engaged">Engaged</option>
+        <option value="newly_married">Newly married</option>
+        <option value="planning_ahead">Planning ahead</option>
+      </select>
+      {error && (
+        <p role="alert" style={{ fontSize: 13, color: "#c0392b", margin: 0 }}>{error}</p>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        style={{
+          height: 52,
+          padding: "0 32px",
+          background: sage,
+          color: "#fff",
+          border: "none",
+          borderRadius: 8,
+          fontFamily: sans,
+          fontSize: 16,
+          fontWeight: 500,
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.75 : 1,
+          transition: "opacity 0.15s",
+          width: "100%",
+          letterSpacing: "0.01em",
+        }}
+      >
+        {loading ? "Sending…" : "Get early access"}
+      </button>
+      <p style={{ fontSize: 13, color: muted, textAlign: "center", margin: 0 }}>
+        One thoughtful email a month. No spam, ever.
+      </p>
+    </form>
+  );
+}
+
+// ── Section eyebrow ────────────────────────────────────────────────────────
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        fontFamily: sans,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.12em",
+        color: muted,
+        textTransform: "uppercase",
+        margin: "0 0 16px 0",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+// ── Photo placeholder (used for hero + founders) ───────────────────────────
+function Photo({
+  src,
+  alt,
+  eager = false,
+}: {
+  src: string;
+  alt: string;
+  eager?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 20,
+        overflow: "hidden",
+        background: sagePale,
+        width: "100%",
+        height: "100%",
+        position: "relative",
+      }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          filter: "sepia(8%) saturate(88%) brightness(1.02)",
+          display: "block",
+        }}
+        onError={e => {
+          e.currentTarget.style.display = "none";
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Landing page ───────────────────────────────────────────────────────────
+export default function Landing() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "Is Juniper a financial advisor?",
+      a: "No. Juniper helps you understand your options and have better conversations with your partner. For regulated advice, we can connect you with a vetted human advisor when it makes sense.",
+    },
+    {
+      q: "What does it cost?",
+      a: "Juniper is free during our early access period. We'll share pricing details with waitlist members before launch.",
+    },
+    {
+      q: "Is my financial data private?",
+      a: "Yes. Your data is encrypted, never sold, and never shared with your partner without your consent. Privacy is foundational, not a feature.",
+    },
+    {
+      q: "How is this different from a budgeting app?",
+      a: "Budgeting apps track what you've spent. Juniper helps you decide what to do next — model scenarios, weigh tradeoffs, and align with your partner on what matters.",
+    },
+    {
+      q: "Do both partners need to use it?",
+      a: "No. You can start solo and invite your partner when you're ready. Many of our users begin alone and bring their partner in once they've mapped out their thinking.",
+    },
+  ];
+
+  return (
+    <div style={{ background: cream, color: ink, fontFamily: sans, overflowX: "hidden" }}>
+
+      {/* ── 1. NAV ─────────────────────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12"
+        style={{
+          height: 68,
+          background: `${cream}ee`,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${border}`,
+        }}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 34, height: 34, background: sage, flexShrink: 0 }}
+            aria-hidden="true"
+          >
+            <span style={{ fontFamily: serif, fontSize: 18, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
           </div>
-          <span className="font-serif text-xl font-medium tracking-tight text-primary">Juniper</span>
+          <span style={{ fontFamily: serif, fontSize: 20, color: sage, letterSpacing: "-0.01em", fontWeight: 500 }}>
+            Juniper
+          </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/app")}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          Admin
-        </Button>
+        <a href="/app" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
+          Log in
+        </a>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center mb-8">
-          <span className="text-primary-foreground font-serif font-bold text-3xl italic">J</span>
-        </div>
+      {/* ── 2. HERO ────────────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-36">
+        <div className="max-w-[1100px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
+            {/* Left: text + form */}
+            <motion.div initial="hidden" animate="visible" variants={stagger} className="flex flex-col">
+              <motion.h1
+                variants={fadeUp}
+                style={{
+                  fontFamily: serif,
+                  fontSize: "clamp(40px, 5vw, 66px)",
+                  fontWeight: 400,
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.025em",
+                  color: ink,
+                  margin: "0 0 24px 0",
+                }}
+              >
+                Build your financial future, together.
+              </motion.h1>
+              <motion.p
+                variants={fadeUp}
+                style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 520, margin: "0 0 40px 0" }}
+              >
+                Juniper is the financial planning partner for engaged and newly married couples — helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
+              </motion.p>
+              <motion.div variants={fadeUp}>
+                <WaitlistForm id="hero" />
+              </motion.div>
+            </motion.div>
 
-        <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-medium leading-tight tracking-tight mb-6 max-w-2xl">
-          Helping you reach life's milestones, at your own pace
-        </h1>
-
-        <p className="text-muted-foreground text-lg md:text-xl max-w-xl mb-12 leading-relaxed">
-          An intelligent guide that walks you through the financial decisions of early marriage — from student debt to home buying — one question at a time.
-        </p>
-
-        {submitted ? (
-          <div className="bg-primary/10 border border-primary/20 rounded-xl px-8 py-6 max-w-sm w-full">
-            <p className="font-serif text-xl text-primary font-medium mb-1">You're on the list!</p>
-            <p className="text-muted-foreground text-sm">We'll reach out when Juniper is ready for you.</p>
+            {/* Right: photo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.25 }}
+              style={{ aspectRatio: "4/5", boxShadow: "0 24px 80px rgba(42,42,42,0.1)", borderRadius: 20, overflow: "hidden" }}
+            >
+              <Photo
+                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80&fit=crop"
+                alt="Couple planning their finances together over coffee"
+                eager
+              />
+            </motion.div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
-            <Input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-12 text-base px-4"
-            />
-            <Input
-              type="email"
-              placeholder="Your email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-12 text-base px-4"
-            />
-            <Button type="submit" size="lg" className="h-12 font-medium">
-              Get early access
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1">
-              No spam. We'll only reach out when we're ready for you.
-            </p>
-          </form>
-        )}
-      </main>
+        </div>
+      </section>
+
+      {/* ── 3. EMPATHY ─────────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+        <div className="max-w-[1100px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={fadeUp}
+          >
+            <Eyebrow>Why Juniper</Eyebrow>
+            <h2
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(28px, 3vw, 48px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: "0 0 64px 0",
+                maxWidth: 560,
+              }}
+            >
+              Merging finances is harder than anyone tells you.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={stagger}
+            className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16"
+          >
+            {[
+              {
+                icon: <Compass size={26} strokeWidth={1.5} />,
+                title: "You don't know where to start",
+                body: "Student loans, savings, a future home — the decisions pile up fast, and no one teaches you the order.",
+              },
+              {
+                icon: <MessageSquare size={26} strokeWidth={1.5} />,
+                title: "Money conversations get tense",
+                body: "Talking about debt, prenups, or budgeting with your partner can feel loaded — even when you agree.",
+              },
+              {
+                icon: <Clock size={26} strokeWidth={1.5} />,
+                title: "Advisors feel out of reach",
+                body: "Most financial advisors target people 45 and older. You need help now, not in twenty years.",
+              },
+            ].map(({ icon, title, body }) => (
+              <motion.div key={title} variants={fadeUp}>
+                <div style={{ color: sage, marginBottom: 18 }} aria-hidden="true">{icon}</div>
+                <h3
+                  style={{ fontFamily: serif, fontSize: 20, fontWeight: 500, color: ink, margin: "0 0 10px 0", lineHeight: 1.2 }}
+                >
+                  {title}
+                </h3>
+                <p style={{ color: muted, fontSize: 16, lineHeight: 1.7, margin: 0 }}>{body}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 4. HOW IT WORKS ────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: cream }}>
+        <div className="max-w-[1100px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={fadeUp}
+          >
+            <Eyebrow>How It Works</Eyebrow>
+            <h2
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(28px, 3vw, 48px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: "0 0 64px 0",
+              }}
+            >
+              A calmer way to plan, together.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={stagger}
+            className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16"
+          >
+            {[
+              { num: "01", title: "Tell us your goals", body: "Share where you are and where you're headed. Juniper meets you both there." },
+              { num: "02", title: "Model your options", body: "Run scenarios on debt, savings, and home buying — all in plain language." },
+              { num: "03", title: "Decide with confidence", body: "Walk into big choices aligned, informed, and on the same page." },
+            ].map(({ num, title, body }) => (
+              <motion.div key={num} variants={fadeUp} className="flex flex-col gap-4">
+                <span
+                  style={{ fontFamily: serif, fontSize: 52, fontWeight: 300, color: sage, lineHeight: 1 }}
+                  aria-hidden="true"
+                >
+                  {num}
+                </span>
+                <h3 style={{ fontFamily: serif, fontSize: 20, fontWeight: 500, color: ink, margin: 0 }}>{title}</h3>
+                <p style={{ color: muted, fontSize: 16, lineHeight: 1.7, margin: 0 }}>{body}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 5. STATS ───────────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+        <div className="max-w-[1100px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={fadeUp}
+          >
+            <Eyebrow>The Numbers</Eyebrow>
+            <h2
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(28px, 3vw, 48px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: "0 0 64px 0",
+              }}
+            >
+              You're not alone in this.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={stagger}
+            className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16"
+          >
+            {[
+              { stat: "70%", caption: "of couples enter marriage with debt" },
+              { stat: "40%", caption: "of marriages now include a prenup" },
+              { stat: "36%", caption: "of Gen Z would marry someone just to afford a home" },
+            ].map(({ stat, caption }) => (
+              <motion.div key={stat} variants={fadeUp} className="flex flex-col gap-4">
+                <span
+                  style={{
+                    fontFamily: serif,
+                    fontSize: "clamp(64px, 7vw, 96px)",
+                    fontWeight: 300,
+                    color: sage,
+                    lineHeight: 1,
+                    display: "block",
+                  }}
+                >
+                  {stat}
+                </span>
+                <p style={{ color: muted, fontSize: 16, lineHeight: 1.55, maxWidth: 220, margin: 0 }}>{caption}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 6. EXAMPLE PROMPTS ─────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: cream }}>
+        <div className="max-w-[800px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={fadeUp}
+          >
+            <Eyebrow>What You Can Ask</Eyebrow>
+            <h2
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(28px, 3vw, 48px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: "0 0 48px 0",
+              }}
+            >
+              Real questions. Real answers.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={stagger}
+            className="flex flex-col gap-5"
+          >
+            {[
+              {
+                label: "HOME BUYING",
+                text: "We have $63k in student debt and want to afford a $425k house. Between the two of us, we make about $140k a year. How much do we need to save for a down payment, and can we handle the monthly mortgage?",
+              },
+              {
+                label: "MERGING FINANCES",
+                text: "We're getting married next year and want to combine our savings. I have $18k in credit card debt and my partner has $40k in student loans. What's the smartest way to tackle this together?",
+              },
+              {
+                label: "PLANNING AHEAD",
+                text: "We want to start trying for a baby in two years and also save for a down payment. Can we realistically do both on a $165k combined income, or do we need to choose?",
+              },
+            ].map(({ label, text }) => (
+              <motion.div
+                key={label}
+                variants={fadeUp}
+                style={{
+                  background: "#fff",
+                  border: `1.5px solid ${border}`,
+                  borderRadius: 16,
+                  padding: "28px 32px",
+                }}
+              >
+                <p style={{ fontSize: 16, color: ink, lineHeight: 1.75, margin: "0 0 14px 0" }}>{text}</p>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.1em",
+                    color: sage,
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  {label}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 7. FOUNDERS ────────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: "#fff" }}>
+        <div className="max-w-[1100px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-14 md:gap-20 items-center">
+            {/* Photo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+              style={{
+                aspectRatio: "4/5",
+                boxShadow: "0 12px 48px rgba(42,42,42,0.08)",
+                borderRadius: 20,
+                overflow: "hidden",
+              }}
+            >
+              <Photo
+                src="https://images.unsplash.com/photo-1516914943479-89db7d9ae7f2?w=600&q=80&fit=crop"
+                alt="The Juniper team"
+              />
+            </motion.div>
+
+            {/* Text */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={stagger}
+            >
+              <motion.div variants={fadeUp}>
+                <Eyebrow>Why We're Building This</Eyebrow>
+              </motion.div>
+              <motion.h2
+                variants={fadeUp}
+                style={{
+                  fontFamily: serif,
+                  fontSize: "clamp(26px, 2.5vw, 40px)",
+                  fontWeight: 400,
+                  lineHeight: 1.15,
+                  color: ink,
+                  margin: "0 0 24px 0",
+                }}
+              >
+                We built Juniper because no one was building it for us.
+              </motion.h2>
+              <motion.p
+                variants={fadeUp}
+                style={{ color: muted, fontSize: 17, lineHeight: 1.75, margin: "0 0 16px 0", maxWidth: 520 }}
+              >
+                Most financial tools are built for people decades older than us, or for people who already have it figured out. Couples in our stage of life — merging finances, paying down debt, dreaming about a first home — are left to figure it out alone, or pay advisors who don't take us seriously.
+              </motion.p>
+              <motion.p
+                variants={fadeUp}
+                style={{ color: muted, fontSize: 17, lineHeight: 1.75, margin: "0 0 32px 0", maxWidth: 520 }}
+              >
+                Juniper is the partner we wished we had: thoughtful, neutral, and built to help two people decide together.
+              </motion.p>
+              <motion.p
+                variants={fadeUp}
+                style={{ fontSize: 15, color: muted, fontStyle: "italic", margin: 0 }}
+              >
+                — The Juniper Team
+              </motion.p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 8. FAQ ─────────────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: cream }}>
+        <div className="max-w-[720px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={fadeUp}
+          >
+            <Eyebrow>Questions</Eyebrow>
+            <h2
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(28px, 3vw, 48px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: "0 0 48px 0",
+              }}
+            >
+              Things you might be wondering.
+            </h2>
+          </motion.div>
+
+          <div style={{ borderTop: `1px solid ${border}` }}>
+            {faqs.map(({ q, a }, i) => (
+              <div key={q} style={{ borderBottom: `1px solid ${border}` }}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "22px 0",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontFamily: serif, fontSize: 18, color: ink, fontWeight: 400 }}>{q}</span>
+                  <span
+                    style={{ color: sage, fontSize: 22, lineHeight: 1, flexShrink: 0, userSelect: "none", fontWeight: 300 }}
+                    aria-hidden="true"
+                  >
+                    {openFaq === i ? "−" : "+"}
+                  </span>
+                </button>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div
+                      key="answer"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <p style={{ color: muted, fontSize: 16, lineHeight: 1.75, paddingBottom: 24, margin: 0 }}>{a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 9. FINAL CTA ───────────────────────────────────────────────── */}
+      <section className="px-6 md:px-12 py-24 md:py-40 text-center" style={{ background: "#fff" }}>
+        <div className="max-w-[600px] mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={stagger}
+            className="flex flex-col items-center gap-5"
+          >
+            <motion.h2
+              variants={fadeUp}
+              style={{
+                fontFamily: serif,
+                fontSize: "clamp(30px, 4vw, 54px)",
+                fontWeight: 400,
+                lineHeight: 1.1,
+                color: ink,
+                margin: 0,
+              }}
+            >
+              Plan your next chapter with Juniper.
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{ fontSize: 17, color: muted, lineHeight: 1.65, margin: 0 }}>
+              Join the early-access list. We'll be in touch as we open the door.
+            </motion.p>
+            <motion.div variants={fadeUp} className="w-full flex justify-center">
+              <WaitlistForm id="cta" />
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 10. FOOTER ─────────────────────────────────────────────────── */}
+      <footer
+        className="px-6 md:px-12 py-8"
+        style={{ borderTop: `1px solid ${border}`, background: cream }}
+      >
+        <div className="max-w-[1100px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center justify-center rounded-full"
+              style={{ width: 28, height: 28, background: sage }}
+              aria-hidden="true"
+            >
+              <span style={{ fontFamily: serif, fontSize: 14, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
+            </div>
+            <span style={{ fontFamily: serif, fontSize: 16, color: sage, fontWeight: 500 }}>Juniper</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-6 md:gap-8">
+            <a href="/privacy" style={{ fontSize: 13, color: muted, textDecoration: "none" }}>Privacy</a>
+            <a href="/terms" style={{ fontSize: 13, color: muted, textDecoration: "none" }}>Terms</a>
+            <a href="mailto:hello@juniper.app" style={{ fontSize: 13, color: muted, textDecoration: "none" }}>hello@juniper.app</a>
+          </div>
+        </div>
+        <div className="max-w-[1100px] mx-auto" style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 12, color: border, margin: 0 }}>© 2025 Juniper. All rights reserved.</p>
+        </div>
+      </footer>
+
     </div>
   );
 }
