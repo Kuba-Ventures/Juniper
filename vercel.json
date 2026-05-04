@@ -2,5 +2,6 @@
   "buildCommand": "pnpm --filter @workspace/juniper run build",
   "outputDirectory": "artifacts/juniper/dist",
   "installCommand": "pnpm install",
-  "framework": null
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
