@@ -7,6 +7,7 @@ import { InlineChart, ChartSpec, parseSegments } from "@/components/chat/inline-
 import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
+const TOKEN_KEY = "juniper_auth_token";
 const NAME_KEY = "juniper_user_name";
 const EMAIL_KEY = "juniper_user_email";
 const ARTIFACTS_KEY = "juniper_artifacts";
@@ -66,19 +67,21 @@ function nameFromEmail(email: string): string {
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
-async function fetchRemoteProfile(email: string): Promise<{ name?: string } & UserProfile | null> {
+async function fetchRemoteProfile(email: string, token: string): Promise<{ name?: string } & UserProfile | null> {
   try {
-    const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`);
+    const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }
 }
 
-async function saveRemoteProfile(email: string, name: string, profile: UserProfile) {
+async function saveRemoteProfile(email: string, name: string, profile: UserProfile, token: string) {
   try {
     await fetch("/api/profile", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         email,
         name,
@@ -94,7 +97,7 @@ async function saveRemoteProfile(email: string, name: string, profile: UserProfi
 
 // ── Password gate ──────────────────────────────────────────────────────────
 function PasswordGate({ onUnlock }: {
-  onUnlock: (name: string, email: string, profile: UserProfile | null) => void;
+  onUnlock: (name: string, email: string, token: string, profile: UserProfile | null) => void;
 }) {
   const [email, setEmail] = useState(() => getSavedEmail());
   const [password, setPassword] = useState("");
@@ -110,14 +113,30 @@ function PasswordGate({ onUnlock }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== "juniper") { setError(true); setPassword(""); return; }
-
     setLoading(true);
+
     const trimmedEmail = email.trim().toLowerCase();
 
-    // Try to load existing profile from Supabase
+    // Verify password server-side and get session token
+    const authRes = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: trimmedEmail, password }),
+    });
+
+    if (!authRes.ok) {
+      setError(true);
+      setPassword("");
+      setLoading(false);
+      return;
+    }
+
+    const { token } = await authRes.json() as { token: string };
+    sessionStorage.setItem(TOKEN_KEY, token);
+
+    // Load existing profile from Supabase using the token
     let remoteProfile: ({ name?: string } & UserProfile) | null = null;
-    if (trimmedEmail) remoteProfile = await fetchRemoteProfile(trimmedEmail);
+    if (trimmedEmail) remoteProfile = await fetchRemoteProfile(trimmedEmail, token);
 
     const resolvedName = remoteProfile?.name || (trimmedEmail ? nameFromEmail(trimmedEmail) : "there");
 
@@ -141,11 +160,11 @@ function PasswordGate({ onUnlock }: {
 
     // If new user with email, create their record
     if (trimmedEmail && !remoteProfile) {
-      await saveRemoteProfile(trimmedEmail, resolvedName, {});
+      await saveRemoteProfile(trimmedEmail, resolvedName, {}, token);
     }
 
     setLoading(false);
-    onUnlock(resolvedName, trimmedEmail, profile);
+    onUnlock(resolvedName, trimmedEmail, token, profile);
   };
 
   return (
@@ -544,7 +563,7 @@ function ConnectionsView({ userName }: { userName: string }) {
 }
 
 // ── App shell ──────────────────────────────────────────────────────────────
-function AppShell({ userName, userEmail }: { userName: string; userEmail: string }) {
+function AppShell({ userName, userEmail, authToken }: { userName: string; userEmail: string; authToken: string }) {
   const [view, setView] = useState<"chat" | "myPlan" | "connections">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations(userEmail));
@@ -594,7 +613,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     remoteSaveTimer.current = setTimeout(() => {
       fetch("/api/profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ email: userEmail, name: userName, artifacts, conversations }),
       }).catch(() => {});
     }, 2000);
@@ -603,7 +622,9 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
   // On mount: hydrate from Supabase (remote beats localStorage when non-empty)
   useEffect(() => {
     if (!userEmail) return;
-    fetch(`/api/profile?email=${encodeURIComponent(userEmail)}`)
+    fetch(`/api/profile?email=${encodeURIComponent(userEmail)}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data: Record<string, unknown> | null) => {
         if (!data) return;
@@ -654,7 +675,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     saveProfile(p, userEmail);
     setProfile(p);
     setShowQuestionnaire(false);
-    if (userEmail) saveRemoteProfile(userEmail, userName, p);
+    if (userEmail) saveRemoteProfile(userEmail, userName, p, authToken);
   }, [userEmail, userName]);
 
   const sidebarProps = {
@@ -776,18 +797,20 @@ export default function Home() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
   const [userName, setUserName] = useState(() => getSavedName() || "there");
   const [userEmail, setUserEmail] = useState(() => getSavedEmail());
+  const [authToken, setAuthToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || "");
 
   if (!authed) {
     return (
       <PasswordGate
-        onUnlock={(name, email, remoteProfile) => {
+        onUnlock={(name, email, token, remoteProfile) => {
           setUserName(name);
           setUserEmail(email);
+          setAuthToken(token);
           if (remoteProfile) saveProfile(remoteProfile, email);
           setAuthed(true);
         }}
       />
     );
   }
-  return <AppShell userName={userName} userEmail={userEmail} />;
+  return <AppShell userName={userName} userEmail={userEmail} authToken={authToken} />;
 }
