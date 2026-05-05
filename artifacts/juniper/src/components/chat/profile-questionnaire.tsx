@@ -33,11 +33,13 @@ const FIELDS: Array<{
 
 type Props = {
   initialData?: UserProfile;
+  initialName?: string;
   onClose: () => void;
-  onSave: (profile: UserProfile) => void;
+  onSave: (profile: UserProfile, name: string) => void;
 };
 
-export function ProfileQuestionnaire({ initialData, onClose, onSave }: Props) {
+export function ProfileQuestionnaire({ initialData, initialName = "", onClose, onSave }: Props) {
+  const [preferredName, setPreferredName] = useState(initialName);
   const [values, setValues] = useState<Partial<Record<keyof UserProfile, string>>>(() => ({
     monthlyIncome:   initialData?.monthlyIncome   !== undefined ? String(initialData.monthlyIncome)   : "",
     monthlyExpenses: initialData?.monthlyExpenses !== undefined ? String(initialData.monthlyExpenses) : "",
@@ -60,7 +62,7 @@ export function ProfileQuestionnaire({ initialData, onClose, onSave }: Props) {
       goals: goals.length > 0 ? goals : undefined,
     };
     saveProfile(profile);
-    onSave(profile);
+    onSave(profile, preferredName.trim() || initialName);
   }
 
   function toggleGoal(goal: string) {
@@ -112,6 +114,28 @@ export function ProfileQuestionnaire({ initialData, onClose, onSave }: Props) {
 
         {/* Scrollable body */}
         <div style={{ overflowY: "auto", padding: "24px 32px", flex: 1 }}>
+
+          {/* Preferred name */}
+          <div style={{ marginBottom: 28 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: ink, marginBottom: 4 }}>
+              What should we call you?
+            </label>
+            <p style={{ fontSize: 12, color: muted, margin: "0 0 8px", lineHeight: 1.5 }}>Your first name or nickname</p>
+            <input
+              type="text"
+              placeholder="e.g. Asta"
+              value={preferredName}
+              onChange={(e) => setPreferredName(e.target.value)}
+              style={{
+                width: "100%", height: 46, boxSizing: "border-box",
+                padding: "0 14px", border: `1.5px solid ${border}`,
+                borderRadius: 8, background: "#fff", fontFamily: sans,
+                fontSize: 16, color: ink, outline: "none", transition: "border-color 0.15s",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
+              onBlur={(e) => (e.currentTarget.style.borderColor = border)}
+            />
+          </div>
 
           {/* Numeric fields */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 32 }}>

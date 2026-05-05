@@ -569,6 +569,7 @@ function ConnectionsView({ userName }: { userName: string }) {
 
 // ── App shell ──────────────────────────────────────────────────────────────
 function AppShell({ userName, userEmail, authToken }: { userName: string; userEmail: string; authToken: string }) {
+  const [displayName, setDisplayName] = useState(userName);
   const [view, setView] = useState<"chat" | "myPlan" | "connections">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations(userEmail));
@@ -676,12 +677,16 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
     if (id) handleConversationMessagesUpdate(id, messages);
   }, [handleConversationMessagesUpdate]);
 
-  const handleProfileSave = useCallback((p: UserProfile) => {
+  const handleProfileSave = useCallback((p: UserProfile, name: string) => {
     saveProfile(p, userEmail);
     setProfile(p);
+    if (name && name !== displayName) {
+      setDisplayName(name);
+      localStorage.setItem(NAME_KEY, name);
+    }
     setShowQuestionnaire(false);
-    if (userEmail) saveRemoteProfile(userEmail, userName, p, authToken);
-  }, [userEmail, userName]);
+    if (userEmail) saveRemoteProfile(userEmail, name || displayName, p, authToken);
+  }, [userEmail, displayName, authToken]);
 
   const sidebarProps = {
     conversations,
@@ -695,11 +700,11 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
     onViewConnections: () => { setView("connections"); setSidebarOpen(false); },
     onSelectArtifact: () => { setView("myPlan"); setSidebarOpen(false); },
     onLogout: handleLogout,
-    userName: userName,
+    userName: displayName,
   };
 
   const accountButtonProps = {
-    userName: userName,
+    userName: displayName,
     profile,
     onEditProfile: () => setShowQuestionnaire(true),
     onLogout: handleLogout,
@@ -755,7 +760,7 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
           {view === "chat" ? (
             <ChatInterface
               key={chatKey}
-              userName={userName}
+              userName={displayName}
               profile={profile}
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
@@ -764,11 +769,11 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
               onMessagesUpdate={handleMessagesUpdateStable}
             />
           ) : view === "connections" ? (
-            <ConnectionsView userName={userName} />
+            <ConnectionsView userName={displayName} />
           ) : (
             <MyPlanView
               artifacts={artifacts}
-              userName={userName}
+              userName={displayName}
               onStartConversation={handleNewConversation}
               onRenameArtifact={handleRenameArtifact}
               onDeleteArtifact={handleDeleteArtifact}
@@ -781,6 +786,7 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
       {showQuestionnaire && (
         <ProfileQuestionnaire
           initialData={profile ?? undefined}
+          initialName={displayName}
           onClose={() => setShowQuestionnaire(false)}
           onSave={handleProfileSave}
         />
