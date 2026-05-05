@@ -478,8 +478,46 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     setArtifacts((prev) => prev.map((a) => a.id === id ? { ...a, title } : a));
   }, []);
 
-  useEffect(() => { saveArtifacts(artifacts); }, [artifacts]);
-  useEffect(() => { saveConversations(conversations); }, [conversations]);
+  // Persist to localStorage + debounced Supabase save on every change
+  const remoteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    saveArtifacts(artifacts);
+    saveConversations(conversations);
+    if (!userEmail) return;
+    if (remoteSaveTimer.current) clearTimeout(remoteSaveTimer.current);
+    remoteSaveTimer.current = setTimeout(() => {
+      fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, name: userName, artifacts, conversations }),
+      }).catch(() => {});
+    }, 2000);
+  }, [artifacts, conversations, userEmail, userName]);
+
+  // On mount: hydrate from Supabase (remote beats localStorage when non-empty)
+  useEffect(() => {
+    if (!userEmail) return;
+    fetch(`/api/profile?email=${encodeURIComponent(userEmail)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: Record<string, unknown> | null) => {
+        if (!data) return;
+        if (Array.isArray(data.artifacts) && (data.artifacts as unknown[]).length > 0) {
+          const parsed = (data.artifacts as Array<Artifact & { savedAt: string }>).map((a) => ({
+            ...a, savedAt: new Date(a.savedAt),
+          }));
+          setArtifacts(parsed);
+          saveArtifacts(parsed);
+        }
+        if (Array.isArray(data.conversations) && (data.conversations as unknown[]).length > 0) {
+          const parsed = (data.conversations as Array<Conversation & { startedAt: string }>).map((c) => ({
+            ...c, startedAt: new Date(c.startedAt),
+          }));
+          setConversations(parsed);
+          saveConversations(parsed);
+        }
+      })
+      .catch(() => {});
+  }, [userEmail]); // intentionally runs once on mount
 
   const handleSelectConversation = useCallback((id: string) => {
     setView("chat");
