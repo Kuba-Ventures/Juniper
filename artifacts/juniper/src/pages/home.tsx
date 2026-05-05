@@ -205,7 +205,7 @@ function AccountButton({
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
       >
-        <span style={{ fontFamily: serif, fontSize: 13, color: "#fff", fontStyle: "italic" }}>{initials}</span>
+        <span style={{ fontFamily: sans, fontSize: 16, color: "#fff", fontWeight: 600, lineHeight: 1 }}>{initials}</span>
       </button>
 
       {open && (
