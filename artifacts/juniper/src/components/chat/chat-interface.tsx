@@ -54,21 +54,46 @@ const CHIPS: Array<{ heading: string; sub: string; firstMessage: string }> = [
 
 // ── Juniper berry SVG (shown while streaming) ─────────────────────────────
 function JuniperBerry({ size }: { size: number }) {
-  const s = size * 0.64;
   return (
-    <svg width={s} height={s} viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Berry body */}
-      <circle cx="10" cy="14" r="8" fill="#8592BF"/>
+    <svg width={size} height={size} viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Berry body — vivid indigo-blue */}
+      <circle cx="10" cy="14" r="8" fill="#4A5EC8"/>
+      {/* Deep shadow at bottom */}
+      <circle cx="10" cy="14" r="8" fill="url(#berryShade)"/>
       {/* Waxy bloom highlight */}
-      <ellipse cx="7" cy="11.5" rx="2.6" ry="1.5" fill="rgba(255,255,255,0.22)" transform="rotate(-30 7 11.5)"/>
+      <ellipse cx="7" cy="11" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.32)" transform="rotate(-30 7 11)"/>
       {/* Calyx — 4-pointed star cap */}
-      <path d="M10 5 L10.9 7.5 L13.5 6.5 L11.6 9 L14 10.5 L11.2 10.2 L11 13 L10 11 L9 13 L8.8 10.2 L6 10.5 L8.4 9 L6.5 6.5 L9.1 7.5 Z" fill="#C49050"/>
+      <path d="M10 4.5 L10.9 7.2 L13.6 6.2 L11.7 8.8 L14.2 10.4 L11.2 10.1 L11 13 L10 10.8 L9 13 L8.8 10.1 L5.8 10.4 L8.3 8.8 L6.4 6.2 L9.1 7.2 Z" fill="#D4922A"/>
+      <defs>
+        <radialGradient id="berryShade" cx="60%" cy="65%" r="55%">
+          <stop offset="0%" stopColor="transparent"/>
+          <stop offset="100%" stopColor="rgba(20,18,60,0.28)"/>
+        </radialGradient>
+      </defs>
     </svg>
   );
 }
 
 // ── J logo mark ────────────────────────────────────────────────────────────
 function JLogo({ size = 24, streaming = false }: { size?: number; streaming?: boolean }) {
+  if (streaming) {
+    const berrySize = size * 1.9;
+    return (
+      <div
+        style={{
+          width: berrySize,
+          height: berrySize,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          animation: "berryPulse 1.6s ease-in-out infinite",
+        }}
+      >
+        <JuniperBerry size={berrySize} />
+      </div>
+    );
+  }
   return (
     <div
       style={{
@@ -80,24 +105,19 @@ function JLogo({ size = 24, streaming = false }: { size?: number; streaming?: bo
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: streaming ? "berryPulse 1.6s ease-in-out infinite" : "none",
       }}
     >
-      {streaming ? (
-        <JuniperBerry size={size} />
-      ) : (
-        <span
-          style={{
-            fontFamily: serif,
-            fontSize: size * 0.54,
-            color: "#fff",
-            fontStyle: "italic",
-            lineHeight: 1,
-          }}
-        >
-          J
-        </span>
-      )}
+      <span
+        style={{
+          fontFamily: serif,
+          fontSize: size * 0.54,
+          color: "#fff",
+          fontStyle: "italic",
+          lineHeight: 1,
+        }}
+      >
+        J
+      </span>
     </div>
   );
 }
