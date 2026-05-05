@@ -52,8 +52,23 @@ const CHIPS: Array<{ heading: string; sub: string; firstMessage: string }> = [
   },
 ];
 
+// ── Juniper berry SVG (shown while streaming) ─────────────────────────────
+function JuniperBerry({ size }: { size: number }) {
+  const s = size * 0.64;
+  return (
+    <svg width={s} height={s} viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Berry body */}
+      <circle cx="10" cy="14" r="8" fill="#8592BF"/>
+      {/* Waxy bloom highlight */}
+      <ellipse cx="7" cy="11.5" rx="2.6" ry="1.5" fill="rgba(255,255,255,0.22)" transform="rotate(-30 7 11.5)"/>
+      {/* Calyx — 4-pointed star cap */}
+      <path d="M10 5 L10.9 7.5 L13.5 6.5 L11.6 9 L14 10.5 L11.2 10.2 L11 13 L10 11 L9 13 L8.8 10.2 L6 10.5 L8.4 9 L6.5 6.5 L9.1 7.5 Z" fill="#C49050"/>
+    </svg>
+  );
+}
+
 // ── J logo mark ────────────────────────────────────────────────────────────
-function JLogo({ size = 24 }: { size?: number }) {
+function JLogo({ size = 24, streaming = false }: { size?: number; streaming?: boolean }) {
   return (
     <div
       style={{
@@ -65,19 +80,24 @@ function JLogo({ size = 24 }: { size?: number }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        animation: streaming ? "berryPulse 1.6s ease-in-out infinite" : "none",
       }}
     >
-      <span
-        style={{
-          fontFamily: serif,
-          fontSize: size * 0.54,
-          color: "#fff",
-          fontStyle: "italic",
-          lineHeight: 1,
-        }}
-      >
-        J
-      </span>
+      {streaming ? (
+        <JuniperBerry size={size} />
+      ) : (
+        <span
+          style={{
+            fontFamily: serif,
+            fontSize: size * 0.54,
+            color: "#fff",
+            fontStyle: "italic",
+            lineHeight: 1,
+          }}
+        >
+          J
+        </span>
+      )}
     </div>
   );
 }
@@ -571,7 +591,7 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
                     marginBottom: 8,
                   }}
                 >
-                  <JLogo size={24} />
+                  <JLogo size={24} streaming={msg.isStreaming} />
                   <span
                     style={{
                       fontSize: 12,
@@ -741,6 +761,10 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
           40% { transform: translateY(-5px); opacity: 1; }
+        }
+        @keyframes berryPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.72; transform: scale(0.88); }
         }
       `}</style>
     </div>
