@@ -515,6 +515,11 @@ const CONNECTION_TYPES = [
     label: "Mortgage & Loans",
     description: "Keep tabs on balances, rates, and payoff timelines.",
   },
+  {
+    icon: <ClipboardList size={22} color={sage} strokeWidth={1.6} />,
+    label: "Budgeting Tools & Apps",
+    description: "Sync data from YNAB, Mint, Copilot, and other budgeting apps.",
+  },
 ];
 
 function ConnectionsView({ userName }: { userName: string }) {
