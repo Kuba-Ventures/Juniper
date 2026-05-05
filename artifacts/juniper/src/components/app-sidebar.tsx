@@ -150,6 +150,31 @@ export function AppSidebar({
 
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 14px" }}>
+        {/* Connections */}
+        <section aria-label="Connections" style={{ marginBottom: 20 }}>
+          <button
+            onClick={onViewConnections}
+            style={{
+              width: "100%", textAlign: "left", background: "none", border: "none",
+              borderRadius: 7, padding: "8px 10px", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 8,
+              borderLeft: view === "connections" ? `3px solid ${sage}` : "3px solid transparent",
+              backgroundColor: view === "connections" ? "rgba(92,122,101,0.09)" : "transparent",
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={(e) => { if (view !== "connections") e.currentTarget.style.background = "rgba(92,122,101,0.06)"; }}
+            onMouseLeave={(e) => { if (view !== "connections") e.currentTarget.style.background = "transparent"; }}
+          >
+            <Link2 size={13} color={muted} />
+            <span style={{
+              fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: muted, fontFamily: sans,
+            }}>
+              Connections
+            </span>
+          </button>
+        </section>
+
         {/* My Plan */}
         <section aria-label="My Plan" style={{ marginBottom: 28 }}>
           <button
@@ -201,31 +226,6 @@ export function AppSidebar({
               ))}
             </ul>
           )}
-        </section>
-
-        {/* Connections */}
-        <section aria-label="Connections" style={{ marginBottom: 28 }}>
-          <button
-            onClick={onViewConnections}
-            style={{
-              width: "100%", textAlign: "left", background: "none", border: "none",
-              borderRadius: 7, padding: "8px 10px", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 8,
-              borderLeft: view === "connections" ? `3px solid ${sage}` : "3px solid transparent",
-              backgroundColor: view === "connections" ? "rgba(92,122,101,0.09)" : "transparent",
-              transition: "background 0.12s",
-            }}
-            onMouseEnter={(e) => { if (view !== "connections") e.currentTarget.style.background = "rgba(92,122,101,0.06)"; }}
-            onMouseLeave={(e) => { if (view !== "connections") e.currentTarget.style.background = "transparent"; }}
-          >
-            <Link2 size={13} color={muted} />
-            <span style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: muted, fontFamily: sans,
-            }}>
-              Connections
-            </span>
-          </button>
         </section>
 
         {/* Conversations */}
