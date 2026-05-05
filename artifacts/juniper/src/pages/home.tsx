@@ -7,6 +7,7 @@ import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
 const NAME_KEY = "juniper_user_name";
+const EMAIL_KEY = "juniper_user_email";
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
 const ink = "#2A2A2A";
@@ -15,35 +16,91 @@ const border = "#E8E2D6";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
-function getSavedName() {
-  return localStorage.getItem(NAME_KEY) || "";
+function getSavedName() { return localStorage.getItem(NAME_KEY) || ""; }
+function getSavedEmail() { return localStorage.getItem(EMAIL_KEY) || ""; }
+
+async function fetchRemoteProfile(email: string): Promise<{ name?: string } & UserProfile | null> {
+  try {
+    const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function saveRemoteProfile(email: string, name: string, profile: UserProfile) {
+  try {
+    await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        name,
+        monthly_income: profile.monthlyIncome ?? null,
+        monthly_expenses: profile.monthlyExpenses ?? null,
+        total_savings: profile.totalSavings ?? null,
+        total_debt: profile.totalDebt ?? null,
+        goals: profile.goals ?? null,
+      }),
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ── Password gate ──────────────────────────────────────────────────────────
-function PasswordGate({ onUnlock }: { onUnlock: (name: string) => void }) {
+function PasswordGate({ onUnlock }: {
+  onUnlock: (name: string, email: string, profile: UserProfile | null) => void;
+}) {
   const [name, setName] = useState(() => getSavedName());
+  const [email, setEmail] = useState(() => getSavedEmail());
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const inputStyle = (hasError = false) => ({
     height: 48, padding: "0 16px",
     border: `1px solid ${hasError ? "#b94040" : border}`,
     borderRadius: 8, background: "#fff", fontFamily: sans, fontSize: 16,
-    color: ink, outline: "none", boxSizing: "border-box" as const,
-    width: "100%",
+    color: ink, outline: "none", boxSizing: "border-box" as const, width: "100%",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "juniper") {
-      const trimmed = name.trim() || "there";
-      localStorage.setItem(NAME_KEY, trimmed);
-      sessionStorage.setItem(SESSION_KEY, "1");
-      onUnlock(trimmed);
-    } else {
-      setError(true);
-      setPassword("");
+    if (password !== "juniper") { setError(true); setPassword(""); return; }
+
+    setLoading(true);
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
+
+    // Try to load existing profile from Supabase
+    let remoteProfile: ({ name?: string } & UserProfile) | null = null;
+    if (trimmedEmail) remoteProfile = await fetchRemoteProfile(trimmedEmail);
+
+    const resolvedName = remoteProfile?.name || trimmedName || "there";
+
+    // Merge remote profile into local UserProfile shape
+    let profile: UserProfile | null = null;
+    if (remoteProfile) {
+      profile = {
+        monthlyIncome: (remoteProfile as Record<string, unknown>)["monthly_income"] as number | undefined,
+        monthlyExpenses: (remoteProfile as Record<string, unknown>)["monthly_expenses"] as number | undefined,
+        totalSavings: (remoteProfile as Record<string, unknown>)["total_savings"] as number | undefined,
+        totalDebt: (remoteProfile as Record<string, unknown>)["total_debt"] as number | undefined,
+        goals: (remoteProfile as Record<string, unknown>)["goals"] as string[] | undefined,
+        completedAt: (remoteProfile as Record<string, unknown>)["updated_at"] as string | undefined,
+      };
+      saveProfile(profile);
     }
+
+    localStorage.setItem(NAME_KEY, resolvedName);
+    if (trimmedEmail) localStorage.setItem(EMAIL_KEY, trimmedEmail);
+    sessionStorage.setItem(SESSION_KEY, "1");
+
+    // If new user with email, create their record
+    if (trimmedEmail && !remoteProfile) {
+      await saveRemoteProfile(trimmedEmail, resolvedName, {});
+    }
+
+    setLoading(false);
+    onUnlock(resolvedName, trimmedEmail, profile);
   };
 
   return (
@@ -59,11 +116,21 @@ function PasswordGate({ onUnlock }: { onUnlock: (name: string) => void }) {
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 }}>
         <input
           type="text"
-          placeholder="Your first name"
+          placeholder="First name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
           autoComplete="given-name"
+          style={inputStyle()}
+          onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = border)}
+        />
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           style={inputStyle()}
           onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
           onBlur={(e) => (e.currentTarget.style.borderColor = border)}
@@ -84,15 +151,15 @@ function PasswordGate({ onUnlock }: { onUnlock: (name: string) => void }) {
         )}
         <button
           type="submit"
+          disabled={loading}
           style={{
             height: 48, background: sage, color: "#fff", border: "none",
             borderRadius: 8, fontFamily: sans, fontSize: 15, fontWeight: 500,
-            cursor: "pointer", transition: "opacity 0.15s",
+            cursor: loading ? "default" : "pointer",
+            opacity: loading ? 0.7 : 1, transition: "opacity 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Enter
+          {loading ? "Signing in..." : "Enter"}
         </button>
       </form>
     </div>
@@ -290,7 +357,7 @@ function MyPlanView({ artifacts, userName, onStartConversation }: {
 }
 
 // ── App shell ──────────────────────────────────────────────────────────────
-function AppShell({ userName }: { userName: string }) {
+function AppShell({ userName, userEmail }: { userName: string; userEmail: string }) {
   const [view, setView] = useState<"chat" | "myPlan">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -332,7 +399,8 @@ function AppShell({ userName }: { userName: string }) {
     saveProfile(p);
     setProfile(p);
     setShowQuestionnaire(false);
-  }, []);
+    if (userEmail) saveRemoteProfile(userEmail, userName, p);
+  }, [userEmail, userName]);
 
   const sidebarProps = {
     conversations,
@@ -443,13 +511,19 @@ function AppShell({ userName }: { userName: string }) {
 export default function Home() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
   const [userName, setUserName] = useState(() => getSavedName() || "there");
+  const [userEmail, setUserEmail] = useState(() => getSavedEmail());
 
   if (!authed) {
     return (
       <PasswordGate
-        onUnlock={(name) => { setUserName(name); setAuthed(true); }}
+        onUnlock={(name, email, remoteProfile) => {
+          setUserName(name);
+          setUserEmail(email);
+          if (remoteProfile) saveProfile(remoteProfile);
+          setAuthed(true);
+        }}
       />
     );
   }
-  return <AppShell userName={userName} />;
+  return <AppShell userName={userName} userEmail={userEmail} />;
 }
