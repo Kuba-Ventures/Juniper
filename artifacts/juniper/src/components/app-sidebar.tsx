@@ -105,12 +105,7 @@ export function AppSidebar({
           textAlign: "left",
         }}
       >
-        <div style={{
-          width: 32, height: 32, borderRadius: "50%", background: sage, flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ fontFamily: serif, fontSize: 17, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
-        </div>
+        <img src="/logo.png" alt="Juniper" style={{ width: 32, height: 32, objectFit: "contain", flexShrink: 0 }} />
         <span style={{ fontFamily: serif, fontSize: 18, color: sage, fontWeight: 500, letterSpacing: "-0.01em" }}>
           Juniper
         </span>

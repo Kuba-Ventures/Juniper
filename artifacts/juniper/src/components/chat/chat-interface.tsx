@@ -290,7 +290,7 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
             width: "100%",
           }}
         >
-          <JLogo size={64} />
+          <img src="/logo.png" alt="Juniper" style={{ width: 72, height: 72, objectFit: "contain" }} />
           <h1
             style={{
               fontFamily: serif,

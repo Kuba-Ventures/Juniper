@@ -36,12 +36,7 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
       alignItems: "center", justifyContent: "center",
       background: cream, fontFamily: sans, padding: "0 24px",
     }}>
-      <div style={{
-        width: 52, height: 52, borderRadius: "50%", background: sage,
-        display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18,
-      }}>
-        <span style={{ fontFamily: serif, fontSize: 28, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
-      </div>
+      <img src="/logo.png" alt="Juniper" style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 18 }} />
       <h1 style={{ fontFamily: serif, fontSize: 22, color: sage, fontWeight: 500, margin: "0 0 4px" }}>Juniper</h1>
       <p style={{ color: muted, fontSize: 14, margin: "0 0 32px" }}>Private preview</p>
 
@@ -100,12 +95,7 @@ function MyPlanView({ artifacts, userName, onStartConversation }: {
     <div style={{ height: "100%", overflowY: "auto" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "52px 28px 80px" }}>
         <div style={{ textAlign: "center", marginBottom: 52 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: "50%", background: sage,
-            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px",
-          }}>
-            <span style={{ fontFamily: serif, fontSize: 24, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
-          </div>
+          <img src="/logo.png" alt="Juniper" style={{ width: 56, height: 56, objectFit: "contain", margin: "0 auto 20px", display: "block" }} />
           <h1 style={{
             fontFamily: serif, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 400,
             color: ink, margin: "0 0 10px", letterSpacing: "-0.02em",
@@ -267,9 +257,7 @@ function AppShell() {
             <Menu size={20} />
           </button>
           <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: "50%", background: sage, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: serif, fontSize: 13, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
-            </div>
+            <img src="/logo.png" alt="Juniper" style={{ width: 26, height: 26, objectFit: "contain" }} />
             <span style={{ fontFamily: serif, fontSize: 17, color: sage, fontWeight: 500 }}>Juniper</span>
           </div>
           <div style={{ width: 28 }} />
