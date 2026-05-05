@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart2, Calculator, GitFork, Plus, ChevronDown } from "lucide-react";
+import { BarChart2, Calculator, GitFork, Plus, ChevronDown, X } from "lucide-react";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -31,6 +31,7 @@ type SidebarProps = {
   view: "chat" | "myPlan";
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
   onViewMyPlan: () => void;
   onSelectArtifact: (id: string) => void;
   onLogout: () => void;
@@ -63,12 +64,14 @@ export function AppSidebar({
   view,
   onNewConversation,
   onSelectConversation,
+  onDeleteConversation,
   onViewMyPlan,
   onSelectArtifact,
   onLogout,
   userName,
 }: SidebarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
 
   const initials = userName
     .split(" ")
@@ -214,20 +217,41 @@ export function AppSidebar({
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 1 }}>
               {conversations.map((conv) => {
                 const isActive = conv.id === activeConvId && view === "chat";
+                const isHovered = hoveredConvId === conv.id;
                 return (
-                  <li key={conv.id}>
+                  <li
+                    key={conv.id}
+                    onMouseEnter={() => setHoveredConvId(conv.id)}
+                    onMouseLeave={() => setHoveredConvId(null)}
+                    style={{ position: "relative", display: "flex", alignItems: "stretch" }}
+                  >
+                    {/* Delete button — left edge, visible on hover */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteConversation(conv.id); }}
+                      aria-label="Delete conversation"
+                      style={{
+                        flexShrink: 0, width: 24, border: "none", background: "none",
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        color: muted, opacity: isHovered ? 1 : 0,
+                        transition: "opacity 0.12s, color 0.12s",
+                        padding: 0,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "#b94040")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
+                    >
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+
                     <button
                       onClick={() => onSelectConversation(conv.id)}
                       aria-current={isActive ? "page" : undefined}
                       style={{
-                        width: "100%", textAlign: "left", border: "none",
+                        flex: 1, textAlign: "left", border: "none",
                         borderLeft: isActive ? `3px solid ${sage}` : "3px solid transparent",
                         borderRadius: 7, padding: "8px 10px", cursor: "pointer",
-                        background: isActive ? "rgba(92,122,101,0.09)" : "none",
+                        background: isActive ? "rgba(92,122,101,0.09)" : isHovered ? "rgba(92,122,101,0.06)" : "none",
                         transition: "background 0.12s",
                       }}
-                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(92,122,101,0.06)"; }}
-                      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
                     >
                       <p style={{
                         fontSize: 13, color: ink, margin: 0,

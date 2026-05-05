@@ -526,6 +526,11 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     setSidebarOpen(false);
   }, []);
 
+  const handleDeleteConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    setActiveConvId((prev) => prev === id ? null : prev);
+  }, []);
+
   const handleConversationMessagesUpdate = useCallback((id: string, messages: Array<{ role: "user" | "assistant"; content: string }>) => {
     setConversations((prev) => prev.map((c) => c.id === id ? { ...c, messages } : c));
   }, []);
@@ -553,6 +558,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     view,
     onNewConversation: handleNewConversation,
     onSelectConversation: handleSelectConversation,
+    onDeleteConversation: handleDeleteConversation,
     onViewMyPlan: () => { setView("myPlan"); setSidebarOpen(false); },
     onSelectArtifact: () => { setView("myPlan"); setSidebarOpen(false); },
     onLogout: handleLogout,

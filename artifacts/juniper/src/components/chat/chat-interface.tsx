@@ -76,7 +76,7 @@ function JuniperBerry({ size }: { size: number }) {
 
 // ── J logo mark ────────────────────────────────────────────────────────────
 function JLogo({ size = 24, streaming = false }: { size?: number; streaming?: boolean }) {
-  const berrySize = size * 1.66;
+  const berrySize = size * 1.66 * 0.8; // 1/5 smaller
   return (
     <div
       style={{
@@ -604,8 +604,8 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
                   <span
                     style={{
                       fontSize: 12,
-                      color: muted,
-                      fontWeight: 500,
+                      color: ink,
+                      fontWeight: 700,
                       letterSpacing: "0.01em",
                     }}
                   >
