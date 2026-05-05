@@ -508,7 +508,7 @@ function ConnectionsView({ userName }: { userName: string }) {
             Connect your accounts.
           </h1>
           <p style={{ fontSize: 15, color: muted, margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>
-            Linking your accounts gives Juniper a real-time picture of your finances — so the guidance you get is grounded in what's actually happening.
+            Linking your accounts gives Juniper a real-time picture of your finances, so the guidance you get is grounded in what's actually happening.
           </p>
         </div>
 
