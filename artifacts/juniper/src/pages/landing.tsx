@@ -262,7 +262,7 @@ export default function Landing() {
       <section style={{ position: "relative", minHeight: "92vh", overflow: "hidden", display: "flex", alignItems: "center" }}>
         {/* Full-bleed background illustration */}
         <img
-          src="/hero-illustration.svg"
+          src="/hero-house.png"
           alt=""
           aria-hidden="true"
           loading="eager"
