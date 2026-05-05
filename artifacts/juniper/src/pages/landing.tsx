@@ -586,7 +586,7 @@ export default function Landing() {
             viewport={{ once: true, amount: 0.2 }}
             variants={fadeUp}
           >
-            <Eyebrow>Questions</Eyebrow>
+            <Eyebrow>Frequently Asked Questions</Eyebrow>
             <h2
               style={{
                 fontFamily: serif,
