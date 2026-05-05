@@ -696,7 +696,7 @@ export default function Landing() {
           </div>
         </div>
         <div className="max-w-[1100px] mx-auto" style={{ marginTop: 20 }}>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>© 2026* Juniper. All rights reserved.</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>© 2026 Juniper. All rights reserved.</p>
         </div>
       </footer>
 
