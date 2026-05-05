@@ -15,6 +15,7 @@ export type Artifact = {
   title: string;
   subtitle?: string;
   savedAt: Date;
+  content?: string;
 };
 
 export type Conversation = {

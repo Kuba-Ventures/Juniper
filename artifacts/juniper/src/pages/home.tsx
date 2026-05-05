@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Menu, User, CheckCircle2, ClipboardList, LogOut } from "lucide-react";
+import { Menu, CheckCircle2, ClipboardList, LogOut, X } from "lucide-react";
 import { AppSidebar, Artifact, Conversation } from "@/components/app-sidebar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { ProfileQuestionnaire } from "@/components/chat/profile-questionnaire";
+import { InlineChart, ChartSpec } from "@/components/chat/inline-chart";
 import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
@@ -299,37 +300,37 @@ function AccountButton({
 }
 
 // ── My Plan view ───────────────────────────────────────────────────────────
-function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact }: {
+function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact, onDeleteArtifact }: {
   artifacts: Artifact[];
   userName: string;
   onStartConversation: () => void;
   onRenameArtifact: (id: string, title: string) => void;
+  onDeleteArtifact: (id: string) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [openArtifact, setOpenArtifact] = useState<Artifact | null>(null);
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const typeLabel: Record<string, string> = {
-    chart: "Chart",
-    calculation: "Calculation",
-    scenario: "Scenario",
-  };
+  const typeLabel: Record<string, string> = { chart: "Chart", calculation: "Calculation", scenario: "Scenario" };
 
-  function startEdit(artifact: Artifact) {
+  function startEdit(e: React.MouseEvent, artifact: Artifact) {
+    e.stopPropagation();
     setEditingId(artifact.id);
     setEditingValue(artifact.title);
     setTimeout(() => { inputRef.current?.select(); }, 0);
   }
 
   function commitEdit() {
-    if (editingId && editingValue.trim()) {
-      onRenameArtifact(editingId, editingValue.trim());
-    }
+    if (editingId && editingValue.trim()) onRenameArtifact(editingId, editingValue.trim());
     setEditingId(null);
   }
 
-  function cancelEdit() {
-    setEditingId(null);
+  // Try to parse a chart spec from content
+  function tryParseChart(content?: string): ChartSpec | null {
+    if (!content) return null;
+    try { return JSON.parse(content) as ChartSpec; } catch { return null; }
   }
 
   return (
@@ -337,59 +338,45 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "52px 28px 80px" }}>
         <div style={{ textAlign: "center", marginBottom: 52 }}>
           <img src="/logo.png" alt="Juniper" style={{ width: 56, height: 56, objectFit: "contain", margin: "0 auto 20px", display: "block" }} />
-          <h1 style={{
-            fontFamily: serif, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 400,
-            color: ink, margin: "0 0 10px", letterSpacing: "-0.02em",
-          }}>
+          <h1 style={{ fontFamily: serif, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 400, color: ink, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
             Your plan, {userName}.
           </h1>
-          <p style={{ fontSize: 16, color: muted, margin: 0, lineHeight: 1.6 }}>
-            Everything you've saved in one place.
-          </p>
+          <p style={{ fontSize: 16, color: muted, margin: 0, lineHeight: 1.6 }}>Everything you've saved in one place.</p>
         </div>
 
         {artifacts.length === 0 ? (
           <div style={{ textAlign: "center", paddingTop: 24 }}>
             <p style={{ fontSize: 16, color: muted, margin: "0 0 8px" }}>Nothing saved yet.</p>
-            <p style={{ fontSize: 14, color: muted, margin: "0 0 32px", lineHeight: 1.65 }}>
-              As you talk with Juniper, your charts and plans will collect here.
-            </p>
-            <button
-              onClick={onStartConversation}
-              style={{
-                background: sage, color: "#fff", border: "none", borderRadius: 8,
-                padding: "12px 28px", fontFamily: sans, fontSize: 14, fontWeight: 500,
-                cursor: "pointer", transition: "opacity 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
+            <p style={{ fontSize: 14, color: muted, margin: "0 0 32px", lineHeight: 1.65 }}>As you talk with Juniper, your charts and plans will collect here.</p>
+            <button onClick={onStartConversation} style={{ background: sage, color: "#fff", border: "none", borderRadius: 8, padding: "12px 28px", fontFamily: sans, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
               Start a conversation
             </button>
           </div>
         ) : (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 20,
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
             {artifacts.map((artifact) => {
               const isEditing = editingId === artifact.id;
+              const isHovered = hoveredCardId === artifact.id;
               return (
                 <div
                   key={artifact.id}
-                  style={{
-                    background: "#fff", border: `1px solid ${border}`,
-                    borderRadius: 12, padding: "24px",
-                    transition: "box-shadow 0.15s",
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "none")}
+                  onClick={() => !isEditing && setOpenArtifact(artifact)}
+                  onMouseEnter={() => setHoveredCardId(artifact.id)}
+                  onMouseLeave={() => setHoveredCardId(null)}
+                  style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "24px", cursor: "pointer", transition: "box-shadow 0.15s", position: "relative", boxShadow: isHovered ? "0 2px 12px rgba(0,0,0,0.07)" : "none" }}
                 >
-                  <p style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-                    textTransform: "uppercase", color: sage, margin: "0 0 10px",
-                  }}>
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteArtifact(artifact.id); }}
+                    aria-label="Delete"
+                    style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", cursor: "pointer", color: muted, opacity: isHovered ? 1 : 0, transition: "opacity 0.12s, color 0.12s", padding: 2, display: "flex" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#b94040")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
+                  >
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
+
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: sage, margin: "0 0 10px" }}>
                     {typeLabel[artifact.type]}
                   </p>
 
@@ -399,35 +386,16 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
                       onBlur={commitEdit}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
-                        if (e.key === "Escape") cancelEdit();
-                      }}
-                      style={{
-                        fontFamily: serif, fontSize: 18, color: ink, fontWeight: 400,
-                        lineHeight: 1.3, width: "100%", border: "none", borderBottom: `1.5px solid ${sage}`,
-                        background: "transparent", outline: "none", padding: "0 0 2px",
-                        margin: "0 0 10px", boxSizing: "border-box",
-                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitEdit(); } if (e.key === "Escape") setEditingId(null); }}
+                      style={{ fontFamily: serif, fontSize: 18, color: ink, fontWeight: 400, lineHeight: 1.3, width: "100%", border: "none", borderBottom: `1.5px solid ${sage}`, background: "transparent", outline: "none", padding: "0 0 2px", margin: "0 0 10px", boxSizing: "border-box" }}
                     />
                   ) : (
-                    <p
-                      onClick={() => startEdit(artifact)}
-                      title="Click to rename"
-                      style={{
-                        fontFamily: serif, fontSize: 18, color: ink, margin: "0 0 10px",
-                        fontWeight: 400, lineHeight: 1.3, cursor: "text",
-                      }}
-                    >
+                    <p onClick={(e) => startEdit(e, artifact)} title="Click to rename" style={{ fontFamily: serif, fontSize: 18, color: ink, margin: "0 0 10px", fontWeight: 400, lineHeight: 1.3, cursor: "text" }}>
                       {artifact.title}
                     </p>
                   )}
 
-                  {artifact.subtitle && (
-                    <p style={{ fontSize: 24, fontWeight: 600, color: sage, margin: "0 0 14px", fontFamily: serif }}>
-                      {artifact.subtitle}
-                    </p>
-                  )}
                   <p style={{ fontSize: 12, color: muted, margin: 0 }}>
                     Saved {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(artifact.savedAt)}
                   </p>
@@ -437,6 +405,43 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
           </div>
         )}
       </div>
+
+      {/* Detail modal */}
+      {openArtifact && (
+        <div
+          onClick={() => setOpenArtifact(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(42,42,42,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, maxWidth: 680, width: "100%", maxHeight: "80vh", overflowY: "auto", padding: "32px", position: "relative", boxShadow: "0 8px 40px rgba(0,0,0,0.14)" }}
+          >
+            <button onClick={() => setOpenArtifact(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: muted, display: "flex" }}>
+              <X size={18} strokeWidth={2} />
+            </button>
+            <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: sage, margin: "0 0 10px" }}>
+              {typeLabel[openArtifact.type]}
+            </p>
+            <h2 style={{ fontFamily: serif, fontSize: 22, fontWeight: 400, color: ink, margin: "0 0 20px", lineHeight: 1.3 }}>
+              {openArtifact.title}
+            </h2>
+
+            {openArtifact.type === "chart" && openArtifact.content ? (
+              (() => { const spec = tryParseChart(openArtifact.content); return spec ? <InlineChart spec={spec} /> : null; })()
+            ) : openArtifact.content ? (
+              <p style={{ fontSize: 15, color: ink, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+                {openArtifact.content.replace(/\*\*([^*]+)\*\*/g, "$1")}
+              </p>
+            ) : (
+              <p style={{ fontSize: 14, color: muted }}>No content stored for this item.</p>
+            )}
+
+            <p style={{ fontSize: 12, color: muted, margin: "20px 0 0" }}>
+              Saved {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(openArtifact.savedAt)}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -476,6 +481,10 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
 
   const handleRenameArtifact = useCallback((id: string, title: string) => {
     setArtifacts((prev) => prev.map((a) => a.id === id ? { ...a, title } : a));
+  }, []);
+
+  const handleDeleteArtifact = useCallback((id: string) => {
+    setArtifacts((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   // Persist to localStorage + debounced Supabase save on every change
@@ -643,6 +652,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
               userName={userName}
               onStartConversation={handleNewConversation}
               onRenameArtifact={handleRenameArtifact}
+              onDeleteArtifact={handleDeleteArtifact}
             />
           )}
         </div>

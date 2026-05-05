@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { ArrowUp, Bookmark, BookmarkCheck } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
 import { UserProfile, formatProfileContext } from "@/lib/profile";
-import { InlineChart, parseSegments } from "@/components/chat/inline-chart";
+import { InlineChart, parseSegments, ChartSpec } from "@/components/chat/inline-chart";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -115,7 +115,7 @@ function RichText({ text, isError }: { text: string; isError?: boolean }) {
 function MessageText({ text, isError, onSaveChart, savedChartTitles }: {
   text: string;
   isError?: boolean;
-  onSaveChart?: (title: string) => void;
+  onSaveChart?: (spec: ChartSpec) => void;
   savedChartTitles?: Set<string>;
 }) {
   const segments = parseSegments(text);
@@ -127,7 +127,7 @@ function MessageText({ text, isError, onSaveChart, savedChartTitles }: {
           <InlineChart
             key={i}
             spec={seg.spec}
-            onSave={onSaveChart ? () => onSaveChart(seg.spec.title) : undefined}
+            onSave={onSaveChart ? () => onSaveChart(seg.spec) : undefined}
             saved={savedChartTitles?.has(seg.spec.title)}
           />
         );
@@ -193,15 +193,16 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
   const [savedMsgIds, setSavedMsgIds] = useState<Set<string>>(new Set());
   const [savedChartTitles, setSavedChartTitles] = useState<Set<string>>(new Set());
 
-  const handleSaveChart = useCallback((chartTitle: string) => {
+  const handleSaveChart = useCallback((spec: ChartSpec) => {
     const artifact: Artifact = {
       id: `chart-${Date.now()}`,
       type: "chart",
-      title: chartTitle,
+      title: spec.title,
       savedAt: new Date(),
+      content: JSON.stringify(spec),
     };
     onArtifactSaved(artifact);
-    setSavedChartTitles((prev) => new Set(prev).add(chartTitle));
+    setSavedChartTitles((prev) => new Set(prev).add(spec.title));
   }, [onArtifactSaved]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -216,6 +217,7 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
       type: hasChart ? "chart" : "scenario",
       title,
       savedAt: new Date(),
+      content: msg.content,
     };
     onArtifactSaved(artifact);
     setSavedMsgIds((prev) => new Set(prev).add(msg.id));
