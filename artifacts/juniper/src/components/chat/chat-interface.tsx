@@ -100,13 +100,25 @@ function RichText({ text, isError }: { text: string; isError?: boolean }) {
 }
 
 // ── Message renderer (text + optional inline charts) ──────────────────────
-function MessageText({ text, isError }: { text: string; isError?: boolean }) {
+function MessageText({ text, isError, onSaveChart, savedChartTitles }: {
+  text: string;
+  isError?: boolean;
+  onSaveChart?: (title: string) => void;
+  savedChartTitles?: Set<string>;
+}) {
   const segments = parseSegments(text);
   return (
     <>
       {segments.map((seg, i) => {
         if (seg.kind === "text") return <RichText key={i} text={seg.content} isError={isError} />;
-        if (seg.kind === "chart") return <InlineChart key={i} spec={seg.spec} />;
+        if (seg.kind === "chart") return (
+          <InlineChart
+            key={i}
+            spec={seg.spec}
+            onSave={onSaveChart ? () => onSaveChart(seg.spec.title) : undefined}
+            saved={savedChartTitles?.has(seg.spec.title)}
+          />
+        );
         return (
           <span key={i} style={{ display: "inline-block", color: muted, fontSize: 13, fontStyle: "italic" }}>
             Generating chart…
@@ -156,6 +168,18 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
   const [showWelcome, setShowWelcome] = useState(true);
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
   const [savedMsgIds, setSavedMsgIds] = useState<Set<string>>(new Set());
+  const [savedChartTitles, setSavedChartTitles] = useState<Set<string>>(new Set());
+
+  const handleSaveChart = useCallback((chartTitle: string) => {
+    const artifact: Artifact = {
+      id: `chart-${Date.now()}`,
+      type: "chart",
+      title: chartTitle,
+      savedAt: new Date(),
+    };
+    onArtifactSaved(artifact);
+    setSavedChartTitles((prev) => new Set(prev).add(chartTitle));
+  }, [onArtifactSaved]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -579,7 +603,12 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
                 {msg.isStreaming && msg.content === "" ? (
                   <TypingDots />
                 ) : (
-                  <MessageText text={msg.content} isError={msg.isError} />
+                  <MessageText
+                    text={msg.content}
+                    isError={msg.isError}
+                    onSaveChart={msg.role === "juniper" ? handleSaveChart : undefined}
+                    savedChartTitles={savedChartTitles}
+                  />
                 )}
               </div>
 

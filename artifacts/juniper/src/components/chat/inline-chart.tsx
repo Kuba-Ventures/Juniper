@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -66,7 +68,12 @@ function PieTooltip({ active, payload, unit }: {
   );
 }
 
-export function InlineChart({ spec }: { spec: ChartSpec }) {
+export function InlineChart({ spec, onSave, saved }: {
+  spec: ChartSpec;
+  onSave?: () => void;
+  saved?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
   const rechartData = spec.data.map((d) => ({ name: d.label, value: d.value }));
 
   const tickStyle = { fill: muted, fontSize: 11, fontFamily: sans };
@@ -76,12 +83,40 @@ export function InlineChart({ spec }: { spec: ChartSpec }) {
       background: "#fff", border: `1px solid ${border}`, borderRadius: 12,
       padding: "20px 20px 16px", margin: "4px 0 8px",
     }}>
-      <p style={{
-        fontFamily: serif, fontSize: 15, color: ink, margin: "0 0 16px",
-        fontWeight: 400, letterSpacing: "-0.01em",
-      }}>
-        {spec.title}
-      </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 12 }}>
+        <p style={{
+          fontFamily: serif, fontSize: 15, color: ink, margin: 0,
+          fontWeight: 400, letterSpacing: "-0.01em", lineHeight: 1.4,
+        }}>
+          {spec.title}
+        </p>
+
+        {onSave && (
+          <button
+            onClick={saved ? undefined : onSave}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            title={saved ? "Saved to My Plan" : "Save to My Plan"}
+            style={{
+              flexShrink: 0,
+              display: "flex", alignItems: "center", gap: 5,
+              background: saved ? "rgba(92,122,101,0.08)" : hovered ? "rgba(92,122,101,0.08)" : "transparent",
+              border: `1px solid ${saved ? sage : hovered ? sage : border}`,
+              borderRadius: 6, padding: "4px 10px",
+              fontSize: 12, color: saved ? sage : hovered ? sage : muted,
+              cursor: saved ? "default" : "pointer",
+              fontFamily: sans, fontWeight: 500,
+              transition: "all 0.15s",
+            }}
+          >
+            {saved
+              ? <BookmarkCheck size={12} strokeWidth={2} />
+              : <Bookmark size={12} strokeWidth={2} />
+            }
+            {saved ? "Saved" : "Save to My Plan"}
+          </button>
+        )}
+      </div>
 
       {spec.type === "bar" && (
         <ResponsiveContainer width="100%" height={220}>
