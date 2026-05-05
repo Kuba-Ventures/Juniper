@@ -1,7 +1,9 @@
-import { useState, useCallback } from "react";
-import { Menu } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Menu, User, CheckCircle2, ClipboardList, LogOut } from "lucide-react";
 import { AppSidebar, Artifact, Conversation } from "@/components/app-sidebar";
 import { ChatInterface } from "@/components/chat/chat-interface";
+import { ProfileQuestionnaire } from "@/components/chat/profile-questionnaire";
+import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
 const sage = "#5C7A65";
@@ -75,6 +77,106 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
           Enter
         </button>
       </form>
+    </div>
+  );
+}
+
+// ── Account button + dropdown ──────────────────────────────────────────────
+function AccountButton({
+  userName,
+  profile,
+  onEditProfile,
+  onLogout,
+}: {
+  userName: string;
+  profile: UserProfile | null;
+  onEditProfile: () => void;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const initials = userName.slice(0, 2).toUpperCase();
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Account"
+        style={{
+          width: 34, height: 34, borderRadius: "50%",
+          background: sage, border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "opacity 0.15s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+      >
+        <span style={{ fontFamily: serif, fontSize: 13, color: "#fff", fontStyle: "italic" }}>{initials}</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 8px)", right: 0,
+          background: "#fff", border: `1px solid ${border}`, borderRadius: 12,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.10)", overflow: "hidden",
+          zIndex: 100, minWidth: 220, fontFamily: sans,
+        }}>
+          {/* Header */}
+          <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${border}` }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: ink, margin: 0 }}>{userName}</p>
+            <p style={{ fontSize: 11, color: muted, margin: "2px 0 0" }}>Your account</p>
+          </div>
+
+          {/* Profile item */}
+          <button
+            onClick={() => { setOpen(false); onEditProfile(); }}
+            style={{
+              width: "100%", textAlign: "left", background: "none", border: "none",
+              padding: "11px 16px", display: "flex", alignItems: "center", gap: 10,
+              cursor: "pointer", transition: "background 0.1s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = cream)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            {profile?.completedAt
+              ? <CheckCircle2 size={14} color={sage} />
+              : <ClipboardList size={14} color={muted} />
+            }
+            <span style={{ fontSize: 13, color: ink }}>
+              {profile?.completedAt ? "Financial profile" : "Set up financial profile"}
+            </span>
+            {profile?.completedAt && (
+              <span style={{ marginLeft: "auto", fontSize: 11, color: sage, fontWeight: 500 }}>Complete</span>
+            )}
+          </button>
+
+          <div style={{ borderTop: `1px solid ${border}` }} />
+
+          {/* Log out */}
+          <button
+            onClick={() => { setOpen(false); onLogout(); }}
+            style={{
+              width: "100%", textAlign: "left", background: "none", border: "none",
+              padding: "11px 16px", display: "flex", alignItems: "center", gap: 10,
+              cursor: "pointer", transition: "background 0.1s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = cream)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            <LogOut size={14} color={muted} />
+            <span style={{ fontSize: 13, color: "#b94040" }}>Log out</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -177,6 +279,8 @@ function AppShell() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
+  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
@@ -206,6 +310,12 @@ function AppShell() {
     setSidebarOpen(false);
   }, []);
 
+  const handleProfileSave = useCallback((p: UserProfile) => {
+    saveProfile(p);
+    setProfile(p);
+    setShowQuestionnaire(false);
+  }, []);
+
   const sidebarProps = {
     conversations,
     artifacts,
@@ -217,6 +327,13 @@ function AppShell() {
     onSelectArtifact: () => { setView("myPlan"); setSidebarOpen(false); },
     onLogout: handleLogout,
     userName: MOCK_USER,
+  };
+
+  const accountButtonProps = {
+    userName: MOCK_USER,
+    profile,
+    onEditProfile: () => setShowQuestionnaire(true),
+    onLogout: handleLogout,
   };
 
   return (
@@ -240,7 +357,8 @@ function AppShell() {
       )}
 
       {/* Main area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100%" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100%", position: "relative" }}>
+
         {/* Mobile top bar */}
         <div
           className="lg:hidden"
@@ -260,7 +378,15 @@ function AppShell() {
             <img src="/logo.png" alt="Juniper" style={{ width: 26, height: 26, objectFit: "contain" }} />
             <span style={{ fontFamily: serif, fontSize: 17, color: sage, fontWeight: 500 }}>Juniper</span>
           </div>
-          <div style={{ width: 28 }} />
+          <AccountButton {...accountButtonProps} />
+        </div>
+
+        {/* Desktop account button — top right of main area */}
+        <div
+          className="hidden lg:flex"
+          style={{ position: "absolute", top: 16, right: 20, zIndex: 40 }}
+        >
+          <AccountButton {...accountButtonProps} />
         </div>
 
         {/* View content */}
@@ -269,6 +395,7 @@ function AppShell() {
             <ChatInterface
               key={chatKey}
               userName={MOCK_USER}
+              profile={profile}
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
             />
@@ -281,6 +408,15 @@ function AppShell() {
           )}
         </div>
       </div>
+
+      {/* Profile questionnaire modal */}
+      {showQuestionnaire && (
+        <ProfileQuestionnaire
+          initialData={profile ?? undefined}
+          onClose={() => setShowQuestionnaire(false)}
+          onSave={handleProfileSave}
+        />
+      )}
     </div>
   );
 }

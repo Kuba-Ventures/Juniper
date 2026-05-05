@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ArrowUp, ClipboardList } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
-import { ProfileQuestionnaire } from "./profile-questionnaire";
-import { UserProfile, loadProfile, formatProfileContext } from "@/lib/profile";
+import { UserProfile, formatProfileContext } from "@/lib/profile";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -123,20 +122,19 @@ function TypingDots() {
 // ── Props ──────────────────────────────────────────────────────────────────
 type Props = {
   userName: string;
+  profile: UserProfile | null;
   onConversationStart: (title: string) => void;
   onArtifactSaved: (artifact: Artifact) => void;
 };
 
 // ── ChatInterface ──────────────────────────────────────────────────────────
-export function ChatInterface({ userName, onConversationStart }: Props) {
+export function ChatInterface({ userName, profile, onConversationStart }: Props) {
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -320,36 +318,12 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
               lineHeight: 1.65,
               maxWidth: 480,
               textAlign: "center",
-              margin: "0 0 20px",
+              margin: "0 0 44px",
             }}
           >
             I'm here to help you plan with clarity. Ask me anything, or pick a
             place to start.
           </p>
-
-          {/* Profile CTA */}
-          <button
-            onClick={() => setShowQuestionnaire(true)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              background: "none", border: `1.5px solid ${border}`,
-              borderRadius: 100, padding: "8px 18px", marginBottom: 36,
-              fontFamily: sans, fontSize: 13, color: profile ? sage : muted,
-              cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
-              fontWeight: profile ? 500 : 400,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = sage;
-              e.currentTarget.style.color = sage;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = border;
-              e.currentTarget.style.color = profile ? sage : muted;
-            }}
-          >
-            <ClipboardList size={13} />
-            {profile ? "Profile complete · edit answers" : "Set up your financial profile"}
-          </button>
 
           {/* Starter chips */}
           <div
@@ -489,13 +463,6 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
         </div>
       </div>
 
-      {showQuestionnaire && (
-        <ProfileQuestionnaire
-          initialData={profile ?? undefined}
-          onClose={() => setShowQuestionnaire(false)}
-          onSave={(p) => { setProfile(p); setShowQuestionnaire(false); }}
-        />
-      )}
       </>
     );
   }
