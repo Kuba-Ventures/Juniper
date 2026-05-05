@@ -36,7 +36,7 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
       alignItems: "center", justifyContent: "center",
       background: cream, fontFamily: sans, padding: "0 24px",
     }}>
-      <img src="/logo.png" alt="Juniper" style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 18 }} />
+      <img src="/logo.png" alt="Juniper" style={{ width: 160, height: 160, objectFit: "contain", marginBottom: 18 }} />
       <h1 style={{ fontFamily: serif, fontSize: 22, color: sage, fontWeight: 500, margin: "0 0 4px" }}>Juniper</h1>
       <p style={{ color: muted, fontSize: 14, margin: "0 0 32px" }}>Private preview</p>
 
