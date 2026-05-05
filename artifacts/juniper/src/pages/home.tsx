@@ -6,6 +6,7 @@ import { ProfileQuestionnaire } from "@/components/chat/profile-questionnaire";
 import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
+const NAME_KEY = "juniper_user_name";
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
 const ink = "#2A2A2A";
@@ -14,18 +15,31 @@ const border = "#E8E2D6";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
-const MOCK_USER = "Alex";
+function getSavedName() {
+  return localStorage.getItem(NAME_KEY) || "";
+}
 
 // ── Password gate ──────────────────────────────────────────────────────────
-function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+function PasswordGate({ onUnlock }: { onUnlock: (name: string) => void }) {
+  const [name, setName] = useState(() => getSavedName());
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+
+  const inputStyle = (hasError = false) => ({
+    height: 48, padding: "0 16px",
+    border: `1px solid ${hasError ? "#b94040" : border}`,
+    borderRadius: 8, background: "#fff", fontFamily: sans, fontSize: 16,
+    color: ink, outline: "none", boxSizing: "border-box" as const,
+    width: "100%",
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === "juniper") {
+      const trimmed = name.trim() || "there";
+      localStorage.setItem(NAME_KEY, trimmed);
       sessionStorage.setItem(SESSION_KEY, "1");
-      onUnlock();
+      onUnlock(trimmed);
     } else {
       setError(true);
       setPassword("");
@@ -44,18 +58,22 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 }}>
         <input
+          type="text"
+          placeholder="Your first name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          autoComplete="given-name"
+          style={inputStyle()}
+          onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = border)}
+        />
+        <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(false); }}
-          autoFocus
-          style={{
-            height: 48, padding: "0 16px",
-            border: `1px solid ${error ? "#b94040" : border}`,
-            borderRadius: 8, background: "#fff", fontFamily: sans, fontSize: 16,
-            color: ink, textAlign: "center", letterSpacing: "0.1em",
-            outline: "none", boxSizing: "border-box",
-          }}
+          style={{ ...inputStyle(error), textAlign: "center", letterSpacing: "0.1em" }}
           onFocus={(e) => (e.currentTarget.style.borderColor = error ? "#b94040" : sage)}
           onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#b94040" : border)}
         />
@@ -132,8 +150,8 @@ function AccountButton({
         }}>
           {/* Header */}
           <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${border}` }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: ink, margin: 0 }}>{userName}</p>
-            <p style={{ fontSize: 11, color: muted, margin: "2px 0 0" }}>Your account</p>
+            <p style={{ fontSize: 11, color: muted, margin: "0 0 6px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Your account</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: ink, margin: 0 }}>{userName}</p>
           </div>
 
           {/* Profile item */}
@@ -272,7 +290,7 @@ function MyPlanView({ artifacts, userName, onStartConversation }: {
 }
 
 // ── App shell ──────────────────────────────────────────────────────────────
-function AppShell() {
+function AppShell({ userName }: { userName: string }) {
   const [view, setView] = useState<"chat" | "myPlan">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -326,11 +344,11 @@ function AppShell() {
     onViewMyPlan: () => { setView("myPlan"); setSidebarOpen(false); },
     onSelectArtifact: () => { setView("myPlan"); setSidebarOpen(false); },
     onLogout: handleLogout,
-    userName: MOCK_USER,
+    userName: userName,
   };
 
   const accountButtonProps = {
-    userName: MOCK_USER,
+    userName: userName,
     profile,
     onEditProfile: () => setShowQuestionnaire(true),
     onLogout: handleLogout,
@@ -394,7 +412,7 @@ function AppShell() {
           {view === "chat" ? (
             <ChatInterface
               key={chatKey}
-              userName={MOCK_USER}
+              userName={userName}
               profile={profile}
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
@@ -402,7 +420,7 @@ function AppShell() {
           ) : (
             <MyPlanView
               artifacts={artifacts}
-              userName={MOCK_USER}
+              userName={userName}
               onStartConversation={handleNewConversation}
             />
           )}
@@ -424,6 +442,14 @@ function AppShell() {
 // ── Page entry point ───────────────────────────────────────────────────────
 export default function Home() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
-  if (!authed) return <PasswordGate onUnlock={() => setAuthed(true)} />;
-  return <AppShell />;
+  const [userName, setUserName] = useState(() => getSavedName() || "there");
+
+  if (!authed) {
+    return (
+      <PasswordGate
+        onUnlock={(name) => { setUserName(name); setAuthed(true); }}
+      />
+    );
+  }
+  return <AppShell userName={userName} />;
 }
