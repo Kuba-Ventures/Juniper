@@ -12,9 +12,17 @@ const EMAIL_KEY = "juniper_user_email";
 const ARTIFACTS_KEY = "juniper_artifacts";
 const CONVERSATIONS_KEY = "juniper_conversations";
 
-function loadArtifacts(): Artifact[] {
+function artifactsKey(email?: string) {
+  return email ? `juniper_artifacts_${email}` : ARTIFACTS_KEY;
+}
+
+function conversationsKey(email?: string) {
+  return email ? `juniper_conversations_${email}` : CONVERSATIONS_KEY;
+}
+
+function loadArtifacts(email?: string): Artifact[] {
   try {
-    const raw = localStorage.getItem(ARTIFACTS_KEY);
+    const raw = localStorage.getItem(artifactsKey(email));
     if (!raw) return [];
     return (JSON.parse(raw) as Array<Artifact & { savedAt: string }>).map((a) => ({
       ...a,
@@ -23,13 +31,13 @@ function loadArtifacts(): Artifact[] {
   } catch { return []; }
 }
 
-function saveArtifacts(artifacts: Artifact[]) {
-  localStorage.setItem(ARTIFACTS_KEY, JSON.stringify(artifacts));
+function saveArtifacts(artifacts: Artifact[], email?: string) {
+  localStorage.setItem(artifactsKey(email), JSON.stringify(artifacts));
 }
 
-function loadConversations(): Conversation[] {
+function loadConversations(email?: string): Conversation[] {
   try {
-    const raw = localStorage.getItem(CONVERSATIONS_KEY);
+    const raw = localStorage.getItem(conversationsKey(email));
     if (!raw) return [];
     return (JSON.parse(raw) as Array<Conversation & { startedAt: string }>).map((c) => ({
       ...c,
@@ -38,8 +46,8 @@ function loadConversations(): Conversation[] {
   } catch { return []; }
 }
 
-function saveConversations(conversations: Conversation[]) {
-  localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+function saveConversations(conversations: Conversation[], email?: string) {
+  localStorage.setItem(conversationsKey(email), JSON.stringify(conversations));
 }
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -120,7 +128,7 @@ function PasswordGate({ onUnlock }: {
         goals: (remoteProfile as Record<string, unknown>)["goals"] as string[] | undefined,
         completedAt: (remoteProfile as Record<string, unknown>)["updated_at"] as string | undefined,
       };
-      saveProfile(profile);
+      saveProfile(profile, trimmedEmail);
     }
 
     localStorage.setItem(NAME_KEY, resolvedName);
@@ -450,11 +458,11 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
 function AppShell({ userName, userEmail }: { userName: string; userEmail: string }) {
   const [view, setView] = useState<"chat" | "myPlan">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
-  const [artifacts, setArtifacts] = useState<Artifact[]>(() => loadArtifacts());
+  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations(userEmail));
+  const [artifacts, setArtifacts] = useState<Artifact[]>(() => loadArtifacts(userEmail));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
+  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile(userEmail));
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   const handleLogout = useCallback(() => {
@@ -490,8 +498,8 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
   // Persist to localStorage + debounced Supabase save on every change
   const remoteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    saveArtifacts(artifacts);
-    saveConversations(conversations);
+    saveArtifacts(artifacts, userEmail);
+    saveConversations(conversations, userEmail);
     if (!userEmail) return;
     if (remoteSaveTimer.current) clearTimeout(remoteSaveTimer.current);
     remoteSaveTimer.current = setTimeout(() => {
@@ -515,14 +523,14 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
             ...a, savedAt: new Date(a.savedAt),
           }));
           setArtifacts(parsed);
-          saveArtifacts(parsed);
+          saveArtifacts(parsed, userEmail);
         }
         if (Array.isArray(data.conversations) && (data.conversations as unknown[]).length > 0) {
           const parsed = (data.conversations as Array<Conversation & { startedAt: string }>).map((c) => ({
             ...c, startedAt: new Date(c.startedAt),
           }));
           setConversations(parsed);
-          saveConversations(parsed);
+          saveConversations(parsed, userEmail);
         }
       })
       .catch(() => {});
@@ -554,7 +562,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
   }, [handleConversationMessagesUpdate]);
 
   const handleProfileSave = useCallback((p: UserProfile) => {
-    saveProfile(p);
+    saveProfile(p, userEmail);
     setProfile(p);
     setShowQuestionnaire(false);
     if (userEmail) saveRemoteProfile(userEmail, userName, p);
@@ -682,7 +690,7 @@ export default function Home() {
         onUnlock={(name, email, remoteProfile) => {
           setUserName(name);
           setUserEmail(email);
-          if (remoteProfile) saveProfile(remoteProfile);
+          if (remoteProfile) saveProfile(remoteProfile, email);
           setAuthed(true);
         }}
       />

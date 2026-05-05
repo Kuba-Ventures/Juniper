@@ -7,20 +7,22 @@ export type UserProfile = {
   completedAt?: string;
 };
 
-const PROFILE_KEY = "juniper_profile";
+function profileKey(email?: string) {
+  return email ? `juniper_profile_${email}` : "juniper_profile";
+}
 
-export function loadProfile(): UserProfile | null {
+export function loadProfile(email?: string): UserProfile | null {
   try {
-    const raw = localStorage.getItem(PROFILE_KEY);
+    const raw = localStorage.getItem(profileKey(email));
     return raw ? (JSON.parse(raw) as UserProfile) : null;
   } catch {
     return null;
   }
 }
 
-export function saveProfile(profile: UserProfile): void {
+export function saveProfile(profile: UserProfile, email?: string): void {
   localStorage.setItem(
-    PROFILE_KEY,
+    profileKey(email),
     JSON.stringify({ ...profile, completedAt: new Date().toISOString() }),
   );
 }
