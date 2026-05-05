@@ -76,48 +76,20 @@ function JuniperBerry({ size }: { size: number }) {
 
 // ── J logo mark ────────────────────────────────────────────────────────────
 function JLogo({ size = 24, streaming = false }: { size?: number; streaming?: boolean }) {
-  if (streaming) {
-    const berrySize = size * 1.9;
-    return (
-      <div
-        style={{
-          width: berrySize,
-          height: berrySize,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          animation: "berryPulse 1.6s ease-in-out infinite",
-        }}
-      >
-        <JuniperBerry size={berrySize} />
-      </div>
-    );
-  }
+  const berrySize = size * 1.66;
   return (
     <div
       style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: sage,
+        width: berrySize,
+        height: berrySize,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        animation: streaming ? "berryPulse 1.6s ease-in-out infinite" : "none",
       }}
     >
-      <span
-        style={{
-          fontFamily: serif,
-          fontSize: size * 0.54,
-          color: "#fff",
-          fontStyle: "italic",
-          lineHeight: 1,
-        }}
-      >
-        J
-      </span>
+      <JuniperBerry size={berrySize} />
     </div>
   );
 }
