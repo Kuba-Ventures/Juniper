@@ -8,6 +8,38 @@ import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 const SESSION_KEY = "juniper_admin_auth";
 const NAME_KEY = "juniper_user_name";
 const EMAIL_KEY = "juniper_user_email";
+const ARTIFACTS_KEY = "juniper_artifacts";
+const CONVERSATIONS_KEY = "juniper_conversations";
+
+function loadArtifacts(): Artifact[] {
+  try {
+    const raw = localStorage.getItem(ARTIFACTS_KEY);
+    if (!raw) return [];
+    return (JSON.parse(raw) as Array<Artifact & { savedAt: string }>).map((a) => ({
+      ...a,
+      savedAt: new Date(a.savedAt),
+    }));
+  } catch { return []; }
+}
+
+function saveArtifacts(artifacts: Artifact[]) {
+  localStorage.setItem(ARTIFACTS_KEY, JSON.stringify(artifacts));
+}
+
+function loadConversations(): Conversation[] {
+  try {
+    const raw = localStorage.getItem(CONVERSATIONS_KEY);
+    if (!raw) return [];
+    return (JSON.parse(raw) as Array<Conversation & { startedAt: string }>).map((c) => ({
+      ...c,
+      startedAt: new Date(c.startedAt),
+    }));
+  } catch { return []; }
+}
+
+function saveConversations(conversations: Conversation[]) {
+  localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+}
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
 const ink = "#2A2A2A";
@@ -413,8 +445,8 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
 function AppShell({ userName, userEmail }: { userName: string; userEmail: string }) {
   const [view, setView] = useState<"chat" | "myPlan">("chat");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
+  const [artifacts, setArtifacts] = useState<Artifact[]>(() => loadArtifacts());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
@@ -445,6 +477,9 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
   const handleRenameArtifact = useCallback((id: string, title: string) => {
     setArtifacts((prev) => prev.map((a) => a.id === id ? { ...a, title } : a));
   }, []);
+
+  useEffect(() => { saveArtifacts(artifacts); }, [artifacts]);
+  useEffect(() => { saveConversations(conversations); }, [conversations]);
 
   const handleSelectConversation = useCallback((id: string) => {
     setView("chat");
