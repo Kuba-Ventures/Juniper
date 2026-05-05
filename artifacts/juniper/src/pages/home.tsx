@@ -270,14 +270,14 @@ function AccountButton({
         aria-label="Account"
         style={{
           height: 34, padding: "0 14px", borderRadius: 8,
-          background: sage, border: "none", cursor: "pointer",
+          background: "transparent", border: `1.5px solid ${sage}`, cursor: "pointer",
           display: "flex", alignItems: "center", gap: 6,
-          transition: "opacity 0.15s", boxShadow: "none", outline: "none",
+          transition: "background 0.15s", boxShadow: "none", outline: "none",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(92,122,101,0.08)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        <span style={{ fontFamily: sans, fontSize: 14, color: "#fff", fontWeight: 500, lineHeight: 1 }}>{firstName}</span>
+        <span style={{ fontFamily: sans, fontSize: 14, color: sage, fontWeight: 500, lineHeight: 1 }}>{firstName}</span>
       </button>
 
       {open && (
