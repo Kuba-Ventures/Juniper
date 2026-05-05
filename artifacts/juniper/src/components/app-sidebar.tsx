@@ -255,8 +255,10 @@ export function AppSidebar({
                     >
                       <p style={{
                         fontSize: 13, color: ink, margin: 0,
-                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        display: "-webkit-box", WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical", overflow: "hidden",
                         fontWeight: isActive ? 500 : 400,
+                        lineHeight: 1.4,
                       }}>
                         {conv.title}
                       </p>
