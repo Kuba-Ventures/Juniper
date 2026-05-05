@@ -599,9 +599,9 @@ export default function Landing() {
             </h2>
           </motion.div>
 
-          <div style={{ borderTop: `1px solid ${border}` }}>
+          <div style={{ borderTop: `1px solid #2A4433` }}>
             {faqs.map(({ q, a }, i) => (
-              <div key={q} style={{ borderBottom: `1px solid ${border}` }}>
+              <div key={q} style={{ borderBottom: `1px solid #2A4433` }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   aria-expanded={openFaq === i}
