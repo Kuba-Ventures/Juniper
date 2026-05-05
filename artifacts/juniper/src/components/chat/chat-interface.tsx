@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { ArrowUp, Bookmark, BookmarkCheck } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
 import { UserProfile, formatProfileContext } from "@/lib/profile";
+import { InlineChart, parseSegments } from "@/components/chat/inline-chart";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -81,8 +82,8 @@ function JLogo({ size = 24 }: { size?: number }) {
   );
 }
 
-// ── Simple text renderer (handles newlines + **bold**) ─────────────────────
-function MessageText({ text, isError }: { text: string; isError?: boolean }) {
+// ── Inline text renderer (handles **bold**) ───────────────────────────────
+function RichText({ text, isError }: { text: string; isError?: boolean }) {
   const color = isError ? "#b94040" : ink;
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
@@ -95,6 +96,24 @@ function MessageText({ text, isError }: { text: string; isError?: boolean }) {
         ),
       )}
     </span>
+  );
+}
+
+// ── Message renderer (text + optional inline charts) ──────────────────────
+function MessageText({ text, isError }: { text: string; isError?: boolean }) {
+  const segments = parseSegments(text);
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.kind === "text") return <RichText key={i} text={seg.content} isError={isError} />;
+        if (seg.kind === "chart") return <InlineChart key={i} spec={seg.spec} />;
+        return (
+          <span key={i} style={{ display: "inline-block", color: muted, fontSize: 13, fontStyle: "italic" }}>
+            Generating chart…
+          </span>
+        );
+      })}
+    </>
   );
 }
 
@@ -141,11 +160,13 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSaveToMyPlan = useCallback((msg: DisplayMessage) => {
-    const firstLine = msg.content.split("\n")[0].trim();
+    const hasChart = msg.content.includes("[CHART:");
+    const textOnly = msg.content.replace(/\[CHART:[\s\S]*?\]/g, "").trim();
+    const firstLine = textOnly.split("\n")[0].trim() || msg.content.slice(0, 61);
     const title = firstLine.length > 64 ? firstLine.slice(0, 61) + "…" : firstLine;
     const artifact: Artifact = {
       id: msg.id,
-      type: "scenario",
+      type: hasChart ? "chart" : "scenario",
       title,
       savedAt: new Date(),
     };
