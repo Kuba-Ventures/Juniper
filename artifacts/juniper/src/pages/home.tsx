@@ -60,6 +60,12 @@ const sans = "'Inter', sans-serif";
 function getSavedName() { return localStorage.getItem(NAME_KEY) || ""; }
 function getSavedEmail() { return localStorage.getItem(EMAIL_KEY) || ""; }
 
+function nameFromEmail(email: string): string {
+  const local = email.split("@")[0];
+  const first = local.split(/[._-]/)[0];
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 async function fetchRemoteProfile(email: string): Promise<{ name?: string } & UserProfile | null> {
   try {
     const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`);
@@ -90,7 +96,6 @@ async function saveRemoteProfile(email: string, name: string, profile: UserProfi
 function PasswordGate({ onUnlock }: {
   onUnlock: (name: string, email: string, profile: UserProfile | null) => void;
 }) {
-  const [name, setName] = useState(() => getSavedName());
   const [email, setEmail] = useState(() => getSavedEmail());
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -109,13 +114,12 @@ function PasswordGate({ onUnlock }: {
 
     setLoading(true);
     const trimmedEmail = email.trim().toLowerCase();
-    const trimmedName = name.trim();
 
     // Try to load existing profile from Supabase
     let remoteProfile: ({ name?: string } & UserProfile) | null = null;
     if (trimmedEmail) remoteProfile = await fetchRemoteProfile(trimmedEmail);
 
-    const resolvedName = remoteProfile?.name || trimmedName || "there";
+    const resolvedName = remoteProfile?.name || (trimmedEmail ? nameFromEmail(trimmedEmail) : "there");
 
     // Merge remote profile into local UserProfile shape
     let profile: UserProfile | null = null;
@@ -174,21 +178,11 @@ function PasswordGate({ onUnlock }: {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 }}>
         <input
-          type="text"
-          placeholder="First name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-          autoComplete="given-name"
-          style={inputStyle()}
-          onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = border)}
-        />
-        <input
           type="email"
           placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoFocus
           autoComplete="email"
           style={inputStyle()}
           onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
