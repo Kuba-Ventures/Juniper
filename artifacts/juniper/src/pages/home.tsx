@@ -149,7 +149,25 @@ function PasswordGate({ onUnlock }: {
       minHeight: "100dvh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       background: cream, fontFamily: sans, padding: "0 24px",
+      position: "relative",
     }}>
+      <button
+        onClick={() => window.history.back()}
+        style={{
+          position: "absolute", top: 20, left: 24,
+          background: "none", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 6,
+          color: muted, fontFamily: sans, fontSize: 14,
+          transition: "color 0.15s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = ink)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back
+      </button>
       <img src="/logo.png" alt="Juniper" style={{ width: 160, height: 160, objectFit: "contain", marginBottom: 18 }} />
       <h1 style={{ fontFamily: serif, fontSize: 22, color: sage, fontWeight: 500, margin: "0 0 4px" }}>Juniper</h1>
       <p style={{ color: muted, fontSize: 14, margin: "0 0 32px" }}>Private preview</p>
