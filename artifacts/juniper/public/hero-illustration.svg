@@ -362,88 +362,95 @@
 <!-- ════════════════════════════════════════════════════════════════════
      ANCIENT JUNIPER — RIGHT
 ════════════════════════════════════════════════════════════════════ -->
-<!-- Root flare -->
-<path d="M1466,660 Q1448,655 1430,659"       stroke="#2A2826" stroke-width="1.2" fill="none"/>
-<path d="M1486,660 Q1506,654 1524,658"       stroke="#2A2826" stroke-width="1.0" fill="none"/>
-<!-- Gnarled primary trunk — twists as it rises -->
-<path d="M1468,660 Q1460,634 1462,606 Q1465,578 1458,550 Q1451,522 1458,494 Q1465,466 1455,440 Q1446,414 1452,388 Q1458,362 1448,338"
-      stroke="#2A2826" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-<!-- Secondary trunk stem — splits from base, bows right -->
-<path d="M1484,660 Q1492,632 1490,604 Q1487,576 1494,548 Q1500,520 1492,494"
-      stroke="#2A2826" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-<!-- Bark striations — more pronounced on old trunk -->
-<line x1="1462" y1="634" x2="1472" y2="630" stroke="#3A3632" stroke-width="0.5" opacity="0.55"/>
-<line x1="1460" y1="610" x2="1470" y2="606" stroke="#3A3632" stroke-width="0.5" opacity="0.55"/>
-<line x1="1459" y1="584" x2="1469" y2="580" stroke="#3A3632" stroke-width="0.45" opacity="0.50"/>
-<line x1="1458" y1="558" x2="1468" y2="554" stroke="#3A3632" stroke-width="0.45" opacity="0.48"/>
-<line x1="1457" y1="532" x2="1467" y2="528" stroke="#3A3632" stroke-width="0.4" opacity="0.44"/>
-<line x1="1456" y1="506" x2="1466" y2="502" stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
-<line x1="1490" y1="588" x2="1495" y2="582" stroke="#3A3632" stroke-width="0.4" opacity="0.42"/>
-<line x1="1488" y1="562" x2="1493" y2="556" stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
-<!-- Major spreading boughs — wide and nearly horizontal (ancient juniper character) -->
-<!-- Far left low bough -->
-<path d="M1456,536 Q1428,524 1400,514 Q1374,504 1348,496 Q1326,490 1308,486"
-      stroke="#2A2826" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-<!-- Left mid bough -->
-<path d="M1455,476 Q1432,462 1410,450 Q1390,440 1372,432"
-      stroke="#2A2826" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-<!-- Left upper bough -->
-<path d="M1452,416 Q1430,398 1412,382"
-      stroke="#2A2826" stroke-width="1.0" fill="none" stroke-linecap="round"/>
-<!-- Far right low bough -->
-<path d="M1492,516 Q1516,504 1540,494 Q1562,485 1582,478"
+<!-- Root flare — gnarled surface roots -->
+<path d="M1466,660 Q1442,654 1420,658"       stroke="#2A2826" stroke-width="1.3" fill="none"/>
+<path d="M1470,660 Q1446,664 1428,666"       stroke="#2A2826" stroke-width="0.7" fill="none" opacity="0.48"/>
+<path d="M1490,660 Q1516,653 1538,656"       stroke="#2A2826" stroke-width="1.1" fill="none"/>
+<!-- Main trunk — extreme S-curve zigzag; boughs exit at each reversal peak -->
+<path d="M1470,660 Q1414,644 1426,616 Q1490,594 1486,566 Q1400,548 1424,522 Q1508,500 1498,476 Q1396,460 1430,440 Q1512,424 1494,398 Q1402,382 1432,356 Q1488,332 1480,308 Q1416,284 1446,258"
+      stroke="#2A2826" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- Live-bark spiral — the corkscrew of ancient juniper, runs alongside trunk -->
+<path d="M1474,654 Q1424,634 1434,608 Q1492,586 1488,560 Q1408,540 1430,514 Q1506,492 1498,466 Q1402,452 1434,428 Q1514,416 1494,392 Q1408,376 1436,350 Q1488,326 1482,302"
+      stroke="#3A3632" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.50"/>
+<!-- Dead-wood strip — silvery channel of bare wood, ancient junipers' signature -->
+<path d="M1476,646 Q1464,622 1468,594 Q1472,566 1460,540 Q1448,514 1458,488 Q1468,462 1454,436"
+      stroke="#9A9490" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.52"/>
+<!-- Secondary trunk — splits from base, bows right then merges back into canopy -->
+<path d="M1490,660 Q1520,630 1516,602 Q1512,574 1482,554 Q1452,534 1468,504 Q1484,474 1520,460"
       stroke="#2A2826" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-<!-- Right mid bough -->
-<path d="M1492,462 Q1514,448 1538,436 Q1558,426 1574,418"
+<!-- Bark striations at each twist reversal — follow the spiral -->
+<line x1="1426" y1="615" x2="1442" y2="606" stroke="#3A3632" stroke-width="0.55" opacity="0.55"/>
+<line x1="1430" y1="589" x2="1446" y2="580" stroke="#3A3632" stroke-width="0.50" opacity="0.52"/>
+<line x1="1486" y1="567" x2="1500" y2="558" stroke="#3A3632" stroke-width="0.50" opacity="0.50"/>
+<line x1="1424" y1="519" x2="1440" y2="510" stroke="#3A3632" stroke-width="0.48" opacity="0.50"/>
+<line x1="1488" y1="542" x2="1502" y2="533" stroke="#3A3632" stroke-width="0.45" opacity="0.48"/>
+<line x1="1498" y1="475" x2="1510" y2="466" stroke="#3A3632" stroke-width="0.45" opacity="0.46"/>
+<line x1="1428" y1="441" x2="1444" y2="432" stroke="#3A3632" stroke-width="0.42" opacity="0.46"/>
+<line x1="1494" y1="399" x2="1506" y2="390" stroke="#3A3632" stroke-width="0.40" opacity="0.44"/>
+<line x1="1430" y1="357" x2="1446" y2="348" stroke="#3A3632" stroke-width="0.38" opacity="0.42"/>
+<line x1="1480" y1="309" x2="1492" y2="300" stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<!-- Spreading boughs — exit from trunk at each twist peak -->
+<!-- Far left bough (left peak y≈522) -->
+<path d="M1424,522 Q1394,514 1366,506 Q1340,498 1314,492 Q1290,488 1270,484"
+      stroke="#2A2826" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<!-- Far right bough (right peak y≈476) -->
+<path d="M1498,476 Q1522,466 1548,456 Q1570,446 1590,438"
+      stroke="#2A2826" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<!-- Left mid bough (left peak y≈440) -->
+<path d="M1430,440 Q1406,428 1382,416 Q1360,406 1342,398"
+      stroke="#2A2826" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+<!-- Right mid bough (right peak y≈398) -->
+<path d="M1494,398 Q1518,384 1544,372 Q1564,362 1582,352"
       stroke="#2A2826" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<!-- Central upper leader -->
-<path d="M1450,390 Q1446,362 1442,334 Q1438,308 1442,282"
+<!-- Left upper bough (left peak y≈356) -->
+<path d="M1432,356 Q1410,340 1392,326 Q1378,314 1372,298"
       stroke="#2A2826" stroke-width="1.0" fill="none" stroke-linecap="round"/>
-<!-- Upper left bough -->
-<path d="M1450,362 Q1428,344 1410,328"
-      stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
-<!-- Upper right bough -->
-<path d="M1452,344 Q1474,326 1496,310"
+<!-- Upper leader — continues skyward from right peak y≈308 -->
+<path d="M1480,308 Q1474,278 1466,248 Q1458,218 1462,188"
+      stroke="#2A2826" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+<!-- Upper right spur -->
+<path d="M1480,308 Q1504,290 1526,272"
       stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
 
-<!-- Foliage masses — irregular cloud clusters, characteristic of juniper -->
+<!-- Foliage — dense irregular cloud strokes -->
 <!-- Far-left cluster -->
-<path d="M1306,482 Q1296,470 1290,458"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1310,488 Q1298,478 1292,466"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1302,476 Q1294,464 1288,450"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1316,480 Q1306,468 1302,454"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1290,456 Q1282,444 1278,430"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1294,450 Q1286,436 1282,422"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1312,472 Q1322,458 1328,444"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1268,480 Q1258,468 1252,454"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1272,486 Q1260,476 1254,462"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1264,474 Q1254,460 1248,446"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1276,478 Q1266,464 1262,450"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1250,450 Q1242,436 1238,422"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1254,444 Q1246,430 1242,416"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1272,468 Q1282,454 1286,440"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
 <!-- Left-mid cluster -->
-<path d="M1370,428 Q1360,416 1356,402"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1374,434 Q1362,424 1358,410"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1362,422 Q1354,410 1350,396"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1378,426 Q1388,412 1392,398"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1366,414 Q1376,402 1380,388"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1408,378 Q1398,364 1394,350"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1412,384 Q1422,370 1426,356"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1340,394 Q1330,382 1326,368"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1344,400 Q1332,390 1328,376"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1332,388 Q1324,376 1320,362"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1348,392 Q1358,378 1362,364"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1336,380 Q1346,366 1350,352"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1370,294 Q1362,280 1358,266"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1374,300 Q1384,286 1390,272"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
 <!-- Right cluster -->
-<path d="M1582,474 Q1592,462 1598,448"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1578,480 Q1590,470 1596,456"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1570,468 Q1580,456 1584,442"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1564,476 Q1554,464 1550,450"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1574,414 Q1584,400 1590,386"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1568,420 Q1558,408 1554,394"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1542,432 Q1550,418 1554,404"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1538,438 Q1528,426 1524,412"       stroke="#4A4642" stroke-width="0.4" fill="none" stroke-linecap="round"/>
-<!-- Upper foliage mass -->
-<path d="M1408,324 Q1398,310 1392,296"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1412,318 Q1422,304 1428,290"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1440,278 Q1430,264 1424,250"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1444,274 Q1454,260 1460,246"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1436,270 Q1426,256 1420,242"       stroke="#4A4642" stroke-width="0.4" fill="none" stroke-linecap="round"/>
-<path d="M1496,306 Q1506,292 1512,278"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1492,312 Q1482,298 1478,284"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1588,434 Q1598,420 1604,406"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1584,440 Q1596,428 1602,414"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1576,428 Q1586,414 1590,400"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1570,436 Q1560,424 1556,410"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1580,348 Q1590,334 1596,320"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1574,354 Q1564,342 1560,328"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1548,366 Q1556,352 1560,338"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Left upper cluster -->
+<path d="M1388,292 Q1378,278 1374,264"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1392,286 Q1402,272 1408,258"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Upper right spur cluster -->
+<path d="M1524,268 Q1534,254 1538,240"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1520,274 Q1510,260 1506,246"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Upper leader cluster -->
+<path d="M1460,184 Q1450,170 1444,156"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1464,180 Q1474,166 1480,152"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1456,176 Q1446,162 1440,148"       stroke="#4A4642" stroke-width="0.4" fill="none" stroke-linecap="round"/>
 <!-- Top wisps -->
-<path d="M1440,244 Q1432,230 1428,214"       stroke="#4A4642" stroke-width="0.35" fill="none" stroke-linecap="round" opacity="0.7"/>
-<path d="M1444,240 Q1454,226 1458,210"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
-<path d="M1512,272 Q1520,258 1522,242"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
+<path d="M1460,148 Q1452,132 1448,116"       stroke="#4A4642" stroke-width="0.35" fill="none" stroke-linecap="round" opacity="0.70"/>
+<path d="M1464,144 Q1474,128 1478,112"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
+<path d="M1538,234 Q1546,218 1548,202"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
 
 <path d="M320,662 Q500,660 700,661 Q950,659 1200,661 Q1380,660 1560,663" stroke="#3A3632" stroke-width="0.5" fill="none" opacity="0.45"/>
 <path d="M420,668 Q600,666 800,667 Q1000,666 1200,668 Q1360,667 1500,670" stroke="#4A4642" stroke-width="0.35" fill="none" opacity="0.35"/>
