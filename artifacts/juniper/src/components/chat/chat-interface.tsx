@@ -196,16 +196,27 @@ type Props = {
   profile: UserProfile | null;
   onConversationStart: (title: string) => void;
   onArtifactSaved: (artifact: Artifact) => void;
+  initialMessages?: ApiMessage[];
+  onMessagesUpdate?: (messages: ApiMessage[]) => void;
 };
 
 // ── ChatInterface ──────────────────────────────────────────────────────────
-export function ChatInterface({ userName, profile, onConversationStart, onArtifactSaved }: Props) {
-  const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
-  const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
+export function ChatInterface({ userName, profile, onConversationStart, onArtifactSaved, initialMessages, onMessagesUpdate }: Props) {
+  const hasInitial = !!initialMessages?.length;
+  const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>(() =>
+    hasInitial
+      ? initialMessages!.map((m, i) => ({
+          id: `init-${i}`,
+          role: (m.role === "user" ? "user" : "juniper") as "user" | "juniper",
+          content: m.content,
+        }))
+      : []
+  );
+  const [apiMessages, setApiMessages] = useState<ApiMessage[]>(initialMessages ?? []);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [conversationStarted, setConversationStarted] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [conversationStarted, setConversationStarted] = useState(hasInitial);
+  const [showWelcome, setShowWelcome] = useState(!hasInitial);
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
   const [savedMsgIds, setSavedMsgIds] = useState<Set<string>>(new Set());
   const [savedChartTitles, setSavedChartTitles] = useState<Set<string>>(new Set());
@@ -323,10 +334,12 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
           }
         }
 
-        setApiMessages((prev) => [
-          ...prev,
+        const completedMessages: ApiMessage[] = [
+          ...newApiMessages,
           { role: "assistant", content: fullText },
-        ]);
+        ];
+        setApiMessages(completedMessages);
+        onMessagesUpdate?.(completedMessages);
       } catch {
         setDisplayMessages((prev) =>
           prev.map((m) =>

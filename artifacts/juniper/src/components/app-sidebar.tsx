@@ -21,6 +21,7 @@ export type Conversation = {
   id: string;
   title: string;
   startedAt: Date;
+  messages?: Array<{ role: "user" | "assistant"; content: string }>;
 };
 
 type SidebarProps = {

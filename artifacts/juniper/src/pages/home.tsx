@@ -522,7 +522,12 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
   const handleSelectConversation = useCallback((id: string) => {
     setView("chat");
     setActiveConvId(id);
+    setChatKey((k) => k + 1);
     setSidebarOpen(false);
+  }, []);
+
+  const handleConversationMessagesUpdate = useCallback((id: string, messages: Array<{ role: "user" | "assistant"; content: string }>) => {
+    setConversations((prev) => prev.map((c) => c.id === id ? { ...c, messages } : c));
   }, []);
 
   const handleProfileSave = useCallback((p: UserProfile) => {
@@ -614,6 +619,8 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
               profile={profile}
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
+              initialMessages={activeConvId ? conversations.find((c) => c.id === activeConvId)?.messages : undefined}
+              onMessagesUpdate={activeConvId ? (msgs) => handleConversationMessagesUpdate(activeConvId, msgs) : undefined}
             />
           ) : (
             <MyPlanView
