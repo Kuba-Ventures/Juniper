@@ -189,7 +189,7 @@ function AccountButton({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const initials = userName.slice(0, 2).toUpperCase();
+  const initials = userName.slice(0, 1).toUpperCase();
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -470,7 +470,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
         {/* Desktop account button — top right of main area */}
         <div
           className="hidden lg:flex"
-          style={{ position: "absolute", top: 16, right: 20, zIndex: 40 }}
+          style={{ position: "absolute", top: 14, right: 20, zIndex: 40, alignItems: "center" }}
         >
           <AccountButton {...accountButtonProps} />
         </div>
