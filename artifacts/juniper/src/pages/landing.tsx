@@ -575,6 +575,8 @@ export default function Landing() {
         </div>
       </section>
 
+      <div style={{ height: 1, background: "#2A4433", opacity: 0.35 }} />
+
       {/* ── 8. FAQ ─────────────────────────────────────────────────────── */}
       <section className="px-6 md:px-12 py-20 md:py-32" style={{ background: cream }}>
         <div className="max-w-[720px] mx-auto">
