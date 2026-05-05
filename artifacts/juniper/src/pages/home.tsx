@@ -530,6 +530,15 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
     setConversations((prev) => prev.map((c) => c.id === id ? { ...c, messages } : c));
   }, []);
 
+  // Stable ref so the callback passed to ChatInterface never goes stale
+  const activeConvIdRef = useRef(activeConvId);
+  activeConvIdRef.current = activeConvId;
+
+  const handleMessagesUpdateStable = useCallback((messages: Array<{ role: "user" | "assistant"; content: string }>) => {
+    const id = activeConvIdRef.current;
+    if (id) handleConversationMessagesUpdate(id, messages);
+  }, [handleConversationMessagesUpdate]);
+
   const handleProfileSave = useCallback((p: UserProfile) => {
     saveProfile(p);
     setProfile(p);
@@ -620,7 +629,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
               initialMessages={activeConvId ? conversations.find((c) => c.id === activeConvId)?.messages : undefined}
-              onMessagesUpdate={activeConvId ? (msgs) => handleConversationMessagesUpdate(activeConvId, msgs) : undefined}
+              onMessagesUpdate={handleMessagesUpdateStable}
             />
           ) : (
             <MyPlanView

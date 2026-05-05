@@ -221,6 +221,10 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
     setSavedMsgIds((prev) => new Set(prev).add(msg.id));
   }, [onArtifactSaved]);
 
+  // Always-current ref so sendMessage never captures a stale onMessagesUpdate
+  const onMessagesUpdateRef = useRef(onMessagesUpdate);
+  onMessagesUpdateRef.current = onMessagesUpdate;
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -311,7 +315,7 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
           { role: "assistant", content: fullText },
         ];
         setApiMessages(completedMessages);
-        onMessagesUpdate?.(completedMessages);
+        onMessagesUpdateRef.current?.(completedMessages);
       } catch {
         setDisplayMessages((prev) =>
           prev.map((m) =>
