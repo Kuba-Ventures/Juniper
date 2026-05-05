@@ -112,15 +112,10 @@ function WaitlistForm({ id }: { id: string }) {
         style={{ ...fieldBase, cursor: "pointer", color: stage ? ink : muted }}
       >
         <option value="" disabled>Where are you in your journey?</option>
-        <option value="dating_seriously">Dating seriously</option>
-        <option value="engaged">Engaged</option>
-        <option value="newly_married">Newly married</option>
-        <option value="saving_for_house">Saving for a house</option>
-        <option value="planning_for_baby">Planning for a baby</option>
-        <option value="paying_off_debt">Paying off debt together</option>
+        <option value="saving_big_purchase">Saving for a big purchase</option>
         <option value="combining_finances">Combining finances</option>
-        <option value="building_emergency_fund">Building an emergency fund</option>
-        <option value="planning_future">Planning for the future</option>
+        <option value="paying_off_debt">Paying off debt</option>
+        <option value="planning_for_baby">Planning for a baby</option>
       </select>
       {error && (
         <p role="alert" style={{ fontSize: 13, color: "#c0392b", margin: 0 }}>{error}</p>
