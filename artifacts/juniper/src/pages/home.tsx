@@ -750,14 +750,6 @@ function AppShell({ userName, userEmail, authToken }: { userName: string; userEm
           <AccountButton {...accountButtonProps} />
         </div>
 
-        {/* Desktop account button — top right of main area */}
-        <div
-          className="hidden lg:flex"
-          style={{ position: "absolute", top: 14, right: 20, zIndex: 40, alignItems: "center" }}
-        >
-          <AccountButton {...accountButtonProps} />
-        </div>
-
         {/* View content */}
         <div style={{ flex: 1, minHeight: 0 }}>
           {view === "chat" ? (
