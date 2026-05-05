@@ -23,7 +23,7 @@
 <ellipse cx="950" cy="600" rx="190" ry="65" fill="#9A9690" opacity="0.20" filter="url(#w10)"/>
 <!-- Tree shadow washes -->
 <ellipse cx="208" cy="510" rx="220" ry="260" fill="#AEAAA6" opacity="0.18" filter="url(#w30)"/>
-<ellipse cx="1478" cy="500" rx="130" ry="190" fill="#AEAAA6" opacity="0.14" filter="url(#w30)"/>
+<ellipse cx="1448" cy="490" rx="210" ry="195" fill="#AEAAA6" opacity="0.18" filter="url(#w30)"/>
 <!-- Couple ground shadow -->
 <ellipse cx="654" cy="674" rx="84" ry="20" fill="#A8A4A0" opacity="0.28" filter="url(#w10)"/>
 <!-- Atmospheric horizon mist -->
@@ -130,6 +130,112 @@
 <line x1="1270" y1="362" x2="1336" y2="408"  stroke="#4A4642" stroke-width="0.35" opacity="0.28"/>
 <line x1="1290" y1="362" x2="1336" y2="396"  stroke="#4A4642" stroke-width="0.35" opacity="0.28"/>
 <line x1="1310" y1="362" x2="1336" y2="384"  stroke="#4A4642" stroke-width="0.35" opacity="0.25"/>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     WINDOWS
+════════════════════════════════════════════════════════════════════ -->
+
+<!-- Second floor left window -->
+<rect x="633" y="382" width="48" height="72"  stroke="#2A2826" stroke-width="1.2" fill="none"/>
+<!-- Panes -->
+<line x1="657" y1="383" x2="657" y2="453"    stroke="#2A2826" stroke-width="0.8"/>
+<line x1="634" y1="418" x2="680" y2="418"    stroke="#2A2826" stroke-width="0.8"/>
+<!-- Sill -->
+<line x1="621" y1="455" x2="695" y2="455"    stroke="#2A2826" stroke-width="1.1"/>
+<line x1="625" y1="459" x2="691" y2="459"    stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<!-- Left shutter -->
+<rect x="609" y="382" width="22" height="72"  stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="610" y1="394" x2="630" y2="394"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="610" y1="406" x2="630" y2="406"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="610" y1="418" x2="630" y2="418"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="610" y1="430" x2="630" y2="430"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="610" y1="442" x2="630" y2="442"    stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<!-- Right shutter -->
+<rect x="683" y="382" width="22" height="72"  stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="684" y1="394" x2="704" y2="394"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="684" y1="406" x2="704" y2="406"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="684" y1="418" x2="704" y2="418"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="684" y1="430" x2="704" y2="430"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="684" y1="442" x2="704" y2="442"    stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+
+<!-- Second floor right window -->
+<rect x="1219" y="382" width="48" height="72" stroke="#2A2826" stroke-width="1.2" fill="none"/>
+<!-- Panes -->
+<line x1="1243" y1="383" x2="1243" y2="453"  stroke="#2A2826" stroke-width="0.8"/>
+<line x1="1220" y1="418" x2="1266" y2="418"  stroke="#2A2826" stroke-width="0.8"/>
+<!-- Sill -->
+<line x1="1207" y1="455" x2="1281" y2="455"  stroke="#2A2826" stroke-width="1.1"/>
+<line x1="1211" y1="459" x2="1277" y2="459"  stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<!-- Left shutter -->
+<rect x="1195" y="382" width="22" height="72" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="1196" y1="394" x2="1216" y2="394"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1196" y1="406" x2="1216" y2="406"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1196" y1="418" x2="1216" y2="418"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1196" y1="430" x2="1216" y2="430"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1196" y1="442" x2="1216" y2="442"  stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<!-- Right shutter -->
+<rect x="1269" y="382" width="22" height="72" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="1270" y1="394" x2="1290" y2="394"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1270" y1="406" x2="1290" y2="406"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1270" y1="418" x2="1290" y2="418"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1270" y1="430" x2="1290" y2="430"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1270" y1="442" x2="1290" y2="442"  stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+
+<!-- First floor left window -->
+<rect x="631" y="496" width="52" height="112" stroke="#2A2826" stroke-width="1.2" fill="none"/>
+<!-- Panes: vertical + 2 horizontals (6-pane) -->
+<line x1="657" y1="497" x2="657" y2="607"    stroke="#2A2826" stroke-width="0.8"/>
+<line x1="632" y1="533" x2="682" y2="533"    stroke="#2A2826" stroke-width="0.7"/>
+<line x1="632" y1="570" x2="682" y2="570"    stroke="#2A2826" stroke-width="0.7"/>
+<!-- Sill -->
+<line x1="617" y1="610" x2="697" y2="610"    stroke="#2A2826" stroke-width="1.2"/>
+<line x1="621" y1="614" x2="693" y2="614"    stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<!-- Left shutter -->
+<rect x="605" y="496" width="24" height="112" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="606" y1="510" x2="628" y2="510"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="606" y1="524" x2="628" y2="524"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="606" y1="538" x2="628" y2="538"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="606" y1="552" x2="628" y2="552"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="606" y1="566" x2="628" y2="566"    stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<line x1="606" y1="580" x2="628" y2="580"    stroke="#3A3632" stroke-width="0.35" opacity="0.36"/>
+<line x1="606" y1="594" x2="628" y2="594"    stroke="#3A3632" stroke-width="0.35" opacity="0.34"/>
+<!-- Right shutter -->
+<rect x="685" y="496" width="24" height="112" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="686" y1="510" x2="708" y2="510"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="686" y1="524" x2="708" y2="524"    stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="686" y1="538" x2="708" y2="538"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="686" y1="552" x2="708" y2="552"    stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="686" y1="566" x2="708" y2="566"    stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<line x1="686" y1="580" x2="708" y2="580"    stroke="#3A3632" stroke-width="0.35" opacity="0.36"/>
+<line x1="686" y1="594" x2="708" y2="594"    stroke="#3A3632" stroke-width="0.35" opacity="0.34"/>
+
+<!-- First floor right window -->
+<rect x="1217" y="496" width="52" height="112" stroke="#2A2826" stroke-width="1.2" fill="none"/>
+<!-- Panes: vertical + 2 horizontals (6-pane) -->
+<line x1="1243" y1="497" x2="1243" y2="607"  stroke="#2A2826" stroke-width="0.8"/>
+<line x1="1218" y1="533" x2="1268" y2="533"  stroke="#2A2826" stroke-width="0.7"/>
+<line x1="1218" y1="570" x2="1268" y2="570"  stroke="#2A2826" stroke-width="0.7"/>
+<!-- Sill -->
+<line x1="1203" y1="610" x2="1283" y2="610"  stroke="#2A2826" stroke-width="1.2"/>
+<line x1="1207" y1="614" x2="1279" y2="614"  stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<!-- Left shutter -->
+<rect x="1191" y="496" width="24" height="112" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="1192" y1="510" x2="1214" y2="510"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1192" y1="524" x2="1214" y2="524"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1192" y1="538" x2="1214" y2="538"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1192" y1="552" x2="1214" y2="552"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1192" y1="566" x2="1214" y2="566"  stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<line x1="1192" y1="580" x2="1214" y2="580"  stroke="#3A3632" stroke-width="0.35" opacity="0.36"/>
+<line x1="1192" y1="594" x2="1214" y2="594"  stroke="#3A3632" stroke-width="0.35" opacity="0.34"/>
+<!-- Right shutter -->
+<rect x="1271" y="496" width="24" height="112" stroke="#2A2826" stroke-width="0.9" fill="none"/>
+<line x1="1272" y1="510" x2="1294" y2="510"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1272" y1="524" x2="1294" y2="524"  stroke="#3A3632" stroke-width="0.35" opacity="0.45"/>
+<line x1="1272" y1="538" x2="1294" y2="538"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1272" y1="552" x2="1294" y2="552"  stroke="#3A3632" stroke-width="0.35" opacity="0.40"/>
+<line x1="1272" y1="566" x2="1294" y2="566"  stroke="#3A3632" stroke-width="0.35" opacity="0.38"/>
+<line x1="1272" y1="580" x2="1294" y2="580"  stroke="#3A3632" stroke-width="0.35" opacity="0.36"/>
+<line x1="1272" y1="594" x2="1294" y2="594"  stroke="#3A3632" stroke-width="0.35" opacity="0.34"/>
 
 <!-- ════════════════════════════════════════════════════════════════════
      PORCH
@@ -254,20 +360,90 @@
 <path d="M164,206 Q172,192 176,178"          stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
 
 <!-- ════════════════════════════════════════════════════════════════════
-     SMALL TREE — RIGHT
+     ANCIENT JUNIPER — RIGHT
 ════════════════════════════════════════════════════════════════════ -->
-<path d="M1474,660 Q1470,620 1472,580 Q1474,546 1470,510" stroke="#2A2826" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-<path d="M1482,660 Q1486,618 1484,578 Q1482,544 1486,508" stroke="#2A2826" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-<path d="M1474,570 Q1448,544 1430,518"       stroke="#2A2826" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<path d="M1476,540 Q1504,514 1520,490"       stroke="#2A2826" stroke-width="1.0" fill="none" stroke-linecap="round"/>
-<path d="M1472,510 Q1460,488 1452,464"       stroke="#2A2826" stroke-width="0.9" fill="none" stroke-linecap="round"/>
-<path d="M1478,510 Q1492,486 1500,462"       stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
-<path d="M1428,512 Q1416,496 1410,480"       stroke="#3A3632" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1432,506 Q1444,492 1450,476"       stroke="#3A3632" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1520,484 Q1530,468 1534,452"       stroke="#3A3632" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1450,460 Q1440,444 1434,428"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1454,456 Q1464,440 1468,424"       stroke="#4A4642" stroke-width="0.4"  fill="none" stroke-linecap="round"/>
-<path d="M1500,458 Q1510,442 1514,426"       stroke="#4A4642" stroke-width="0.4"  fill="none" stroke-linecap="round"/>
+<!-- Root flare -->
+<path d="M1466,660 Q1448,655 1430,659"       stroke="#2A2826" stroke-width="1.2" fill="none"/>
+<path d="M1486,660 Q1506,654 1524,658"       stroke="#2A2826" stroke-width="1.0" fill="none"/>
+<!-- Gnarled primary trunk — twists as it rises -->
+<path d="M1468,660 Q1460,634 1462,606 Q1465,578 1458,550 Q1451,522 1458,494 Q1465,466 1455,440 Q1446,414 1452,388 Q1458,362 1448,338"
+      stroke="#2A2826" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<!-- Secondary trunk stem — splits from base, bows right -->
+<path d="M1484,660 Q1492,632 1490,604 Q1487,576 1494,548 Q1500,520 1492,494"
+      stroke="#2A2826" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<!-- Bark striations — more pronounced on old trunk -->
+<line x1="1462" y1="634" x2="1472" y2="630" stroke="#3A3632" stroke-width="0.5" opacity="0.55"/>
+<line x1="1460" y1="610" x2="1470" y2="606" stroke="#3A3632" stroke-width="0.5" opacity="0.55"/>
+<line x1="1459" y1="584" x2="1469" y2="580" stroke="#3A3632" stroke-width="0.45" opacity="0.50"/>
+<line x1="1458" y1="558" x2="1468" y2="554" stroke="#3A3632" stroke-width="0.45" opacity="0.48"/>
+<line x1="1457" y1="532" x2="1467" y2="528" stroke="#3A3632" stroke-width="0.4" opacity="0.44"/>
+<line x1="1456" y1="506" x2="1466" y2="502" stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<line x1="1490" y1="588" x2="1495" y2="582" stroke="#3A3632" stroke-width="0.4" opacity="0.42"/>
+<line x1="1488" y1="562" x2="1493" y2="556" stroke="#3A3632" stroke-width="0.4" opacity="0.40"/>
+<!-- Major spreading boughs — wide and nearly horizontal (ancient juniper character) -->
+<!-- Far left low bough -->
+<path d="M1456,536 Q1428,524 1400,514 Q1374,504 1348,496 Q1326,490 1308,486"
+      stroke="#2A2826" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<!-- Left mid bough -->
+<path d="M1455,476 Q1432,462 1410,450 Q1390,440 1372,432"
+      stroke="#2A2826" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+<!-- Left upper bough -->
+<path d="M1452,416 Q1430,398 1412,382"
+      stroke="#2A2826" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+<!-- Far right low bough -->
+<path d="M1492,516 Q1516,504 1540,494 Q1562,485 1582,478"
+      stroke="#2A2826" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<!-- Right mid bough -->
+<path d="M1492,462 Q1514,448 1538,436 Q1558,426 1574,418"
+      stroke="#2A2826" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+<!-- Central upper leader -->
+<path d="M1450,390 Q1446,362 1442,334 Q1438,308 1442,282"
+      stroke="#2A2826" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+<!-- Upper left bough -->
+<path d="M1450,362 Q1428,344 1410,328"
+      stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+<!-- Upper right bough -->
+<path d="M1452,344 Q1474,326 1496,310"
+      stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+
+<!-- Foliage masses — irregular cloud clusters, characteristic of juniper -->
+<!-- Far-left cluster -->
+<path d="M1306,482 Q1296,470 1290,458"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1310,488 Q1298,478 1292,466"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1302,476 Q1294,464 1288,450"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1316,480 Q1306,468 1302,454"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1290,456 Q1282,444 1278,430"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1294,450 Q1286,436 1282,422"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1312,472 Q1322,458 1328,444"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Left-mid cluster -->
+<path d="M1370,428 Q1360,416 1356,402"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1374,434 Q1362,424 1358,410"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1362,422 Q1354,410 1350,396"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1378,426 Q1388,412 1392,398"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1366,414 Q1376,402 1380,388"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1408,378 Q1398,364 1394,350"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1412,384 Q1422,370 1426,356"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Right cluster -->
+<path d="M1582,474 Q1592,462 1598,448"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+<path d="M1578,480 Q1590,470 1596,456"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
+<path d="M1570,468 Q1580,456 1584,442"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1564,476 Q1554,464 1550,450"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1574,414 Q1584,400 1590,386"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1568,420 Q1558,408 1554,394"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1542,432 Q1550,418 1554,404"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1538,438 Q1528,426 1524,412"       stroke="#4A4642" stroke-width="0.4" fill="none" stroke-linecap="round"/>
+<!-- Upper foliage mass -->
+<path d="M1408,324 Q1398,310 1392,296"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1412,318 Q1422,304 1428,290"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1440,278 Q1430,264 1424,250"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1444,274 Q1454,260 1460,246"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<path d="M1436,270 Q1426,256 1420,242"       stroke="#4A4642" stroke-width="0.4" fill="none" stroke-linecap="round"/>
+<path d="M1496,306 Q1506,292 1512,278"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1492,312 Q1482,298 1478,284"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
+<!-- Top wisps -->
+<path d="M1440,244 Q1432,230 1428,214"       stroke="#4A4642" stroke-width="0.35" fill="none" stroke-linecap="round" opacity="0.7"/>
+<path d="M1444,240 Q1454,226 1458,210"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
+<path d="M1512,272 Q1520,258 1522,242"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
 
 <path d="M320,662 Q500,660 700,661 Q950,659 1200,661 Q1380,660 1560,663" stroke="#3A3632" stroke-width="0.5" fill="none" opacity="0.45"/>
 <path d="M420,668 Q600,666 800,667 Q1000,666 1200,668 Q1360,667 1500,670" stroke="#4A4642" stroke-width="0.35" fill="none" opacity="0.35"/>
