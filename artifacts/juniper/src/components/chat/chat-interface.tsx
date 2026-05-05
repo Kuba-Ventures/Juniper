@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ClipboardList } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
+import { ProfileQuestionnaire } from "./profile-questionnaire";
+import { UserProfile, loadProfile, formatProfileContext } from "@/lib/profile";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -133,6 +135,8 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -175,7 +179,11 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newApiMessages, hasPartner: false }),
+          body: JSON.stringify({
+            messages: newApiMessages,
+            hasPartner: false,
+            profileContext: profile ? formatProfileContext(profile) : "",
+          }),
         });
 
         if (!response.ok || !response.body) {
@@ -269,6 +277,7 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
   // ── Welcome screen ─────────────────────────────────────────────────────
   if (showWelcome) {
     return (
+      <>
       <div
         style={{
           height: "100%",
@@ -311,12 +320,36 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
               lineHeight: 1.65,
               maxWidth: 480,
               textAlign: "center",
-              margin: "0 0 44px",
+              margin: "0 0 20px",
             }}
           >
-            I'm here to help you and your partner plan with clarity. Ask me
-            anything, or pick a place to start.
+            I'm here to help you plan with clarity. Ask me anything, or pick a
+            place to start.
           </p>
+
+          {/* Profile CTA */}
+          <button
+            onClick={() => setShowQuestionnaire(true)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              background: "none", border: `1.5px solid ${border}`,
+              borderRadius: 100, padding: "8px 18px", marginBottom: 36,
+              fontFamily: sans, fontSize: 13, color: profile ? sage : muted,
+              cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+              fontWeight: profile ? 500 : 400,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = sage;
+              e.currentTarget.style.color = sage;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = border;
+              e.currentTarget.style.color = profile ? sage : muted;
+            }}
+          >
+            <ClipboardList size={13} />
+            {profile ? "Profile complete · edit answers" : "Set up your financial profile"}
+          </button>
 
           {/* Starter chips */}
           <div
@@ -325,7 +358,7 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
               gridTemplateColumns: "repeat(4, 1fr)",
               gap: 12,
               width: "100%",
-              marginBottom: 44,
+              marginBottom: 36,
             }}
           >
             {CHIPS.map((chip) => (
@@ -455,6 +488,15 @@ export function ChatInterface({ userName, onConversationStart }: Props) {
           </div>
         </div>
       </div>
+
+      {showQuestionnaire && (
+        <ProfileQuestionnaire
+          initialData={profile ?? undefined}
+          onClose={() => setShowQuestionnaire(false)}
+          onSave={(p) => { setProfile(p); setShowQuestionnaire(false); }}
+        />
+      )}
+      </>
     );
   }
 

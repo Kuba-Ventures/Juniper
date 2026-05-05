@@ -62,9 +62,10 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
-  const { messages, hasPartner = false } = (await req.json()) as {
+  const { messages, hasPartner = false, profileContext = "" } = (await req.json()) as {
     messages: Array<{ role: "user" | "assistant"; content: string }>;
     hasPartner?: boolean;
+    profileContext?: string;
   };
 
   const client = new Anthropic({ apiKey });
@@ -72,7 +73,7 @@ export default async function handler(req: Request): Promise<Response> {
   const stream = client.messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
-    system: buildSystemPrompt(hasPartner),
+    system: buildSystemPrompt(hasPartner) + profileContext,
     messages,
   });
 
