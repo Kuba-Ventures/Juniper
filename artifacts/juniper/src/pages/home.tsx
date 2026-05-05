@@ -651,6 +651,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
               profile={profile}
               onConversationStart={handleConversationStart}
               onArtifactSaved={handleArtifactSaved}
+              onOpenProfile={() => setShowQuestionnaire(true)}
               initialMessages={activeConvId ? conversations.find((c) => c.id === activeConvId)?.messages : undefined}
               onMessagesUpdate={handleMessagesUpdateStable}
             />

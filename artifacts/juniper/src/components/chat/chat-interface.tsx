@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ArrowUp, Bookmark, BookmarkCheck } from "lucide-react";
+import { ArrowUp, Bookmark, BookmarkCheck, ClipboardList } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
 import { UserProfile, formatProfileContext } from "@/lib/profile";
 import { InlineChart, parseSegments, ChartSpec } from "@/components/chat/inline-chart";
@@ -168,12 +168,13 @@ type Props = {
   profile: UserProfile | null;
   onConversationStart: (title: string) => void;
   onArtifactSaved: (artifact: Artifact) => void;
+  onOpenProfile?: () => void;
   initialMessages?: ApiMessage[];
   onMessagesUpdate?: (messages: ApiMessage[]) => void;
 };
 
 // ── ChatInterface ──────────────────────────────────────────────────────────
-export function ChatInterface({ userName, profile, onConversationStart, onArtifactSaved, initialMessages, onMessagesUpdate }: Props) {
+export function ChatInterface({ userName, profile, onConversationStart, onArtifactSaved, onOpenProfile, initialMessages, onMessagesUpdate }: Props) {
   const hasInitial = !!initialMessages?.length;
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>(() =>
     hasInitial
@@ -416,7 +417,43 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
             place to start.
           </p>
 
-          {/* Starter chips */}
+          {/* Profile CTA or starter chips */}
+          {!profile ? (
+            <button
+              onClick={onOpenProfile}
+              style={{
+                width: "100%",
+                maxWidth: 480,
+                background: "#fff",
+                border: `1.5px solid ${sage}`,
+                borderRadius: 16,
+                padding: "28px 32px",
+                textAlign: "left",
+                cursor: "pointer",
+                marginBottom: 36,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 18,
+                transition: "box-shadow 0.15s",
+                fontFamily: sans,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 18px rgba(92,122,101,0.14)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(92,122,101,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                <ClipboardList size={20} color={sage} strokeWidth={1.8} />
+              </div>
+              <div>
+                <p style={{ fontFamily: serif, fontSize: 17, color: ink, margin: "0 0 6px", fontWeight: 400, lineHeight: 1.3 }}>
+                  Set up your financial profile
+                </p>
+                <p style={{ fontSize: 14, color: muted, margin: 0, lineHeight: 1.55 }}>
+                  A few quick details help Juniper give you more relevant, personalized guidance from your very first conversation.
+                </p>
+                <p style={{ fontSize: 13, color: sage, fontWeight: 500, margin: "12px 0 0" }}>Get started &rarr;</p>
+              </div>
+            </button>
+          ) : (
           <div
             style={{
               display: "grid",
@@ -442,39 +479,23 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = sage;
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 10px rgba(92,122,101,0.12)";
+                  e.currentTarget.style.boxShadow = "0 2px 10px rgba(92,122,101,0.12)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "rgba(92,122,101,0.3)";
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 15,
-                    color: ink,
-                    margin: "0 0 6px",
-                    lineHeight: 1.3,
-                    fontWeight: 400,
-                  }}
-                >
+                <p style={{ fontFamily: serif, fontSize: 15, color: ink, margin: "0 0 6px", lineHeight: 1.3, fontWeight: 400 }}>
                   {chip.heading}
                 </p>
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: muted,
-                    margin: 0,
-                    lineHeight: 1.5,
-                  }}
-                >
+                <p style={{ fontSize: 13, color: muted, margin: 0, lineHeight: 1.5 }}>
                   {chip.sub}
                 </p>
               </button>
             ))}
           </div>
+          )}
 
           {/* Chat input */}
           <div style={{ width: "100%", maxWidth: 680 }}>
