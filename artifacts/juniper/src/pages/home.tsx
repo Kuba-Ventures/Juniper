@@ -261,7 +261,7 @@ function AccountButton({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const initials = userName.slice(0, 1).toUpperCase();
+  const firstName = userName.split(" ")[0];
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -269,15 +269,15 @@ function AccountButton({
         onClick={() => setOpen((o) => !o)}
         aria-label="Account"
         style={{
-          width: 34, height: 34, borderRadius: "50%",
+          height: 34, padding: "0 14px", borderRadius: 8,
           background: sage, border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex", alignItems: "center", gap: 6,
           transition: "opacity 0.15s",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
       >
-        <span style={{ fontFamily: sans, fontSize: 16, color: "#fff", fontWeight: 600, lineHeight: 1 }}>{initials}</span>
+        <span style={{ fontFamily: sans, fontSize: 14, color: "#fff", fontWeight: 500, lineHeight: 1 }}>{firstName}</span>
       </button>
 
       {open && (
