@@ -149,31 +149,51 @@ export type Segment =
 
 export function parseSegments(content: string): Segment[] {
   const segments: Segment[] = [];
-  const regex = /\[CHART:([\s\S]*?)\]/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  const marker = "[CHART:";
+  let i = 0;
 
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ kind: "text", content: content.slice(lastIndex, match.index) });
+  while (i < content.length) {
+    const start = content.indexOf(marker, i);
+    if (start === -1) {
+      // No more chart tokens — remainder is plain text
+      if (i < content.length) segments.push({ kind: "text", content: content.slice(i) });
+      break;
     }
+
+    // Text before this token
+    if (start > i) segments.push({ kind: "text", content: content.slice(i, start) });
+
+    // Walk forward counting brackets to find the matching closing ]
+    // depth starts at 1 for the opening [ of [CHART:
+    let depth = 0;
+    let j = start;
+    let closed = -1;
+    while (j < content.length) {
+      const ch = content[j];
+      if (ch === "[") depth++;
+      else if (ch === "]") {
+        depth--;
+        if (depth === 0) { closed = j; break; }
+      }
+      j++;
+    }
+
+    if (closed === -1) {
+      // Still streaming — incomplete token
+      segments.push({ kind: "chart-pending" });
+      break;
+    }
+
+    // Extract the JSON between [CHART: and the outer ]
+    const jsonStr = content.slice(start + marker.length, closed);
     try {
-      const spec = JSON.parse(match[1]) as ChartSpec;
+      const spec = JSON.parse(jsonStr) as ChartSpec;
       segments.push({ kind: "chart", spec });
     } catch {
-      segments.push({ kind: "text", content: match[0] });
+      // Malformed — emit raw text so nothing is silently swallowed
+      segments.push({ kind: "text", content: content.slice(start, closed + 1) });
     }
-    lastIndex = match.index + match[0].length;
-  }
-
-  // If there's an incomplete [CHART: at the end (streaming), show placeholder
-  const tail = content.slice(lastIndex);
-  const partialIdx = tail.indexOf("[CHART:");
-  if (partialIdx !== -1) {
-    if (partialIdx > 0) segments.push({ kind: "text", content: tail.slice(0, partialIdx) });
-    segments.push({ kind: "chart-pending" });
-  } else if (tail) {
-    segments.push({ kind: "text", content: tail });
+    i = closed + 1;
   }
 
   return segments;
