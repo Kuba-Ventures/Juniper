@@ -248,13 +248,7 @@ export default function Landing() {
         }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 34, height: 34, background: sage, flexShrink: 0 }}
-            aria-hidden="true"
-          >
-            <span style={{ fontFamily: serif, fontSize: 18, color: "#fff", fontStyle: "italic", lineHeight: 1 }}>J</span>
-          </div>
+          <img src="/logo.png" alt="Juniper" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
           <span style={{ fontFamily: serif, fontSize: 20, color: sage, letterSpacing: "-0.01em", fontWeight: 500 }}>
             Juniper
           </span>
