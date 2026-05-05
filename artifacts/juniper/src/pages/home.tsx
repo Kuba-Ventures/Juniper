@@ -272,7 +272,7 @@ function AccountButton({
           height: 34, padding: "0 14px", borderRadius: 8,
           background: sage, border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", gap: 6,
-          transition: "opacity 0.15s",
+          transition: "opacity 0.15s", boxShadow: "none", outline: "none",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
