@@ -61,7 +61,12 @@ const sans = "'Inter', sans-serif";
 function getSavedName() { return localStorage.getItem(NAME_KEY) || ""; }
 function getSavedEmail() { return localStorage.getItem(EMAIL_KEY) || ""; }
 
+const EMAIL_NAME_OVERRIDES: Record<string, string> = {
+  "yanastali@gmail.com": "Asta",
+};
+
 function nameFromEmail(email: string): string {
+  if (EMAIL_NAME_OVERRIDES[email]) return EMAIL_NAME_OVERRIDES[email];
   const local = email.split("@")[0];
   const first = local.split(/[._-]/)[0];
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
