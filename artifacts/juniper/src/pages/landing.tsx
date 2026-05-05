@@ -682,21 +682,21 @@ export default function Landing() {
       {/* ── 10. FOOTER ─────────────────────────────────────────────────── */}
       <footer
         className="px-6 md:px-12 py-8"
-        style={{ background: "#1E3A2A" }}
+        style={{ background: "#C8D9C8" }}
       >
         <div className="max-w-[1100px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="Juniper" style={{ width: 28, height: 28, objectFit: "contain" }} />
-            <span style={{ fontFamily: serif, fontSize: 16, color: "#fff", fontWeight: 500 }}>Juniper</span>
+            <span style={{ fontFamily: serif, fontSize: 16, color: "#1E3A2A", fontWeight: 500 }}>Juniper</span>
           </div>
           <div className="flex flex-wrap items-center gap-6 md:gap-8">
-            <a href="/privacy" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>Privacy</a>
-            <a href="/terms" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>Terms</a>
-            <a href="mailto:hello@juniper.app" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>hello@juniper.app</a>
+            <a href="/privacy" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>Privacy</a>
+            <a href="/terms" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>Terms</a>
+            <a href="mailto:hello@juniper.app" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>hello@juniper.app</a>
           </div>
         </div>
         <div className="max-w-[1100px] mx-auto" style={{ marginTop: 20 }}>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>© 2026 Juniper. All rights reserved.</p>
+          <p style={{ fontSize: 12, color: "#1E3A2A", margin: 0 }}>© 2026 Juniper. All rights reserved.</p>
         </div>
       </footer>
 
