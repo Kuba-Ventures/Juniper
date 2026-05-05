@@ -3,7 +3,7 @@ import { Menu, CheckCircle2, ClipboardList, LogOut, X } from "lucide-react";
 import { AppSidebar, Artifact, Conversation } from "@/components/app-sidebar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { ProfileQuestionnaire } from "@/components/chat/profile-questionnaire";
-import { InlineChart, ChartSpec } from "@/components/chat/inline-chart";
+import { InlineChart, ChartSpec, parseSegments } from "@/components/chat/inline-chart";
 import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 
 const SESSION_KEY = "juniper_admin_auth";
@@ -437,9 +437,17 @@ function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact
             {openArtifact.type === "chart" && openArtifact.content ? (
               (() => { const spec = tryParseChart(openArtifact.content); return spec ? <InlineChart spec={spec} /> : null; })()
             ) : openArtifact.content ? (
-              <p style={{ fontSize: 15, color: ink, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
-                {openArtifact.content.replace(/\*\*([^*]+)\*\*/g, "$1")}
-              </p>
+              <div style={{ fontSize: 15, color: ink, lineHeight: 1.7 }}>
+                {parseSegments(openArtifact.content).map((seg, i) => {
+                  if (seg.kind === "chart") return <InlineChart key={i} spec={seg.spec} />;
+                  if (seg.kind === "text") return (
+                    <p key={i} style={{ margin: "0 0 10px", whiteSpace: "pre-wrap" }}>
+                      {seg.content.replace(/\*\*([^*]+)\*\*/g, "$1").trim()}
+                    </p>
+                  );
+                  return null;
+                })}
+              </div>
             ) : (
               <p style={{ fontSize: 14, color: muted }}>No content stored for this item.</p>
             )}

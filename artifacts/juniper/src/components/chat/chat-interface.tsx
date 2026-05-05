@@ -209,13 +209,12 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSaveToMyPlan = useCallback((msg: DisplayMessage) => {
-    const hasChart = msg.content.includes("[CHART:");
     const textOnly = msg.content.replace(/\[CHART:[\s\S]*?\]/g, "").trim();
     const firstLine = textOnly.split("\n")[0].trim() || msg.content.slice(0, 61);
     const title = firstLine.length > 64 ? firstLine.slice(0, 61) + "…" : firstLine;
     const artifact: Artifact = {
       id: msg.id,
-      type: hasChart ? "chart" : "scenario",
+      type: "scenario",
       title,
       savedAt: new Date(),
       content: msg.content,
