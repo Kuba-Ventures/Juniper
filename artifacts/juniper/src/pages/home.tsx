@@ -267,16 +267,38 @@ function AccountButton({
 }
 
 // ── My Plan view ───────────────────────────────────────────────────────────
-function MyPlanView({ artifacts, userName, onStartConversation }: {
+function MyPlanView({ artifacts, userName, onStartConversation, onRenameArtifact }: {
   artifacts: Artifact[];
   userName: string;
   onStartConversation: () => void;
+  onRenameArtifact: (id: string, title: string) => void;
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const typeLabel: Record<string, string> = {
     chart: "Chart",
     calculation: "Calculation",
     scenario: "Scenario",
   };
+
+  function startEdit(artifact: Artifact) {
+    setEditingId(artifact.id);
+    setEditingValue(artifact.title);
+    setTimeout(() => { inputRef.current?.select(); }, 0);
+  }
+
+  function commitEdit() {
+    if (editingId && editingValue.trim()) {
+      onRenameArtifact(editingId, editingValue.trim());
+    }
+    setEditingId(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
 
   return (
     <div style={{ height: "100%", overflowY: "auto" }}>
@@ -319,36 +341,67 @@ function MyPlanView({ artifacts, userName, onStartConversation }: {
             gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
             gap: 20,
           }}>
-            {artifacts.map((artifact) => (
-              <div
-                key={artifact.id}
-                style={{
-                  background: "#fff", border: `1px solid ${border}`,
-                  borderRadius: 12, padding: "24px", cursor: "pointer",
-                  transition: "box-shadow 0.15s",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "none")}
-              >
-                <p style={{
-                  fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-                  textTransform: "uppercase", color: sage, margin: "0 0 10px",
-                }}>
-                  {typeLabel[artifact.type]}
-                </p>
-                <p style={{ fontFamily: serif, fontSize: 18, color: ink, margin: "0 0 10px", fontWeight: 400, lineHeight: 1.3 }}>
-                  {artifact.title}
-                </p>
-                {artifact.subtitle && (
-                  <p style={{ fontSize: 24, fontWeight: 600, color: sage, margin: "0 0 14px", fontFamily: serif }}>
-                    {artifact.subtitle}
+            {artifacts.map((artifact) => {
+              const isEditing = editingId === artifact.id;
+              return (
+                <div
+                  key={artifact.id}
+                  style={{
+                    background: "#fff", border: `1px solid ${border}`,
+                    borderRadius: 12, padding: "24px",
+                    transition: "box-shadow 0.15s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.boxShadow = "none")}
+                >
+                  <p style={{
+                    fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+                    textTransform: "uppercase", color: sage, margin: "0 0 10px",
+                  }}>
+                    {typeLabel[artifact.type]}
                   </p>
-                )}
-                <p style={{ fontSize: 12, color: muted, margin: 0 }}>
-                  Saved {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(artifact.savedAt)}
-                </p>
-              </div>
-            ))}
+
+                  {isEditing ? (
+                    <input
+                      ref={inputRef}
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={commitEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                      style={{
+                        fontFamily: serif, fontSize: 18, color: ink, fontWeight: 400,
+                        lineHeight: 1.3, width: "100%", border: "none", borderBottom: `1.5px solid ${sage}`,
+                        background: "transparent", outline: "none", padding: "0 0 2px",
+                        margin: "0 0 10px", boxSizing: "border-box",
+                      }}
+                    />
+                  ) : (
+                    <p
+                      onClick={() => startEdit(artifact)}
+                      title="Click to rename"
+                      style={{
+                        fontFamily: serif, fontSize: 18, color: ink, margin: "0 0 10px",
+                        fontWeight: 400, lineHeight: 1.3, cursor: "text",
+                      }}
+                    >
+                      {artifact.title}
+                    </p>
+                  )}
+
+                  {artifact.subtitle && (
+                    <p style={{ fontSize: 24, fontWeight: 600, color: sage, margin: "0 0 14px", fontFamily: serif }}>
+                      {artifact.subtitle}
+                    </p>
+                  )}
+                  <p style={{ fontSize: 12, color: muted, margin: 0 }}>
+                    Saved {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(artifact.savedAt)}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -387,6 +440,10 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
 
   const handleArtifactSaved = useCallback((artifact: Artifact) => {
     setArtifacts((prev) => (prev.find((a) => a.id === artifact.id) ? prev : [artifact, ...prev]));
+  }, []);
+
+  const handleRenameArtifact = useCallback((id: string, title: string) => {
+    setArtifacts((prev) => prev.map((a) => a.id === id ? { ...a, title } : a));
   }, []);
 
   const handleSelectConversation = useCallback((id: string) => {
@@ -490,6 +547,7 @@ function AppShell({ userName, userEmail }: { userName: string; userEmail: string
               artifacts={artifacts}
               userName={userName}
               onStartConversation={handleNewConversation}
+              onRenameArtifact={handleRenameArtifact}
             />
           )}
         </div>
