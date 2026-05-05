@@ -328,8 +328,8 @@ export function ChatInterface({ userName, onConversationStart, onArtifactSaved }
           {/* Starter chips */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 14, width: "100%", marginBottom: 44,
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12, width: "100%", marginBottom: 44,
           }}>
             {CHIPS.map((chip) => (
               <button
