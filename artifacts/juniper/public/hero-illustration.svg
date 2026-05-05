@@ -416,50 +416,106 @@
 <path d="M1432,198 Q1448,182 1462,172"
       stroke="#2A2826" stroke-width="0.8" fill="none" stroke-linecap="round"/>
 
-<!-- Foliage masses — compact irregular cloud clusters -->
+<!-- ── Foliage — filled masses with dense pencil texture ── -->
+
+<!-- Left mid bough foliage puff -->
+<path d="M1303,259 Q1294,244 1300,226 Q1306,208 1322,200 Q1338,192 1356,198 Q1374,204 1376,222 Q1378,240 1362,252 Q1346,264 1326,264 Q1306,264 1302,252 Q1302,256 1303,259Z"
+      fill="#2A2826" opacity="0.08" stroke="#2A2826" stroke-width="0.8" stroke-opacity="0.60"/>
+<path d="M1306,255 Q1298,240 1304,222"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round" opacity="0.58"/>
+<path d="M1314,263 Q1308,246 1312,228"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1324,265 Q1320,248 1326,230"       stroke="#3A3632" stroke-width="0.48" fill="none" stroke-linecap="round" opacity="0.52"/>
+<path d="M1334,264 Q1334,246 1342,228"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1344,260 Q1348,242 1358,226"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1354,252 Q1362,234 1370,220"       stroke="#4A4642" stroke-width="0.40" fill="none" stroke-linecap="round" opacity="0.45"/>
+<path d="M1302,240 Q1316,228 1332,222"       stroke="#3A3632" stroke-width="0.48" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1302,252 Q1318,242 1336,236"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1304,224 Q1316,212 1332,206"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1314,212 Q1328,202 1346,198"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.44"/>
+
+<!-- Left sub-bough foliage puff -->
+<path d="M1334,330 Q1328,314 1336,298 Q1344,282 1360,278 Q1376,274 1388,284 Q1400,294 1398,312 Q1396,330 1380,340 Q1364,350 1348,346 Q1332,342 1332,332 Q1332,331 1334,330Z"
+      fill="#2A2826" opacity="0.08" stroke="#2A2826" stroke-width="0.8" stroke-opacity="0.58"/>
+<path d="M1338,328 Q1332,312 1338,296"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round" opacity="0.56"/>
+<path d="M1348,340 Q1344,322 1350,306"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round" opacity="0.53"/>
+<path d="M1360,344 Q1360,326 1368,310"       stroke="#3A3632" stroke-width="0.48" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1370,342 Q1374,324 1382,308"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1378,336 Q1386,318 1392,304"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.45"/>
+<path d="M1332,316 Q1346,306 1362,300"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1334,302 Q1348,294 1364,288"       stroke="#3A3632" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.45"/>
+
+<!-- Left lower bough foliage -->
+<path d="M1428,374 Q1422,360 1428,344 Q1434,328 1450,326 Q1466,324 1474,338 Q1482,352 1476,368 Q1470,384 1452,386 Q1434,388 1428,376 Q1428,375 1428,374Z"
+      fill="#2A2826" opacity="0.07" stroke="#2A2826" stroke-width="0.75" stroke-opacity="0.55"/>
+<path d="M1432,372 Q1426,358 1432,342"       stroke="#3A3632" stroke-width="0.48" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1442,382 Q1440,366 1448,350"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1454,384 Q1456,368 1464,354"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.45"/>
+<path d="M1428,358 Q1442,348 1458,344"       stroke="#3A3632" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.45"/>
+<path d="M1428,370 Q1444,362 1462,358"       stroke="#4A4642" stroke-width="0.38" fill="none" stroke-linecap="round" opacity="0.42"/>
+
+<!-- ══ MAIN CROWN — 3 overlapping filled puffs ══ -->
+<!-- Puff 1: left-centre mass -->
+<path d="M1352,242 Q1344,220 1352,196 Q1360,172 1382,158 Q1404,144 1428,146 Q1452,148 1466,166 Q1480,184 1472,208 Q1464,232 1442,248 Q1420,264 1394,264 Q1368,264 1354,250 Q1352,246 1352,242Z"
+      fill="#2A2826" opacity="0.10" stroke="#2A2826" stroke-width="1.0" stroke-opacity="0.70"/>
+<!-- Puff 2: right mass -->
+<path d="M1440,238 Q1436,214 1448,192 Q1460,170 1482,160 Q1504,150 1524,160 Q1544,170 1546,192 Q1548,214 1532,232 Q1516,250 1492,254 Q1468,258 1450,246 Q1440,240 1440,238Z"
+      fill="#2A2826" opacity="0.09" stroke="#2A2826" stroke-width="0.9" stroke-opacity="0.62"/>
+<!-- Puff 3: crown top -->
+<path d="M1382,182 Q1384,160 1398,144 Q1412,128 1432,126 Q1452,124 1466,138 Q1480,152 1474,174 Q1468,196 1448,208 Q1428,220 1406,218 Q1384,216 1380,196 Q1378,189 1382,182Z"
+      fill="#2A2826" opacity="0.11" stroke="#2A2826" stroke-width="1.0" stroke-opacity="0.74"/>
+
+<!-- Crown texture — dense marks, puff 1 -->
+<path d="M1356,240 Q1348,224 1354,206"       stroke="#2A2826" stroke-width="0.58" fill="none" stroke-linecap="round" opacity="0.62"/>
+<path d="M1366,252 Q1360,234 1366,214"       stroke="#2A2826" stroke-width="0.56" fill="none" stroke-linecap="round" opacity="0.60"/>
+<path d="M1378,258 Q1374,240 1382,220"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.57"/>
+<path d="M1390,260 Q1390,242 1400,222"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1402,260 Q1406,242 1418,222"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.53"/>
+<path d="M1414,256 Q1420,238 1434,218"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.52"/>
+<path d="M1426,250 Q1436,232 1450,212"       stroke="#4A4642" stroke-width="0.47" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1436,244 Q1448,226 1462,208"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1446,236 Q1458,218 1468,202"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.46"/>
+<path d="M1350,222 Q1362,210 1380,202"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.57"/>
+<path d="M1350,234 Q1364,224 1382,216"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1354,208 Q1368,196 1386,188"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.54"/>
+<path d="M1364,196 Q1380,184 1400,178"       stroke="#4A4642" stroke-width="0.47" fill="none" stroke-linecap="round" opacity="0.52"/>
+<path d="M1376,186 Q1394,174 1414,168"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1390,174 Q1408,162 1430,156"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1404,164 Q1422,152 1444,148"       stroke="#4A4642" stroke-width="0.40" fill="none" stroke-linecap="round" opacity="0.45"/>
+<!-- Crown texture — puff 2 -->
+<path d="M1444,236 Q1440,218 1448,198"       stroke="#2A2826" stroke-width="0.58" fill="none" stroke-linecap="round" opacity="0.60"/>
+<path d="M1456,246 Q1454,228 1464,208"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.57"/>
+<path d="M1468,250 Q1470,232 1482,212"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1480,250 Q1484,232 1498,214"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.53"/>
+<path d="M1492,248 Q1500,230 1514,212"       stroke="#4A4642" stroke-width="0.47" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1502,244 Q1512,226 1526,208"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1444,218 Q1458,206 1476,198"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1448,204 Q1464,192 1482,184"       stroke="#3A3632" stroke-width="0.48" fill="none" stroke-linecap="round" opacity="0.52"/>
+<path d="M1456,192 Q1472,180 1492,172"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1468,182 Q1486,170 1506,164"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.47"/>
+<!-- Crown texture — puff 3 top -->
+<path d="M1386,180 Q1384,164 1396,150"       stroke="#2A2826" stroke-width="0.58" fill="none" stroke-linecap="round" opacity="0.62"/>
+<path d="M1396,188 Q1396,170 1410,154"       stroke="#2A2826" stroke-width="0.56" fill="none" stroke-linecap="round" opacity="0.60"/>
+<path d="M1408,194 Q1410,174 1424,158"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.57"/>
+<path d="M1420,198 Q1424,178 1438,162"       stroke="#3A3632" stroke-width="0.52" fill="none" stroke-linecap="round" opacity="0.55"/>
+<path d="M1432,200 Q1440,180 1454,164"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.53"/>
+<path d="M1444,200 Q1452,180 1464,164"       stroke="#4A4642" stroke-width="0.47" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1456,198 Q1462,178 1470,162"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1386,166 Q1400,154 1416,148"       stroke="#3A3632" stroke-width="0.50" fill="none" stroke-linecap="round" opacity="0.54"/>
+<path d="M1396,156 Q1412,144 1430,138"       stroke="#4A4642" stroke-width="0.47" fill="none" stroke-linecap="round" opacity="0.50"/>
+<path d="M1408,148 Q1424,136 1444,130"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1420,140 Q1438,130 1458,126"       stroke="#4A4642" stroke-width="0.42" fill="none" stroke-linecap="round" opacity="0.45"/>
+
 <!-- Right bough foliage -->
-<path d="M1594,448 Q1598,434 1596,422"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1590,454 Q1596,440 1592,428"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1582,442 Q1590,428 1586,416"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1576,448 Q1566,436 1562,422"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<!-- Left lower foliage -->
-<path d="M1450,382 Q1440,370 1434,356"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1454,388 Q1442,378 1436,364"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1442,376 Q1434,362 1428,348"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<!-- Left sub-bough foliage -->
-<path d="M1358,340 Q1348,328 1342,314"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1362,346 Q1350,336 1344,322"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1350,334 Q1342,320 1336,306"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1364,338 Q1374,324 1378,310"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<!-- Left mid bough foliage -->
-<path d="M1328,268 Q1318,256 1312,242"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1332,274 Q1320,264 1314,250"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1322,262 Q1314,248 1308,234"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1336,266 Q1346,252 1350,238"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1308,238 Q1300,224 1296,210"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1312,232 Q1304,218 1300,204"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<!-- Upper left canopy foliage -->
-<path d="M1368,192 Q1358,180 1352,166"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1372,198 Q1360,188 1354,174"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1362,186 Q1354,172 1348,158"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1376,190 Q1386,176 1390,162"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1350,162 Q1342,148 1338,136"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1354,156 Q1346,142 1342,130"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<!-- Upper right canopy foliage -->
-<path d="M1488,192 Q1498,178 1502,164"       stroke="#2A2826" stroke-width="0.6" fill="none" stroke-linecap="round"/>
-<path d="M1484,198 Q1472,186 1468,172"       stroke="#2A2826" stroke-width="0.55" fill="none" stroke-linecap="round"/>
-<path d="M1490,186 Q1500,172 1504,158"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1476,188 Q1466,174 1462,160"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1460,156 Q1452,142 1448,130"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1464,152 Q1474,138 1478,124"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<!-- Branch tips -->
-<path d="M1398,176 Q1390,162 1386,150"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
-<path d="M1402,172 Q1412,158 1416,146"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round"/>
-<path d="M1460,168 Q1452,154 1448,142"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+<path d="M1566,438 Q1562,422 1568,408 Q1574,394 1588,392 Q1596,390 1598,398"
+      stroke="#2A2826" stroke-width="0.75" fill="none" stroke-linecap="round" opacity="0.58"/>
+<path d="M1570,434 Q1576,418 1590,412"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round" opacity="0.54"/>
+<path d="M1578,442 Q1586,426 1598,420"       stroke="#3A3632" stroke-width="0.5" fill="none" stroke-linecap="round" opacity="0.52"/>
+<path d="M1586,434 Q1592,420 1598,410"       stroke="#4A4642" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+<path d="M1560,424 Q1572,412 1586,408"       stroke="#3A3632" stroke-width="0.45" fill="none" stroke-linecap="round" opacity="0.48"/>
+
 <!-- Top wisps -->
-<path d="M1346,132 Q1338,118 1334,104"       stroke="#4A4642" stroke-width="0.35" fill="none" stroke-linecap="round" opacity="0.70"/>
-<path d="M1350,128 Q1360,114 1364,100"       stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
-<path d="M1476,120 Q1484,106 1486,92"        stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
+<path d="M1390,124 Q1382,108 1378,92"        stroke="#4A4642" stroke-width="0.35" fill="none" stroke-linecap="round" opacity="0.70"/>
+<path d="M1396,120 Q1406,104 1410,88"        stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
+<path d="M1458,128 Q1466,112 1468,96"        stroke="#4A4642" stroke-width="0.3"  fill="none" stroke-linecap="round" opacity="0.65"/>
 
 <path d="M320,662 Q500,660 700,661 Q950,659 1200,661 Q1380,660 1560,663" stroke="#3A3632" stroke-width="0.5" fill="none" opacity="0.45"/>
 <path d="M420,668 Q600,666 800,667 Q1000,666 1200,668 Q1360,667 1500,670" stroke="#4A4642" stroke-width="0.35" fill="none" opacity="0.35"/>
