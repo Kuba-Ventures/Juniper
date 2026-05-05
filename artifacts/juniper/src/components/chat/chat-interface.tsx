@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Bookmark, BookmarkCheck } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
 import { UserProfile, formatProfileContext } from "@/lib/profile";
 
@@ -128,15 +128,30 @@ type Props = {
 };
 
 // ── ChatInterface ──────────────────────────────────────────────────────────
-export function ChatInterface({ userName, profile, onConversationStart }: Props) {
+export function ChatInterface({ userName, profile, onConversationStart, onArtifactSaved }: Props) {
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+  const [savedMsgIds, setSavedMsgIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSaveToMyPlan = useCallback((msg: DisplayMessage) => {
+    const firstLine = msg.content.split("\n")[0].trim();
+    const title = firstLine.length > 64 ? firstLine.slice(0, 61) + "…" : firstLine;
+    const artifact: Artifact = {
+      id: msg.id,
+      type: "scenario",
+      title,
+      savedAt: new Date(),
+    };
+    onArtifactSaved(artifact);
+    setSavedMsgIds((prev) => new Set(prev).add(msg.id));
+  }, [onArtifactSaved]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -494,6 +509,8 @@ export function ChatInterface({ userName, profile, onConversationStart }: Props)
           {displayMessages.map((msg) => (
             <div
               key={msg.id}
+              onMouseEnter={() => setHoveredMsgId(msg.id)}
+              onMouseLeave={() => setHoveredMsgId(null)}
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -544,6 +561,38 @@ export function ChatInterface({ userName, profile, onConversationStart }: Props)
                   <MessageText text={msg.content} isError={msg.isError} />
                 )}
               </div>
+
+              {/* Save to My Plan button */}
+              {msg.role === "juniper" && !msg.isStreaming && msg.content && (
+                <button
+                  onClick={() => handleSaveToMyPlan(msg)}
+                  aria-label="Save to My Plan"
+                  style={{
+                    marginTop: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: `1px solid ${savedMsgIds.has(msg.id) ? sage : border}`,
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    color: savedMsgIds.has(msg.id) ? sage : muted,
+                    cursor: savedMsgIds.has(msg.id) ? "default" : "pointer",
+                    fontFamily: sans,
+                    fontWeight: 500,
+                    opacity: hoveredMsgId === msg.id || savedMsgIds.has(msg.id) ? 1 : 0,
+                    transition: "opacity 0.15s, border-color 0.15s, color 0.15s",
+                    pointerEvents: savedMsgIds.has(msg.id) ? "none" : "auto",
+                  }}
+                >
+                  {savedMsgIds.has(msg.id)
+                    ? <BookmarkCheck size={12} strokeWidth={2} />
+                    : <Bookmark size={12} strokeWidth={2} />
+                  }
+                  {savedMsgIds.has(msg.id) ? "Saved to My Plan" : "Save to My Plan"}
+                </button>
+              )}
             </div>
           ))}
         </div>
