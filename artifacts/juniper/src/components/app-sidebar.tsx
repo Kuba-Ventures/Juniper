@@ -311,7 +311,6 @@ export function AppSidebar({
             >
               {(
                 [
-                  { label: "Settings", action: () => setUserMenuOpen(false) },
                   { label: "Invite partner (coming soon)", action: () => {}, disabled: true },
                   { label: "Log out", action: onLogout, danger: true },
                 ] as { label: string; action: () => void; disabled?: boolean; danger?: boolean }[]
