@@ -175,7 +175,7 @@ export function AppSidebar({
             </p>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-              {artifacts.map((a) => (
+              {artifacts.slice(0, 3).map((a) => (
                 <li key={a.id}>
                   <button
                     onClick={() => onSelectArtifact(a.id)}
