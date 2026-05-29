@@ -76,9 +76,13 @@ export default async function handler(req: Request): Promise<Response> {
   const systemPrompt = step.buildSystemPrompt(body.context ?? { collected: {} });
   const client = new Anthropic({ apiKey });
 
+  // The synthesis step emits a large structured JSON; give it more headroom.
+  const isSynthesisStep = body.step_index === script.steps.length - 1;
+  const maxTokens = isSynthesisStep ? 4000 : 2000;
+
   const stream = client.messages.stream({
     model: "claude-sonnet-4-6",
-    max_tokens: 1500,
+    max_tokens: maxTokens,
     system: systemPrompt,
     messages: body.messages,
   });

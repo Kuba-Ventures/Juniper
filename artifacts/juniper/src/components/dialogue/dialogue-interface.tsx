@@ -35,6 +35,20 @@ function stripTags(text: string): string {
   return text.replace(STEP_TAG_RE, "").replace(PLAN_TAG_RE, "").trim();
 }
 
+// While streaming, the LLM emits the tag character-by-character. The full-tag
+// regex doesn't match a partial tag, so the user briefly sees raw "<STEP_COM…".
+// This function also hides any open "<" near the end of the buffer that hasn't
+// been closed by ">" yet, since prose has no legitimate "<" usage (enforced via
+// system prompt).
+function displayContent(fullText: string): string {
+  let s = fullText.replace(STEP_TAG_RE, "").replace(PLAN_TAG_RE, "");
+  const lastOpen = s.lastIndexOf("<");
+  if (lastOpen >= 0 && !s.slice(lastOpen).includes(">")) {
+    s = s.slice(0, lastOpen).trimEnd();
+  }
+  return s;
+}
+
 function tryParseStepData(text: string): Record<string, unknown> | null {
   const match = text.match(STEP_TAG_RE);
   if (!match) return null;
@@ -230,7 +244,7 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
               fullText += parsed.text;
               setMessages((prev) => {
                 const next = [...prev];
-                next[next.length - 1] = { role: "assistant", content: stripTags(fullText) };
+                next[next.length - 1] = { role: "assistant", content: displayContent(fullText) };
                 return next;
               });
             }
