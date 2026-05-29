@@ -339,11 +339,12 @@ What to do:
 
 Rules for the plan JSON:
 - Use the values you actually collected in earlier steps. The example above is the SHAPE, not the values.
-- KPIs should be the 2–3 most actionable for this user's situation. Always include "Down payment saved". Include a debt KPI if they prioritized debt. Include "Months to readiness" estimating timeline given current savings rate.
-- Milestones: 3–5 concrete checkpoints with target_value and current_value (current_value 0 if not yet underway).
-- Next actions: 3–5 small, concrete tasks they can start this week.
+- KPIs: EXACTLY 3 entries — "Down payment saved", "Months to readiness", and one situation-specific KPI (e.g. "Debt to pay down" if applicable, else "Savings runway" or "Income growth needed").
+- Milestones: EXACTLY 3 entries — concrete checkpoints with target_value and current_value (current_value 0 if not yet underway).
+- Next actions: EXACTLY 3 entries — small, concrete tasks they can start this week.
 - Keep all numbers as numbers (not strings). Dates as "YYYY-MM" strings.
-- The <PLAN_COMPLETE> tag and JSON must be on lines by themselves at the very end.`,
+- The <PLAN_COMPLETE> tag and JSON must be on lines by themselves at the very end. The closing </PLAN_COMPLETE> tag MUST be present — do not let the response end before it.
+- Keep the JSON COMPACT. The summary prose can be expressive; the JSON should be terse.`,
     },
   ],
 };

@@ -35,13 +35,17 @@ function stripTags(text: string): string {
   return text.replace(STEP_TAG_RE, "").replace(PLAN_TAG_RE, "").trim();
 }
 
-// While streaming, the LLM emits the tag character-by-character. The full-tag
-// regex doesn't match a partial tag, so the user briefly sees raw "<STEP_COM…".
-// This function also hides any open "<" near the end of the buffer that hasn't
-// been closed by ">" yet, since prose has no legitimate "<" usage (enforced via
-// system prompt).
+// Display layer: hide tags during streaming so the user never sees raw JSON
+// or partial tag markers. Three cases:
+//   (a) Fully formed tag pair: strip it entirely.
+//   (b) Open tag present, close tag not yet streamed: hide from open tag on.
+//   (c) Partial tag prefix at end (e.g. "<PL"): hide from "<" on.
 function displayContent(fullText: string): string {
   let s = fullText.replace(STEP_TAG_RE, "").replace(PLAN_TAG_RE, "");
+  for (const openTag of ["<STEP_COMPLETE>", "<PLAN_COMPLETE>"]) {
+    const idx = s.indexOf(openTag);
+    if (idx >= 0) s = s.slice(0, idx).trimEnd();
+  }
   const lastOpen = s.lastIndexOf("<");
   if (lastOpen >= 0 && !s.slice(lastOpen).includes(">")) {
     s = s.slice(0, lastOpen).trimEnd();
@@ -59,14 +63,48 @@ function tryParseStepData(text: string): Record<string, unknown> | null {
   }
 }
 
+// Tolerant plan parser: prefers the wrapped tag, but falls back to a
+// brace-balanced extraction starting at "<PLAN_COMPLETE>" if the close
+// tag was truncated (e.g. max_tokens hit before "</PLAN_COMPLETE>").
 function tryParsePlanData(text: string): Record<string, unknown> | null {
-  const match = text.match(PLAN_TAG_RE);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return null;
+  const wrapped = text.match(PLAN_TAG_RE);
+  if (wrapped) {
+    try {
+      return JSON.parse(wrapped[1]);
+    } catch {
+      /* fall through */
+    }
   }
+  const openIdx = text.indexOf("<PLAN_COMPLETE>");
+  if (openIdx < 0) return null;
+  const bodyStart = openIdx + "<PLAN_COMPLETE>".length;
+  const after = text.slice(bodyStart);
+  // Find the first "{" and balance braces to find the matching closer.
+  const start = after.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < after.length; i++) {
+    const c = after[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === "\"") { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === "{") depth += 1;
+    else if (c === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        const candidate = after.slice(start, i + 1);
+        try {
+          return JSON.parse(candidate);
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
 }
 
 type Props = {

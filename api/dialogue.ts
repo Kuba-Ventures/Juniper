@@ -79,7 +79,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // The synthesis step emits a large structured JSON; give it more headroom.
   const isSynthesisStep = body.step_index === script.steps.length - 1;
-  const maxTokens = isSynthesisStep ? 4000 : 2000;
+  const maxTokens = isSynthesisStep ? 8000 : 2000;
 
   const stream = client.messages.stream({
     model: "claude-sonnet-4-6",
