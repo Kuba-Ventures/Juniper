@@ -142,7 +142,7 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
                 display: "inline-block",
               }}
             />
-            Saved to your account
+            Saved · find it on your dashboard
           </span>
         </div>
         <h1

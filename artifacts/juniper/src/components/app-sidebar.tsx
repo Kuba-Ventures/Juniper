@@ -91,9 +91,10 @@ export function AppSidebar({
     .toUpperCase()
     .slice(0, 2);
 
-  const isDashboard = location === "/app" || location === "/app/";
+  const isDashboard =
+    location === "/app" || location === "/app/" || location.startsWith("/app/plans/");
   const isChat = location.startsWith("/app/chat");
-  const isPlans = location.startsWith("/app/plans");
+  const isPlans = location === "/app/plans" || location === "/app/plans/";
   const isConnections = location.startsWith("/app/connections");
 
   return (
@@ -141,7 +142,7 @@ export function AppSidebar({
         </button>
         <button onClick={() => setLocation("/app/plans")} style={navItemStyle(isPlans)}>
           <BookOpen size={15} color={isPlans ? sage : muted} strokeWidth={1.8} />
-          <span style={navLabelStyle(isPlans)}>Saved items</span>
+          <span style={navLabelStyle(isPlans)}>Saved from chat</span>
         </button>
         <button onClick={() => setLocation("/app/connections")} style={navItemStyle(isConnections)}>
           <Link2 size={15} color={isConnections ? sage : muted} strokeWidth={1.8} />
