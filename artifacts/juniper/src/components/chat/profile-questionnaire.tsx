@@ -28,7 +28,7 @@ const FIELDS: Array<{
   { key: "monthlyIncome",   label: "Monthly take-home pay",     hint: "After taxes and deductions" },
   { key: "monthlyExpenses", label: "Monthly essential expenses", hint: "Rent, utilities, subscriptions, groceries, minimum debt payments" },
   { key: "totalSavings",    label: "Total savings",             hint: "Checking, savings, and investments combined" },
-  { key: "totalDebt",       label: "Total debt",                hint: "All loans and credit card balances combined — enter 0 if none" },
+  { key: "totalDebt",       label: "Total debt",                hint: "All loans and credit card balances combined. Enter 0 if none." },
 ];
 
 type Props = {

@@ -159,7 +159,7 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
               lineHeight: 1.55,
             }}
           >
-            This plan saved without KPIs, milestones, or next actions — likely a
+            This plan saved without KPIs, milestones, or next actions. Likely a
             generation error. Tap "Redo this plan" to try again.
           </div>
         )}
@@ -300,5 +300,5 @@ function formatKpi(v: number, unit: string): string {
 
 function formatVal(v: unknown): string {
   if (typeof v === "number") return v.toLocaleString();
-  return String(v ?? "—");
+  return String(v ?? "-");
 }

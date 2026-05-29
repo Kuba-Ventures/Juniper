@@ -20,7 +20,7 @@ export const DOMAINS: Array<{
   {
     id: "home-buying",
     title: "Home Buying",
-    description: "Map out affordability, down payment, and timing — together.",
+    description: "Map out affordability, down payment, and timing together.",
     icon: <Home {...ICON_PROPS} />,
   },
   {
