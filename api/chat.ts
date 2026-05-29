@@ -65,8 +65,9 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-  if (!apiKey || !jwtSecret) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const legacySecret = process.env.SUPABASE_JWT_SECRET;
+  if (!apiKey || !supabaseUrl) {
     return new Response(
       JSON.stringify({ error: "Server not configured" }),
       { status: 500, headers: { "Content-Type": "application/json", ...cors } },
@@ -80,7 +81,10 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { "Content-Type": "application/json", ...cors },
     });
   }
-  const payload = await verifySupabaseJwt(token, jwtSecret);
+  const payload = await verifySupabaseJwt(token, {
+    supabaseUrl,
+    legacySecret,
+  });
   if (!payload?.sub) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,

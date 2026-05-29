@@ -39,7 +39,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   const token = extractBearerToken(req);
   if (!token) return unauthorized();
-  const payload = await verifySupabaseJwt(token, SUPABASE_JWT_SECRET);
+  const payload = await verifySupabaseJwt(token, {
+    supabaseUrl: SUPABASE_URL,
+    legacySecret: SUPABASE_JWT_SECRET,
+  });
   if (!payload?.sub) return unauthorized();
 
   const userId = payload.sub;
