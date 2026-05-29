@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { getScript, type DialogueContext } from "./_dialogue-scripts";
+import { readEnv } from "./_env";
 
 export const config = { runtime: "edge" };
 
@@ -32,9 +33,9 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response("Method not allowed", { status: 405, headers: cors });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  const supabaseUrl = process.env.SUPABASE_URL?.trim();
-  const legacySecret = process.env.SUPABASE_JWT_SECRET?.trim();
+  const apiKey = readEnv("ANTHROPIC_API_KEY");
+  const supabaseUrl = readEnv("SUPABASE_URL");
+  const legacySecret = readEnv("SUPABASE_JWT_SECRET");
   if (!apiKey || !supabaseUrl) {
     return new Response(JSON.stringify({ error: "Server not configured" }), {
       status: 500,
