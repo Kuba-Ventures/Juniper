@@ -2,9 +2,9 @@ import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 
 export const config = { runtime: "edge" };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+const SUPABASE_URL = process.env.SUPABASE_URL?.trim();
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim();
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET?.trim();
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
