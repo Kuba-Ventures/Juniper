@@ -417,14 +417,22 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
 
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
-          {messages.map((m, i) => (
-            <MessageBubble key={i} role={m.role} content={m.content} />
-          ))}
-          {streaming &&
-            messages[messages.length - 1]?.role === "assistant" &&
-            messages[messages.length - 1]?.content === "" && (
-              <MessageBubble role="assistant" content="…" />
-            )}
+          {messages.map((m, i) => {
+            const isLastAndStreaming =
+              streaming && i === messages.length - 1 && m.role === "assistant";
+            // Skip empty assistant bubbles (tag-only responses) once streaming
+            // for that slot is done — they leave a ghost J behind otherwise.
+            if (m.role === "assistant" && m.content.trim() === "" && !isLastAndStreaming) {
+              return null;
+            }
+            return (
+              <MessageBubble
+                key={i}
+                role={m.role}
+                content={isLastAndStreaming && m.content === "" ? "…" : m.content}
+              />
+            );
+          })}
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -509,6 +517,26 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
   );
 }
 
+function JuniperBerry({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10" cy="14" r="8" fill="#4A5EC8" />
+      <circle cx="10" cy="14" r="8" fill="url(#dialogueBerryShade)" />
+      <ellipse cx="7" cy="11" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.32)" transform="rotate(-30 7 11)" />
+      <path
+        d="M10 4.5 L10.9 7.2 L13.6 6.2 L11.7 8.8 L14.2 10.4 L11.2 10.1 L11 13 L10 10.8 L9 13 L8.8 10.1 L5.8 10.4 L8.3 8.8 L6.4 6.2 L9.1 7.2 Z"
+        fill="#D4922A"
+      />
+      <defs>
+        <radialGradient id="dialogueBerryShade" cx="60%" cy="65%" r="55%">
+          <stop offset="0%" stopColor="transparent" />
+          <stop offset="100%" stopColor="rgba(20,18,60,0.28)" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
+}
+
 function MessageBubble({ role, content }: { role: "user" | "assistant"; content: string }) {
   if (role === "user") {
     return (
@@ -537,21 +565,14 @@ function MessageBubble({ role, content }: { role: "user" | "assistant"; content:
         style={{
           width: 26,
           height: 26,
-          borderRadius: "50%",
-          background: "rgba(92,122,101,0.10)",
-          color: sage,
-          fontSize: 13,
-          fontWeight: 600,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: serif,
-          fontStyle: "italic",
           flexShrink: 0,
           marginTop: 2,
         }}
       >
-        J
+        <JuniperBerry size={20} />
       </div>
       <div
         style={{
