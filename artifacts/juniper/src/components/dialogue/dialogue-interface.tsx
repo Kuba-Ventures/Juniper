@@ -483,7 +483,7 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
             const isLastAndStreaming =
               streaming && i === messages.length - 1 && m.role === "assistant";
             // Skip empty assistant bubbles (tag-only responses) once streaming
-            // for that slot is done — they leave a ghost J behind otherwise.
+            // for that slot is done.
             if (m.role === "assistant" && m.content.trim() === "" && !isLastAndStreaming) {
               return null;
             }
@@ -495,6 +495,7 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
               />
             );
           })}
+          {streaming && stepIndex === script.steps.length - 1 && <SynthesisBanner />}
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -575,6 +576,65 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SynthesisBanner() {
+  return (
+    <div
+      style={{
+        margin: "8px 0",
+        padding: "18px 22px",
+        background: "rgba(92,122,101,0.07)",
+        border: `1px solid rgba(92,122,101,0.18)`,
+        borderRadius: 14,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: serif,
+          fontSize: 16,
+          color: ink,
+          margin: 0,
+          fontWeight: 400,
+        }}
+      >
+        Building your plan…
+      </p>
+      <p style={{ fontSize: 13, color: muted, margin: 0, lineHeight: 1.55 }}>
+        Pulling everything you've shared into a structured plan with KPIs, milestones, and next actions. Takes about 30 seconds.
+      </p>
+      <div
+        style={{
+          height: 3,
+          borderRadius: 2,
+          background: "rgba(92,122,101,0.12)",
+          overflow: "hidden",
+          position: "relative",
+          marginTop: 4,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            height: "100%",
+            width: "40%",
+            background: sage,
+            borderRadius: 2,
+            animation: "junSynthesisBar 1.4s ease-in-out infinite",
+          }}
+        />
+      </div>
+      <style>{`@keyframes junSynthesisBar {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+      }`}</style>
     </div>
   );
 }

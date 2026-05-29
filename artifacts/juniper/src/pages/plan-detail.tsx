@@ -101,19 +101,50 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
   return (
     <div style={{ height: "100%", overflowY: "auto", background: cream }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "44px 28px 80px" }}>
-        <p
+        <div
           style={{
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            color: sage,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
             margin: "0 0 14px",
-            fontFamily: sans,
           }}
         >
-          Your Home Buying plan
-        </p>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: sage,
+              margin: 0,
+              fontFamily: sans,
+            }}
+          >
+            Your Home Buying plan
+          </p>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              color: muted,
+              fontFamily: sans,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: sage,
+                display: "inline-block",
+              }}
+            />
+            Saved to your account
+          </span>
+        </div>
         <h1
           style={{
             fontFamily: serif,
