@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 
 export const config = { runtime: "edge" };
 
@@ -51,27 +52,40 @@ function buildSystemPrompt(hasPartner: boolean): string {
   return BASE_PROMPT + (hasPartner ? PARTNER_CONTEXT : SOLO_CONTEXT);
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: cors });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!apiKey || !jwtSecret) {
     return new Response(
-      JSON.stringify({ error: "ANTHROPIC_API_KEY is not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: "Server not configured" }),
+      { status: 500, headers: { "Content-Type": "application/json", ...cors } },
     );
+  }
+
+  const token = extractBearerToken(req);
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json", ...cors },
+    });
+  }
+  const payload = await verifySupabaseJwt(token, jwtSecret);
+  if (!payload?.sub) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json", ...cors },
+    });
   }
 
   const { messages, hasPartner = false, profileContext = "" } = (await req.json()) as {
@@ -116,7 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Access-Control-Allow-Origin": "*",
+      ...cors,
     },
   });
 }

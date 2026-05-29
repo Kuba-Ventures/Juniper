@@ -3,6 +3,7 @@ import { ArrowUp, Bookmark, BookmarkCheck, ClipboardList } from "lucide-react";
 import { Artifact } from "@/components/app-sidebar";
 import { UserProfile, formatProfileContext } from "@/lib/profile";
 import { InlineChart, parseSegments, ChartSpec } from "@/components/chat/inline-chart";
+import { getAccessToken } from "@/lib/supabase";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -263,9 +264,13 @@ export function ChatInterface({ userName, profile, onConversationStart, onArtifa
       let fullText = "";
 
       try {
+        const token = await getAccessToken();
         const response = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             messages: newApiMessages,
             hasPartner: false,
