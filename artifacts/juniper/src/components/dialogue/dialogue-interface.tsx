@@ -338,7 +338,35 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
       const nextActions = (planData.next_actions ?? []) as PlanNextAction[];
       const currentState = (planData.current_state ?? null) as Record<string, unknown> | null;
 
-      const saved = await savePlan({
+      // Build a local completed plan from the parsed data so the UI can
+      // transition immediately, without waiting for the server save.
+      const nowIso = new Date().toISOString();
+      const localCompleted: Plan = {
+        id: initialPlan?.id ?? "",
+        user_id: initialPlan?.user_id ?? "",
+        domain,
+        status: "completed",
+        has_partner: currentHasPartner,
+        partner_first_name: currentPartnerName,
+        goal: goal ?? null,
+        current_state: currentState,
+        kpis,
+        milestones,
+        next_actions: nextActions,
+        dialogue_history: historyRef.current,
+        current_step_index: currentStep,
+        partner_invite_status: "none",
+        created_at: initialPlan?.created_at ?? nowIso,
+        updated_at: nowIso,
+      };
+
+      setCompletedPlan(localCompleted);
+      onPlanCompleted(localCompleted);
+
+      // Persist in the background. If the save fails the UI still shows the
+      // plan; the next refresh will surface the discrepancy and the user can
+      // hit "Redo this plan".
+      void savePlan({
         domain,
         status: "completed",
         has_partner: currentHasPartner,
@@ -352,10 +380,6 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         current_step_index: currentStep,
       });
 
-      if (saved) {
-        setCompletedPlan(saved);
-        onPlanCompleted(saved);
-      }
       return;
     }
 
