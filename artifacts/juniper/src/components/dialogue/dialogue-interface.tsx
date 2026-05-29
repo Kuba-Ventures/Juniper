@@ -7,7 +7,15 @@ import {
   nextVisibleStepIndex,
   type ClientDialogueContext,
 } from "@/lib/dialogue-scripts";
-import { savePlan, type DialogueTurn, type Plan, type PlanGoal, type PlanKpi, type PlanMilestone, type PlanNextAction } from "@/lib/plans";
+import {
+  savePlan,
+  type DialogueTurn,
+  type Plan,
+  type PlanGoal,
+  type PlanKpi,
+  type PlanMilestone,
+  type PlanNextAction,
+} from "@/lib/plans";
 import { UserProfile } from "@/lib/profile";
 
 const sage = "#5C7A65";
@@ -57,6 +65,7 @@ type Props = {
 export function DialogueInterface({ domain, profile, initialPlan, onPlanCompleted }: Props) {
   const script = getClientScript(domain);
 
+  // ── State (for rendering) ─────────────────────────────────────────────
   const [messages, setMessages] = useState<ApiMessage[]>(() => {
     if (initialPlan?.dialogue_history?.length) {
       return initialPlan.dialogue_history.map((t) => ({ role: t.role, content: t.content }));
@@ -64,39 +73,69 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
     return [];
   });
   const [stepIndex, setStepIndex] = useState<number>(initialPlan?.current_step_index ?? 0);
-  const [collected, setCollected] = useState<Record<string, unknown>>(() => {
-    if (!initialPlan?.dialogue_history) return {};
-    const acc: Record<string, unknown> = {};
-    for (const turn of initialPlan.dialogue_history) {
-      if (turn.step_complete_data) Object.assign(acc, turn.step_complete_data);
-    }
-    return acc;
-  });
   const [hasPartner, setHasPartner] = useState<boolean | null>(initialPlan?.has_partner ?? null);
-  const [partnerName, setPartnerName] = useState<string | null>(
-    initialPlan?.partner_first_name ?? null,
-  );
+  const [partnerName, setPartnerName] = useState<string | null>(initialPlan?.partner_first_name ?? null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [errored, setErrored] = useState(false);
   const [completedPlan, setCompletedPlan] = useState<Plan | null>(
     initialPlan?.status === "completed" ? initialPlan : null,
   );
+  const [autoStartPending, setAutoStartPending] = useState(false);
+
+  // ── Refs (for closure-stable reads inside async sendTurn) ─────────────
+  const messagesRef = useRef<ApiMessage[]>(messages);
+  messagesRef.current = messages;
+
+  const stepIndexRef = useRef<number>(stepIndex);
+  stepIndexRef.current = stepIndex;
+
+  const hasPartnerRef = useRef<boolean | null>(hasPartner);
+  hasPartnerRef.current = hasPartner;
+
+  const partnerNameRef = useRef<string | null>(partnerName);
+  partnerNameRef.current = partnerName;
+
+  const collectedRef = useRef<Record<string, unknown>>(
+    (() => {
+      if (!initialPlan?.dialogue_history) return {};
+      const acc: Record<string, unknown> = {};
+      for (const turn of initialPlan.dialogue_history) {
+        if (turn.step_complete_data) Object.assign(acc, turn.step_complete_data);
+      }
+      return acc;
+    })(),
+  );
+
+  const historyRef = useRef<DialogueTurn[]>(
+    (initialPlan?.dialogue_history ?? []) as DialogueTurn[],
+  );
+
+  const streamingRef = useRef<boolean>(false);
+  const completedRef = useRef<boolean>(initialPlan?.status === "completed");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
-  // If the conversation hasn't started yet, kick it off with an empty user prompt
-  // so the LLM produces step 1's greeting.
+  // ── Initial cold start ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!script || completedPlan) return;
-    if (messages.length === 0 && !streaming) {
-      void sendTurn("", /* asAutoStart */ true);
+    if (!script || completedRef.current) return;
+    if (messagesRef.current.length === 0 && !streamingRef.current) {
+      setAutoStartPending(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Auto-advance driver ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!autoStartPending) return;
+    if (streaming || completedPlan) return;
+    setAutoStartPending(false);
+    void sendTurn("", true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartPending, streaming, completedPlan]);
 
   const ctx: ClientDialogueContext = useMemo(
     () => ({ has_partner: hasPartner }),
@@ -107,22 +146,37 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
   const currentStepName = script?.steps[stepIndex]?.name ?? "";
 
   async function sendTurn(rawText: string, asAutoStart = false) {
-    if (!script || streaming || completedPlan) return;
+    if (!script) return;
+    if (streamingRef.current || completedRef.current) return;
+    streamingRef.current = true;
+    setStreaming(true);
     setErrored(false);
 
-    const newApi: ApiMessage[] = asAutoStart
-      ? [{ role: "user", content: "Hi, I'm ready to start." }]
-      : [...messages, { role: "user", content: rawText }];
+    const currentMessages = messagesRef.current;
+    const currentStep = stepIndexRef.current;
+    const currentHasPartner = hasPartnerRef.current;
+    const currentPartnerName = partnerNameRef.current;
+    const currentCollected = collectedRef.current;
 
-    // Don't echo the auto-start prompt back to the user visually.
-    if (!asAutoStart) {
-      setMessages(newApi);
+    // Build the LLM payload.
+    let newApi: ApiMessage[];
+    if (asAutoStart) {
+      newApi =
+        currentMessages.length === 0
+          ? [{ role: "user", content: "Hi, I'm ready to start." }]
+          : [...currentMessages, { role: "user", content: "Continue." }];
+    } else {
+      newApi = [...currentMessages, { role: "user", content: rawText }];
+    }
+
+    // Build display messages. Never wipe prior turns.
+    const assistantStart: ApiMessage = { role: "assistant", content: "" };
+    if (asAutoStart) {
+      setMessages((prev) => [...prev, assistantStart]);
+    } else {
+      setMessages((prev) => [...prev, { role: "user", content: rawText }, assistantStart]);
       setInput("");
     }
-    setStreaming(true);
-
-    const assistantStart: ApiMessage = { role: "assistant", content: "" };
-    setMessages((prev) => (asAutoStart ? [assistantStart] : [...prev, assistantStart]));
 
     let fullText = "";
     try {
@@ -135,12 +189,12 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         },
         body: JSON.stringify({
           domain,
-          step_index: stepIndex,
+          step_index: currentStep,
           messages: newApi,
           context: {
-            has_partner: hasPartner,
-            partner_first_name: partnerName,
-            collected,
+            has_partner: currentHasPartner,
+            partner_first_name: currentPartnerName,
+            collected: currentCollected,
             profile: profile
               ? {
                   monthly_income: profile.monthlyIncome ?? null,
@@ -181,7 +235,7 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
               });
             }
           } catch {
-            // skip malformed SSE lines
+            /* skip malformed SSE line */
           }
         }
       }
@@ -195,31 +249,37 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         };
         return next;
       });
+      streamingRef.current = false;
       setStreaming(false);
       return;
     }
 
-    setStreaming(false);
-
-    // Inspect the final text for STEP_COMPLETE or PLAN_COMPLETE.
+    const strippedAssistant = stripTags(fullText);
     const stepData = tryParseStepData(fullText);
     const planData = tryParsePlanData(fullText);
 
-    const finalAssistantMessage: ApiMessage = { role: "assistant", content: stripTags(fullText) };
-    const newHistory: DialogueTurn[] = [
-      ...(asAutoStart
-        ? []
-        : [{ role: "user" as const, content: rawText, step_index: stepIndex }]),
+    // Append to history (for persistence).
+    if (!asAutoStart) {
+      historyRef.current = [
+        ...historyRef.current,
+        { role: "user", content: rawText, step_index: currentStep },
+      ];
+    }
+    historyRef.current = [
+      ...historyRef.current,
       {
-        role: "assistant" as const,
-        content: finalAssistantMessage.content,
-        step_index: stepIndex,
+        role: "assistant",
+        content: strippedAssistant,
+        step_index: currentStep,
         step_complete_data: stepData ?? undefined,
       },
     ];
 
+    streamingRef.current = false;
+    setStreaming(false);
+
     if (planData) {
-      // Final synthesis — save the completed plan.
+      completedRef.current = true;
       const goal = planData.goal as PlanGoal | undefined;
       const kpis = (planData.kpis ?? []) as PlanKpi[];
       const milestones = (planData.milestones ?? []) as PlanMilestone[];
@@ -229,18 +289,15 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
       const saved = await savePlan({
         domain,
         status: "completed",
-        has_partner: hasPartner,
-        partner_first_name: partnerName,
+        has_partner: currentHasPartner,
+        partner_first_name: currentPartnerName,
         goal: goal ?? null,
         current_state: currentState,
         kpis,
         milestones,
         next_actions: nextActions,
-        dialogue_history: [
-          ...(initialPlan?.dialogue_history ?? []),
-          ...newHistory,
-        ] as unknown as Plan["dialogue_history"],
-        current_step_index: stepIndex,
+        dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
+        current_step_index: currentStep,
       });
 
       if (saved) {
@@ -251,58 +308,51 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
     }
 
     if (stepData) {
-      // Update local context with the extracted fields.
-      const nextCollected = { ...collected, ...stepData };
-      let nextHasPartner = hasPartner;
-      let nextPartnerName = partnerName;
-      if (typeof stepData.has_partner === "boolean") nextHasPartner = stepData.has_partner;
-      if (typeof stepData.partner_first_name === "string") nextPartnerName = stepData.partner_first_name;
+      // Merge extracted fields into collected; pull partner info if present.
+      const nextCollected = { ...currentCollected, ...stepData };
+      collectedRef.current = nextCollected;
 
-      setCollected(nextCollected);
-      setHasPartner(nextHasPartner);
-      setPartnerName(nextPartnerName);
+      let nextHasPartner = currentHasPartner;
+      let nextPartnerName = currentPartnerName;
+      if (typeof stepData.has_partner === "boolean") {
+        nextHasPartner = stepData.has_partner;
+        hasPartnerRef.current = nextHasPartner;
+        setHasPartner(nextHasPartner);
+      }
+      if (typeof stepData.partner_first_name === "string") {
+        nextPartnerName = stepData.partner_first_name;
+        partnerNameRef.current = nextPartnerName;
+        setPartnerName(nextPartnerName);
+      }
 
-      const next = nextVisibleStepIndex(
-        script,
-        stepIndex,
-        { has_partner: nextHasPartner },
-      );
-      const newStepIndex = next ?? stepIndex;
+      const next = nextVisibleStepIndex(script, currentStep, { has_partner: nextHasPartner });
+      const newStepIndex = next ?? currentStep;
+      stepIndexRef.current = newStepIndex;
       setStepIndex(newStepIndex);
 
-      // Save dialogue progress to the server so resume works.
       await savePlan({
         domain,
         status: "in_progress",
         has_partner: nextHasPartner,
         partner_first_name: nextPartnerName,
-        dialogue_history: [
-          ...(initialPlan?.dialogue_history ?? []),
-          ...newHistory,
-        ] as unknown as Plan["dialogue_history"],
+        dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
         current_step_index: newStepIndex,
-        current_state: {
-          ...(initialPlan?.current_state ?? {}),
-          collected: nextCollected,
-        },
+        current_state: { collected: nextCollected },
       });
 
-      // Auto-advance: kick off the next step's prompt so the LLM produces its first message.
       if (next !== null) {
-        setTimeout(() => void sendTurn("", true), 250);
+        // Trigger the next-step auto-call via state, so the useEffect handles it
+        // with up-to-date closure.
+        setAutoStartPending(true);
       }
     } else {
-      // Still mid-step: just save the history so refresh resumes here.
       await savePlan({
         domain,
         status: "in_progress",
-        has_partner: hasPartner,
-        partner_first_name: partnerName,
-        dialogue_history: [
-          ...(initialPlan?.dialogue_history ?? []),
-          ...newHistory,
-        ] as unknown as Plan["dialogue_history"],
-        current_step_index: stepIndex,
+        has_partner: currentHasPartner,
+        partner_first_name: currentPartnerName,
+        dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
+        current_step_index: currentStep,
       });
     }
   }
@@ -317,7 +367,6 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: cream, fontFamily: sans }}>
-      {/* Sticky header with progress */}
       <div
         style={{
           padding: "18px 28px 14px",
@@ -352,20 +401,20 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         </div>
       </div>
 
-      {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
           {messages.map((m, i) => (
             <MessageBubble key={i} role={m.role} content={m.content} />
           ))}
-          {streaming && messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content === "" && (
-            <MessageBubble role="assistant" content="…" />
-          )}
+          {streaming &&
+            messages[messages.length - 1]?.role === "assistant" &&
+            messages[messages.length - 1]?.content === "" && (
+              <MessageBubble role="assistant" content="…" />
+            )}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Input */}
       {!completedPlan && (
         <div style={{ borderTop: `1px solid ${border}`, background: cream, flexShrink: 0, padding: "16px 28px 22px" }}>
           <form
