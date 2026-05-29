@@ -28,7 +28,6 @@ function supabaseHeaders(userJwt: string) {
   };
 }
 
-// Fields the client is allowed to write. user_id, id, created_at, updated_at are server-controlled.
 const ALLOWED_WRITE_FIELDS = new Set([
   "domain",
   "status",
@@ -78,6 +77,10 @@ export default async function handler(req: Request): Promise<Response> {
       : `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&select=*&order=updated_at.desc`;
 
     const res = await fetch(query, { headers: supabaseHeaders(token) });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[plans GET] supabase ${res.status}:`, body);
+    }
     const rows = (await res.json()) as unknown[];
     if (domain) {
       return new Response(JSON.stringify(rows[0] ?? null), {
@@ -90,7 +93,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (req.method === "POST") {
-    const body = sanitize((await req.json()) as Record<string, unknown>);
+    const rawBody = (await req.json()) as Record<string, unknown>;
+    const body = sanitize(rawBody);
     const domain = body.domain as string | undefined;
     if (!domain || typeof domain !== "string") {
       return new Response(JSON.stringify({ error: "domain required" }), {
@@ -99,26 +103,32 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    const existingRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&domain=eq.${encodeURIComponent(domain)}&select=id`,
-      { headers: supabaseHeaders(token) },
+    // Upsert pattern: PostgREST treats this as INSERT, falling back to UPDATE
+    // when the (user_id, domain) unique index matches. Single roundtrip; no
+    // SELECT-then-decide race.
+    const payloadBody = { ...body, user_id: userId };
+    const url = `${SUPABASE_URL}/rest/v1/plans?on_conflict=user_id,domain`;
+    console.log(
+      `[plans POST] user=${userId} domain=${domain} status=${String(body.status)} keys=${Object.keys(body).join(",")}`,
     );
-    const existing = (await existingRes.json()) as Array<{ id: string }>;
 
-    const writeRes = existing.length > 0
-      ? await fetch(
-          `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&domain=eq.${encodeURIComponent(domain)}`,
-          {
-            method: "PATCH",
-            headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
-            body: JSON.stringify(body),
-          },
-        )
-      : await fetch(`${SUPABASE_URL}/rest/v1/plans`, {
-          method: "POST",
-          headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
-          body: JSON.stringify({ ...body, user_id: userId }),
-        });
+    const writeRes = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...supabaseHeaders(token),
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify(payloadBody),
+    });
+
+    if (!writeRes.ok) {
+      const errText = await writeRes.text();
+      console.error(`[plans POST] supabase ${writeRes.status}:`, errText);
+      return new Response(
+        JSON.stringify({ error: "Save failed", status: writeRes.status, detail: errText }),
+        { status: 500, headers: { "Content-Type": "application/json", ...cors } },
+      );
+    }
 
     const data = await writeRes.json();
     return new Response(JSON.stringify(Array.isArray(data) ? data[0] : data), {
