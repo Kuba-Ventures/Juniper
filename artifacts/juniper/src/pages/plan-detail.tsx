@@ -91,8 +91,15 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
   );
 }
 
+function stripEmDashes(text: string): string {
+  return text
+    .replace(/\s+[—–]\s+/g, ", ")
+    .replace(/[—–]/g, ", ")
+    .replace(/\s+--\s+/g, ", ");
+}
+
 function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void }) {
-  const summary = plan.goal?.summary?.trim();
+  const summary = plan.goal?.summary ? stripEmDashes(plan.goal.summary).trim() : undefined;
   const isLight =
     (!plan.kpis || plan.kpis.length === 0) &&
     (!plan.milestones || plan.milestones.length === 0) &&

@@ -50,6 +50,11 @@ function displayContent(fullText: string): string {
   if (lastOpen >= 0 && !s.slice(lastOpen).includes(">")) {
     s = s.slice(0, lastOpen).trimEnd();
   }
+  // Backstop: Claude keeps emitting em-dashes / en-dashes / "--" despite the
+  // BASE rule against them. Strip them client-side so users never see them.
+  s = s.replace(/\s+[—–]\s+/g, ", ");
+  s = s.replace(/[—–]/g, ", ");
+  s = s.replace(/\s+--\s+/g, ", ");
   return s;
 }
 

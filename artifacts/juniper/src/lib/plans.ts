@@ -98,10 +98,27 @@ export async function fetchPlan(domain: string): Promise<Plan | null> {
 }
 
 export async function savePlan(body: PlanWriteBody): Promise<Plan | null> {
-  const res = await authedFetch("/api/plans", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) return null;
+  let res: Response;
+  try {
+    res = await authedFetch("/api/plans", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[Juniper] savePlan fetch threw:", err);
+    return null;
+  }
+  if (!res.ok) {
+    let text = "";
+    try {
+      text = await res.text();
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line no-console
+    console.error(`[Juniper] savePlan failed: ${res.status} ${res.statusText} — body:`, text);
+    return null;
+  }
   return (await res.json()) as Plan | null;
 }
