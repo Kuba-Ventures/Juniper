@@ -2,6 +2,7 @@ import { getAccessToken } from "@/lib/supabase";
 
 export type PlanGoal = {
   headline: string;
+  summary?: string;
   home_type?: string;
   target_value?: number;
   target_date?: string;

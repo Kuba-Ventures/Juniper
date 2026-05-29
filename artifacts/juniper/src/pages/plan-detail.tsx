@@ -92,6 +92,12 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
 }
 
 function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void }) {
+  const summary = plan.goal?.summary?.trim();
+  const isLight =
+    (!plan.kpis || plan.kpis.length === 0) &&
+    (!plan.milestones || plan.milestones.length === 0) &&
+    (!plan.next_actions || plan.next_actions.length === 0);
+
   return (
     <div style={{ height: "100%", overflowY: "auto", background: cream }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "44px 28px 80px" }}>
@@ -121,6 +127,42 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
         >
           {plan.goal?.headline ?? "Your plan is set."}
         </h1>
+
+        {summary && (
+          <section style={{ marginBottom: 32 }}>
+            {summary.split(/\n\n+/).map((para, i) => (
+              <p
+                key={i}
+                style={{
+                  fontSize: 16,
+                  color: ink,
+                  lineHeight: 1.65,
+                  margin: "0 0 14px",
+                }}
+              >
+                {para.trim()}
+              </p>
+            ))}
+          </section>
+        )}
+
+        {isLight && (
+          <div
+            style={{
+              background: "rgba(185,64,64,0.06)",
+              border: "1px solid rgba(185,64,64,0.2)",
+              borderRadius: 10,
+              padding: "14px 18px",
+              fontSize: 13.5,
+              color: "#b94040",
+              margin: "0 0 22px",
+              lineHeight: 1.55,
+            }}
+          >
+            This plan saved without KPIs, milestones, or next actions — likely a
+            generation error. Tap "Redo this plan" to try again.
+          </div>
+        )}
 
         {plan.kpis?.length > 0 && (
           <section style={{ marginBottom: 32 }}>
