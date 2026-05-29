@@ -17,7 +17,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/auth/sign-in" component={SignIn} />
       <Route path="/auth/sign-up" component={SignUp} />
-      <Route path="/app/:rest*">
+      <Route path="/app/*?">
         {() => (
           <RequireAuth>
             <AppShell />
