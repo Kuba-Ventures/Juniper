@@ -12,10 +12,29 @@ type Props = {
   description: string;
   icon: ReactNode;
   onStart: () => void;
+  state?: "empty" | "in_progress" | "completed";
+  goalHeadline?: string | null;
 };
 
-export function DomainTile({ title, description, icon, onStart }: Props) {
+export function DomainTile({
+  title,
+  description,
+  icon,
+  onStart,
+  state = "empty",
+  goalHeadline,
+}: Props) {
   const [hovered, setHovered] = useState(false);
+
+  const buttonLabel =
+    state === "in_progress"
+      ? "Continue plan"
+      : state === "completed"
+        ? "View plan"
+        : "Start this plan";
+
+  const subhead = state !== "empty" && goalHeadline ? goalHeadline : description;
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -31,8 +50,27 @@ export function DomainTile({ title, description, icon, onStart }: Props) {
         transition: "box-shadow 0.15s, border-color 0.15s",
         boxShadow: hovered ? "0 4px 24px rgba(0,0,0,0.06)" : "none",
         borderColor: hovered ? "rgba(92,122,101,0.35)" : border,
+        position: "relative",
       }}
     >
+      {state !== "empty" && (
+        <span
+          style={{
+            position: "absolute",
+            top: 18,
+            right: 18,
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: state === "completed" ? sage : muted,
+            fontFamily: sans,
+          }}
+        >
+          {state === "completed" ? "Active" : "In progress"}
+        </span>
+      )}
+
       <div
         style={{
           width: 44,
@@ -52,7 +90,17 @@ export function DomainTile({ title, description, icon, onStart }: Props) {
         <p style={{ fontFamily: serif, fontSize: 19, color: ink, margin: "0 0 6px", fontWeight: 400 }}>
           {title}
         </p>
-        <p style={{ fontSize: 13.5, color: muted, margin: 0, lineHeight: 1.55 }}>{description}</p>
+        <p
+          style={{
+            fontSize: 13.5,
+            color: state === "empty" ? muted : ink,
+            margin: 0,
+            lineHeight: 1.55,
+            fontWeight: state === "empty" ? 400 : 500,
+          }}
+        >
+          {subhead}
+        </p>
       </div>
 
       <button
@@ -74,7 +122,7 @@ export function DomainTile({ title, description, icon, onStart }: Props) {
         onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(92,122,101,0.08)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        Start this plan
+        {buttonLabel}
       </button>
     </div>
   );

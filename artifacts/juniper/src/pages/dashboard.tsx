@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { Domain } from "@/components/dashboard/domain-tile-grid";
 import { DomainTileGrid } from "@/components/dashboard/domain-tile-grid";
+import { fetchPlans, type Plan } from "@/lib/plans";
 
 const ink = "#2A2A2A";
 const muted = "#6B6B6B";
@@ -8,10 +10,26 @@ const serif = "'Fraunces', Georgia, serif";
 type Props = {
   userName: string;
   onStartPlan: (domain: Domain) => void;
+  plansVersion?: number;
 };
 
-export function Dashboard({ userName, onStartPlan }: Props) {
+export function Dashboard({ userName, onStartPlan, plansVersion }: Props) {
   const firstName = userName.split(" ")[0] || userName;
+  const [plansByDomain, setPlansByDomain] = useState<Record<string, Plan>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlans().then((plans) => {
+      if (cancelled) return;
+      const map: Record<string, Plan> = {};
+      for (const p of plans) map[p.domain] = p;
+      setPlansByDomain(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plansVersion]);
+
   return (
     <div style={{ height: "100%", overflowY: "auto" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: "56px 28px 80px" }}>
@@ -34,7 +52,7 @@ export function Dashboard({ userName, onStartPlan }: Props) {
           </p>
         </header>
 
-        <DomainTileGrid onStart={onStartPlan} />
+        <DomainTileGrid onStart={onStartPlan} plansByDomain={plansByDomain} />
       </div>
     </div>
   );

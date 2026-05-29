@@ -9,7 +9,7 @@ import { useSession } from "@/lib/use-session";
 import { Dashboard } from "@/pages/dashboard";
 import { ChatPage } from "@/pages/chat";
 import { PlansLegacy } from "@/pages/plans-legacy";
-import { PlanStub } from "@/pages/plan-stub";
+import { PlanDetail } from "@/pages/plan-detail";
 import { ConnectionsView } from "@/pages/connections";
 import type { Domain } from "@/components/dashboard/domain-tile-grid";
 
@@ -132,6 +132,7 @@ export default function AppShell() {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [pendingPlanDomain, setPendingPlanDomain] = useState<Domain | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [plansVersion, setPlansVersion] = useState(0);
 
   // Hydrate from localStorage as soon as we know the email
   useEffect(() => {
@@ -366,7 +367,11 @@ export default function AppShell() {
         <div style={{ flex: 1, minHeight: 0 }}>
           <Switch>
             <Route path="/app">
-              <Dashboard userName={displayName} onStartPlan={handleStartPlan} />
+              <Dashboard
+                userName={displayName}
+                onStartPlan={handleStartPlan}
+                plansVersion={plansVersion}
+              />
             </Route>
             <Route path="/app/chat">
               <ChatPage
@@ -390,7 +395,13 @@ export default function AppShell() {
               />
             </Route>
             <Route path="/app/plans/:domain">
-              {(params) => <PlanStub domain={params.domain} />}
+              {(params) => (
+                <PlanDetail
+                  domain={params.domain}
+                  profile={profile}
+                  onPlanChanged={() => setPlansVersion((v) => v + 1)}
+                />
+              )}
             </Route>
             <Route path="/app/connections">
               <ConnectionsView />

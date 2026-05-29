@@ -1,5 +1,6 @@
 import { Home, Heart, CreditCard, Baby, Scale } from "lucide-react";
 import { DomainTile } from "./domain-tile";
+import type { Plan } from "@/lib/plans";
 
 const ICON_PROPS = { size: 22, strokeWidth: 1.6 };
 
@@ -50,9 +51,10 @@ export const DOMAINS: Array<{
 
 type Props = {
   onStart: (domain: Domain) => void;
+  plansByDomain?: Record<string, Plan>;
 };
 
-export function DomainTileGrid({ onStart }: Props) {
+export function DomainTileGrid({ onStart, plansByDomain }: Props) {
   return (
     <div
       style={{
@@ -61,15 +63,26 @@ export function DomainTileGrid({ onStart }: Props) {
         gap: 18,
       }}
     >
-      {DOMAINS.map((d) => (
-        <DomainTile
-          key={d.id}
-          title={d.title}
-          description={d.description}
-          icon={d.icon}
-          onStart={() => onStart(d.id)}
-        />
-      ))}
+      {DOMAINS.map((d) => {
+        const plan = plansByDomain?.[d.id];
+        const state: "empty" | "in_progress" | "completed" =
+          plan?.status === "completed"
+            ? "completed"
+            : plan?.status === "in_progress"
+              ? "in_progress"
+              : "empty";
+        return (
+          <DomainTile
+            key={d.id}
+            title={d.title}
+            description={d.description}
+            icon={d.icon}
+            onStart={() => onStart(d.id)}
+            state={state}
+            goalHeadline={plan?.goal?.headline ?? null}
+          />
+        );
+      })}
     </div>
   );
 }
