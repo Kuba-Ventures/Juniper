@@ -42,6 +42,10 @@ const ALLOWED_WRITE_FIELDS = new Set([
   "plan_chat_history",
   "current_step_index",
   "partner_invite_status",
+  "partner_collected",
+  "partner_dialogue_history",
+  "partner_current_step_index",
+  "partner_dialogue_status",
 ]);
 
 function sanitize(body: Record<string, unknown>): Record<string, unknown> {

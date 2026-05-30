@@ -117,27 +117,59 @@ type Props = {
   profile: UserProfile | null;
   initialPlan: Plan | null;
   onPlanCompleted: (plan: Plan) => void;
+  role?: "inviter" | "partner";
+  // For partner role, the name to address the partner's "partner" (i.e. the inviter) by.
+  inviterFirstName?: string | null;
 };
 
-export function DialogueInterface({ domain, profile, initialPlan, onPlanCompleted }: Props) {
+// Partner dialogue ends before the synthesis step. The last comparable step
+// for partnered scenarios is "legal_tax" (index 7 in the 0-indexed script).
+// Synthesis (index 8) is inviter-only.
+const PARTNER_SKIP_FIRST_STEP_INDEX = 1; // skip step 0 (partner check)
+const PARTNER_LAST_STEP_INDEX = 7; // legal_tax — partner stops here
+
+export function DialogueInterface({
+  domain,
+  profile,
+  initialPlan,
+  onPlanCompleted,
+  role = "inviter",
+  inviterFirstName = null,
+}: Props) {
   const script = getClientScript(domain);
+  const isPartner = role === "partner";
 
   // ── State (for rendering) ─────────────────────────────────────────────
   const [messages, setMessages] = useState<ApiMessage[]>(() => {
-    if (initialPlan?.dialogue_history?.length) {
-      return initialPlan.dialogue_history.map((t) => ({ role: t.role, content: t.content }));
+    const history = isPartner ? initialPlan?.partner_dialogue_history : initialPlan?.dialogue_history;
+    if (history?.length) {
+      return history.map((t) => ({ role: t.role, content: t.content }));
     }
     return [];
   });
-  const [stepIndex, setStepIndex] = useState<number>(initialPlan?.current_step_index ?? 0);
-  const [hasPartner, setHasPartner] = useState<boolean | null>(initialPlan?.has_partner ?? null);
-  const [partnerName, setPartnerName] = useState<string | null>(initialPlan?.partner_first_name ?? null);
+  const [stepIndex, setStepIndex] = useState<number>(() => {
+    if (isPartner) {
+      return initialPlan?.partner_current_step_index ?? PARTNER_SKIP_FIRST_STEP_INDEX;
+    }
+    return initialPlan?.current_step_index ?? 0;
+  });
+  const [hasPartner, setHasPartner] = useState<boolean | null>(() => {
+    if (isPartner) return true;
+    return initialPlan?.has_partner ?? null;
+  });
+  const [partnerName, setPartnerName] = useState<string | null>(() => {
+    if (isPartner) return inviterFirstName ?? null;
+    return initialPlan?.partner_first_name ?? null;
+  });
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [errored, setErrored] = useState(false);
-  const [completedPlan, setCompletedPlan] = useState<Plan | null>(
-    initialPlan?.status === "completed" ? initialPlan : null,
-  );
+  const [completedPlan, setCompletedPlan] = useState<Plan | null>(() => {
+    if (isPartner) {
+      return initialPlan?.partner_dialogue_status === "completed" ? initialPlan : null;
+    }
+    return initialPlan?.status === "completed" ? initialPlan : null;
+  });
   const [autoStartPending, setAutoStartPending] = useState(false);
 
   // ── Refs (for closure-stable reads inside async sendTurn) ─────────────
@@ -155,21 +187,33 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
 
   const collectedRef = useRef<Record<string, unknown>>(
     (() => {
-      if (!initialPlan?.dialogue_history) return {};
-      const acc: Record<string, unknown> = {};
-      for (const turn of initialPlan.dialogue_history) {
-        if (turn.step_complete_data) Object.assign(acc, turn.step_complete_data);
+      const init: Record<string, unknown> = {};
+      if (isPartner) {
+        init.has_partner = true;
+        if (inviterFirstName) init.partner_first_name = inviterFirstName;
+        Object.assign(init, (initialPlan?.partner_collected ?? {}) as Record<string, unknown>);
+        return init;
       }
-      return acc;
+      if (!initialPlan?.dialogue_history) return init;
+      for (const turn of initialPlan.dialogue_history) {
+        if (turn.step_complete_data) Object.assign(init, turn.step_complete_data);
+      }
+      return init;
     })(),
   );
 
   const historyRef = useRef<DialogueTurn[]>(
-    (initialPlan?.dialogue_history ?? []) as DialogueTurn[],
+    ((isPartner
+      ? initialPlan?.partner_dialogue_history
+      : initialPlan?.dialogue_history) ?? []) as DialogueTurn[],
   );
 
   const streamingRef = useRef<boolean>(false);
-  const completedRef = useRef<boolean>(initialPlan?.status === "completed");
+  const completedRef = useRef<boolean>(
+    isPartner
+      ? initialPlan?.partner_dialogue_status === "completed"
+      : initialPlan?.status === "completed",
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -335,7 +379,7 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
     streamingRef.current = false;
     setStreaming(false);
 
-    if (planData) {
+    if (planData && !isPartner) {
       completedRef.current = true;
       const goal = planData.goal as PlanGoal | undefined;
       const kpis = (planData.kpis ?? []) as PlanKpi[];
@@ -359,8 +403,15 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         milestones,
         next_actions: nextActions,
         dialogue_history: historyRef.current,
+        plan_chat_history: initialPlan?.plan_chat_history ?? [],
         current_step_index: currentStep,
-        partner_invite_status: "none",
+        partner_invite_status: initialPlan?.partner_invite_status ?? "none",
+        partner_user_id: initialPlan?.partner_user_id ?? null,
+        partner_collected: initialPlan?.partner_collected ?? {},
+        partner_dialogue_history: initialPlan?.partner_dialogue_history ?? [],
+        partner_current_step_index: initialPlan?.partner_current_step_index ?? 0,
+        partner_dialogue_status: initialPlan?.partner_dialogue_status ?? "not_started",
+        invite_token: initialPlan?.invite_token ?? null,
         created_at: initialPlan?.created_at ?? nowIso,
         updated_at: nowIso,
       };
@@ -406,35 +457,74 @@ export function DialogueInterface({ domain, profile, initialPlan, onPlanComplete
         setPartnerName(nextPartnerName);
       }
 
-      const next = nextVisibleStepIndex(script, currentStep, { has_partner: nextHasPartner });
+      let next = nextVisibleStepIndex(script, currentStep, { has_partner: nextHasPartner });
+
+      // Partner role exits before the synthesis step (which is inviter-only).
+      const partnerHasFinished =
+        isPartner && next !== null && next > PARTNER_LAST_STEP_INDEX;
+      if (partnerHasFinished) {
+        next = null;
+        completedRef.current = true;
+      }
+
       const newStepIndex = next ?? currentStep;
       stepIndexRef.current = newStepIndex;
       setStepIndex(newStepIndex);
 
-      await savePlan({
-        domain,
-        status: "in_progress",
-        has_partner: nextHasPartner,
-        partner_first_name: nextPartnerName,
-        dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
-        current_step_index: newStepIndex,
-        current_state: { collected: nextCollected },
-      });
+      if (isPartner) {
+        await savePlan({
+          domain,
+          partner_collected: nextCollected,
+          partner_dialogue_history: historyRef.current as unknown as Plan["partner_dialogue_history"],
+          partner_current_step_index: newStepIndex,
+          partner_dialogue_status: partnerHasFinished ? "completed" : "in_progress",
+        });
+
+        if (partnerHasFinished && initialPlan) {
+          const localUpdated: Plan = {
+            ...initialPlan,
+            partner_collected: nextCollected,
+            partner_dialogue_history: historyRef.current,
+            partner_current_step_index: newStepIndex,
+            partner_dialogue_status: "completed",
+          };
+          setCompletedPlan(localUpdated);
+          onPlanCompleted(localUpdated);
+          return;
+        }
+      } else {
+        await savePlan({
+          domain,
+          status: "in_progress",
+          has_partner: nextHasPartner,
+          partner_first_name: nextPartnerName,
+          dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
+          current_step_index: newStepIndex,
+          current_state: { collected: nextCollected },
+        });
+      }
 
       if (next !== null) {
-        // Trigger the next-step auto-call via state, so the useEffect handles it
-        // with up-to-date closure.
         setAutoStartPending(true);
       }
     } else {
-      await savePlan({
-        domain,
-        status: "in_progress",
-        has_partner: currentHasPartner,
-        partner_first_name: currentPartnerName,
-        dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
-        current_step_index: currentStep,
-      });
+      if (isPartner) {
+        await savePlan({
+          domain,
+          partner_dialogue_history: historyRef.current as unknown as Plan["partner_dialogue_history"],
+          partner_current_step_index: currentStep,
+          partner_dialogue_status: "in_progress",
+        });
+      } else {
+        await savePlan({
+          domain,
+          status: "in_progress",
+          has_partner: currentHasPartner,
+          partner_first_name: currentPartnerName,
+          dialogue_history: historyRef.current as unknown as Plan["dialogue_history"],
+          current_step_index: currentStep,
+        });
+      }
     }
   }
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import { useLocation, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
+import { acceptInvite } from "@/lib/invites";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -33,9 +34,22 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const partnerInviteToken = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("invite");
+  }, []);
+
   useEffect(() => {
-    if (session) setLocation("/app");
-  }, [session, setLocation]);
+    if (!session) return;
+    if (partnerInviteToken) {
+      void acceptInvite(partnerInviteToken).then((result) => {
+        if (result?.ok) setLocation(`/app/plans/${result.domain}`);
+        else setLocation("/app");
+      });
+    } else {
+      setLocation("/app");
+    }
+  }, [session, partnerInviteToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +65,7 @@ export default function SignIn() {
       setPassword("");
       return;
     }
-    setLocation("/app");
+    // Session-effect above handles invite accept + redirect.
   }
 
   return (

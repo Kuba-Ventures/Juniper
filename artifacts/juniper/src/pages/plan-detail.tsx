@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { Check } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanChat } from "@/components/plan/plan-chat";
+import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
+import { PlanAlignment } from "@/components/plan/plan-alignment";
 import {
   fetchPlan,
   savePlan,
@@ -12,6 +14,7 @@ import {
   type PlanNextAction,
 } from "@/lib/plans";
 import { getClientScript } from "@/lib/dialogue-scripts";
+import { useSession } from "@/lib/use-session";
 import { UserProfile } from "@/lib/profile";
 
 const sage = "#5C7A65";
@@ -29,6 +32,7 @@ type Props = {
 };
 
 export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
+  const session = useSession();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const script = getClientScript(domain);
@@ -47,7 +51,7 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
     };
   }, [domain]);
 
-  if (loading) {
+  if (loading || session === undefined) {
     return (
       <div
         style={{
@@ -76,6 +80,27 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
     );
   }
 
+  const currentUserId = session?.user.id ?? null;
+  const isPartner = !!plan && !!currentUserId && plan.partner_user_id === currentUserId;
+  const isInviter = !!plan && !!currentUserId && plan.user_id === currentUserId;
+
+  // Partner who hasn't finished their dialogue yet → show DialogueInterface in partner mode.
+  if (plan && isPartner && plan.partner_dialogue_status !== "completed") {
+    return (
+      <DialogueInterface
+        domain={domain}
+        profile={profile}
+        initialPlan={plan}
+        role="partner"
+        onPlanCompleted={(saved) => {
+          setPlan(saved);
+          onPlanChanged?.();
+        }}
+      />
+    );
+  }
+
+  // Inviter with a completed plan, or partner who has finished their dialogue → PlanView.
   if (plan?.status === "completed") {
     return (
       <PlanView
@@ -84,15 +109,18 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
           setPlan({ ...plan, status: "in_progress", current_step_index: 0, dialogue_history: [] });
         }}
         onPlanChanged={onPlanChanged}
+        viewerIsInviter={isInviter}
       />
     );
   }
 
+  // Inviter still in dialogue → DialogueInterface in inviter mode.
   return (
     <DialogueInterface
       domain={domain}
       profile={profile}
       initialPlan={plan}
+      role="inviter"
       onPlanCompleted={(saved) => {
         setPlan(saved);
         onPlanChanged?.();
@@ -115,10 +143,12 @@ function PlanView({
   initialPlan,
   onRestart,
   onPlanChanged,
+  viewerIsInviter,
 }: {
   initialPlan: Plan;
   onRestart: () => void;
   onPlanChanged?: () => void;
+  viewerIsInviter: boolean;
 }) {
   const [plan, setPlan] = useState<Plan>(initialPlan);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -326,6 +356,16 @@ function PlanView({
             Redo this plan
           </button>
         </div>
+
+        {viewerIsInviter && plan.partner_dialogue_status !== "completed" && (
+          <div style={{ marginTop: 32 }}>
+            <InvitePartnerCard plan={plan} onInviteCreated={() => onPlanChanged?.()} />
+          </div>
+        )}
+
+        {plan.partner_dialogue_status === "completed" && (
+          <PlanAlignment plan={plan} youAreInviter={viewerIsInviter} />
+        )}
 
         <PlanChat plan={plan} />
       </div>

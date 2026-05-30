@@ -40,6 +40,8 @@ export type PlanChatTurn = {
   content: string;
 };
 
+export type PartnerDialogueStatus = "not_started" | "in_progress" | "completed";
+
 export type Plan = {
   id: string;
   user_id: string;
@@ -56,6 +58,12 @@ export type Plan = {
   plan_chat_history: PlanChatTurn[];
   current_step_index: number;
   partner_invite_status: "none" | "invited" | "accepted" | "declined";
+  partner_user_id: string | null;
+  partner_collected: Record<string, unknown>;
+  partner_dialogue_history: DialogueTurn[];
+  partner_current_step_index: number;
+  partner_dialogue_status: PartnerDialogueStatus;
+  invite_token: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -76,6 +84,10 @@ export type PlanWriteBody = Partial<
     | "plan_chat_history"
     | "current_step_index"
     | "partner_invite_status"
+    | "partner_collected"
+    | "partner_dialogue_history"
+    | "partner_current_step_index"
+    | "partner_dialogue_status"
   >
 > & { domain: string };
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import { useLocation, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
+import { acceptInvite } from "@/lib/invites";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -38,9 +39,25 @@ export default function SignUp() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const partnerInviteToken = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("invite");
+  }, []);
+
+  // If user is signing up via a partner invite, waive the signup invite code.
+  const needsSignupCode = !!REQUIRED_INVITE_CODE && !partnerInviteToken;
+
   useEffect(() => {
-    if (session) setLocation("/app");
-  }, [session, setLocation]);
+    if (!session) return;
+    if (partnerInviteToken) {
+      void acceptInvite(partnerInviteToken).then((result) => {
+        if (result?.ok) setLocation(`/app/plans/${result.domain}`);
+        else setLocation("/app");
+      });
+    } else {
+      setLocation("/app");
+    }
+  }, [session, partnerInviteToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +65,7 @@ export default function SignUp() {
     setError(null);
     setInfo(null);
 
-    if (REQUIRED_INVITE_CODE && inviteCode.trim() !== REQUIRED_INVITE_CODE) {
+    if (needsSignupCode && inviteCode.trim() !== REQUIRED_INVITE_CODE) {
       setError("Invalid invite code.");
       setLoading(false);
       return;
@@ -60,11 +77,19 @@ export default function SignUp() {
       return;
     }
 
+    const emailRedirectTo =
+      typeof window !== "undefined"
+        ? partnerInviteToken
+          ? `${window.location.origin}/invite/${encodeURIComponent(partnerInviteToken)}`
+          : `${window.location.origin}/app`
+        : undefined;
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
         data: { name: name.trim() || undefined },
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
     });
     setLoading(false);
@@ -75,11 +100,15 @@ export default function SignUp() {
     }
 
     if (data.session) {
-      setLocation("/app");
+      // Session-effect above will handle the redirect, including invite accept.
       return;
     }
 
-    setInfo("Check your email to confirm your account, then sign in.");
+    setInfo(
+      partnerInviteToken
+        ? "Check your email to confirm your account. Your partner invite will accept automatically."
+        : "Check your email to confirm your account, then sign in.",
+    );
   }
 
   return (
@@ -174,7 +203,7 @@ export default function SignUp() {
           required
           style={inputStyle(!!error)}
         />
-        {REQUIRED_INVITE_CODE && (
+        {needsSignupCode && (
           <input
             type="text"
             placeholder="Invite code"
