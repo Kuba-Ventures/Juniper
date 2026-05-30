@@ -33,6 +33,7 @@ type SidebarProps = {
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onLogout: () => void;
+  onOpenSettings: () => void;
   userName: string;
 };
 
@@ -78,6 +79,7 @@ export function AppSidebar({
   onSelectConversation,
   onDeleteConversation,
   onLogout,
+  onOpenSettings,
   userName,
 }: SidebarProps) {
   const [location, setLocation] = useLocation();
@@ -363,6 +365,7 @@ export function AppSidebar({
             >
               {(
                 [
+                  { label: "Profile settings", action: () => { setUserMenuOpen(false); onOpenSettings(); } },
                   { label: "Invite partner (coming soon)", action: () => {}, disabled: true },
                   { label: "Sign out", action: onLogout, danger: true },
                 ] as { label: string; action: () => void; disabled?: boolean; danger?: boolean }[]

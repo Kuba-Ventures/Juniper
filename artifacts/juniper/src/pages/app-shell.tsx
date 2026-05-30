@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { Menu } from "lucide-react";
 import { AppSidebar, type Artifact, type Conversation } from "@/components/app-sidebar";
-import { ProfileQuestionnaire } from "@/components/chat/profile-questionnaire";
+import { ProfileSettings, type SettingsTab } from "@/components/profile/profile-settings";
 import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
 import { supabase, getAccessToken } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
@@ -129,8 +129,13 @@ export default function AppShell() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState(0);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
-  const [pendingPlanDomain, setPendingPlanDomain] = useState<Domain | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("account");
+
+  const openSettings = useCallback((tab: SettingsTab = "account") => {
+    setSettingsTab(tab);
+    setShowSettings(true);
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plansVersion, setPlansVersion] = useState(0);
 
@@ -253,7 +258,7 @@ export default function AppShell() {
       saveProfile(p, userEmail);
       setProfileState(p);
       if (name && name !== displayName) setDisplayName(name);
-      setShowQuestionnaire(false);
+      setShowSettings(false);
       postRemoteProfile({
         name: name || displayName,
         monthly_income: p.monthlyIncome ?? null,
@@ -262,31 +267,22 @@ export default function AppShell() {
         total_debt: p.totalDebt ?? null,
         goals: p.goals ?? null,
       });
-      if (pendingPlanDomain) {
-        const d = pendingPlanDomain;
-        setPendingPlanDomain(null);
-        setLocation(`/app/plans/${d}`);
-      }
     },
-    [userEmail, displayName, pendingPlanDomain, setLocation],
+    [userEmail, displayName],
   );
 
-  const handleQuestionnaireClose = useCallback(() => {
-    setShowQuestionnaire(false);
-    setPendingPlanDomain(null);
+  const handleSettingsClose = useCallback(() => {
+    setShowSettings(false);
   }, []);
 
   const handleStartPlan = useCallback(
     (domain: Domain) => {
-      const isOnboarded = profile?.monthlyIncome != null;
-      if (!isOnboarded) {
-        setPendingPlanDomain(domain);
-        setShowQuestionnaire(true);
-        return;
-      }
+      // No financial-snapshot gate: the guided dialogue collects any missing
+      // numbers casually, one per turn (see api/_dialogue-scripts.ts). Go
+      // straight into the plan.
       setLocation(`/app/plans/${domain}`);
     },
-    [profile, setLocation],
+    [setLocation],
   );
 
   const sidebarProps = {
@@ -296,6 +292,7 @@ export default function AppShell() {
     onSelectConversation: handleSelectConversation,
     onDeleteConversation: handleDeleteConversation,
     onLogout: handleSignOut,
+    onOpenSettings: () => openSettings("account"),
     userName: displayName,
   };
 
@@ -348,7 +345,8 @@ export default function AppShell() {
             <span style={{ fontFamily: serif, fontSize: 17, color: sage, fontWeight: 500 }}>Juniper</span>
           </div>
           <button
-            onClick={() => setShowQuestionnaire(true)}
+            onClick={() => openSettings("account")}
+            aria-label="Profile settings"
             style={{
               fontFamily: sans,
               fontSize: 13,
@@ -382,7 +380,7 @@ export default function AppShell() {
                 chatKey={chatKey}
                 onConversationStart={handleConversationStart}
                 onArtifactSaved={handleArtifactSaved}
-                onOpenProfile={() => setShowQuestionnaire(true)}
+                onOpenProfile={() => openSettings("financial")}
                 onMessagesUpdate={handleConversationMessagesUpdate}
               />
             </Route>
@@ -424,12 +422,15 @@ export default function AppShell() {
         </div>
       </div>
 
-      {showQuestionnaire && (
-        <ProfileQuestionnaire
+      {showSettings && (
+        <ProfileSettings
           initialData={profile ?? undefined}
           initialName={displayName}
-          onClose={handleQuestionnaireClose}
+          email={userEmail}
+          initialTab={settingsTab}
+          onClose={handleSettingsClose}
           onSave={handleProfileSave}
+          onSignOut={handleSignOut}
         />
       )}
     </div>
