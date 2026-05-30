@@ -80,6 +80,8 @@ export function DomainTileGrid({ onStart, plansByDomain }: Props) {
             onStart={() => onStart(d.id)}
             state={state}
             goalHeadline={plan?.goal?.headline ?? null}
+            kpis={plan?.kpis}
+            nextActions={plan?.next_actions}
           />
         );
       })}

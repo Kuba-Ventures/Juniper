@@ -39,6 +39,7 @@ const ALLOWED_WRITE_FIELDS = new Set([
   "kpis",
   "next_actions",
   "dialogue_history",
+  "plan_chat_history",
   "current_step_index",
   "partner_invite_status",
 ]);

@@ -136,17 +136,17 @@ export function AppSidebar({
           <LayoutGrid size={15} color={isDashboard ? sage : muted} strokeWidth={1.8} />
           <span style={navLabelStyle(isDashboard)}>Dashboard</span>
         </button>
-        <button onClick={() => setLocation("/app/chat")} style={navItemStyle(isChat)}>
-          <MessageCircle size={15} color={isChat ? sage : muted} strokeWidth={1.8} />
-          <span style={navLabelStyle(isChat)}>Chat</span>
+        <button onClick={() => setLocation("/app/connections")} style={navItemStyle(isConnections)}>
+          <Link2 size={15} color={isConnections ? sage : muted} strokeWidth={1.8} />
+          <span style={navLabelStyle(isConnections)}>Connections</span>
         </button>
         <button onClick={() => setLocation("/app/plans")} style={navItemStyle(isPlans)}>
           <BookOpen size={15} color={isPlans ? sage : muted} strokeWidth={1.8} />
           <span style={navLabelStyle(isPlans)}>Saved from chat</span>
         </button>
-        <button onClick={() => setLocation("/app/connections")} style={navItemStyle(isConnections)}>
-          <Link2 size={15} color={isConnections ? sage : muted} strokeWidth={1.8} />
-          <span style={navLabelStyle(isConnections)}>Connections</span>
+        <button onClick={() => setLocation("/app/chat")} style={navItemStyle(isChat)}>
+          <MessageCircle size={15} color={isChat ? sage : muted} strokeWidth={1.8} />
+          <span style={navLabelStyle(isChat)}>General chat</span>
         </button>
       </div>
 

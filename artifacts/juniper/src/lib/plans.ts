@@ -35,6 +35,11 @@ export type DialogueTurn = {
   step_complete_data?: Record<string, unknown>;
 };
 
+export type PlanChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type Plan = {
   id: string;
   user_id: string;
@@ -48,6 +53,7 @@ export type Plan = {
   kpis: PlanKpi[];
   next_actions: PlanNextAction[];
   dialogue_history: DialogueTurn[];
+  plan_chat_history: PlanChatTurn[];
   current_step_index: number;
   partner_invite_status: "none" | "invited" | "accepted" | "declined";
   created_at: string;
@@ -67,6 +73,7 @@ export type PlanWriteBody = Partial<
     | "kpis"
     | "next_actions"
     | "dialogue_history"
+    | "plan_chat_history"
     | "current_step_index"
     | "partner_invite_status"
   >

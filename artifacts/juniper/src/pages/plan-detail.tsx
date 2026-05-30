@@ -1,7 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { Check } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
-import { fetchPlan, type Plan } from "@/lib/plans";
+import { PlanChat } from "@/components/plan/plan-chat";
+import {
+  fetchPlan,
+  savePlan,
+  type Plan,
+  type PlanKpi,
+  type PlanMilestone,
+  type PlanNextAction,
+} from "@/lib/plans";
 import { getClientScript } from "@/lib/dialogue-scripts";
 import { UserProfile } from "@/lib/profile";
 
@@ -69,11 +78,12 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
 
   if (plan?.status === "completed") {
     return (
-      <PlanSummary
-        plan={plan}
+      <PlanView
+        initialPlan={plan}
         onRestart={() => {
           setPlan({ ...plan, status: "in_progress", current_step_index: 0, dialogue_history: [] });
         }}
+        onPlanChanged={onPlanChanged}
       />
     );
   }
@@ -98,24 +108,80 @@ function stripEmDashes(text: string): string {
     .replace(/\s+--\s+/g, ", ");
 }
 
-function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void }) {
+// ── PlanView (editable) ────────────────────────────────────────────────
+type SaveStatus = "idle" | "saving" | "saved";
+
+function PlanView({
+  initialPlan,
+  onRestart,
+  onPlanChanged,
+}: {
+  initialPlan: Plan;
+  onRestart: () => void;
+  onPlanChanged?: () => void;
+}) {
+  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const planRef = useRef(plan);
+  planRef.current = plan;
+
   const summary = plan.goal?.summary ? stripEmDashes(plan.goal.summary).trim() : undefined;
   const isLight =
     (!plan.kpis || plan.kpis.length === 0) &&
     (!plan.milestones || plan.milestones.length === 0) &&
     (!plan.next_actions || plan.next_actions.length === 0);
 
+  function scheduleSave(next: Plan) {
+    setPlan(next);
+    setSaveStatus("saving");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+
+    saveTimerRef.current = setTimeout(async () => {
+      const saved = await savePlan({
+        domain: next.domain,
+        kpis: next.kpis,
+        milestones: next.milestones,
+        next_actions: next.next_actions,
+      });
+      if (saved) {
+        setSaveStatus("saved");
+        onPlanChanged?.();
+        savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1800);
+      } else {
+        setSaveStatus("idle");
+      }
+    }, 800);
+  }
+
+  function updateKpiCurrent(index: number, current: number) {
+    const kpis = plan.kpis.map((k, i) => (i === index ? { ...k, current } : k));
+    scheduleSave({ ...plan, kpis });
+  }
+  function updateMilestoneCurrent(index: number, current_value: number) {
+    const milestones = plan.milestones.map((m, i) => (i === index ? { ...m, current_value } : m));
+    scheduleSave({ ...plan, milestones });
+  }
+  function toggleMilestone(index: number) {
+    const milestones = plan.milestones.map((m, i) => {
+      if (i !== index) return m;
+      return { ...m, completed_at: m.completed_at ? null : new Date().toISOString() };
+    });
+    scheduleSave({ ...plan, milestones });
+  }
+  function toggleNextAction(index: number) {
+    const next_actions = plan.next_actions.map((a, i) =>
+      i === index ? { ...a, completed: !a.completed } : a,
+    );
+    scheduleSave({ ...plan, next_actions });
+  }
+
   return (
     <div style={{ height: "100%", overflowY: "auto", background: cream }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "44px 28px 80px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            margin: "0 0 14px",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
           <p
             style={{
               fontSize: 11,
@@ -129,28 +195,7 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
           >
             Your Home Buying plan
           </p>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: muted,
-              fontFamily: sans,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: sage,
-                display: "inline-block",
-              }}
-            />
-            Saved · find it on your dashboard
-          </span>
+          <SaveIndicator status={saveStatus} />
         </div>
         <h1
           style={{
@@ -169,15 +214,7 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
         {summary && (
           <section style={{ marginBottom: 32 }}>
             {summary.split(/\n\n+/).map((para, i) => (
-              <p
-                key={i}
-                style={{
-                  fontSize: 16,
-                  color: ink,
-                  lineHeight: 1.65,
-                  margin: "0 0 14px",
-                }}
-              >
+              <p key={i} style={{ fontSize: 16, color: ink, lineHeight: 1.65, margin: "0 0 14px" }}>
                 {para.trim()}
               </p>
             ))}
@@ -197,17 +234,27 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
               lineHeight: 1.55,
             }}
           >
-            This plan saved without KPIs, milestones, or next actions. Likely a
-            generation error. Tap "Redo this plan" to try again.
+            This plan saved without KPIs, milestones, or next actions. Likely a generation error.
+            Tap "Redo this plan" to try again.
           </div>
         )}
 
         {plan.kpis?.length > 0 && (
           <section style={{ marginBottom: 32 }}>
             <h2 style={sectionHeading}>KPIs</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 14,
+              }}
+            >
               {plan.kpis.map((k, i) => (
-                <KpiCard key={i} label={k.label} current={k.current} target={k.target} unit={k.unit} />
+                <EditableKpiCard
+                  key={i}
+                  kpi={k}
+                  onChangeCurrent={(v) => updateKpiCurrent(i, v)}
+                />
               ))}
             </div>
           </section>
@@ -218,14 +265,12 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
             <h2 style={sectionHeading}>Milestones</h2>
             <ul style={listStyle}>
               {plan.milestones.map((m, i) => (
-                <li key={i} style={itemStyle}>
-                  <span style={{ color: ink, fontSize: 15 }}>{m.label}</span>
-                  {typeof m.target_value === "number" && (
-                    <span style={{ color: muted, fontSize: 13, marginLeft: 8 }}>
-                      ({formatVal(m.current_value)} / {formatVal(m.target_value)})
-                    </span>
-                  )}
-                </li>
+                <EditableMilestoneRow
+                  key={i}
+                  milestone={m}
+                  onToggle={() => toggleMilestone(i)}
+                  onChangeCurrent={(v) => updateMilestoneCurrent(i, v)}
+                />
               ))}
             </ul>
           </section>
@@ -236,9 +281,11 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
             <h2 style={sectionHeading}>Next actions</h2>
             <ul style={listStyle}>
               {plan.next_actions.map((a, i) => (
-                <li key={i} style={itemStyle}>
-                  <span style={{ color: ink, fontSize: 15 }}>{a.label}</span>
-                </li>
+                <EditableNextActionRow
+                  key={i}
+                  action={a}
+                  onToggle={() => toggleNextAction(i)}
+                />
               ))}
             </ul>
           </section>
@@ -279,8 +326,287 @@ function PlanSummary({ plan, onRestart }: { plan: Plan; onRestart: () => void })
             Redo this plan
           </button>
         </div>
+
+        <PlanChat plan={plan} />
       </div>
     </div>
+  );
+}
+
+// ── Save indicator ─────────────────────────────────────────────────────
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  if (status === "idle") {
+    return (
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          color: muted,
+          fontFamily: sans,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: sage,
+            display: "inline-block",
+          }}
+        />
+        Saved · find it on your dashboard
+      </span>
+    );
+  }
+  const label = status === "saving" ? "Saving…" : "Saved";
+  const dotColor = status === "saving" ? muted : sage;
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        color: muted,
+        fontFamily: sans,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: dotColor,
+          display: "inline-block",
+        }}
+      />
+      {label}
+    </span>
+  );
+}
+
+// ── Editable KPI card ──────────────────────────────────────────────────
+function EditableKpiCard({
+  kpi,
+  onChangeCurrent,
+}: {
+  kpi: PlanKpi;
+  onChangeCurrent: (v: number) => void;
+}) {
+  const pct = kpi.target !== 0 ? Math.min(100, Math.max(0, (kpi.current / kpi.target) * 100)) : 0;
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "16px 18px" }}>
+      <p style={{ fontSize: 12, color: muted, margin: "0 0 4px", fontFamily: sans }}>{kpi.label}</p>
+      <p style={{ fontFamily: serif, fontSize: 20, color: ink, margin: "0 0 10px" }}>
+        <EditableNumber
+          value={kpi.current}
+          onChange={onChangeCurrent}
+          format={(v) => formatKpi(v, kpi.unit)}
+        />{" "}
+        <span style={{ color: muted, fontSize: 14 }}>/ {formatKpi(kpi.target, kpi.unit)}</span>
+      </p>
+      <div
+        style={{
+          height: 4,
+          borderRadius: 2,
+          background: "rgba(92,122,101,0.12)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ height: "100%", width: `${pct}%`, background: sage, transition: "width 0.4s" }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Editable milestone row ─────────────────────────────────────────────
+function EditableMilestoneRow({
+  milestone,
+  onToggle,
+  onChangeCurrent,
+}: {
+  milestone: PlanMilestone;
+  onToggle: () => void;
+  onChangeCurrent: (v: number) => void;
+}) {
+  const completed = !!milestone.completed_at;
+  return (
+    <li
+      style={{
+        background: "#fff",
+        border: `1px solid ${border}`,
+        borderRadius: 10,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <button
+        onClick={onToggle}
+        aria-label={completed ? "Mark milestone incomplete" : "Mark milestone complete"}
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 5,
+          border: `1.5px solid ${completed ? sage : border}`,
+          background: completed ? sage : "#fff",
+          cursor: "pointer",
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {completed && <Check size={13} color="#fff" strokeWidth={3} />}
+      </button>
+      <span
+        style={{
+          color: completed ? muted : ink,
+          fontSize: 15,
+          flex: 1,
+          textDecoration: completed ? "line-through" : "none",
+        }}
+      >
+        {milestone.label}
+      </span>
+      {typeof milestone.target_value === "number" && (
+        <span style={{ color: muted, fontSize: 13, fontFamily: sans }}>
+          (<EditableNumber
+            value={milestone.current_value}
+            onChange={onChangeCurrent}
+            format={(v) => v.toLocaleString()}
+          />{" "}
+          / {milestone.target_value.toLocaleString()})
+        </span>
+      )}
+    </li>
+  );
+}
+
+// ── Editable next-action row ───────────────────────────────────────────
+function EditableNextActionRow({
+  action,
+  onToggle,
+}: {
+  action: PlanNextAction;
+  onToggle: () => void;
+}) {
+  return (
+    <li
+      onClick={onToggle}
+      style={{
+        background: "#fff",
+        border: `1px solid ${border}`,
+        borderRadius: 10,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        cursor: "pointer",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 5,
+          border: `1.5px solid ${action.completed ? sage : border}`,
+          background: action.completed ? sage : "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {action.completed && <Check size={13} color="#fff" strokeWidth={3} />}
+      </span>
+      <span
+        style={{
+          color: action.completed ? muted : ink,
+          fontSize: 15,
+          flex: 1,
+          textDecoration: action.completed ? "line-through" : "none",
+        }}
+      >
+        {action.label}
+      </span>
+    </li>
+  );
+}
+
+// ── Editable inline number (click to edit) ─────────────────────────────
+function EditableNumber({
+  value,
+  onChange,
+  format,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  format: (v: number) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+
+  function commit() {
+    const cleaned = draft.replace(/[^0-9.-]/g, "");
+    const parsed = parseFloat(cleaned);
+    if (!isNaN(parsed) && parsed !== value) onChange(parsed);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+          if (e.key === "Escape") {
+            setDraft(String(value));
+            setEditing(false);
+          }
+        }}
+        style={{
+          fontFamily: "inherit",
+          fontSize: "inherit",
+          color: ink,
+          background: "rgba(92,122,101,0.06)",
+          border: `1px solid ${sage}`,
+          borderRadius: 4,
+          padding: "1px 6px",
+          width: Math.max(60, draft.length * 9 + 16),
+          outline: "none",
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      onClick={() => {
+        setDraft(String(value));
+        setEditing(true);
+      }}
+      style={{
+        cursor: "text",
+        borderBottom: `1px dashed ${border}`,
+        padding: "0 2px",
+      }}
+      title="Click to edit"
+    >
+      {format(value)}
+    </span>
   );
 }
 
@@ -301,42 +627,8 @@ const listStyle: React.CSSProperties = {
   gap: 8,
 };
 
-const itemStyle: React.CSSProperties = {
-  background: "#fff",
-  border: `1px solid ${border}`,
-  borderRadius: 10,
-  padding: "12px 16px",
-};
-
-function KpiCard({ label, current, target, unit }: { label: string; current: number; target: number; unit: string }) {
-  const pct = target !== 0 ? Math.min(100, Math.max(0, (current / target) * 100)) : 0;
-  return (
-    <div style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "16px 18px" }}>
-      <p style={{ fontSize: 12, color: muted, margin: "0 0 4px", fontFamily: sans }}>{label}</p>
-      <p style={{ fontFamily: serif, fontSize: 20, color: ink, margin: "0 0 10px" }}>
-        {formatKpi(current, unit)} <span style={{ color: muted, fontSize: 14 }}>/ {formatKpi(target, unit)}</span>
-      </p>
-      <div
-        style={{
-          height: 4,
-          borderRadius: 2,
-          background: "rgba(92,122,101,0.12)",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ height: "100%", width: `${pct}%`, background: sage, transition: "width 0.4s" }} />
-      </div>
-    </div>
-  );
-}
-
 function formatKpi(v: number, unit: string): string {
   if (unit === "$") return `$${Math.round(v).toLocaleString()}`;
   if (unit === "%") return `${v.toFixed(1)}%`;
   return `${v} ${unit}`;
-}
-
-function formatVal(v: unknown): string {
-  if (typeof v === "number") return v.toLocaleString();
-  return String(v ?? "-");
 }
