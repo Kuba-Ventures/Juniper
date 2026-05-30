@@ -71,6 +71,43 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
         "The strategies you both kept are your natural starting point. The ones only one of you flagged are worth a quick conversation about why.",
     },
   ],
+  "debt-paydown": [
+    {
+      field: "payoff_method",
+      label: "Payoff method",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Avalanche is mathematically optimal; snowball is psychologically easier. The right method is the one you'll actually stick with. If you each picked differently, the question is which is more likely to keep you both going.",
+    },
+    {
+      field: "monthly_target",
+      label: "Monthly paydown target ($)",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "Different monthly targets often reflect different views on lifestyle vs. urgency. Pick a number you can both commit to even on a tough month.",
+    },
+    {
+      field: "prioritize_high_interest",
+      label: "High-interest first?",
+      format: (v) => (v === true ? "Yes" : v === false ? "No" : "-"),
+      divergedNote:
+        "One of you wants the math win, the other wants the morale win. Both work. Pick the method that survives a bad month.",
+    },
+    {
+      field: "consider_consolidation",
+      label: "Consolidation/refi approach",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Consolidation feels clean but only helps if you actually use the savings to pay down faster. If you disagree on whether to consolidate, walk through what each path looks like in numbers.",
+    },
+    {
+      field: "target_payoff_date",
+      label: "Target payoff date",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "A timeline difference usually means different views on tradeoffs. Either tighten the monthly target or extend the date, both honest moves.",
+    },
+  ],
   "combining-finances": [
     {
       field: "accounts_approach",

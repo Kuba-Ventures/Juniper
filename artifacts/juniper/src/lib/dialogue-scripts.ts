@@ -50,9 +50,22 @@ const COMBINING_FINANCES: ClientScript = {
   ],
 };
 
+const DEBT_PAYDOWN: ClientScript = {
+  domain: "debt-paydown",
+  title: "Debt Paydown",
+  steps: [
+    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
+    { id: "inventory", name: "Debt inventory" },
+    { id: "method", name: "Method & monthly target" },
+    { id: "consolidation", name: "Refi or consolidate" },
+    { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
+  ],
+};
+
 const SCRIPTS: Record<string, ClientScript> = {
   "home-buying": HOME_BUYING,
   "combining-finances": COMBINING_FINANCES,
+  "debt-paydown": DEBT_PAYDOWN,
 };
 
 export function getClientScript(domain: string): ClientScript | null {

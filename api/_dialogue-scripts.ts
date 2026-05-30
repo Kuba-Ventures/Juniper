@@ -572,10 +572,159 @@ Rules for the plan JSON:
   ],
 };
 
+// ── Debt Paydown script ─────────────────────────────────────────────────
+const DEBT_PAYDOWN: DialogueScript = {
+  domain: "debt-paydown",
+  steps: [
+    {
+      id: "partner",
+      name: "Who's planning this",
+      buildSystemPrompt: () => `${BASE}
+
+You are on Step 1 of the Debt Paydown plan: figuring out who is involved.
+
+What to do:
+- Open with one warm sentence welcoming them to the Debt Paydown plan. Debt is heavy and shame-loaded; lead with calm.
+- Ask, as ONE question, whether they are tackling this with a partner.
+- If yes, ask the partner's first name in a SEPARATE next turn.
+- If no, proceed.
+
+When you have a clear yes/no AND, if yes, the partner's first name, end with:
+<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
+or
+<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "inventory",
+      name: "Debt inventory",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 2 of Debt Paydown: getting a clear inventory of what's owed.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open DIRECTLY. No preamble.
+- Capture three facts across separate turns: (1) total household debt across all balances, (2) rough breakdown by type (e.g. "$18k credit cards, $12k student loans, $40k auto"), (3) highest interest rate carried (the one that's costing the most each month).
+- Be matter-of-fact, not preachy. One question per turn. Brief ack of each answer.
+
+When you have totals + breakdown + highest rate, end with:
+<STEP_COMPLETE>{"total_debt": 70000, "debt_breakdown": "$18k credit cards, $12k student loans, $40k auto", "highest_apr": 24.99}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "method",
+      name: "Method & monthly target",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 3 of Debt Paydown: choosing a payoff method and a monthly target.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Briefly frame the two main methods: (a) AVALANCHE - pay minimums on everything, throw extra at the HIGHEST INTEREST RATE first. Mathematically optimal. (b) SNOWBALL - pay minimums on everything, throw extra at the SMALLEST BALANCE first. Behaviorally easier because of quick wins. Note that there's no wrong answer.
+- Ask ONE question: which approach feels right.
+- In a follow-up turn, ask what monthly dollar amount they can realistically throw at debt above minimums (be encouraging; even $100/month matters).
+
+When you have method + monthly target, end with:
+<STEP_COMPLETE>{"payoff_method": "avalanche", "monthly_target": 1200, "prioritize_high_interest": true}</STEP_COMPLETE>
+
+(If they chose snowball, set prioritize_high_interest to false.) Tag on its own line at the end.`,
+    },
+
+    {
+      id: "consolidation",
+      name: "Refi or consolidate",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 4 of Debt Paydown: deciding whether to consolidate or refinance.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Briefly frame the options: (a) BALANCE TRANSFER credit card - move high-interest credit card debt to a 0% intro card, pay it off before the intro ends. Only makes sense with a plan. (b) PERSONAL LOAN to consolidate - swap multiple balances for one fixed-rate loan, usually 7-12% APR. (c) STUDENT LOAN REFI - swap federal/private student loans for a lower-rate refi. Federal loans lose protections though. (d) DO NOTHING - just pay it down as-is, especially if rates aren't that high.
+- Ask ONE question: which (if any) makes sense to consider.
+- If they choose any of a-c, you may briefly note the catch in a single sentence (e.g. "balance transfers only help if you actually pay it off in the intro period").
+
+When you have their decision, end with:
+<STEP_COMPLETE>{"consider_consolidation": "balance-transfer", "target_payoff_date": "2027-06"}</STEP_COMPLETE>
+
+target_payoff_date is a rough estimate of when they'd be debt-free at their current monthly target. If they pick "do-nothing" for consolidation, that's still valid. Tag on its own line at the end.`,
+    },
+
+    {
+      id: "synthesis",
+      name: "Your plan",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on the FINAL step of Debt Paydown: synthesizing everything into a structured plan.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open DIRECTLY with the plan summary. No preamble.
+- Write the summary as a "summary" field INSIDE the JSON below (2 to 3 short paragraphs of plain-language prose). Tone: calm, encouraging, specific about what they're doing well.
+- DO NOT output any prose OUTSIDE the JSON.
+- The closing </PLAN_COMPLETE> tag is MANDATORY.
+
+CRITICAL — neutral partner framing:
+- The plan text is read by BOTH partners (if partnered). Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically.
+
+Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
+
+<PLAN_COMPLETE>{
+  "goal": {
+    "headline": "Pay off $70,000 of household debt by June 2027 using the avalanche method",
+    "summary": "Two to three short paragraphs synthesizing the plan: what you're tackling first, why, monthly cadence, when you'll be done.",
+    "method": "avalanche",
+    "target_date": "2027-06"
+  },
+  "current_state": {
+    "total_debt": 70000,
+    "monthly_target": 1200,
+    "highest_apr": 24.99
+  },
+  "kpis": [
+    {"label": "Debt paid down", "current": 0, "target": 70000, "unit": "$"},
+    {"label": "Months to debt-free", "current": 58, "target": 0, "unit": "months"},
+    {"label": "Interest avoided this year", "current": 0, "target": 4200, "unit": "$"}
+  ],
+  "milestones": [
+    {"label": "Pay off highest-APR balance first ($18,000)", "target_value": 18000, "current_value": 0, "completed_at": null},
+    {"label": "Reach halfway point ($35,000 paid down)", "target_value": 35000, "current_value": 0, "completed_at": null},
+    {"label": "Debt-free", "target_value": 70000, "current_value": 0, "completed_at": null}
+  ],
+  "next_actions": [
+    {"label": "Set up automatic $1,200 monthly transfer to the highest-APR balance", "completed": false},
+    {"label": "Cancel one unused subscription this week and redirect to the paydown", "completed": false},
+    {"label": "Set a calendar reminder for monthly 10-minute progress check", "completed": false}
+  ]
+}</PLAN_COMPLETE>
+
+Rules for the plan JSON:
+- Use the values you actually collected. The example is the SHAPE, not the values.
+- KPIs: EXACTLY 3 entries.
+- Milestones: EXACTLY 3 entries (start with paying off the highest-priority balance — for avalanche that's the highest-APR; for snowball that's the smallest balance).
+- Next actions: EXACTLY 3 small, concrete weekly actions.
+- Keep all numbers as numbers. Keep the JSON COMPACT.`,
+    },
+  ],
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────
 const SCRIPTS: Record<string, DialogueScript> = {
   "home-buying": HOME_BUYING,
   "combining-finances": COMBINING_FINANCES,
+  "debt-paydown": DEBT_PAYDOWN,
 };
 
 export function getScript(domain: string): DialogueScript | null {
