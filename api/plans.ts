@@ -77,29 +77,47 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method === "GET") {
     const domain = new URL(req.url).searchParams.get("domain");
-    // PostgREST OR filter: return plans where the caller is either the
-    // inviter (user_id) or the partner (partner_user_id).
-    const orFilter = `or=(user_id.eq.${encodeURIComponent(userId)},partner_user_id.eq.${encodeURIComponent(userId)})`;
-    const query = domain
-      ? `${SUPABASE_URL}/rest/v1/plans?${orFilter}&domain=eq.${encodeURIComponent(domain)}&select=*`
-      : `${SUPABASE_URL}/rest/v1/plans?${orFilter}&select=*&order=updated_at.desc`;
+    const domainClause = domain
+      ? `&domain=eq.${encodeURIComponent(domain)}`
+      : "&order=updated_at.desc";
 
-    const res = await fetch(query, { headers: supabaseHeaders(token) });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error(`[plans GET] supabase ${res.status}:`, body);
+    // Two parallel queries: plans where caller is owner, plans where caller
+    // is partner. Then merge + dedupe. Avoids PostgREST OR filter URL quirks.
+    const ownerUrl = `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&select=*${domainClause}`;
+    const partnerUrl = `${SUPABASE_URL}/rest/v1/plans?partner_user_id=eq.${encodeURIComponent(userId)}&select=*${domainClause}`;
+
+    const [ownerRes, partnerRes] = await Promise.all([
+      fetch(ownerUrl, { headers: supabaseHeaders(token) }),
+      fetch(partnerUrl, { headers: supabaseHeaders(token) }),
+    ]);
+
+    if (!ownerRes.ok || !partnerRes.ok) {
+      const badRes = !ownerRes.ok ? ownerRes : partnerRes;
+      const which = !ownerRes.ok ? "owner" : "partner";
+      const body = await badRes.text();
+      console.error(`[plans GET ${which}] supabase ${badRes.status}:`, body);
       return new Response(
-        JSON.stringify({ error: "Fetch failed", status: res.status, detail: body }),
+        JSON.stringify({ error: "Fetch failed", status: badRes.status, detail: body }),
         { status: 500, headers: { "Content-Type": "application/json", ...cors } },
       );
     }
-    const rows = (await res.json()) as unknown[];
+
+    const ownerRows = (await ownerRes.json()) as Array<{ id: string }>;
+    const partnerRows = (await partnerRes.json()) as Array<{ id: string }>;
+    const seen = new Set<string>();
+    const rows: unknown[] = [];
+    for (const r of [...ownerRows, ...partnerRows]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push(r);
+    }
+
     if (domain) {
       return new Response(JSON.stringify(rows[0] ?? null), {
         headers: { "Content-Type": "application/json", ...cors },
       });
     }
-    return new Response(JSON.stringify(rows ?? []), {
+    return new Response(JSON.stringify(rows), {
       headers: { "Content-Type": "application/json", ...cors },
     });
   }
@@ -121,20 +139,26 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Find an existing plan in this domain that the caller participates in
     // (either as inviter or partner). If found → PATCH. If not → INSERT.
-    const findFilter = `or=(user_id.eq.${encodeURIComponent(userId)},partner_user_id.eq.${encodeURIComponent(userId)})`;
-    const findRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?${findFilter}&domain=eq.${encodeURIComponent(domain)}&select=id`,
-      { headers: supabaseHeaders(token) },
-    );
-    if (!findRes.ok) {
-      const detail = await findRes.text();
-      console.error(`[plans POST find] supabase ${findRes.status}:`, detail);
+    // Two queries instead of an OR filter (avoids URL syntax quirks).
+    const ownerFindUrl = `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&domain=eq.${encodeURIComponent(domain)}&select=id`;
+    const partnerFindUrl = `${SUPABASE_URL}/rest/v1/plans?partner_user_id=eq.${encodeURIComponent(userId)}&domain=eq.${encodeURIComponent(domain)}&select=id`;
+    const [ownerFindRes, partnerFindRes] = await Promise.all([
+      fetch(ownerFindUrl, { headers: supabaseHeaders(token) }),
+      fetch(partnerFindUrl, { headers: supabaseHeaders(token) }),
+    ]);
+    if (!ownerFindRes.ok || !partnerFindRes.ok) {
+      const badRes = !ownerFindRes.ok ? ownerFindRes : partnerFindRes;
+      const which = !ownerFindRes.ok ? "owner" : "partner";
+      const detail = await badRes.text();
+      console.error(`[plans POST find ${which}] supabase ${badRes.status}:`, detail);
       return new Response(
-        JSON.stringify({ error: "Lookup failed", status: findRes.status, detail }),
+        JSON.stringify({ error: "Lookup failed", status: badRes.status, detail }),
         { status: 500, headers: { "Content-Type": "application/json", ...cors } },
       );
     }
-    const existing = (await findRes.json()) as Array<{ id: string }>;
+    const ownerExisting = (await ownerFindRes.json()) as Array<{ id: string }>;
+    const partnerExisting = (await partnerFindRes.json()) as Array<{ id: string }>;
+    const existing = [...ownerExisting, ...partnerExisting];
 
     let writeRes: Response;
     if (existing.length > 0) {
