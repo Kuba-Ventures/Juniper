@@ -80,6 +80,10 @@ export default async function handler(req: Request): Promise<Response> {
     if (!res.ok) {
       const body = await res.text();
       console.error(`[plans GET] supabase ${res.status}:`, body);
+      return new Response(
+        JSON.stringify({ error: "Fetch failed", status: res.status, detail: body }),
+        { status: 500, headers: { "Content-Type": "application/json", ...cors } },
+      );
     }
     const rows = (await res.json()) as unknown[];
     if (domain) {
