@@ -77,9 +77,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method === "GET") {
     const domain = new URL(req.url).searchParams.get("domain");
+    // PostgREST OR filter: return plans where the caller is either the
+    // inviter (user_id) or the partner (partner_user_id).
+    const orFilter = `or=(user_id.eq.${encodeURIComponent(userId)},partner_user_id.eq.${encodeURIComponent(userId)})`;
     const query = domain
-      ? `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&domain=eq.${encodeURIComponent(domain)}&select=*`
-      : `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}&select=*&order=updated_at.desc`;
+      ? `${SUPABASE_URL}/rest/v1/plans?${orFilter}&domain=eq.${encodeURIComponent(domain)}&select=*`
+      : `${SUPABASE_URL}/rest/v1/plans?${orFilter}&select=*&order=updated_at.desc`;
 
     const res = await fetch(query, { headers: supabaseHeaders(token) });
     if (!res.ok) {
@@ -112,27 +115,53 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // Upsert pattern: PostgREST treats this as INSERT, falling back to UPDATE
-    // when the (user_id, domain) unique index matches. Single roundtrip; no
-    // SELECT-then-decide race.
-    const payloadBody = { ...body, user_id: userId };
-    const url = `${SUPABASE_URL}/rest/v1/plans?on_conflict=user_id,domain`;
     console.log(
       `[plans POST] user=${userId} domain=${domain} status=${String(body.status)} keys=${Object.keys(body).join(",")}`,
     );
 
-    const writeRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...supabaseHeaders(token),
-        Prefer: "resolution=merge-duplicates,return=representation",
-      },
-      body: JSON.stringify(payloadBody),
-    });
+    // Find an existing plan in this domain that the caller participates in
+    // (either as inviter or partner). If found → PATCH. If not → INSERT.
+    const findFilter = `or=(user_id.eq.${encodeURIComponent(userId)},partner_user_id.eq.${encodeURIComponent(userId)})`;
+    const findRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/plans?${findFilter}&domain=eq.${encodeURIComponent(domain)}&select=id`,
+      { headers: supabaseHeaders(token) },
+    );
+    if (!findRes.ok) {
+      const detail = await findRes.text();
+      console.error(`[plans POST find] supabase ${findRes.status}:`, detail);
+      return new Response(
+        JSON.stringify({ error: "Lookup failed", status: findRes.status, detail }),
+        { status: 500, headers: { "Content-Type": "application/json", ...cors } },
+      );
+    }
+    const existing = (await findRes.json()) as Array<{ id: string }>;
+
+    let writeRes: Response;
+    if (existing.length > 0) {
+      // PATCH the existing plan. Strip user_id from the body — ownership
+      // is server-controlled and cannot be re-assigned via this endpoint.
+      const patchBody = { ...body };
+      delete (patchBody as Record<string, unknown>).user_id;
+      writeRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/plans?id=eq.${encodeURIComponent(existing[0].id)}`,
+        {
+          method: "PATCH",
+          headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
+          body: JSON.stringify(patchBody),
+        },
+      );
+    } else {
+      // INSERT a fresh plan with caller as the owner.
+      writeRes = await fetch(`${SUPABASE_URL}/rest/v1/plans`, {
+        method: "POST",
+        headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
+        body: JSON.stringify({ ...body, user_id: userId }),
+      });
+    }
 
     if (!writeRes.ok) {
       const errText = await writeRes.text();
-      console.error(`[plans POST] supabase ${writeRes.status}:`, errText);
+      console.error(`[plans POST write] supabase ${writeRes.status}:`, errText);
       return new Response(
         JSON.stringify({ error: "Save failed", status: writeRes.status, detail: errText }),
         { status: 500, headers: { "Content-Type": "application/json", ...cors } },
