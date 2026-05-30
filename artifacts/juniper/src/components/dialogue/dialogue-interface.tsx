@@ -149,7 +149,10 @@ export function DialogueInterface({
   });
   const [stepIndex, setStepIndex] = useState<number>(() => {
     if (isPartner) {
-      return initialPlan?.partner_current_step_index ?? PARTNER_SKIP_FIRST_STEP_INDEX;
+      const stored = initialPlan?.partner_current_step_index ?? 0;
+      // Step 0 is the partner-check step (skipWhen is_partner=true).
+      // If the partner hasn't started yet (stored = 0), jump past it.
+      return stored > 0 ? stored : PARTNER_SKIP_FIRST_STEP_INDEX;
     }
     return initialPlan?.current_step_index ?? 0;
   });
@@ -239,8 +242,8 @@ export function DialogueInterface({
   }, [autoStartPending, streaming, completedPlan]);
 
   const ctx: ClientDialogueContext = useMemo(
-    () => ({ has_partner: hasPartner }),
-    [hasPartner],
+    () => ({ has_partner: hasPartner, is_partner: isPartner }),
+    [hasPartner, isPartner],
   );
 
   const progress = script ? visibleProgress(script, stepIndex, ctx) : { position: 0, total: 0 };
@@ -457,13 +460,15 @@ export function DialogueInterface({
         setPartnerName(nextPartnerName);
       }
 
-      let next = nextVisibleStepIndex(script, currentStep, { has_partner: nextHasPartner });
+      let next = nextVisibleStepIndex(script, currentStep, {
+        has_partner: nextHasPartner,
+        is_partner: isPartner,
+      });
 
-      // Partner role exits before the synthesis step (which is inviter-only).
-      const partnerHasFinished =
-        isPartner && next !== null && next > PARTNER_LAST_STEP_INDEX;
+      // For partner role, the synthesis step has skipWhen=true, so
+      // nextVisibleStepIndex naturally returns null once they pass legal_tax.
+      const partnerHasFinished = isPartner && next === null;
       if (partnerHasFinished) {
-        next = null;
         completedRef.current = true;
       }
 

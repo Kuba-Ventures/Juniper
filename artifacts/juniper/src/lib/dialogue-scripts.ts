@@ -4,6 +4,7 @@
 
 export type ClientDialogueContext = {
   has_partner?: boolean | null;
+  is_partner?: boolean;
 };
 
 export type ClientStep = {
@@ -22,7 +23,7 @@ const HOME_BUYING: ClientScript = {
   domain: "home-buying",
   title: "Home Buying",
   steps: [
-    { id: "partner", name: "Who's planning this" },
+    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
     { id: "goal", name: "Goal & timeline" },
     { id: "finances", name: "Current finances" },
     { id: "downpayment", name: "Down payment plan" },
@@ -30,7 +31,7 @@ const HOME_BUYING: ClientScript = {
     { id: "strategies", name: "Affordability strategies" },
     { id: "mortgage_basics", name: "Mortgage basics" },
     { id: "legal_tax", name: "Legal & tax", skipWhen: (ctx) => ctx.has_partner !== true },
-    { id: "synthesis", name: "Your plan" },
+    { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
   ],
 };
 
