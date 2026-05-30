@@ -66,50 +66,33 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return unauthorized();
   const userId = payload.sub;
 
-  // GET /api/invites?token=xxx — lookup invite by token
+  // GET /api/invites?token=xxx — lookup invite via SECURITY DEFINER RPC
   if (req.method === "GET") {
     const inviteToken = new URL(req.url).searchParams.get("token");
     if (!inviteToken) return json({ error: "token required" }, 400);
 
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?invite_token=eq.${encodeURIComponent(inviteToken)}&select=id,user_id,partner_user_id,domain,goal,partner_invite_status`,
-      { headers: supabaseHeaders(token) },
-    );
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/lookup_plan_invite`, {
+      method: "POST",
+      headers: supabaseHeaders(token),
+      body: JSON.stringify({ p_token: inviteToken }),
+    });
     if (!res.ok) {
       const detail = await res.text();
-      console.error(`[invites GET] supabase ${res.status}:`, detail);
+      console.error(`[invites GET rpc] supabase ${res.status}:`, detail);
       return json({ error: "lookup failed", detail }, 500);
     }
     const rows = (await res.json()) as Array<{
-      id: string;
-      user_id: string;
-      partner_user_id: string | null;
       domain: string;
-      goal: { headline?: string } | null;
-      partner_invite_status: string;
+      inviter_first_name: string;
+      goal_headline: string | null;
+      already_accepted: boolean;
+      partner_is_self: boolean;
+      inviter_is_self: boolean;
     }>;
     if (rows.length === 0) {
       return json({ error: "Invite not found or expired" }, 404);
     }
-    const plan = rows[0];
-
-    // Fetch inviter's display name from user_profiles
-    const profRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(plan.user_id)}&select=name`,
-      { headers: supabaseHeaders(token) },
-    );
-    const profs = profRes.ok ? ((await profRes.json()) as Array<{ name: string | null }>) : [];
-    const inviter_first_name = profs[0]?.name?.split(" ")[0] ?? "Your partner";
-
-    return json({
-      domain: plan.domain,
-      inviter_first_name,
-      goal_headline: plan.goal?.headline ?? null,
-      already_accepted:
-        plan.partner_invite_status === "accepted" && plan.partner_user_id !== null,
-      partner_is_self: plan.partner_user_id === userId,
-      inviter_is_self: plan.user_id === userId,
-    });
+    return json(rows[0]);
   }
 
   if (req.method !== "POST") {
@@ -157,53 +140,39 @@ export default async function handler(req: Request): Promise<Response> {
   if (body.action === "accept") {
     if (!body.token) return json({ error: "token required" }, 400);
 
-    // Find the plan by token first (via the broad RLS we added).
-    const findRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?invite_token=eq.${encodeURIComponent(body.token)}&select=id,user_id,partner_user_id,domain`,
-      { headers: supabaseHeaders(token) },
-    );
-    if (!findRes.ok) {
-      const detail = await findRes.text();
-      console.error(`[invites accept lookup] supabase ${findRes.status}:`, detail);
-      return json({ error: "lookup failed", detail }, 500);
+    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/accept_plan_invite`, {
+      method: "POST",
+      headers: supabaseHeaders(token),
+      body: JSON.stringify({ p_token: body.token }),
+    });
+
+    if (!rpcRes.ok) {
+      const detail = await rpcRes.text();
+      console.error(`[invites accept rpc] supabase ${rpcRes.status}:`, detail);
+      // Parse PostgREST error envelope for a friendly message.
+      let message = "Could not accept invite";
+      try {
+        const parsed = JSON.parse(detail) as { message?: string };
+        if (parsed.message) message = parsed.message;
+      } catch {
+        /* ignore */
+      }
+      return json({ error: message, detail }, 400);
     }
-    const rows = (await findRes.json()) as Array<{
-      id: string;
-      user_id: string;
-      partner_user_id: string | null;
+
+    const rows = (await rpcRes.json()) as Array<{
+      ok: boolean;
       domain: string;
+      already_accepted: boolean;
     }>;
-    if (rows.length === 0) return json({ error: "Invite not found" }, 404);
-    const plan = rows[0];
+    const result = rows[0];
+    if (!result) return json({ error: "Accept returned no result" }, 500);
 
-    if (plan.user_id === userId) {
-      return json({ error: "You can't accept your own invite" }, 400);
-    }
-    if (plan.partner_user_id && plan.partner_user_id !== userId) {
-      return json({ error: "This invite already has a partner attached" }, 409);
-    }
-    if (plan.partner_user_id === userId) {
-      return json({ ok: true, domain: plan.domain, already_accepted: true });
-    }
-
-    const updateRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?id=eq.${encodeURIComponent(plan.id)}`,
-      {
-        method: "PATCH",
-        headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
-        body: JSON.stringify({
-          partner_user_id: userId,
-          partner_invite_status: "accepted",
-          partner_dialogue_status: "not_started",
-        }),
-      },
-    );
-    if (!updateRes.ok) {
-      const detail = await updateRes.text();
-      console.error(`[invites accept update] supabase ${updateRes.status}:`, detail);
-      return json({ error: "Could not accept", detail }, 500);
-    }
-    return json({ ok: true, domain: plan.domain });
+    return json({
+      ok: result.ok,
+      domain: result.domain,
+      already_accepted: result.already_accepted,
+    });
   }
 
   return json({ error: "Unknown action" }, 400);
