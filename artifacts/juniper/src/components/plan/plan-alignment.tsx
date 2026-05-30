@@ -18,58 +18,104 @@ type ComparisonField = {
   isArray?: boolean;
 };
 
-const FIELDS: ComparisonField[] = [
-  {
-    field: "home_type",
-    label: "Home type",
-    format: (v) => (typeof v === "string" && v ? v : "—"),
-    divergedNote:
-      "House vs. condo vs. multi-family often reflects different priorities (yard, walkability, appreciation potential). Worth a few minutes on what each of you actually wants from the space.",
-  },
-  {
-    field: "target_date",
-    label: "Target move-in",
-    format: (v) => (typeof v === "string" && v ? v : "—"),
-    divergedNote:
-      "A 6–12 month difference in timing can change the math significantly. Surface what's driving each timeline.",
-  },
-  {
-    field: "rough_price_band",
-    label: "Rough price band",
-    format: (v) => (typeof v === "string" && v ? v : "—"),
-    divergedNote:
-      "Different price expectations usually reflect different assumptions about location and size. Compare what each of you was picturing.",
-  },
-  {
-    field: "target_home_price",
-    label: "Target home price",
-    format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "—"),
-    divergedNote:
-      "A meaningful gap suggests different views on what's affordable. Compare the underlying assumptions, not just the numbers.",
-  },
-  {
-    field: "target_dp_pct",
-    label: "Target down payment %",
-    format: (v) => (typeof v === "number" ? `${v}%` : "—"),
-    divergedNote:
-      "Down payment % reflects different appetites for PMI, liquidity, and risk. Talk through which matters more for your household.",
-  },
-  {
-    field: "prioritize_debt",
-    label: "Pay down debt first?",
-    format: (v) => (v === true ? "Yes" : v === false ? "No" : "—"),
-    divergedNote:
-      "One of you wants a cleaner balance sheet, the other wants to keep saving. Both reasonable. Find the middle on amount and timing.",
-  },
-  {
-    field: "strategies_considered",
-    label: "Strategies on the table",
-    isArray: true,
-    format: (v) => (Array.isArray(v) && v.length > 0 ? (v as string[]).join(", ") : "none"),
-    divergedNote:
-      "The strategies you both kept are your natural starting point. The ones only one of you flagged are worth a quick conversation about why.",
-  },
-];
+const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
+  "home-buying": [
+    {
+      field: "home_type",
+      label: "Home type",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "House vs. condo vs. multi-family often reflects different priorities (yard, walkability, appreciation potential). Worth a few minutes on what each of you actually wants from the space.",
+    },
+    {
+      field: "target_date",
+      label: "Target move-in",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "A 6 to 12 month difference in timing can change the math significantly. Surface what's driving each timeline.",
+    },
+    {
+      field: "rough_price_band",
+      label: "Rough price band",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Different price expectations usually reflect different assumptions about location and size. Compare what each of you was picturing.",
+    },
+    {
+      field: "target_home_price",
+      label: "Target home price",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "A meaningful gap suggests different views on what's affordable. Compare the underlying assumptions, not just the numbers.",
+    },
+    {
+      field: "target_dp_pct",
+      label: "Target down payment %",
+      format: (v) => (typeof v === "number" ? `${v}%` : "-"),
+      divergedNote:
+        "Down payment % reflects different appetites for PMI, liquidity, and risk. Talk through which matters more for your household.",
+    },
+    {
+      field: "prioritize_debt",
+      label: "Pay down debt first?",
+      format: (v) => (v === true ? "Yes" : v === false ? "No" : "-"),
+      divergedNote:
+        "One of you wants a cleaner balance sheet, the other wants to keep saving. Both reasonable. Find the middle on amount and timing.",
+    },
+    {
+      field: "strategies_considered",
+      label: "Strategies on the table",
+      isArray: true,
+      format: (v) => (Array.isArray(v) && v.length > 0 ? (v as string[]).join(", ") : "none"),
+      divergedNote:
+        "The strategies you both kept are your natural starting point. The ones only one of you flagged are worth a quick conversation about why.",
+    },
+  ],
+  "combining-finances": [
+    {
+      field: "accounts_approach",
+      label: "Account architecture",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Joint, separate, and hybrid each carry their own emotional weight. The right answer is the one you can both stick with for years, not the one in a finance blog.",
+    },
+    {
+      field: "bills_split_method",
+      label: "How bills are split",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Equal vs. income-proportional often reflects different views on fairness vs. simplicity. Worth surfacing what feels right to each of you.",
+    },
+    {
+      field: "emergency_fund_months",
+      label: "Emergency fund target (months)",
+      format: (v) => (typeof v === "number" ? `${v} months` : "-"),
+      divergedNote:
+        "Different runway targets usually mean different risk tolerance. Talk about what would make each of you feel safe.",
+    },
+    {
+      field: "investment_priority",
+      label: "Investment priority",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Retirement-first vs. brokerage-first reflects different time horizons and tax preferences. Both can be right; align on the proportion.",
+    },
+    {
+      field: "solo_spend_limit",
+      label: "Solo spend limit ($)",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "Different solo-spend limits often reflect different ideas of autonomy. The number matters less than agreeing on one.",
+    },
+    {
+      field: "big_purchase_threshold",
+      label: "Discuss-first threshold ($)",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "Above this number, you talk before buying. Differences here are easy to resolve, just pick the lower of the two.",
+    },
+  ],
+};
 
 function arraysEqualAsSets(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) return false;
@@ -108,7 +154,8 @@ export function PlanAlignment({ plan, youAreInviter, inviterFirstName }: Props) 
   const yourCollected = youAreInviter ? inviterCollected : partnerCollected;
   const theirCollected = youAreInviter ? partnerCollected : inviterCollected;
 
-  const rows = FIELDS.map((f) => ({
+  const fields = FIELDS_BY_DOMAIN[plan.domain] ?? [];
+  const rows = fields.map((f) => ({
     ...f,
     yourValue: yourCollected[f.field],
     theirValue: theirCollected[f.field],

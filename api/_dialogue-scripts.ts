@@ -360,9 +360,222 @@ Rules for the plan JSON:
   ],
 };
 
+// ── Combining Finances script ───────────────────────────────────────────
+const COMBINING_FINANCES: DialogueScript = {
+  domain: "combining-finances",
+  steps: [
+    {
+      id: "partner",
+      name: "Who's planning this",
+      buildSystemPrompt: () => `${BASE}
+
+You are on Step 1 of the Combining Finances plan: figuring out who is involved.
+
+What to do:
+- Open with one warm sentence welcoming them to the Combining Finances plan. Note that this conversation works best when both partners go through it independently and compare answers.
+- Ask, as ONE question, whether they are working through this with a partner.
+- If they say yes, ask the partner's first name in a SEPARATE next turn.
+- If they say no, proceed.
+
+When you have a clear yes/no AND, if yes, the partner's first name, end your message with exactly:
+<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
+or
+<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "current_setup",
+      name: "How things look today",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 2 of Combining Finances: snapshotting how money flows for the household today.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open DIRECTLY with the first question. No preamble.
+- Capture three facts across separate turns: (1) what accounts exist today and whose name they're in (rough — checking, savings, brokerage, retirement), (2) roughly what monthly take-home income looks like for the household combined, (3) what the rough monthly outflow looks like (rent/mortgage + everything else lumped).
+- One question per turn. Brief ack of each answer.
+
+When you have a clear picture of accounts + income + outflow, end with:
+<STEP_COMPLETE>{"accounts_today": "His checking, her checking, joint savings", "monthly_household_income": 12000, "monthly_outflow": 7500}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "account_architecture",
+      name: "Account architecture",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 3 of Combining Finances: deciding how accounts will be structured going forward.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open with one short framing: the three common approaches are (a) FULLY JOINT - everything goes into shared accounts, (b) FULLY SEPARATE - each person keeps their own accounts and contributes to shared bills, (c) HYBRID - a joint account for shared expenses plus individual accounts for personal spending.
+- Briefly note that there's no right answer; it's about what works for the relationship.
+- Then ask ONE question: which model do they want to move toward, or are they already there?
+- If they pick HYBRID, in a follow-up turn ask which accounts go joint vs. stay individual.
+
+When you have a clear answer, end with:
+<STEP_COMPLETE>{"accounts_approach": "hybrid", "joint_for": ["rent", "groceries", "utilities"], "separate_for": ["personal spending", "individual investments"]}</STEP_COMPLETE>
+
+If fully joint or fully separate, you can leave joint_for / separate_for as empty arrays. Tag on its own line at the end.`,
+    },
+
+    {
+      id: "bills_split",
+      name: "Splitting shared bills",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 4 of Combining Finances: agreeing on how shared bills get split.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open by introducing the common methods in one short paragraph: (a) EQUAL - 50/50 regardless of income, (b) INCOME-PROPORTIONAL - higher earner pays a larger share, (c) BY CATEGORY - one person handles rent, the other handles groceries, etc., (d) SHARED POOL - both contribute to a joint pot.
+- Ask ONE question: which method works best for the household.
+- If they choose income-proportional, in a follow-up turn ask roughly what the income split looks like (e.g. 60/40, 70/30).
+
+When you have a clear answer, end with:
+<STEP_COMPLETE>{"bills_split_method": "income-proportional", "income_split": "60/40"}</STEP_COMPLETE>
+
+If equal, by-category, or shared-pool, income_split can be null. Tag on its own line at the end.`,
+    },
+
+    {
+      id: "emergency_fund",
+      name: "Emergency fund",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 5 of Combining Finances: targeting the emergency fund.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Briefly frame: standard advice is 3 to 6 months of essential expenses; some prefer 6 to 12 if they have variable income or want extra cushion.
+- Using the monthly outflow captured in Step 2, give one example of what 3 vs. 6 months looks like in dollars.
+- Ask ONE question: what months-of-expenses target feels right for the household.
+- In a follow-up turn ask where the emergency fund should live (savings account, HYSA, money market, etc.).
+
+When you have target months + where it lives, end with:
+<STEP_COMPLETE>{"emergency_fund_months": 6, "emergency_fund_location": "HYSA"}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "investments",
+      name: "Investment priorities",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 6 of Combining Finances: aligning on investment priorities.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Briefly frame: the three common priorities are (a) RETIREMENT-FIRST - max out 401(k) + IRAs before anything else, (b) BALANCED - retirement plus a brokerage for medium-term goals, (c) BROKERAGE-FIRST - prioritize flexibility over tax-advantaged accounts.
+- Ask ONE question: which lens fits the household.
+- In a follow-up turn ask whether both people should contribute equally to retirement accounts, or by income share, or one person primarily.
+
+When you have priority + contribution model, end with:
+<STEP_COMPLETE>{"investment_priority": "retirement-first", "retirement_contribution_model": "equal"}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "discretionary",
+      name: "Discretionary boundaries",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on Step 7 of Combining Finances: agreeing on personal spending boundaries.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Briefly frame: two common levers are (a) SOLO SPEND LIMIT - how much each person can spend without checking in (haircuts, gifts, hobbies), (b) BIG PURCHASE THRESHOLD - the dollar amount above which both partners discuss before buying.
+- Ask ONE question: what monthly solo-spend limit feels right per person.
+- In a follow-up turn ask what dollar amount triggers a discussion before buying.
+
+When you have both numbers, end with:
+<STEP_COMPLETE>{"solo_spend_limit": 300, "big_purchase_threshold": 500}</STEP_COMPLETE>
+
+Tag on its own line at the end.`,
+    },
+
+    {
+      id: "synthesis",
+      name: "Your plan",
+      buildSystemPrompt: (ctx) => `${BASE}
+
+You are on the FINAL step of Combining Finances: synthesizing everything into a structured plan.
+
+${partnerFraming(ctx)}
+${collectedSoFar(ctx)}
+
+What to do:
+- Open DIRECTLY with the plan summary. No preamble.
+- Write the summary as a "summary" field INSIDE the JSON below (2 to 3 short paragraphs of plain-language prose).
+- DO NOT output any prose OUTSIDE the JSON. The ONLY thing you emit this turn is the <PLAN_COMPLETE>...</PLAN_COMPLETE> block.
+- The closing </PLAN_COMPLETE> tag is MANDATORY.
+
+CRITICAL — neutral partner framing:
+- The plan text is read by BOTH partners. Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically. Example: "your household" not "you and Alex".
+
+Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
+
+<PLAN_COMPLETE>{
+  "goal": {
+    "headline": "Build a hybrid-account household with a 6-month emergency fund",
+    "summary": "Two to three short paragraphs synthesizing where you're starting, what you've agreed on (account model, bill split, savings target, investment priority, spending boundaries), and what to do first.",
+    "approach": "hybrid"
+  },
+  "current_state": {
+    "monthly_household_income": 12000,
+    "monthly_outflow": 7500,
+    "accounts_today": "His checking, her checking, joint savings"
+  },
+  "kpis": [
+    {"label": "Emergency fund saved", "current": 8000, "target": 45000, "unit": "$"},
+    {"label": "Joint contributions ratio", "current": 60, "target": 60, "unit": "%"},
+    {"label": "Months to emergency fund target", "current": 18, "target": 0, "unit": "months"}
+  ],
+  "milestones": [
+    {"label": "Open joint account for shared expenses", "target_value": 1, "current_value": 0, "completed_at": null},
+    {"label": "Reach 3 months of expenses in emergency fund", "target_value": 22500, "current_value": 8000, "completed_at": null},
+    {"label": "Set up automatic contributions to retirement", "target_value": 1, "current_value": 0, "completed_at": null}
+  ],
+  "next_actions": [
+    {"label": "Open a joint high-yield savings account this week", "completed": false},
+    {"label": "Document the bill split and put it on a shared note", "completed": false},
+    {"label": "Schedule a monthly 20-minute money check-in", "completed": false}
+  ]
+}</PLAN_COMPLETE>
+
+Rules for the plan JSON:
+- Use the values you actually collected. The example above is the SHAPE, not the values.
+- KPIs: EXACTLY 3 entries.
+- Milestones: EXACTLY 3 entries.
+- Next actions: EXACTLY 3 entries.
+- Keep all numbers as numbers. Keep the JSON COMPACT.`,
+    },
+  ],
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────
 const SCRIPTS: Record<string, DialogueScript> = {
   "home-buying": HOME_BUYING,
+  "combining-finances": COMBINING_FINANCES,
 };
 
 export function getScript(domain: string): DialogueScript | null {
