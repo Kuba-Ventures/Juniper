@@ -29,6 +29,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS plans_user_domain_unique
 
 CREATE INDEX IF NOT EXISTS plans_user_id_idx ON public.plans (user_id);
 
+-- ── Grants ────────────────────────────────────────────────────────────────
+-- Tables created via raw SQL don't auto-grant Data API access. Without this
+-- the PostgREST API returns 401 even with a valid user JWT, regardless of
+-- RLS policies.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.plans TO authenticated;
+
 -- ── RLS ───────────────────────────────────────────────────────────────────
 ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
 
