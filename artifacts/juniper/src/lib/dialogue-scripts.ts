@@ -62,10 +62,40 @@ const DEBT_PAYDOWN: ClientScript = {
   ],
 };
 
+const BABY_PLANNING: ClientScript = {
+  domain: "baby-planning",
+  title: "Baby Planning",
+  steps: [
+    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
+    { id: "timeline", name: "Timeline" },
+    { id: "leave", name: "Parental leave plan" },
+    { id: "childcare", name: "Childcare strategy" },
+    { id: "costs", name: "Cost picture" },
+    { id: "college_fund", name: "College fund start" },
+    { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
+  ],
+};
+
+const PRENUP: ClientScript = {
+  domain: "prenup",
+  title: "Prenup & Legal",
+  steps: [
+    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
+    { id: "premarital_assets", name: "Premarital assets" },
+    { id: "premarital_debts", name: "Premarital debts" },
+    { id: "property_treatment", name: "Property treatment" },
+    { id: "inheritances", name: "Inheritances & gifts" },
+    { id: "support_stance", name: "Spousal support stance" },
+    { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
+  ],
+};
+
 const SCRIPTS: Record<string, ClientScript> = {
   "home-buying": HOME_BUYING,
   "combining-finances": COMBINING_FINANCES,
   "debt-paydown": DEBT_PAYDOWN,
+  "baby-planning": BABY_PLANNING,
+  "prenup": PRENUP,
 };
 
 export function getClientScript(domain: string): ClientScript | null {

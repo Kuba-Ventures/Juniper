@@ -108,6 +108,87 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
         "A timeline difference usually means different views on tradeoffs. Either tighten the monthly target or extend the date, both honest moves.",
     },
   ],
+  "baby-planning": [
+    {
+      field: "stage",
+      label: "Current stage",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Different views on where you are today often mean different urgency. Talk through what each of you actually feels ready for.",
+    },
+    {
+      field: "target_year",
+      label: "Target year",
+      format: (v) => (typeof v === "number" ? String(v) : "-"),
+      divergedNote:
+        "Even a year's gap in timing changes savings urgency. Worth surfacing what's driving each timeline.",
+    },
+    {
+      field: "primary_leave_months",
+      label: "Primary parent leave (months)",
+      format: (v) => (typeof v === "number" ? `${v} months` : "-"),
+      divergedNote:
+        "Leave length usually reflects different views on career risk, finances, and time with the baby. Often resolves by mapping what each month looks like financially.",
+    },
+    {
+      field: "partner_leave_months",
+      label: "Partner leave (months)",
+      format: (v) => (typeof v === "number" ? `${v} months` : "-"),
+      divergedNote:
+        "Partner leave is often constrained more by employer than by preference. Compare what each of you can actually take vs. what you'd ideally take.",
+    },
+    {
+      field: "childcare_preference",
+      label: "Childcare preference",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Daycare vs. nanny vs. stay-home parent isn't just a money question. It's also about who you want to spend the day with you. Worth a real conversation here.",
+    },
+    {
+      field: "monthly_cost_estimate",
+      label: "Monthly cost estimate ($)",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "Cost estimates often reveal different baseline assumptions about location, childcare type, and lifestyle. Walk through what each of you was picturing.",
+    },
+    {
+      field: "college_fund_start",
+      label: "College fund start",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "One of you wants the early time-value win; the other wants to fund retirement first. Both reasonable. Decide the split.",
+    },
+  ],
+  "prenup": [
+    {
+      field: "property_treatment",
+      label: "Property treatment",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Community vs. separate vs. hybrid is one of the prenup's biggest levers. Often reflects different views on what marriage means financially. This is the one to talk through deeply, with an attorney.",
+    },
+    {
+      field: "inheritance_treatment",
+      label: "Inheritance treatment",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Inheritances often carry family weight beyond money. Discuss what feels respectful to each family of origin.",
+    },
+    {
+      field: "support_stance",
+      label: "Spousal support stance",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Support terms are the most emotionally loaded prenup question. There's no right answer; the goal is alignment, and ideally with each of you having had separate counsel.",
+    },
+    {
+      field: "carveouts",
+      label: "Carveouts",
+      format: (v) => (typeof v === "string" && v ? v : "-"),
+      divergedNote:
+        "Different carveouts reflect different views on which assets feel personal vs. shared. Walk through the specifics together before bringing to an attorney.",
+    },
+  ],
   "combining-finances": [
     {
       field: "accounts_approach",
