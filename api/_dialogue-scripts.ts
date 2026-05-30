@@ -309,6 +309,11 @@ What to do:
 - DO NOT output any prose OUTSIDE the JSON. The ONLY thing you emit this turn is the <PLAN_COMPLETE>...</PLAN_COMPLETE> block.
 - The closing </PLAN_COMPLETE> tag is MANDATORY. Without it, the user is stranded with no plan. Make sure your response ends with </PLAN_COMPLETE> and nothing after.
 
+CRITICAL — neutral partner framing in plan content:
+- The plan text (summary, milestones, next_actions, goal headline) is read by BOTH partners. Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically.
+- For example: write "you both" not "you and Danielle"; "your partner's income contribution" not "Danielle's income"; "build your household down payment fund" not "build your and Danielle's fund".
+- The dialogue conversation itself can use the partner's name naturally — but the FINAL JSON plan content must stay name-neutral so it reads correctly for both people.
+
 Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
 
 <PLAN_COMPLETE>{
