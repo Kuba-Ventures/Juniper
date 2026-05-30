@@ -388,7 +388,12 @@ export function DialogueInterface({
       const kpis = (planData.kpis ?? []) as PlanKpi[];
       const milestones = (planData.milestones ?? []) as PlanMilestone[];
       const nextActions = (planData.next_actions ?? []) as PlanNextAction[];
-      const currentState = (planData.current_state ?? null) as Record<string, unknown> | null;
+      const synthesisState = (planData.current_state ?? null) as Record<string, unknown> | null;
+      // Preserve the dialogue-collected dict in current_state.collected so the
+      // alignment view can read per-field answers later.
+      const mergedCurrentState: Record<string, unknown> | null = synthesisState
+        ? { ...synthesisState, collected: currentCollected }
+        : { collected: currentCollected };
 
       // Build a local completed plan from the parsed data so the UI can
       // transition immediately, without waiting for the server save.
@@ -401,7 +406,7 @@ export function DialogueInterface({
         has_partner: currentHasPartner,
         partner_first_name: currentPartnerName,
         goal: goal ?? null,
-        current_state: currentState,
+        current_state: mergedCurrentState,
         kpis,
         milestones,
         next_actions: nextActions,
@@ -431,7 +436,7 @@ export function DialogueInterface({
         has_partner: currentHasPartner,
         partner_first_name: currentPartnerName,
         goal: goal ?? null,
-        current_state: currentState,
+        current_state: mergedCurrentState,
         kpis,
         milestones,
         next_actions: nextActions,
