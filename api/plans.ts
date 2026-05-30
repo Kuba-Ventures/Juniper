@@ -104,9 +104,13 @@ export default async function handler(req: Request): Promise<Response> {
 
     const ownerRows = (await ownerRes.json()) as Array<{ id: string }>;
     const partnerRows = (await partnerRes.json()) as Array<{ id: string }>;
+    // Partner rows first: if a user has both an owned plan and a partnered
+    // plan in the same domain (e.g. they clicked Start before accepting an
+    // invite), the partnered plan is the shared one — that's what they
+    // should land on. Owner rows that aren't already seen come after.
     const seen = new Set<string>();
     const rows: unknown[] = [];
-    for (const r of [...ownerRows, ...partnerRows]) {
+    for (const r of [...partnerRows, ...ownerRows]) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
       rows.push(r);
