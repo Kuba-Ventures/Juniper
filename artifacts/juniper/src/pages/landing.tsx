@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, MessageSquare, Clock } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const sage = "#5C7A65";
@@ -67,6 +68,8 @@ function WaitlistForm({ id }: { id: string }) {
     }
     setLoading(false);
     setSubmitted(true);
+    // GA4 conversion: waitlist sign-up. Mark "sign_up" as a key event in GA4.
+    trackEvent("sign_up", { method: "waitlist", journey_stage: stage });
   };
 
   if (submitted) {
