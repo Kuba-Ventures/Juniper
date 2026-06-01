@@ -144,7 +144,7 @@ export function AppSidebar({
         </button>
         <button onClick={() => setLocation("/app/plans")} style={navItemStyle(isPlans)}>
           <BookOpen size={15} color={isPlans ? sage : muted} strokeWidth={1.8} />
-          <span style={navLabelStyle(isPlans)}>Saved from chat</span>
+          <span style={navLabelStyle(isPlans)}>Saved plans</span>
         </button>
         <button onClick={() => setLocation("/app/chat")} style={navItemStyle(isChat)}>
           <MessageCircle size={15} color={isChat ? sage : muted} strokeWidth={1.8} />
