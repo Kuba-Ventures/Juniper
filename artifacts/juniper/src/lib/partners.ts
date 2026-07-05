@@ -133,3 +133,9 @@ export const PARTNERS: Record<string, Partner[]> = {
 export function heroPartner(domain: string): Partner | null {
   return PARTNERS[domain]?.[0] ?? null;
 }
+
+// All configured partners for a domain, hero first. Rendered as a pick-list
+// on the completed plan; the first entry is the RECOMMENDED one.
+export function partnersForDomain(domain: string): Partner[] {
+  return PARTNERS[domain] ?? [];
+}
