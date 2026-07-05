@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type React from "react";
 import { ArrowUpRight, Info } from "lucide-react";
 import { partnersForDomain, type Partner } from "@/lib/partners";
@@ -45,6 +46,49 @@ function fireClick(partner: Partner, domain: string): void {
   });
 }
 
+// The 48px brand tile: renders the real logo on a clean white chip, falling
+// back to the colored monogram if there's no logoUrl or the image fails.
+function LogoTile({ partner }: { partner: Partner }) {
+  const [failed, setFailed] = useState(false);
+  const base: React.CSSProperties = {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  };
+
+  if (partner.logoUrl && !failed) {
+    return (
+      <div style={{ ...base, background: "#fff", border: `1px solid ${border}`, overflow: "hidden" }}>
+        <img
+          src={partner.logoUrl}
+          alt={`${partner.name} logo`}
+          onError={() => setFailed(true)}
+          style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6, boxSizing: "border-box" }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        ...base,
+        background: partner.color,
+        color: "#fff",
+        fontFamily: serif,
+        fontSize: 18,
+        fontWeight: 600,
+      }}
+    >
+      {partner.initial}
+    </div>
+  );
+}
+
 function AffiliateCard({
   partner,
   domain,
@@ -67,25 +111,9 @@ function AffiliateCard({
         padding: 16,
       }}
     >
-      {/* monogram logo placeholder + category badge */}
+      {/* brand logo (monogram fallback) + category badge */}
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: partner.color,
-            color: "#fff",
-            fontFamily: serif,
-            fontSize: 18,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {partner.initial}
-        </div>
+        <LogoTile partner={partner} />
         <div
           style={{
             position: "absolute",
