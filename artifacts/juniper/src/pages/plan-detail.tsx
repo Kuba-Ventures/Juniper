@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Check } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
+import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanChat } from "@/components/plan/plan-chat";
 import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
 import { PlanAlignment } from "@/components/plan/plan-alignment";
@@ -319,6 +320,15 @@ function PlanView({
               ))}
             </ul>
           </section>
+        )}
+
+        {/* Affiliate click-out, gated to a fully generated plan: PlanView only
+            mounts when plan.status === "completed", and requiring a NEXT action
+            confirms synthesis produced content (excludes the isLight error
+            case). Never reachable from the dialogue or an in-progress plan.
+            Shown to both inviter and partner. */}
+        {plan.status === "completed" && (plan.next_actions?.length ?? 0) > 0 && (
+          <PlanAffiliatePicks domain={plan.domain} />
         )}
 
         <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
