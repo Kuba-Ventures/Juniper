@@ -94,14 +94,14 @@ function AffiliateCard({
             width: 24,
             height: 24,
             borderRadius: 999,
-            background: sageFill,
+            background: sage,
             border: "2px solid #fff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <CategoryIcon size={13} color={sage} strokeWidth={2.2} />
+          <CategoryIcon size={14} color="#fff" strokeWidth={2.4} />
         </div>
       </div>
 
