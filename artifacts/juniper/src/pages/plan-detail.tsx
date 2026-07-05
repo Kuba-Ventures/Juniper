@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Check } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
+import { PlanProjection } from "@/components/plan/plan-projection";
 import { PlanChat } from "@/components/plan/plan-chat";
 import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
 import { PlanAlignment } from "@/components/plan/plan-alignment";
@@ -290,6 +291,11 @@ function PlanView({
             </div>
           </section>
         )}
+
+        {/* Interest-aware savings projection. Same gate as the rest of the
+            completed-plan view; renders only for savings-projection domains
+            with the needed inputs (see planProjectionInput). */}
+        {plan.status === "completed" && <PlanProjection plan={plan} />}
 
         {plan.milestones?.length > 0 && (
           <section style={{ marginBottom: 32 }}>
