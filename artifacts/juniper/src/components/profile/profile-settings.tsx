@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, LogOut } from "lucide-react";
+import { X, LogOut, RotateCcw } from "lucide-react";
 import { UserProfile, saveProfile } from "@/lib/profile";
 
 const sage = "#5C7A65";
@@ -41,6 +41,8 @@ type Props = {
   onClose: () => void;
   onSave: (profile: UserProfile, name: string) => void;
   onSignOut: () => void;
+  // Testing-only: wipe plans + preferences to preview the new-user experience.
+  onResetForTesting?: () => void | Promise<void>;
 };
 
 export function ProfileSettings({
@@ -51,8 +53,11 @@ export function ProfileSettings({
   onClose,
   onSave,
   onSignOut,
+  onResetForTesting,
 }: Props) {
   const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [preferredName, setPreferredName] = useState(initialName);
   const [values, setValues] = useState<Partial<Record<keyof UserProfile, string>>>(() => ({
     monthlyIncome:   initialData?.monthlyIncome   !== undefined ? String(initialData.monthlyIncome)   : "",
@@ -215,6 +220,79 @@ export function ProfileSettings({
                 <LogOut size={16} />
                 Sign out
               </button>
+
+              {/* Testing-only: reset to the new-user experience */}
+              {onResetForTesting && (
+                <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px dashed ${border}` }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: muted, margin: "0 0 4px" }}>
+                    For testing
+                  </p>
+                  <p style={{ fontSize: 12, color: muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+                    Delete all your plans and preferences so the app looks the way it does for a
+                    brand-new user. This cannot be undone.
+                  </p>
+                  {!resetConfirm ? (
+                    <button
+                      onClick={() => setResetConfirm(true)}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 8,
+                        height: 44, padding: "0 18px",
+                        background: "none", border: `1.5px solid ${border}`,
+                        borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 500,
+                        color: "#b94040", cursor: "pointer", transition: "border-color 0.15s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#b94040")}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = border)}
+                    >
+                      <RotateCcw size={16} />
+                      Reset plans &amp; preferences
+                    </button>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <p style={{ fontSize: 13, color: ink, margin: 0, fontWeight: 600 }}>
+                        Delete everything and start fresh?
+                      </p>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button
+                          disabled={resetting}
+                          onClick={async () => {
+                            setResetting(true);
+                            try {
+                              await onResetForTesting();
+                            } catch {
+                              setResetting(false);
+                              setResetConfirm(false);
+                            }
+                          }}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                            height: 44, padding: "0 18px",
+                            background: "#b94040", border: "none",
+                            borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 600,
+                            color: "#fff", cursor: resetting ? "default" : "pointer",
+                            opacity: resetting ? 0.7 : 1,
+                          }}
+                        >
+                          <RotateCcw size={16} />
+                          {resetting ? "Resetting…" : "Yes, reset everything"}
+                        </button>
+                        <button
+                          disabled={resetting}
+                          onClick={() => setResetConfirm(false)}
+                          style={{
+                            height: 44, padding: "0 18px",
+                            background: "none", border: `1.5px solid ${border}`,
+                            borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 500,
+                            color: muted, cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>

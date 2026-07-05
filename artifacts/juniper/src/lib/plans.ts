@@ -110,6 +110,17 @@ export async function fetchPlans(): Promise<Plan[]> {
   return Array.isArray(data) ? data : [];
 }
 
+// Testing helper: delete every plan the current user owns. Returns true on
+// success. Plans where they're only a partner are left untouched (server-side).
+export async function deleteAllPlans(): Promise<boolean> {
+  try {
+    const res = await authedFetch("/api/plans", { method: "DELETE" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchPlan(domain: string): Promise<Plan | null> {
   const res = await authedFetch(`/api/plans?domain=${encodeURIComponent(domain)}`);
   if (!res.ok) return null;

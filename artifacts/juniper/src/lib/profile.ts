@@ -27,6 +27,34 @@ export function saveProfile(profile: UserProfile, email?: string): void {
   );
 }
 
+// Testing helper: remove the cached profile from localStorage.
+export function clearProfile(email?: string): void {
+  try {
+    localStorage.removeItem(profileKey(email));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Testing helper: delete the server-side profile row. Imports getAccessToken
+// lazily so this module stays free of a hard supabase dependency.
+export async function deleteRemoteProfile(): Promise<boolean> {
+  try {
+    const { getAccessToken } = await import("./supabase");
+    const token = await getAccessToken();
+    const res = await fetch("/api/profile", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function formatProfileContext(p: UserProfile): string {
   const lines: string[] = [];
   if (p.monthlyIncome) lines.push(`- Monthly take-home income: $${p.monthlyIncome.toLocaleString()}`);
