@@ -74,6 +74,15 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
+  // Structured (tap-first) steps are answered on the client and must never
+  // reach the model. If one does, it's a client bug, not a valid turn.
+  if (step.input && step.input.type !== "text") {
+    return new Response(
+      JSON.stringify({ error: `Step ${step.id} is a structured step and takes no LLM turn` }),
+      { status: 400, headers: { "Content-Type": "application/json", ...cors } },
+    );
+  }
+
   const systemPrompt = step.buildSystemPrompt(body.context ?? { collected: {} });
   const client = new Anthropic({ apiKey });
 
