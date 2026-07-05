@@ -31,6 +31,10 @@ export type Partner = {
   description: string;
   fit: string; // the "Why this: …" line
   url: string; // PLACEHOLDER referral URL
+  // Real brand logo by domain (Clearbit). Demo-quality; the monogram tile is
+  // the automatic fallback if it fails to load. Swap for a hosted/inlined
+  // asset once affiliate partners are approved.
+  logoUrl?: string;
 };
 
 // The first entry per domain is the hero (the only one rendered at launch, so
@@ -47,6 +51,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "No-fee high-yield savings, set up an automatic down-payment transfer.",
       fit: "Matches your automated-savings action",
       url: "https://example.com/partners/sofi-savings",
+      logoUrl: "https://logo.clearbit.com/sofi.com",
     },
     {
       name: "Marcus by Goldman Sachs",
@@ -57,6 +62,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Simple high-yield savings, no minimums or fees.",
       fit: "Alternative with no minimum balance",
       url: "https://example.com/partners/marcus",
+      logoUrl: "https://logo.clearbit.com/marcus.com",
     },
   ],
   "combining-finances": [
@@ -69,6 +75,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Shared budgeting and net-worth tracking built for couples.",
       fit: "Connects the accounts your plan tracks",
       url: "https://example.com/partners/monarch",
+      logoUrl: "https://logo.clearbit.com/monarchmoney.com",
     },
   ],
   "debt-paydown": [
@@ -93,6 +100,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Compare term life quotes in minutes from top insurers.",
       fit: "Well-timed for new parents",
       url: "https://example.com/partners/policygenius",
+      logoUrl: "https://logo.clearbit.com/policygenius.com",
     },
     {
       name: "Ladder",
@@ -103,6 +111,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Flexible term life you can adjust as your family grows.",
       fit: "Coverage you can scale later",
       url: "https://example.com/partners/ladder",
+      logoUrl: "https://logo.clearbit.com/ladderlife.com",
     },
   ],
   prenup: [
@@ -115,6 +124,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Create a prenup online, attorney-reviewed, at a flat fee.",
       fit: "Direct match for this plan",
       url: "https://example.com/partners/helloprenup",
+      logoUrl: "https://logo.clearbit.com/helloprenup.com",
     },
     {
       name: "Trust & Will",
@@ -125,6 +135,7 @@ export const PARTNERS: Record<string, Partner[]> = {
       description: "Wills and trusts set up online in under an hour.",
       fit: "Covers the broader estate step",
       url: "https://example.com/partners/trust-will",
+      logoUrl: "https://logo.clearbit.com/trustandwill.com",
     },
   ],
 };
