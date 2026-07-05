@@ -3,7 +3,8 @@ import { Switch, Route, useLocation } from "wouter";
 import { Menu } from "lucide-react";
 import { AppSidebar, type Artifact, type Conversation } from "@/components/app-sidebar";
 import { ProfileSettings, type SettingsTab } from "@/components/profile/profile-settings";
-import { UserProfile, loadProfile, saveProfile } from "@/lib/profile";
+import { UserProfile, loadProfile, saveProfile, clearProfile, deleteRemoteProfile } from "@/lib/profile";
+import { deleteAllPlans } from "@/lib/plans";
 import { supabase, getAccessToken } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { Dashboard } from "@/pages/dashboard";
@@ -275,6 +276,23 @@ export default function AppShell() {
     setShowSettings(false);
   }, []);
 
+  // Testing-only: wipe this account's plans + preferences (server + local
+  // caches) so the app looks the way it does for a brand-new user, then
+  // hard-reload into the dashboard.
+  const handleResetForTesting = useCallback(async () => {
+    await Promise.all([deleteAllPlans(), deleteRemoteProfile()]);
+    if (userEmail) {
+      clearProfile(userEmail);
+      try {
+        localStorage.removeItem(ARTIFACTS_KEY(userEmail));
+        localStorage.removeItem(CONVERSATIONS_KEY(userEmail));
+      } catch {
+        /* ignore */
+      }
+    }
+    window.location.assign("/app");
+  }, [userEmail]);
+
   const handleStartPlan = useCallback(
     (domain: Domain) => {
       // No financial-snapshot gate: the guided dialogue collects any missing
@@ -431,6 +449,7 @@ export default function AppShell() {
           onClose={handleSettingsClose}
           onSave={handleProfileSave}
           onSignOut={handleSignOut}
+          onResetForTesting={handleResetForTesting}
         />
       )}
     </div>

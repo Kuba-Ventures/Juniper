@@ -9,7 +9,7 @@ const SUPABASE_JWT_SECRET = readEnv("SUPABASE_JWT_SECRET");
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -91,6 +91,25 @@ export default async function handler(req: Request): Promise<Response> {
 
     const data = await writeRes.json();
     return new Response(JSON.stringify(data), {
+      headers: { "Content-Type": "application/json", ...cors },
+    });
+  }
+
+  if (req.method === "DELETE") {
+    // Reset for testing: drop the caller's profile row. RLS
+    // (user_profiles_delete_own) scopes it to their own row.
+    const delRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "DELETE", headers: supabaseHeaders(token) },
+    );
+    if (!delRes.ok) {
+      const detail = await delRes.text();
+      return new Response(
+        JSON.stringify({ error: "Delete failed", status: delRes.status, detail }),
+        { status: 500, headers: { "Content-Type": "application/json", ...cors } },
+      );
+    }
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json", ...cors },
     });
   }
