@@ -1,6 +1,6 @@
 import type React from "react";
 import { ArrowUpRight, Info } from "lucide-react";
-import { heroPartner, type Partner } from "@/lib/partners";
+import { partnersForDomain, type Partner } from "@/lib/partners";
 import { trackEvent } from "@/lib/analytics";
 
 // Matches the live PlanView palette (sage, Fraunces) so the card blends into
@@ -173,18 +173,23 @@ function AffiliateCard({
   );
 }
 
-// The full picks block for a completed plan: hero partner + the required
-// FTC-style disclosure. Renders nothing if the domain has no configured
-// partner. Callers must gate on plan completion (see PlanView).
+// The full picks block for a completed plan: every configured partner for the
+// domain (hero first, marked RECOMMENDED) + the required FTC-style disclosure.
+// Renders nothing if the domain has no configured partners. Callers must gate
+// on plan completion (see PlanView).
 export function PlanAffiliatePicks({ domain }: { domain: string }) {
-  const partner = heroPartner(domain);
-  if (!partner) return null;
+  const partners = partnersForDomain(domain);
+  if (partners.length === 0) return null;
 
   return (
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Recommended for this step</h2>
 
-      <AffiliateCard partner={partner} domain={domain} primary />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {partners.map((partner, i) => (
+          <AffiliateCard key={partner.name} partner={partner} domain={domain} primary={i === 0} />
+        ))}
+      </div>
 
       {/* Required FTC-style disclosure — kept visible, not behind a tooltip. */}
       <div
