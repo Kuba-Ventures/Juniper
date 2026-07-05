@@ -57,7 +57,9 @@ export type TimelineInput = {
   also?: (months: number) => Record<string, unknown>;
 };
 
-export type TextInput = { type: "text" };
+// Open-ended / sensitive question: keeps the LLM chat + <STEP_COMPLETE> path.
+// `question` is shown as the screen heading before Juniper opens the topic.
+export type TextInput = { type: "text"; question?: QuestionText; helper?: string };
 
 export type StepInput = ChoiceInput | MoneyInput | TimelineInput | TextInput;
 
@@ -81,6 +83,18 @@ function monthsToYearMonth(months: number): string {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Baby-planning target-year chips, anchored to the current year. Values are
+// the actual year numbers (the `target_year` PlanAlignment compares).
+function babyYearOptions(): ChoiceOption[] {
+  const y = new Date().getFullYear();
+  return [
+    { value: y, label: "This year" },
+    { value: y + 1, label: "Next year" },
+    { value: y + 2, label: "In 2 years" },
+    { value: y + 3, label: "3+ years" },
+  ];
 }
 
 const HOME_BUYING: ClientScript = {
@@ -170,13 +184,119 @@ const COMBINING_FINANCES: ClientScript = {
   domain: "combining-finances",
   title: "Combining Finances",
   steps: [
-    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
-    { id: "current_setup", name: "How things look today" },
-    { id: "account_architecture", name: "Account architecture" },
-    { id: "bills_split", name: "Splitting shared bills" },
-    { id: "emergency_fund", name: "Emergency fund" },
-    { id: "investments", name: "Investment priorities" },
-    { id: "discretionary", name: "Discretionary boundaries" },
+    {
+      id: "who",
+      name: "Who's planning this",
+      skipWhen: (ctx) => ctx.is_partner === true,
+      input: {
+        type: "choice",
+        key: "has_partner",
+        question: "Who's combining finances here?",
+        options: [
+          { value: false, label: "Just me", icon: "user" },
+          { value: true, label: "Me + my partner", icon: "users" },
+        ],
+      },
+    },
+    {
+      id: "account_architecture",
+      name: "Account architecture",
+      input: {
+        type: "choice",
+        key: "accounts_approach",
+        question: "How do you want to hold your money?",
+        options: [
+          { value: "joint", label: "Fully joint", sublabel: "Everything shared" },
+          { value: "separate", label: "Fully separate", sublabel: "Each keeps their own" },
+          { value: "hybrid", label: "Yours, mine & ours", sublabel: "Joint + individual" },
+        ],
+      },
+    },
+    {
+      id: "bills_split",
+      name: "Splitting shared bills",
+      input: {
+        type: "choice",
+        key: "bills_split_method",
+        question: "How should shared bills be split?",
+        options: [
+          { value: "equal", label: "50 / 50" },
+          { value: "income-proportional", label: "By income" },
+          { value: "single", label: "One of us covers most" },
+        ],
+      },
+    },
+    {
+      id: "emergency_fund",
+      name: "Emergency fund",
+      input: {
+        type: "choice",
+        key: "emergency_fund_months",
+        question: "How big an emergency fund feels safe?",
+        options: [
+          { value: 3, label: "3 months" },
+          { value: 6, label: "6 months" },
+          { value: 9, label: "9 months" },
+          { value: 12, label: "12 months" },
+        ],
+      },
+    },
+    {
+      id: "monthly_savings",
+      name: "Monthly savings",
+      input: {
+        type: "money",
+        key: "monthly_savings",
+        question: "How much can you save together each month?",
+        min: 0,
+        max: 50_000,
+        step: 250,
+        default: 2_000,
+        chips: [1_000, 2_500, 5_000],
+      },
+    },
+    {
+      id: "investments",
+      name: "Investment priorities",
+      input: {
+        type: "choice",
+        key: "investment_priority",
+        question: "What comes first when you invest?",
+        options: [
+          { value: "retirement-first", label: "Retirement first" },
+          { value: "balanced", label: "A balance" },
+          { value: "brokerage-first", label: "Flexibility first" },
+        ],
+      },
+    },
+    {
+      id: "solo_spend",
+      name: "Solo spending",
+      input: {
+        type: "money",
+        key: "solo_spend_limit",
+        question: "How much can each of you spend solo, no check-in?",
+        min: 0,
+        max: 5_000,
+        step: 50,
+        default: 300,
+        chips: [100, 300, 500],
+      },
+    },
+    {
+      id: "big_purchase",
+      name: "Discuss-first threshold",
+      input: {
+        type: "money",
+        key: "big_purchase_threshold",
+        question: "Above what amount do you talk before buying?",
+        min: 0,
+        max: 25_000,
+        step: 100,
+        default: 500,
+        chips: [250, 500, 1_000],
+      },
+    },
     { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
   ],
 };
@@ -185,10 +305,76 @@ const DEBT_PAYDOWN: ClientScript = {
   domain: "debt-paydown",
   title: "Debt Paydown",
   steps: [
-    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
-    { id: "inventory", name: "Debt inventory" },
-    { id: "method", name: "Method & monthly target" },
-    { id: "consolidation", name: "Refi or consolidate" },
+    {
+      id: "who",
+      name: "Who's planning this",
+      skipWhen: (ctx) => ctx.is_partner === true,
+      input: {
+        type: "choice",
+        key: "has_partner",
+        question: "Who's tackling this debt?",
+        options: [
+          { value: false, label: "Just me", icon: "user" },
+          { value: true, label: "Me + my partner", icon: "users" },
+        ],
+      },
+    },
+    {
+      id: "total_debt",
+      name: "Total debt",
+      input: {
+        type: "money",
+        key: "total_debt",
+        question: "How much debt are you paying off?",
+        min: 0,
+        max: 500_000,
+        step: 1_000,
+        default: 25_000,
+        chips: [10_000, 25_000, 50_000],
+      },
+    },
+    {
+      id: "monthly_target",
+      name: "Monthly payment",
+      input: {
+        type: "money",
+        key: "monthly_target",
+        question: "How much can you put toward it each month?",
+        min: 0,
+        max: 20_000,
+        step: 50,
+        default: 1_000,
+        chips: [500, 1_000, 2_000],
+      },
+    },
+    {
+      id: "method",
+      name: "Payoff strategy",
+      input: {
+        type: "choice",
+        key: "payoff_method",
+        question: "Which payoff strategy fits you?",
+        options: [
+          { value: "avalanche", label: "Avalanche", sublabel: "Highest interest first" },
+          { value: "snowball", label: "Snowball", sublabel: "Smallest balance first" },
+        ],
+        // prioritize_high_interest is what PlanAlignment compares.
+        also: (v) => ({ prioritize_high_interest: v === "avalanche" }),
+      },
+    },
+    {
+      id: "consolidation",
+      name: "Refi or consolidate",
+      input: {
+        type: "choice",
+        key: "consider_consolidation",
+        question: "Want to explore consolidating or refinancing?",
+        options: [
+          { value: "yes", label: "Yes, explore it" },
+          { value: "no", label: "No, keep as-is" },
+        ],
+      },
+    },
     { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
   ],
 };
@@ -197,12 +383,86 @@ const BABY_PLANNING: ClientScript = {
   domain: "baby-planning",
   title: "Baby Planning",
   steps: [
-    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
-    { id: "timeline", name: "Timeline" },
-    { id: "leave", name: "Parental leave plan" },
-    { id: "childcare", name: "Childcare strategy" },
-    { id: "costs", name: "Cost picture" },
-    { id: "college_fund", name: "College fund start" },
+    {
+      id: "who",
+      name: "Who's planning this",
+      skipWhen: (ctx) => ctx.is_partner === true,
+      input: {
+        type: "choice",
+        key: "has_partner",
+        question: "Who's planning for this baby?",
+        options: [
+          { value: false, label: "Just me", icon: "user" },
+          { value: true, label: "Me + my partner", icon: "users" },
+        ],
+      },
+    },
+    {
+      id: "target_year",
+      name: "Timeline",
+      input: {
+        type: "choice",
+        key: "target_year",
+        question: "When do you hope to welcome a baby?",
+        options: babyYearOptions(),
+      },
+    },
+    {
+      id: "childcare",
+      name: "Childcare strategy",
+      input: {
+        type: "choice",
+        key: "childcare_preference",
+        question: "What's your childcare plan?",
+        options: [
+          { value: "daycare", label: "Daycare" },
+          { value: "nanny", label: "Nanny" },
+          { value: "family", label: "Family or stay-home" },
+        ],
+      },
+    },
+    {
+      id: "costs",
+      name: "Monthly cost",
+      input: {
+        type: "money",
+        key: "monthly_cost_estimate",
+        question: "Estimated monthly childcare cost?",
+        min: 0,
+        max: 15_000,
+        step: 100,
+        default: 2_000,
+        chips: [1_500, 2_500, 4_000],
+      },
+    },
+    {
+      id: "savings_goal",
+      name: "Baby fund",
+      input: {
+        type: "money",
+        key: "savings_goal",
+        question: "One-time savings goal before the baby arrives?",
+        min: 0,
+        max: 100_000,
+        step: 1_000,
+        default: 10_000,
+        chips: [5_000, 10_000, 20_000],
+      },
+    },
+    {
+      id: "college_fund",
+      name: "College fund start",
+      input: {
+        type: "choice",
+        key: "college_fund_start",
+        question: "When do you want to start a college fund?",
+        options: [
+          { value: "immediately", label: "Right away" },
+          { value: "later", label: "After the baby fund" },
+          { value: "no", label: "Not yet" },
+        ],
+      },
+    },
     { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
   ],
 };
@@ -211,12 +471,73 @@ const PRENUP: ClientScript = {
   domain: "prenup",
   title: "Prenup & Legal",
   steps: [
-    { id: "partner", name: "Who's planning this", skipWhen: (ctx) => ctx.is_partner === true },
-    { id: "premarital_assets", name: "Premarital assets" },
-    { id: "premarital_debts", name: "Premarital debts" },
-    { id: "property_treatment", name: "Property treatment" },
-    { id: "inheritances", name: "Inheritances & gifts" },
-    { id: "support_stance", name: "Spousal support stance" },
+    {
+      id: "who",
+      name: "Who's planning this",
+      skipWhen: (ctx) => ctx.is_partner === true,
+      input: {
+        type: "choice",
+        key: "has_partner",
+        question: "Who's working through this prenup?",
+        options: [
+          { value: false, label: "Just me", icon: "user" },
+          { value: true, label: "Me + my partner", icon: "users" },
+        ],
+      },
+    },
+    {
+      id: "property_treatment",
+      name: "Property treatment",
+      input: {
+        type: "choice",
+        key: "property_treatment",
+        question: "How should property be treated in a marriage?",
+        options: [
+          { value: "community", label: "Shared", sublabel: "Community property" },
+          { value: "separate", label: "Kept separate", sublabel: "Each keeps their own" },
+          { value: "hybrid", label: "A mix", sublabel: "Some shared, some separate" },
+        ],
+      },
+    },
+    {
+      id: "inheritances",
+      name: "Inheritances & gifts",
+      input: {
+        type: "choice",
+        key: "inheritance_treatment",
+        question: "How should inheritances and gifts be treated?",
+        options: [
+          { value: "separate", label: "Stay separate" },
+          { value: "shared", label: "Become shared" },
+          { value: "depends", label: "Depends on the gift" },
+        ],
+      },
+    },
+    {
+      id: "support_stance",
+      name: "Spousal support stance",
+      input: {
+        type: "choice",
+        key: "support_stance",
+        question: "What's your stance on spousal support?",
+        options: [
+          { value: "waive", label: "Waive it" },
+          { value: "keep", label: "Keep support rights" },
+          { value: "formula", label: "Use a formula" },
+        ],
+      },
+    },
+    {
+      id: "carveouts",
+      name: "Carveouts",
+      // Sensitive and specific: kept open-ended so people can name the assets
+      // that actually matter to them (a business, a family property, etc.).
+      input: {
+        type: "text",
+        question: "Anything either of you wants kept clearly separate?",
+        helper: "A business, a family home, an heirloom. Say as much or as little as you like.",
+      },
+    },
     { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
   ],
 };

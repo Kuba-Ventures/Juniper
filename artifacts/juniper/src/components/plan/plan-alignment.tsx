@@ -51,6 +51,13 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
   ],
   "debt-paydown": [
     {
+      field: "total_debt",
+      label: "Total debt",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "If your totals differ, you're likely each counting different balances. Line up every debt so you're working from the same number.",
+    },
+    {
       field: "payoff_method",
       label: "Payoff method",
       format: (v) => (typeof v === "string" && v ? v : "-"),
@@ -78,42 +85,14 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
       divergedNote:
         "Consolidation feels clean but only helps if you actually use the savings to pay down faster. If you disagree on whether to consolidate, walk through what each path looks like in numbers.",
     },
-    {
-      field: "target_payoff_date",
-      label: "Target payoff date",
-      format: (v) => (typeof v === "string" && v ? v : "-"),
-      divergedNote:
-        "A timeline difference usually means different views on tradeoffs. Either tighten the monthly target or extend the date, both honest moves.",
-    },
   ],
   "baby-planning": [
-    {
-      field: "stage",
-      label: "Current stage",
-      format: (v) => (typeof v === "string" && v ? v : "-"),
-      divergedNote:
-        "Different views on where you are today often mean different urgency. Talk through what each of you actually feels ready for.",
-    },
     {
       field: "target_year",
       label: "Target year",
       format: (v) => (typeof v === "number" ? String(v) : "-"),
       divergedNote:
         "Even a year's gap in timing changes savings urgency. Worth surfacing what's driving each timeline.",
-    },
-    {
-      field: "primary_leave_months",
-      label: "Primary parent leave (months)",
-      format: (v) => (typeof v === "number" ? `${v} months` : "-"),
-      divergedNote:
-        "Leave length usually reflects different views on career risk, finances, and time with the baby. Often resolves by mapping what each month looks like financially.",
-    },
-    {
-      field: "partner_leave_months",
-      label: "Partner leave (months)",
-      format: (v) => (typeof v === "number" ? `${v} months` : "-"),
-      divergedNote:
-        "Partner leave is often constrained more by employer than by preference. Compare what each of you can actually take vs. what you'd ideally take.",
     },
     {
       field: "childcare_preference",
@@ -128,6 +107,13 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
       format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
       divergedNote:
         "Cost estimates often reveal different baseline assumptions about location, childcare type, and lifestyle. Walk through what each of you was picturing.",
+    },
+    {
+      field: "savings_goal",
+      label: "One-time baby fund goal",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
+      divergedNote:
+        "A gap here usually reflects different ideas of what 'ready' costs. Compare what each of you was picturing before the baby arrives.",
     },
     {
       field: "college_fund_start",

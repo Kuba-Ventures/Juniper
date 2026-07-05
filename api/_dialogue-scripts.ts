@@ -227,157 +227,19 @@ Rules for the plan JSON:
 };
 
 // ── Combining Finances script ───────────────────────────────────────────
+// Steps 0-7 are tap-first structured controls (client-only); synthesis is
+// index 8. Indices MUST match the client script.
 const COMBINING_FINANCES: DialogueScript = {
   domain: "combining-finances",
   steps: [
-    {
-      id: "partner",
-      name: "Who's planning this",
-      buildSystemPrompt: () => `${BASE}
-
-You are on Step 1 of the Combining Finances plan: figuring out who is involved.
-
-What to do:
-- Open with one warm sentence welcoming them to the Combining Finances plan. Note that this conversation works best when both partners go through it independently and compare answers.
-- Ask, as ONE question, whether they are working through this with a partner.
-- If they say yes, ask the partner's first name in a SEPARATE next turn.
-- If they say no, proceed.
-
-When you have a clear yes/no AND, if yes, the partner's first name, end your message with exactly:
-<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
-or
-<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "current_setup",
-      name: "How things look today",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 2 of Combining Finances: snapshotting how money flows for the household today.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Open DIRECTLY with the first question. No preamble.
-- Capture three facts across separate turns: (1) what accounts exist today and whose name they're in (rough — checking, savings, brokerage, retirement), (2) roughly what monthly take-home income looks like for the household combined, (3) what the rough monthly outflow looks like (rent/mortgage + everything else lumped).
-- One question per turn. Brief ack of each answer.
-
-When you have a clear picture of accounts + income + outflow, end with:
-<STEP_COMPLETE>{"accounts_today": "His checking, her checking, joint savings", "monthly_household_income": 12000, "monthly_outflow": 7500}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "account_architecture",
-      name: "Account architecture",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 3 of Combining Finances: deciding how accounts will be structured going forward.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Open with one short framing: the three common approaches are (a) FULLY JOINT - everything goes into shared accounts, (b) FULLY SEPARATE - each person keeps their own accounts and contributes to shared bills, (c) HYBRID - a joint account for shared expenses plus individual accounts for personal spending.
-- Briefly note that there's no right answer; it's about what works for the relationship.
-- Then ask ONE question: which model do they want to move toward, or are they already there?
-- If they pick HYBRID, in a follow-up turn ask which accounts go joint vs. stay individual.
-
-When you have a clear answer, end with:
-<STEP_COMPLETE>{"accounts_approach": "hybrid", "joint_for": ["rent", "groceries", "utilities"], "separate_for": ["personal spending", "individual investments"]}</STEP_COMPLETE>
-
-If fully joint or fully separate, you can leave joint_for / separate_for as empty arrays. Tag on its own line at the end.`,
-    },
-
-    {
-      id: "bills_split",
-      name: "Splitting shared bills",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 4 of Combining Finances: agreeing on how shared bills get split.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Open by introducing the common methods in one short paragraph: (a) EQUAL - 50/50 regardless of income, (b) INCOME-PROPORTIONAL - higher earner pays a larger share, (c) BY CATEGORY - one person handles rent, the other handles groceries, etc., (d) SHARED POOL - both contribute to a joint pot.
-- Ask ONE question: which method works best for the household.
-- If they choose income-proportional, in a follow-up turn ask roughly what the income split looks like (e.g. 60/40, 70/30).
-
-When you have a clear answer, end with:
-<STEP_COMPLETE>{"bills_split_method": "income-proportional", "income_split": "60/40"}</STEP_COMPLETE>
-
-If equal, by-category, or shared-pool, income_split can be null. Tag on its own line at the end.`,
-    },
-
-    {
-      id: "emergency_fund",
-      name: "Emergency fund",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 5 of Combining Finances: targeting the emergency fund.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame: standard advice is 3 to 6 months of essential expenses; some prefer 6 to 12 if they have variable income or want extra cushion.
-- Using the monthly outflow captured in Step 2, give one example of what 3 vs. 6 months looks like in dollars.
-- Ask ONE question: what months-of-expenses target feels right for the household.
-- In a follow-up turn ask where the emergency fund should live (savings account, HYSA, money market, etc.).
-
-When you have target months + where it lives, end with:
-<STEP_COMPLETE>{"emergency_fund_months": 6, "emergency_fund_location": "HYSA"}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "investments",
-      name: "Investment priorities",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 6 of Combining Finances: aligning on investment priorities.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame: the three common priorities are (a) RETIREMENT-FIRST - max out 401(k) + IRAs before anything else, (b) BALANCED - retirement plus a brokerage for medium-term goals, (c) BROKERAGE-FIRST - prioritize flexibility over tax-advantaged accounts.
-- Ask ONE question: which lens fits the household.
-- In a follow-up turn ask whether both people should contribute equally to retirement accounts, or by income share, or one person primarily.
-
-When you have priority + contribution model, end with:
-<STEP_COMPLETE>{"investment_priority": "retirement-first", "retirement_contribution_model": "equal"}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "discretionary",
-      name: "Discretionary boundaries",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 7 of Combining Finances: agreeing on personal spending boundaries.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame: two common levers are (a) SOLO SPEND LIMIT - how much each person can spend without checking in (haircuts, gifts, hobbies), (b) BIG PURCHASE THRESHOLD - the dollar amount above which both partners discuss before buying.
-- Ask ONE question: what monthly solo-spend limit feels right per person.
-- In a follow-up turn ask what dollar amount triggers a discussion before buying.
-
-When you have both numbers, end with:
-<STEP_COMPLETE>{"solo_spend_limit": 300, "big_purchase_threshold": 500}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
+    { id: "who", name: "Who's planning this", input: { type: "choice", key: "has_partner" }, buildSystemPrompt: STRUCTURED_STEP("who") },
+    { id: "account_architecture", name: "Account architecture", input: { type: "choice", key: "accounts_approach" }, buildSystemPrompt: STRUCTURED_STEP("account_architecture") },
+    { id: "bills_split", name: "Splitting shared bills", input: { type: "choice", key: "bills_split_method" }, buildSystemPrompt: STRUCTURED_STEP("bills_split") },
+    { id: "emergency_fund", name: "Emergency fund", input: { type: "choice", key: "emergency_fund_months" }, buildSystemPrompt: STRUCTURED_STEP("emergency_fund") },
+    { id: "monthly_savings", name: "Monthly savings", input: { type: "money", key: "monthly_savings" }, buildSystemPrompt: STRUCTURED_STEP("monthly_savings") },
+    { id: "investments", name: "Investment priorities", input: { type: "choice", key: "investment_priority" }, buildSystemPrompt: STRUCTURED_STEP("investments") },
+    { id: "solo_spend", name: "Solo spending", input: { type: "money", key: "solo_spend_limit" }, buildSystemPrompt: STRUCTURED_STEP("solo_spend") },
+    { id: "big_purchase", name: "Discuss-first threshold", input: { type: "money", key: "big_purchase_threshold" }, buildSystemPrompt: STRUCTURED_STEP("big_purchase") },
 
     {
       id: "synthesis",
@@ -387,52 +249,64 @@ Tag on its own line at the end.`,
 You are on the FINAL step of Combining Finances: synthesizing everything into a structured plan.
 
 ${partnerFraming(ctx)}
+${formatProfileSummary(ctx)}
 ${collectedSoFar(ctx)}
 
-What to do:
-- Open DIRECTLY with the plan summary. No preamble.
-- Write the summary as a "summary" field INSIDE the JSON below (2 to 3 short paragraphs of plain-language prose).
-- DO NOT output any prose OUTSIDE the JSON. The ONLY thing you emit this turn is the <PLAN_COMPLETE>...</PLAN_COMPLETE> block.
-- The closing </PLAN_COMPLETE> tag is MANDATORY.
+The user answered a short tap-first questionnaire. The facts you have are:
+- accounts_approach: joint | separate | hybrid.
+- bills_split_method: equal | income-proportional | single (one person covers most).
+- emergency_fund_months: target months of expenses to hold.
+- monthly_savings: how much the household can save together each month (dollars).
+- investment_priority: retirement-first | balanced | brokerage-first.
+- solo_spend_limit: per-person spend allowed without checking in (dollars).
+- big_purchase_threshold: amount above which they discuss before buying (dollars).
+- Any profile numbers above (monthly_expenses, total_savings) fill gaps. If a number is missing, reason without it.
 
-CRITICAL — neutral partner framing:
-- The plan text is read by BOTH partners. Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically. Example: "your household" not "you and Alex".
+Keep the plan's numbers consistent with these formulas (the user watched a live preview):
+- emergency_fund_target = emergency_fund_months * (monthly_expenses if known, else estimate from context)
+- months_to_target = monthly_savings > 0 ? ceil(max(0, emergency_fund_target - (total_savings || 0)) / monthly_savings) : null
+
+What to do:
+- Open DIRECTLY with the plan summary, no preamble. Write it as the "summary" field INSIDE the JSON (2-3 short paragraphs).
+- Output ONLY the <PLAN_COMPLETE>...</PLAN_COMPLETE> block. The closing tag is MANDATORY.
+
+CRITICAL, neutral partner framing: the plan is read by BOTH partners. Use "you both", "your household", "your partner". Never name the partner. If solo, use "you".
 
 Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
 
 <PLAN_COMPLETE>{
   "goal": {
     "headline": "Build a hybrid-account household with a 6-month emergency fund",
-    "summary": "Two to three short paragraphs synthesizing where you're starting, what you've agreed on (account model, bill split, savings target, investment priority, spending boundaries), and what to do first.",
+    "summary": "Two to three short paragraphs synthesizing what you've agreed on (account model, bill split, savings target, investment priority, spending boundaries) and what to do first.",
     "approach": "hybrid"
   },
   "current_state": {
-    "monthly_household_income": 12000,
-    "monthly_outflow": 7500,
-    "accounts_today": "His checking, her checking, joint savings"
+    "accounts_approach": "hybrid",
+    "bills_split_method": "income-proportional",
+    "monthly_savings": 2000,
+    "emergency_fund_months": 6
   },
   "kpis": [
     {"label": "Emergency fund saved", "current": 8000, "target": 45000, "unit": "$"},
-    {"label": "Joint contributions ratio", "current": 60, "target": 60, "unit": "%"},
-    {"label": "Months to emergency fund target", "current": 18, "target": 0, "unit": "months"}
+    {"label": "Saving each month", "current": 0, "target": 2000, "unit": "$"},
+    {"label": "Months to emergency fund", "current": 18, "target": 0, "unit": "months"}
   ],
   "milestones": [
-    {"label": "Open joint account for shared expenses", "target_value": 1, "current_value": 0, "completed_at": null},
-    {"label": "Reach 3 months of expenses in emergency fund", "target_value": 22500, "current_value": 8000, "completed_at": null},
-    {"label": "Set up automatic contributions to retirement", "target_value": 1, "current_value": 0, "completed_at": null}
+    {"label": "Open the shared account structure you chose", "target_value": 1, "current_value": 0, "completed_at": null},
+    {"label": "Reach 3 months of expenses in the emergency fund", "target_value": 22500, "current_value": 8000, "completed_at": null},
+    {"label": "Automate the monthly transfer to savings", "target_value": 1, "current_value": 0, "completed_at": null}
   ],
   "next_actions": [
-    {"label": "Open a joint high-yield savings account this week", "completed": false},
-    {"label": "Document the bill split and put it on a shared note", "completed": false},
+    {"label": "Open the joint high-yield savings account this week", "completed": false},
+    {"label": "Write the bill split on a shared note so it's not in anyone's head", "completed": false},
     {"label": "Schedule a monthly 20-minute money check-in", "completed": false}
   ]
 }</PLAN_COMPLETE>
 
 Rules for the plan JSON:
-- Use the values you actually collected. The example above is the SHAPE, not the values.
-- KPIs: EXACTLY 3 entries.
-- Milestones: EXACTLY 3 entries.
-- Next actions: EXACTLY 3 entries.
+- Use the values you actually collected. The example is the SHAPE, not the values.
+- KPIs: EXACTLY 3. The first two SHOULD be "Emergency fund saved" (target = emergency_fund_target) and "Saving each month" (target = monthly_savings), matching the preview. Third is "Months to emergency fund".
+- Milestones and Next actions: EXACTLY 3 each, concrete.
 - Keep all numbers as numbers. Keep the JSON COMPACT.`,
     },
   ],
@@ -442,89 +316,11 @@ Rules for the plan JSON:
 const DEBT_PAYDOWN: DialogueScript = {
   domain: "debt-paydown",
   steps: [
-    {
-      id: "partner",
-      name: "Who's planning this",
-      buildSystemPrompt: () => `${BASE}
-
-You are on Step 1 of the Debt Paydown plan: figuring out who is involved.
-
-What to do:
-- Open with one warm sentence welcoming them to the Debt Paydown plan. Debt is heavy and shame-loaded; lead with calm.
-- Ask, as ONE question, whether they are tackling this with a partner.
-- If yes, ask the partner's first name in a SEPARATE next turn.
-- If no, proceed.
-
-When you have a clear yes/no AND, if yes, the partner's first name, end with:
-<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
-or
-<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "inventory",
-      name: "Debt inventory",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 2 of Debt Paydown: getting a clear inventory of what's owed.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Open DIRECTLY. No preamble.
-- Capture three facts across separate turns: (1) total household debt across all balances, (2) rough breakdown by type (e.g. "$18k credit cards, $12k student loans, $40k auto"), (3) highest interest rate carried (the one that's costing the most each month).
-- Be matter-of-fact, not preachy. One question per turn. Brief ack of each answer.
-
-When you have totals + breakdown + highest rate, end with:
-<STEP_COMPLETE>{"total_debt": 70000, "debt_breakdown": "$18k credit cards, $12k student loans, $40k auto", "highest_apr": 24.99}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "method",
-      name: "Method & monthly target",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 3 of Debt Paydown: choosing a payoff method and a monthly target.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the two main methods: (a) AVALANCHE - pay minimums on everything, throw extra at the HIGHEST INTEREST RATE first. Mathematically optimal. (b) SNOWBALL - pay minimums on everything, throw extra at the SMALLEST BALANCE first. Behaviorally easier because of quick wins. Note that there's no wrong answer.
-- Ask ONE question: which approach feels right.
-- In a follow-up turn, ask what monthly dollar amount they can realistically throw at debt above minimums (be encouraging; even $100/month matters).
-
-When you have method + monthly target, end with:
-<STEP_COMPLETE>{"payoff_method": "avalanche", "monthly_target": 1200, "prioritize_high_interest": true}</STEP_COMPLETE>
-
-(If they chose snowball, set prioritize_high_interest to false.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "consolidation",
-      name: "Refi or consolidate",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 4 of Debt Paydown: deciding whether to consolidate or refinance.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the options: (a) BALANCE TRANSFER credit card - move high-interest credit card debt to a 0% intro card, pay it off before the intro ends. Only makes sense with a plan. (b) PERSONAL LOAN to consolidate - swap multiple balances for one fixed-rate loan, usually 7-12% APR. (c) STUDENT LOAN REFI - swap federal/private student loans for a lower-rate refi. Federal loans lose protections though. (d) DO NOTHING - just pay it down as-is, especially if rates aren't that high.
-- Ask ONE question: which (if any) makes sense to consider.
-- If they choose any of a-c, you may briefly note the catch in a single sentence (e.g. "balance transfers only help if you actually pay it off in the intro period").
-
-When you have their decision, end with:
-<STEP_COMPLETE>{"consider_consolidation": "balance-transfer", "target_payoff_date": "2027-06"}</STEP_COMPLETE>
-
-target_payoff_date is a rough estimate of when they'd be debt-free at their current monthly target. If they pick "do-nothing" for consolidation, that's still valid. Tag on its own line at the end.`,
-    },
+    { id: "who", name: "Who's planning this", input: { type: "choice", key: "has_partner" }, buildSystemPrompt: STRUCTURED_STEP("who") },
+    { id: "total_debt", name: "Total debt", input: { type: "money", key: "total_debt" }, buildSystemPrompt: STRUCTURED_STEP("total_debt") },
+    { id: "monthly_target", name: "Monthly payment", input: { type: "money", key: "monthly_target" }, buildSystemPrompt: STRUCTURED_STEP("monthly_target") },
+    { id: "method", name: "Payoff strategy", input: { type: "choice", key: "payoff_method" }, buildSystemPrompt: STRUCTURED_STEP("method") },
+    { id: "consolidation", name: "Refi or consolidate", input: { type: "choice", key: "consider_consolidation" }, buildSystemPrompt: STRUCTURED_STEP("consolidation") },
 
     {
       id: "synthesis",
@@ -534,54 +330,61 @@ target_payoff_date is a rough estimate of when they'd be debt-free at their curr
 You are on the FINAL step of Debt Paydown: synthesizing everything into a structured plan.
 
 ${partnerFraming(ctx)}
+${formatProfileSummary(ctx)}
 ${collectedSoFar(ctx)}
 
-What to do:
-- Open DIRECTLY with the plan summary. No preamble.
-- Write the summary as a "summary" field INSIDE the JSON below (2 to 3 short paragraphs of plain-language prose). Tone: calm, encouraging, specific about what they're doing well.
-- DO NOT output any prose OUTSIDE the JSON.
-- The closing </PLAN_COMPLETE> tag is MANDATORY.
+The user answered a short tap-first questionnaire. The facts you have are:
+- total_debt: total debt to pay off (dollars).
+- monthly_target: how much they can put toward debt each month (dollars).
+- payoff_method: avalanche (highest interest first) | snowball (smallest balance first).
+- prioritize_high_interest: true for avalanche, false for snowball.
+- consider_consolidation: "yes" | "no".
 
-CRITICAL — neutral partner framing:
-- The plan text is read by BOTH partners (if partnered). Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically.
+Keep the plan's numbers consistent with these formulas (the user watched a live preview):
+- months_to_debt_free = monthly_target > 0 ? ceil(total_debt / monthly_target) : null
+
+What to do:
+- Debt is heavy and shame-loaded; keep the summary calm and encouraging.
+- Open DIRECTLY with the plan summary as the "summary" field INSIDE the JSON (2-3 short paragraphs).
+- Output ONLY the <PLAN_COMPLETE>...</PLAN_COMPLETE> block. The closing tag is MANDATORY.
+
+CRITICAL, neutral partner framing: read by BOTH partners. Use "you both"/"your household"/"your partner", never a name. If solo, use "you".
 
 Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
 
 <PLAN_COMPLETE>{
   "goal": {
-    "headline": "Pay off $70,000 of household debt by June 2027 using the avalanche method",
-    "summary": "Two to three short paragraphs synthesizing the plan: what you're tackling first, why, monthly cadence, when you'll be done.",
-    "method": "avalanche",
-    "target_date": "2027-06"
+    "headline": "Pay off $25,000 of debt with the avalanche method",
+    "summary": "Two to three short paragraphs: what you're tackling first, why, the monthly cadence, and roughly when you'll be done.",
+    "method": "avalanche"
   },
   "current_state": {
-    "total_debt": 70000,
-    "monthly_target": 1200,
-    "highest_apr": 24.99
+    "total_debt": 25000,
+    "monthly_target": 1000,
+    "consider_consolidation": "no"
   },
   "kpis": [
-    {"label": "Debt paid down", "current": 0, "target": 70000, "unit": "$"},
-    {"label": "Months to debt-free", "current": 58, "target": 0, "unit": "months"},
-    {"label": "Interest avoided this year", "current": 0, "target": 4200, "unit": "$"}
+    {"label": "Debt paid down", "current": 0, "target": 25000, "unit": "$"},
+    {"label": "Months to debt-free", "current": 25, "target": 0, "unit": "months"},
+    {"label": "Paying each month", "current": 0, "target": 1000, "unit": "$"}
   ],
   "milestones": [
-    {"label": "Pay off highest-APR balance first ($18,000)", "target_value": 18000, "current_value": 0, "completed_at": null},
-    {"label": "Reach halfway point ($35,000 paid down)", "target_value": 35000, "current_value": 0, "completed_at": null},
-    {"label": "Debt-free", "target_value": 70000, "current_value": 0, "completed_at": null}
+    {"label": "Pay off the first target balance", "target_value": 1, "current_value": 0, "completed_at": null},
+    {"label": "Reach the halfway point", "target_value": 12500, "current_value": 0, "completed_at": null},
+    {"label": "Debt-free", "target_value": 25000, "current_value": 0, "completed_at": null}
   ],
   "next_actions": [
-    {"label": "Set up automatic $1,200 monthly transfer to the highest-APR balance", "completed": false},
-    {"label": "Cancel one unused subscription this week and redirect to the paydown", "completed": false},
-    {"label": "Set a calendar reminder for monthly 10-minute progress check", "completed": false}
+    {"label": "Set up an automatic monthly payment to the target balance", "completed": false},
+    {"label": "List every debt with its interest rate so the order is clear", "completed": false},
+    {"label": "Cancel one unused subscription and redirect it to the paydown", "completed": false}
   ]
 }</PLAN_COMPLETE>
 
 Rules for the plan JSON:
 - Use the values you actually collected. The example is the SHAPE, not the values.
-- KPIs: EXACTLY 3 entries.
-- Milestones: EXACTLY 3 entries (start with paying off the highest-priority balance — for avalanche that's the highest-APR; for snowball that's the smallest balance).
-- Next actions: EXACTLY 3 small, concrete weekly actions.
-- Keep all numbers as numbers. Keep the JSON COMPACT.`,
+- KPIs: EXACTLY 3. The first two SHOULD be "Debt paid down" (target = total_debt) and "Months to debt-free" (from the formula), matching the preview. Third is "Paying each month" (target = monthly_target).
+- If consider_consolidation is "yes", mention exploring consolidation/refi in the summary or a next action.
+- Milestones and Next actions: EXACTLY 3 each. Keep numbers as numbers. Keep the JSON COMPACT.`,
     },
   ],
 };
@@ -590,131 +393,12 @@ Rules for the plan JSON:
 const BABY_PLANNING: DialogueScript = {
   domain: "baby-planning",
   steps: [
-    {
-      id: "partner",
-      name: "Who's planning this",
-      buildSystemPrompt: () => `${BASE}
-
-You are on Step 1 of the Baby Planning plan: figuring out who is involved.
-
-What to do:
-- Open with one warm sentence welcoming them to the Baby Planning plan. Be calm and non-presumptuous; baby planning can be loaded (fertility, timing, finances all in one).
-- Ask, as ONE question, whether they are planning this with a partner.
-- If yes, ask the partner's first name in a SEPARATE next turn.
-- If no, proceed (single parents and prospective solo parents are valid users here too).
-
-When you have a clear yes/no AND, if yes, the partner's first name, end with:
-<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
-or
-<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "timeline",
-      name: "Timeline",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 2 of Baby Planning: timeline.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Open DIRECTLY.
-- Ask ONE question: where are they on the timeline today (e.g. "planning to start trying soon", "actively trying", "pregnant, due in [month]", "post-birth, planning for new costs"). Use plain words, not clinical language.
-- In a follow-up turn, ask roughly what year the baby is expected or planned for.
-
-When you have a stage + target year, end with:
-<STEP_COMPLETE>{"stage": "planning to start trying", "target_year": 2026}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "leave",
-      name: "Parental leave plan",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 3 of Baby Planning: parental leave.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame in one short paragraph: paid leave varies enormously by employer and state. The two big numbers to plan for are (a) MONTHS off each parent plans to take, (b) what share of those months will be PAID vs. unpaid.
-- Ask ONE question: how many months off each person is planning. (If solo, just for them.)
-- In a follow-up turn, ask roughly what share of those months are covered by paid leave (employer + state PFL).
-
-When you have months + paid share, end with:
-<STEP_COMPLETE>{"primary_leave_months": 4, "primary_paid_share_pct": 75, "partner_leave_months": 2, "partner_paid_share_pct": 100}</STEP_COMPLETE>
-
-(If solo, omit partner_* fields with null values.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "childcare",
-      name: "Childcare strategy",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 4 of Baby Planning: childcare strategy.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the common options: (a) DAYCARE - center or in-home, roughly $1,500 to $3,000/month depending on location, (b) NANNY or SHARE - higher cost, more flexibility, roughly $2,500 to $5,000/month, (c) STAY-HOME PARENT - one income temporarily reduced or paused, (d) FAMILY HELP - grandparents, relatives, sometimes the most affordable but with relationship dynamics, (e) HYBRID - mix of the above.
-- Ask ONE question: which approach feels right for the household.
-- In a follow-up turn, ask roughly when they'll need it (after maternity leave ends, after age 1, etc.).
-
-When you have approach + when, end with:
-<STEP_COMPLETE>{"childcare_preference": "daycare", "childcare_needed_from": "month-5"}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "costs",
-      name: "Cost picture",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 5 of Baby Planning: the cost picture.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the three buckets: (a) ONE-TIME - delivery/birth, gear, nursery setup. Typically $3,000 to $10,000 with insurance. (b) MONTHLY ONGOING - childcare, diapers, formula, food, healthcare. Usually $1,500 to $4,000/month depending on childcare choice. (c) INSURANCE updates - adding the baby to a plan, checking deductibles.
-- Ask ONE question: rough one-time savings target before the baby arrives.
-- In a follow-up turn, ask rough monthly ongoing cost estimate after baby is here.
-
-When you have one-time + monthly estimates, end with:
-<STEP_COMPLETE>{"one_time_target": 8000, "monthly_cost_estimate": 2500, "insurance_updates_needed": true}</STEP_COMPLETE>
-
-(insurance_updates_needed defaults to true if they mention switching coverage or adding the baby, false otherwise.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "college_fund",
-      name: "College fund start",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 6 of Baby Planning: starting a college fund.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame in one short paragraph: 529 plans grow tax-free for qualified education expenses; starting early is the single biggest advantage. Even small monthly contributions matter over 18 years. Some prefer to fund their own retirement first, which is reasonable.
-- Ask ONE question: do they want to start a 529 (or similar) for the baby, and roughly when (at birth, by age 1, etc.).
-- If yes, in a follow-up turn ask a rough monthly contribution they're comfortable with.
-
-When you have start + amount, end with:
-<STEP_COMPLETE>{"college_fund_start": "at-birth", "monthly_contribution": 200}</STEP_COMPLETE>
-
-(If they're not starting one, use "deferred" and 0.) Tag on its own line at the end.`,
-    },
+    { id: "who", name: "Who's planning this", input: { type: "choice", key: "has_partner" }, buildSystemPrompt: STRUCTURED_STEP("who") },
+    { id: "target_year", name: "Timeline", input: { type: "choice", key: "target_year" }, buildSystemPrompt: STRUCTURED_STEP("target_year") },
+    { id: "childcare", name: "Childcare strategy", input: { type: "choice", key: "childcare_preference" }, buildSystemPrompt: STRUCTURED_STEP("childcare") },
+    { id: "costs", name: "Monthly cost", input: { type: "money", key: "monthly_cost_estimate" }, buildSystemPrompt: STRUCTURED_STEP("costs") },
+    { id: "savings_goal", name: "Baby fund", input: { type: "money", key: "savings_goal" }, buildSystemPrompt: STRUCTURED_STEP("savings_goal") },
+    { id: "college_fund", name: "College fund start", input: { type: "choice", key: "college_fund_start" }, buildSystemPrompt: STRUCTURED_STEP("college_fund") },
 
     {
       id: "synthesis",
@@ -724,53 +408,62 @@ When you have start + amount, end with:
 You are on the FINAL step of Baby Planning: synthesizing everything into a structured plan.
 
 ${partnerFraming(ctx)}
+${formatProfileSummary(ctx)}
 ${collectedSoFar(ctx)}
 
-What to do:
-- Open DIRECTLY with the plan summary. No preamble.
-- Write the summary as a "summary" field INSIDE the JSON below. Tone: warm, grounded, and practical. Acknowledge the magnitude without catastrophizing.
-- DO NOT output any prose OUTSIDE the JSON.
-- The closing </PLAN_COMPLETE> tag is MANDATORY.
+The user answered a short tap-first questionnaire. The facts you have are:
+- target_year: the calendar year they hope to welcome a baby.
+- childcare_preference: daycare | nanny | family (family or stay-home).
+- monthly_cost_estimate: expected monthly childcare cost (dollars).
+- savings_goal: one-time amount to save before the baby arrives (dollars).
+- college_fund_start: immediately | later | no.
+- Any profile numbers above (total_savings) fill gaps.
 
-CRITICAL — neutral partner framing:
-- The plan text is read by BOTH partners (if partnered). Use generic framing: "you both", "your household", "your partner". Do NOT name the partner specifically.
+Keep the plan's numbers consistent (the user watched a live preview):
+- one_time_progress uses total_savings (or 0) as current, savings_goal as target.
+- months_to_readiness = (target_year - current calendar year) * 12, floored at 0. If you are unsure of the current year, estimate reasonably.
+
+What to do:
+- Open DIRECTLY with the plan summary as the "summary" field INSIDE the JSON (2-3 short paragraphs).
+- Output ONLY the <PLAN_COMPLETE>...</PLAN_COMPLETE> block. The closing tag is MANDATORY.
+
+CRITICAL, neutral partner framing: read by BOTH partners. Use "you both"/"your household"/"your partner", never a name. If solo, use "you".
 
 Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
 
 <PLAN_COMPLETE>{
   "goal": {
-    "headline": "Be financially ready for a baby by 2026 with $8,000 saved and a daycare plan in place",
-    "summary": "Two to three short paragraphs synthesizing the plan: where the runway is, what to save before, what monthly cost shifts look like, and the first three concrete moves.",
-    "target_year": 2026
+    "headline": "Be financially ready for a baby by 2027 with a daycare plan in place",
+    "summary": "Two to three short paragraphs: the runway, what to save before, the monthly cost shift, and the first concrete moves.",
+    "target_year": 2027
   },
   "current_state": {
-    "stage": "planning to start trying",
-    "primary_leave_months": 4,
-    "childcare_preference": "daycare"
+    "target_year": 2027,
+    "childcare_preference": "daycare",
+    "monthly_cost_estimate": 2000
   },
   "kpis": [
-    {"label": "One-time savings progress", "current": 0, "target": 8000, "unit": "$"},
-    {"label": "Monthly cost coverage", "current": 0, "target": 2500, "unit": "$"},
+    {"label": "One-time savings progress", "current": 0, "target": 10000, "unit": "$"},
+    {"label": "Monthly cost coverage", "current": 0, "target": 2000, "unit": "$"},
     {"label": "Months to baby readiness", "current": 18, "target": 0, "unit": "months"}
   ],
   "milestones": [
-    {"label": "Save $8,000 one-time savings target", "target_value": 8000, "current_value": 0, "completed_at": null},
-    {"label": "Tour 3 daycares and join waitlists", "target_value": 3, "current_value": 0, "completed_at": null},
+    {"label": "Reach the one-time savings goal", "target_value": 10000, "current_value": 0, "completed_at": null},
+    {"label": "Tour 3 childcare options and join waitlists", "target_value": 3, "current_value": 0, "completed_at": null},
     {"label": "Confirm parental leave policies with employers", "target_value": 1, "current_value": 0, "completed_at": null}
   ],
   "next_actions": [
     {"label": "Open a dedicated baby-fund savings account this week", "completed": false},
-    {"label": "Read your employer's parental leave policy and document the paid share", "completed": false},
-    {"label": "Set up the 529 (or list the requirements to open it after birth)", "completed": false}
+    {"label": "Read your employer's parental leave policy and note the paid share", "completed": false},
+    {"label": "Line up the childcare option you chose (waitlists fill early)", "completed": false}
   ]
 }</PLAN_COMPLETE>
 
 Rules for the plan JSON:
 - Use the values you actually collected. The example is the SHAPE, not the values.
-- KPIs: EXACTLY 3 entries.
-- Milestones: EXACTLY 3 entries.
-- Next actions: EXACTLY 3 small, concrete weekly actions.
-- Keep all numbers as numbers. Keep the JSON COMPACT.`,
+- KPIs: EXACTLY 3. The first two SHOULD be "One-time savings progress" (target = savings_goal) and "Monthly cost coverage" (target = monthly_cost_estimate), matching the preview. Third is "Months to baby readiness".
+- If college_fund_start is "immediately", include a next action about opening a 529.
+- Milestones and Next actions: EXACTLY 3 each. Keep numbers as numbers. Keep the JSON COMPACT.`,
     },
   ],
 };
@@ -779,130 +472,34 @@ Rules for the plan JSON:
 const PRENUP: DialogueScript = {
   domain: "prenup",
   steps: [
-    {
-      id: "partner",
-      name: "Who's planning this",
-      buildSystemPrompt: () => `${BASE}
-
-You are on Step 1 of the Prenup & Legal plan: figuring out who is involved.
-
-What to do:
-- Open with one warm sentence. Note that prenups work best when both partners participate openly; they're a planning tool, not an adversarial one.
-- Ask, as ONE question, whether they are working through this with their future spouse.
-- If yes, ask the future spouse's first name in a SEPARATE next turn.
-- If they say no, gently note that prenups are inherently a two-party conversation and suggest looping in their partner before going much further; capture the "no" answer anyway and proceed (they may be doing prep work first).
-
-When you have a clear yes/no AND, if yes, the partner's first name, end with:
-<STEP_COMPLETE>{"has_partner": true, "partner_first_name": "Alex"}</STEP_COMPLETE>
-or
-<STEP_COMPLETE>{"has_partner": false, "partner_first_name": null}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
+    { id: "who", name: "Who's planning this", input: { type: "choice", key: "has_partner" }, buildSystemPrompt: STRUCTURED_STEP("who") },
+    { id: "property_treatment", name: "Property treatment", input: { type: "choice", key: "property_treatment" }, buildSystemPrompt: STRUCTURED_STEP("property_treatment") },
+    { id: "inheritances", name: "Inheritances & gifts", input: { type: "choice", key: "inheritance_treatment" }, buildSystemPrompt: STRUCTURED_STEP("inheritances") },
+    { id: "support_stance", name: "Spousal support stance", input: { type: "choice", key: "support_stance" }, buildSystemPrompt: STRUCTURED_STEP("support_stance") },
 
     {
-      id: "premarital_assets",
-      name: "Premarital assets",
+      id: "carveouts",
+      name: "Carveouts",
+      // Open-ended and sensitive: this one stays an LLM turn so people can name
+      // the specific assets that matter (a business, a family property).
+      input: { type: "text", key: "carveouts" },
       buildSystemPrompt: (ctx) => `${BASE}
 
-You are on Step 2 of Prenup: documenting premarital assets.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-IMPORTANT context: This is not legal advice. Strongly suggest a real attorney before signing anything. Juniper helps surface the conversation, not draft the document.
-
-What to do:
-- Briefly frame: premarital assets are typically things owned before the marriage (real estate, retirement accounts, business interests, investments). Documenting them protects what each person brings in.
-- Ask ONE question: roughly what assets each person is bringing into the marriage. Categories work fine (e.g. "$120k retirement, $80k brokerage, a condo").
-
-When you have the rough picture, end with:
-<STEP_COMPLETE>{"primary_assets": "$120k retirement, $80k brokerage, condo", "partner_assets": "$45k retirement, no real estate"}</STEP_COMPLETE>
-
-(If solo, omit partner_assets with null.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "premarital_debts",
-      name: "Premarital debts",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 3 of Prenup: documenting premarital debts.
+You are on the Carveouts step of the Prenup plan: capturing anything either person wants kept clearly separate.
 
 ${partnerFraming(ctx)}
 ${collectedSoFar(ctx)}
 
 What to do:
-- Briefly frame: state laws vary on whether premarital debts become joint after marriage. Documenting them keeps each person's premarital debts cleanly assigned.
-- Ask ONE question: roughly what debts each person is carrying in. Be casual (e.g. "$22k student loans" or "$8k credit cards").
+- Open DIRECTLY with the question. No preamble, no "Got it".
+- Ask, warmly and without pressure, whether there is anything specific they want kept separate: a business, a family home or heirloom, a professional practice, stock in a company they founded, a future inheritance already known. Make clear it is fine to have nothing specific.
+- This is sensitive. Do not push for detail. One or two short sentences plus the question.
+- You are NOT a lawyer. If something sounds legally complex, note briefly that their attorney will help formalize it.
 
-When you have the picture, end with:
-<STEP_COMPLETE>{"primary_debts": "$22k student loans", "partner_debts": "none"}</STEP_COMPLETE>
+When they have answered (even if the answer is "nothing specific"), end with exactly:
+<STEP_COMPLETE>{"carveouts": "Her consulting business and a family lake house"}</STEP_COMPLETE>
 
-(If solo, omit partner_debts with null.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "property_treatment",
-      name: "Property treatment",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 4 of Prenup: how property acquired during marriage is treated.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the two main approaches: (a) COMMUNITY PROPERTY - everything earned/acquired during the marriage is jointly owned 50/50, (b) SEPARATE PROPERTY - each person keeps what they earn/buy in their own name. Some prenups use a hybrid (e.g. salary income joint, investment growth separate). State law sets a default; the prenup can override.
-- Ask ONE question: which approach feels right.
-- In a follow-up turn ask if there are specific carve-outs (e.g. "investment accounts stay separate, but the house we buy together is joint").
-
-When you have approach + carve-outs, end with:
-<STEP_COMPLETE>{"property_treatment": "hybrid", "carveouts": "investment accounts separate, joint house and joint savings"}</STEP_COMPLETE>
-
-Tag on its own line at the end.`,
-    },
-
-    {
-      id: "inheritances",
-      name: "Inheritances & gifts",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 5 of Prenup: how inheritances and large gifts are treated.
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame: inheritances and gifts received during marriage are usually considered separate property by default in most states, but only if kept in separate accounts. Co-mingling muddies this.
-- Ask ONE question: do they want inheritances/gifts received during marriage to stay separate, or become joint.
-- Brief mention if either person expects a significant inheritance.
-
-When you have the answer, end with:
-<STEP_COMPLETE>{"inheritance_treatment": "separate", "expected_inheritance_note": "Partner's family farm in estate plan"}</STEP_COMPLETE>
-
-(expected_inheritance_note can be null.) Tag on its own line at the end.`,
-    },
-
-    {
-      id: "support_stance",
-      name: "Spousal support stance",
-      buildSystemPrompt: (ctx) => `${BASE}
-
-You are on Step 6 of Prenup: spousal support (alimony).
-
-${partnerFraming(ctx)}
-${collectedSoFar(ctx)}
-
-What to do:
-- Briefly frame the options: (a) WAIVE - both parties waive spousal support if the marriage ends, (b) TIME-LIMITED - support for a defined number of years (e.g. one year of support per three years married), (c) SILENT - the prenup says nothing and state law would apply.
-- Note that this is one of the most emotionally loaded prenup questions. There's no right answer; the goal is alignment, not optimization.
-- Ask ONE question: which stance feels right.
-
-When you have an answer, end with:
-<STEP_COMPLETE>{"support_stance": "time-limited", "support_terms": "1 year support per 3 years married, capped at 5 years"}</STEP_COMPLETE>
-
-(support_terms can be null if waived or silent.) Tag on its own line at the end.`,
+If nothing specific, set "carveouts" to "None specified". Capture their answer as a short neutral phrase. Tag on its own line at the very end.`,
     },
 
     {
@@ -910,37 +507,42 @@ When you have an answer, end with:
       name: "Your plan",
       buildSystemPrompt: (ctx) => `${BASE}
 
-You are on the FINAL step of Prenup: synthesizing everything into a structured plan.
+You are on the FINAL step of Prenup and Legal: synthesizing everything into a structured plan.
 
 ${partnerFraming(ctx)}
 ${collectedSoFar(ctx)}
 
-What to do:
-- Open DIRECTLY with the plan summary. No preamble.
-- Write the summary as a "summary" field INSIDE the JSON below. Tone: warm, non-judgmental, and clear. PROMINENTLY note in the summary that this is a planning aid, not legal advice, and that they should work with a real attorney before signing.
-- DO NOT output any prose OUTSIDE the JSON.
-- The closing </PLAN_COMPLETE> tag is MANDATORY.
+The user answered a short questionnaire. The facts you have are:
+- property_treatment: community (shared) | separate | hybrid (a mix).
+- inheritance_treatment: separate | shared | depends.
+- support_stance: waive | keep | formula.
+- carveouts: a short phrase naming anything kept separate (may be "None specified").
 
-CRITICAL — neutral partner framing:
-- The plan text is read by BOTH partners (if partnered). Use generic framing: "you both", "your partner", "you each". Do NOT name the partner specifically.
+What to do:
+- Open DIRECTLY with the plan summary as the "summary" field INSIDE the JSON (2-3 short paragraphs).
+- The summary MUST include a clear note that this is a planning conversation and a starting point, NOT legal advice, and that the next step is bringing it to a family law attorney.
+- Output ONLY the <PLAN_COMPLETE>...</PLAN_COMPLETE> block. The closing tag is MANDATORY.
+- This plan is qualitative; there are no dollar KPIs. Use the "items resolved" / "consultations" / "months to wedding" style shown below. If you do not know the wedding date, set "Months to wedding" current to 0.
+
+CRITICAL, neutral partner framing: read by BOTH partners. Use "you both"/"your partner", never a name. If solo, use "you".
 
 Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY this shape:
 
 <PLAN_COMPLETE>{
   "goal": {
-    "headline": "Align on a prenup framework: hybrid property, separate inheritances, time-limited support",
-    "summary": "Two to three short paragraphs synthesizing the plan. Include a clear note that this is a planning conversation and a starting point, NOT legal advice, and that the next step is bringing this to a family law attorney.",
+    "headline": "Align on a prenup framework: a mix of shared and separate property",
+    "summary": "Two to three short paragraphs synthesizing the framework you both leaned toward. Include the clear note that this is a starting point and NOT legal advice, and that the next step is a family law attorney.",
     "approach": "hybrid"
   },
   "current_state": {
-    "primary_assets": "$120k retirement, $80k brokerage, condo",
-    "partner_assets": "$45k retirement",
-    "property_treatment": "hybrid"
+    "property_treatment": "hybrid",
+    "inheritance_treatment": "separate",
+    "support_stance": "formula"
   },
   "kpis": [
-    {"label": "Alignment items resolved", "current": 5, "target": 5, "unit": "items"},
+    {"label": "Alignment items resolved", "current": 4, "target": 4, "unit": "items"},
     {"label": "Attorney consultations scheduled", "current": 0, "target": 1, "unit": "meetings"},
-    {"label": "Months to wedding", "current": 9, "target": 0, "unit": "months"}
+    {"label": "Carveouts documented", "current": 0, "target": 1, "unit": "items"}
   ],
   "milestones": [
     {"label": "Find and schedule a family law attorney", "target_value": 1, "current_value": 0, "completed_at": null},
@@ -949,17 +551,15 @@ Emit a single JSON object inside <PLAN_COMPLETE>...</PLAN_COMPLETE> with EXACTLY
   ],
   "next_actions": [
     {"label": "Get 2 attorney recommendations from each side this week", "completed": false},
-    {"label": "Pull together formal statements of assets and debts (account statements, deeds)", "completed": false},
-    {"label": "Schedule the conversation with your partner to walk through this summary together", "completed": false}
+    {"label": "Pull together statements of assets and debts (accounts, deeds)", "completed": false},
+    {"label": "Schedule a calm conversation to walk through this summary together", "completed": false}
   ]
 }</PLAN_COMPLETE>
 
 Rules for the plan JSON:
 - Use the values you actually collected. The example is the SHAPE, not the values.
-- KPIs: EXACTLY 3 entries.
-- Milestones: EXACTLY 3 entries.
-- Next actions: EXACTLY 3 small, concrete weekly actions.
-- Keep all numbers as numbers. Keep the JSON COMPACT.`,
+- KPIs: EXACTLY 3, using the qualitative style above (no invented dollar amounts).
+- Milestones and Next actions: EXACTLY 3 each. Keep the JSON COMPACT.`,
     },
   ],
 };

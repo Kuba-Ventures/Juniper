@@ -655,6 +655,10 @@ export function DialogueInterface({
         onCommitMoney={recordAnswer}
         onBack={goBack}
         canGoBack={hasPrevVisibleStep(script, stepIndex, ctx)}
+        messages={messages}
+        inputValue={input}
+        onInputChange={setInput}
+        onSend={(t) => void sendTurn(t)}
       />
     );
   }
@@ -815,6 +819,10 @@ type StructuredFlowProps = {
   onCommitMoney: (patch: Record<string, unknown>) => void;
   onBack: () => void;
   canGoBack: boolean;
+  messages: ApiMessage[];
+  inputValue: string;
+  onInputChange: (v: string) => void;
+  onSend: (text: string) => void;
 };
 
 // Does any earlier, non-skipped step exist before the current one?
@@ -843,8 +851,13 @@ function StructuredFlow({
   onCommitMoney,
   onBack,
   canGoBack,
+  messages,
+  inputValue,
+  onInputChange,
+  onSend,
 }: StructuredFlowProps) {
   const done = !!completedPlan;
+  const isTextStep = !!currentStep && currentStep.input?.type === "text";
   const total = script.steps.length;
   const pct = Math.min(100, Math.round((stepIndex / Math.max(1, total - 1)) * 100));
 
@@ -873,6 +886,24 @@ function StructuredFlow({
         <div style={{ display: "flex", flexDirection: "column", minHeight: 420 }}>
           {done ? (
             <ReadyState />
+          ) : isTextStep && currentStep ? (
+            <TextStepPanel
+              title={script.title}
+              questionsLeft={questionsLeft}
+              pct={pct}
+              question={questionText(currentStep, collected)}
+              helper={
+                currentStep.input && "helper" in currentStep.input ? currentStep.input.helper : undefined
+              }
+              messages={messages}
+              streaming={streaming}
+              errored={errored}
+              inputValue={inputValue}
+              onInputChange={onInputChange}
+              onSend={onSend}
+              canGoBack={canGoBack}
+              onBack={onBack}
+            />
           ) : streaming || !currentStep || isLlmStep(currentStep) ? (
             <BuildingState errored={errored} />
           ) : (
@@ -974,7 +1005,8 @@ function ProgressHeader({ title, questionsLeft, pct }: { title: string; question
 }
 
 function questionText(step: ClientStep, collected: Record<string, unknown>): string {
-  const q = step.input && "question" in step.input ? step.input.question : step.name;
+  const raw = step.input && "question" in step.input ? step.input.question : undefined;
+  const q = raw ?? step.name;
   return typeof q === "function" ? q(collected) : q;
 }
 
@@ -1201,6 +1233,163 @@ function MoneyContinue({
   );
 }
 
+// Open-ended (text) step rendered inside the structured layout: the question,
+// Juniper's streamed reply, and a reply box. Advances on <STEP_COMPLETE>.
+function TextStepPanel({
+  title,
+  questionsLeft,
+  pct,
+  question,
+  helper,
+  messages,
+  streaming,
+  errored,
+  inputValue,
+  onInputChange,
+  onSend,
+  canGoBack,
+  onBack,
+}: {
+  title: string;
+  questionsLeft: number;
+  pct: number;
+  question: string;
+  helper?: string;
+  messages: ApiMessage[];
+  streaming: boolean;
+  errored: boolean;
+  inputValue: string;
+  onInputChange: (v: string) => void;
+  onSend: (text: string) => void;
+  canGoBack: boolean;
+  onBack: () => void;
+}) {
+  const submit = () => {
+    if (inputValue.trim() && !streaming) onSend(inputValue.trim());
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: 420 }}>
+      <ProgressHeader title={title} questionsLeft={questionsLeft} pct={pct} />
+      <h2
+        style={{
+          fontFamily: serif,
+          fontSize: "clamp(24px, 4vw, 30px)",
+          fontWeight: 400,
+          color: ink,
+          lineHeight: 1.15,
+          margin: "0 0 8px",
+        }}
+      >
+        {question}
+      </h2>
+      {helper && <p style={{ fontFamily: sans, fontSize: 14, color: muted, margin: "0 0 20px" }}>{helper}</p>}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+        {messages.map((m, i) => {
+          const isLastAndStreaming = streaming && i === messages.length - 1 && m.role === "assistant";
+          if (m.role === "assistant" && m.content.trim() === "" && !isLastAndStreaming) return null;
+          return (
+            <MessageBubble
+              key={i}
+              role={m.role}
+              content={isLastAndStreaming && m.content === "" ? "…" : m.content}
+            />
+          );
+        })}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-end",
+          background: "#fff",
+          border: `1px solid ${border}`,
+          borderRadius: 14,
+          padding: "10px 12px",
+        }}
+      >
+        <textarea
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder={streaming ? "Juniper is thinking…" : "Type your answer…"}
+          disabled={streaming}
+          rows={1}
+          style={{
+            flex: 1,
+            resize: "none",
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            fontFamily: sans,
+            fontSize: 15,
+            color: ink,
+            padding: "8px 6px",
+            lineHeight: 1.5,
+            minHeight: 24,
+            maxHeight: 200,
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!inputValue.trim() || streaming}
+          aria-label="Send"
+          style={{
+            background: sage,
+            color: "#fff",
+            border: "none",
+            borderRadius: 999,
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: inputValue.trim() && !streaming ? "pointer" : "default",
+            opacity: inputValue.trim() && !streaming ? 1 : 0.4,
+            flexShrink: 0,
+          }}
+        >
+          <ArrowUp size={16} strokeWidth={2.5} />
+        </button>
+      </form>
+      {errored && <p style={{ color: "#b94040", fontSize: 12, marginTop: 8 }}>Connection error. Try again.</p>}
+
+      {canGoBack && (
+        <div style={{ marginTop: 20 }}>
+          <button
+            onClick={onBack}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: sans,
+              fontSize: 14,
+              fontWeight: 500,
+              color: muted,
+              padding: "8px 4px",
+            }}
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReadyState() {
   return (
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
@@ -1310,7 +1499,122 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
           : null,
     };
   },
+
+  "combining-finances": (a) => {
+    const accounts = pickLabel(a.accounts_approach, {
+      joint: "Fully joint",
+      separate: "Fully separate",
+      hybrid: "Yours, mine & ours",
+    });
+    const months = num(a.emergency_fund_months);
+    const monthly = num(a.monthly_savings);
+    return {
+      title: "Combining Finances",
+      headline: accounts ? `${accounts} accounts` : "Your plan builds as you answer",
+      rows: [
+        {
+          label: "Emergency fund target",
+          value: months != null ? `${months} months` : "—",
+          sub: null,
+          pct: months != null ? Math.min(100, Math.round((months / 12) * 100)) : 0,
+        },
+        {
+          label: "Saving together",
+          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "—",
+          sub: null,
+          pct: monthly ? 100 : 0,
+        },
+      ],
+      next:
+        monthly != null
+          ? `Automate ${fmtMoney(monthly)}/mo into a shared high-yield account for the emergency fund.`
+          : null,
+    };
+  },
+
+  "debt-paydown": (a) => {
+    const total = num(a.total_debt);
+    const monthly = num(a.monthly_target);
+    const method = pickLabel(a.payoff_method, { avalanche: "avalanche", snowball: "snowball" });
+    const months = total != null && monthly ? Math.ceil(total / monthly) : null;
+    return {
+      title: "Debt Paydown",
+      headline:
+        total != null
+          ? `Pay off ${fmtMoney(total)}${method ? ` with the ${method} method` : ""}`
+          : "Your plan builds as you answer",
+      rows: [
+        { label: "Total debt", value: total != null ? fmtMoney(total) : "—", sub: null, pct: total ? 100 : 0 },
+        {
+          label: "Months to debt-free",
+          value: months != null ? `${months} mo` : "—",
+          sub: monthly ? `${fmtMoney(monthly)}/mo` : null,
+          pct: months != null ? 100 : 0,
+        },
+      ],
+      next:
+        monthly != null
+          ? `Set up an automatic ${fmtMoney(monthly)}/mo payment toward your target balance.`
+          : null,
+    };
+  },
+
+  "baby-planning": (a) => {
+    const year = num(a.target_year);
+    const goal = num(a.savings_goal);
+    const monthly = num(a.monthly_cost_estimate);
+    return {
+      title: "Baby Planning",
+      headline: year != null ? `Ready for a baby by ${year}` : "Your plan builds as you answer",
+      rows: [
+        { label: "Baby fund goal", value: goal != null ? fmtMoney(goal) : "—", sub: null, pct: goal ? 100 : 0 },
+        {
+          label: "Monthly childcare",
+          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "—",
+          sub: null,
+          pct: monthly ? 100 : 0,
+        },
+      ],
+      next:
+        goal != null
+          ? `Open a dedicated baby-fund savings account and start building toward ${fmtMoney(goal)}.`
+          : null,
+    };
+  },
+
+  prenup: (a) => {
+    const property = pickLabel(a.property_treatment, {
+      community: "Shared (community)",
+      separate: "Kept separate",
+      hybrid: "A mix",
+    });
+    const inheritance = pickLabel(a.inheritance_treatment, {
+      separate: "Stay separate",
+      shared: "Become shared",
+      depends: "Depends",
+    });
+    const support = pickLabel(a.support_stance, {
+      waive: "Waived",
+      keep: "Kept",
+      formula: "Formula-based",
+    });
+    return {
+      title: "Prenup & Legal",
+      headline: "Your prenup framework",
+      rows: [
+        { label: "Property", value: property ?? "—", sub: null, pct: property ? 100 : 0 },
+        { label: "Inheritances", value: inheritance ?? "—", sub: null, pct: inheritance ? 100 : 0 },
+        { label: "Spousal support", value: support ?? "—", sub: null, pct: support ? 100 : 0 },
+      ],
+      next: property ? "Bring this framework to a family law attorney to formalize it." : null,
+    };
+  },
 };
+
+// Map a stored choice value to a display label; null when unanswered.
+function pickLabel(v: unknown, labels: Record<string, string>): string | null {
+  return typeof v === "string" && v in labels ? labels[v] : null;
+}
 
 function LivePreview({
   domain,
