@@ -21,11 +21,11 @@ type ComparisonField = {
 const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
   "home-buying": [
     {
-      field: "home_type",
-      label: "Home type",
-      format: (v) => (typeof v === "string" && v ? v : "-"),
+      field: "target_home_price",
+      label: "Target home price",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
       divergedNote:
-        "House vs. condo vs. multi-family often reflects different priorities (yard, walkability, appreciation potential). Worth a few minutes on what each of you actually wants from the space.",
+        "A meaningful gap suggests different views on what's affordable. Compare the underlying assumptions, not just the numbers.",
     },
     {
       field: "target_date",
@@ -35,40 +35,18 @@ const FIELDS_BY_DOMAIN: Record<string, ComparisonField[]> = {
         "A 6 to 12 month difference in timing can change the math significantly. Surface what's driving each timeline.",
     },
     {
-      field: "rough_price_band",
-      label: "Rough price band",
-      format: (v) => (typeof v === "string" && v ? v : "-"),
-      divergedNote:
-        "Different price expectations usually reflect different assumptions about location and size. Compare what each of you was picturing.",
-    },
-    {
-      field: "target_home_price",
-      label: "Target home price",
+      field: "total_savings",
+      label: "Saved so far",
       format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}` : "-"),
       divergedNote:
-        "A meaningful gap suggests different views on what's affordable. Compare the underlying assumptions, not just the numbers.",
+        "A gap here usually means you're each counting different accounts. Line up what actually goes toward the down payment.",
     },
     {
-      field: "target_dp_pct",
-      label: "Target down payment %",
-      format: (v) => (typeof v === "number" ? `${v}%` : "-"),
+      field: "annual_income",
+      label: "Household income",
+      format: (v) => (typeof v === "number" ? `$${v.toLocaleString()}/yr` : "-"),
       divergedNote:
-        "Down payment % reflects different appetites for PMI, liquidity, and risk. Talk through which matters more for your household.",
-    },
-    {
-      field: "prioritize_debt",
-      label: "Pay down debt first?",
-      format: (v) => (v === true ? "Yes" : v === false ? "No" : "-"),
-      divergedNote:
-        "One of you wants a cleaner balance sheet, the other wants to keep saving. Both reasonable. Find the middle on amount and timing.",
-    },
-    {
-      field: "strategies_considered",
-      label: "Strategies on the table",
-      isArray: true,
-      format: (v) => (Array.isArray(v) && v.length > 0 ? (v as string[]).join(", ") : "none"),
-      divergedNote:
-        "The strategies you both kept are your natural starting point. The ones only one of you flagged are worth a quick conversation about why.",
+        "If your income figures differ, one of you may be including bonuses or variable pay the other left out. Align on the number you'll actually plan around.",
     },
   ],
   "debt-paydown": [
