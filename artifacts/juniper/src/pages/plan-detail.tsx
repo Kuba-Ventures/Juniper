@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, ArrowUpRight } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanProjection } from "@/components/plan/plan-projection";
@@ -363,8 +363,10 @@ function PlanView({
                 <EditableMilestoneRow
                   key={i}
                   milestone={m}
+                  domain={plan.domain}
                   onToggle={() => toggleMilestone(i)}
                   onChangeCurrent={(v) => updateMilestoneCurrent(i, v)}
+                  onAskJuniper={askJuniper}
                 />
               ))}
             </ul>
@@ -540,17 +542,46 @@ function EditableKpiCard({
   );
 }
 
+// Google Calendar "add event" template link for a milestone (a schedulable
+// reminder; the user picks the date in Google).
+function calendarUrl(label: string, domain: string): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Juniper: ${label}`,
+    details: `A milestone from your Juniper ${domain.replace(/-/g, " ")} plan.`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // ── Editable milestone row ─────────────────────────────────────────────
 function EditableMilestoneRow({
   milestone,
+  domain,
   onToggle,
   onChangeCurrent,
+  onAskJuniper,
 }: {
   milestone: PlanMilestone;
+  domain: string;
   onToggle: () => void;
   onChangeCurrent: (v: number) => void;
+  onAskJuniper: (label: string) => void;
 }) {
   const completed = !!milestone.completed_at;
+  const assistStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontFamily: sans,
+    fontSize: 12.5,
+    fontWeight: 600,
+    color: sage,
+    textDecoration: "none",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: 0,
+  };
   return (
     <li
       style={{
@@ -559,48 +590,66 @@ function EditableMilestoneRow({
         borderRadius: 10,
         padding: "12px 16px",
         display: "flex",
-        alignItems: "center",
-        gap: 12,
+        flexDirection: "column",
+        gap: 8,
       }}
     >
-      <button
-        onClick={onToggle}
-        aria-label={completed ? "Mark milestone incomplete" : "Mark milestone complete"}
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 5,
-          border: `1.5px solid ${completed ? sage : border}`,
-          background: completed ? sage : "#fff",
-          cursor: "pointer",
-          padding: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        {completed && <Check size={13} color="#fff" strokeWidth={3} />}
-      </button>
-      <span
-        style={{
-          color: completed ? muted : ink,
-          fontSize: 15,
-          flex: 1,
-          textDecoration: completed ? "line-through" : "none",
-        }}
-      >
-        {milestone.label}
-      </span>
-      {typeof milestone.target_value === "number" && (
-        <span style={{ color: muted, fontSize: 13, fontFamily: sans }}>
-          (<EditableNumber
-            value={milestone.current_value}
-            onChange={onChangeCurrent}
-            format={(v) => v.toLocaleString()}
-          />{" "}
-          / {milestone.target_value.toLocaleString()})
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={onToggle}
+          aria-label={completed ? "Mark milestone incomplete" : "Mark milestone complete"}
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            border: `1.5px solid ${completed ? sage : border}`,
+            background: completed ? sage : "#fff",
+            cursor: "pointer",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {completed && <Check size={13} color="#fff" strokeWidth={3} />}
+        </button>
+        <span
+          style={{
+            color: completed ? muted : ink,
+            fontSize: 15,
+            flex: 1,
+            textDecoration: completed ? "line-through" : "none",
+          }}
+        >
+          {milestone.label}
         </span>
+        {typeof milestone.target_value === "number" && (
+          <span style={{ color: muted, fontSize: 13, fontFamily: sans }}>
+            (<EditableNumber
+              value={milestone.current_value}
+              onChange={onChangeCurrent}
+              format={(v) => v.toLocaleString()}
+            />{" "}
+            / {milestone.target_value.toLocaleString()})
+          </span>
+        )}
+      </div>
+      {!completed && (
+        <div style={{ display: "flex", gap: 18, marginLeft: 32 }}>
+          <button onClick={() => onAskJuniper(milestone.label)} style={assistStyle} title="Ask Juniper how">
+            How? <ArrowUpRight size={13} strokeWidth={2.4} />
+          </button>
+          <a
+            href={calendarUrl(milestone.label, domain)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={assistStyle}
+            title="Add a reminder to Google Calendar"
+          >
+            Add to calendar <ArrowUpRight size={13} strokeWidth={2.4} />
+          </a>
+        </div>
       )}
     </li>
   );
