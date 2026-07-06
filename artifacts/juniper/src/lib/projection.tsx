@@ -186,8 +186,13 @@ function savingsView(opts: {
 
 // ── Debt: contrast a 0% balance transfer (linear payoff) against paying the
 // same amount while a typical card APR accrues. ────────────────────────────
-function debtView(opts: { balance: number; monthlyPayment: number; apr: number }): ProjectionView | null {
-  const { balance, monthlyPayment, apr } = opts;
+function debtView(opts: {
+  balance: number;
+  monthlyPayment: number;
+  apr: number;
+  blended?: boolean;
+}): ProjectionView | null {
+  const { balance, monthlyPayment, apr, blended } = opts;
   if (balance <= 0 || monthlyPayment <= 0) return null;
 
   const payoffMonths = Math.max(1, Math.ceil(balance / monthlyPayment)); // 0% transfer
@@ -214,12 +219,13 @@ function debtView(opts: { balance: number; monthlyPayment: number; apr: number }
   }
 
   const aprPct = `${Math.round(apr * 100)}%`;
+  const ratePhrase = blended ? `your blended ${aprPct} APR` : `a typical ${aprPct} card APR`;
   const readout =
     stillOwedAtApr > balance * 0.02 ? (
       <>
         Paying <strong>{money(monthlyPayment)}/mo</strong>, a 0% balance transfer clears your {money(balance)} in{" "}
-        {payoffMonths} months. At a typical {aprPct} card APR you'd still owe about {money(stillOwedAtApr)} at that
-        point, so the transfer is what makes the timeline real.
+        {payoffMonths} months. At {ratePhrase} you'd still owe about {money(stillOwedAtApr)} at that point, so the
+        transfer is what makes the timeline real.
       </>
     ) : (
       <>
@@ -238,7 +244,7 @@ function debtView(opts: { balance: number; monthlyPayment: number; apr: number }
     primary,
     compare,
     primaryLabel: "With a 0% transfer",
-    compareLabel: `At ~${aprPct} APR`,
+    compareLabel: blended ? `At ${aprPct} blended APR` : `At ~${aprPct} APR`,
     targetRefLabel: "Debt-free",
     startLabel: `${moneyShort(balance)} debt`,
     endAxisLabel: `${payoffMonths} mo`,
@@ -290,10 +296,27 @@ export function buildProjectionView(plan: Plan): ProjectionView | null {
   }
 
   if (plan.domain === "debt-paydown") {
-    const balance = num(collected.total_debt);
     const monthly = num(collected.monthly_target);
-    if (balance == null || balance <= 0 || monthly == null || monthly <= 0) return null;
-    return debtView({ balance, monthlyPayment: monthly, apr: CARD_APR });
+    if (monthly == null || monthly <= 0) return null;
+
+    // Prefer the user's listed debts (summed balance + balance-weighted APR)
+    // over the single onboarding number and the flat assumed rate.
+    const debts = Array.isArray(plan.current_state?.debts)
+      ? (plan.current_state?.debts as { balance?: unknown; apr?: unknown }[])
+      : [];
+    const valid = debts.filter((d) => typeof d.balance === "number" && (d.balance as number) > 0);
+
+    let balance: number | null = num(collected.total_debt);
+    let apr = CARD_APR;
+    let blended = false;
+    if (valid.length > 0) {
+      const sum = valid.reduce((s, d) => s + (d.balance as number), 0);
+      balance = sum;
+      apr = valid.reduce((s, d) => s + (d.balance as number) * ((num(d.apr) ?? CARD_APR * 100) / 100), 0) / sum;
+      blended = true;
+    }
+    if (balance == null || balance <= 0) return null;
+    return debtView({ balance, monthlyPayment: monthly, apr, blended });
   }
 
   return null;

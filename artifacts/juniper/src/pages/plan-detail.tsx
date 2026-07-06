@@ -5,6 +5,7 @@ import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanProjection } from "@/components/plan/plan-projection";
 import { NextActionLink } from "@/components/plan/next-action-link";
+import { DebtListSection } from "@/components/plan/debt-list";
 import { PlanChat } from "@/components/plan/plan-chat";
 import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
 import { PlanAlignment } from "@/components/plan/plan-alignment";
@@ -15,6 +16,7 @@ import {
   type PlanKpi,
   type PlanMilestone,
   type PlanNextAction,
+  type DebtItem,
 } from "@/lib/plans";
 import { getClientScript } from "@/lib/dialogue-scripts";
 import { useSession } from "@/lib/use-session";
@@ -226,6 +228,9 @@ function PlanView({
     };
     scheduleSave({ ...plan, current_state: { ...(plan.current_state ?? {}), collected } });
   }
+  function updateDebts(debts: DebtItem[]) {
+    scheduleSave({ ...plan, current_state: { ...(plan.current_state ?? {}), debts } });
+  }
 
   return (
     <div style={{ height: "100%", overflowY: "auto", background: cream }}>
@@ -312,6 +317,13 @@ function PlanView({
         {/* Interest-aware savings projection. Same gate as the rest of the
             completed-plan view; renders only for savings-projection domains
             with the needed inputs (see planProjectionInput). */}
+        {plan.status === "completed" && plan.domain === "debt-paydown" && (
+          <DebtListSection
+            debts={(plan.current_state?.debts as DebtItem[] | undefined) ?? []}
+            onChange={updateDebts}
+          />
+        )}
+
         {plan.status === "completed" && (
           <PlanProjection plan={plan} onContributionChange={updateMonthlyContribution} />
         )}
