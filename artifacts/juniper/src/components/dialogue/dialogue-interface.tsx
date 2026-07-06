@@ -916,11 +916,16 @@ function StructuredFlow({
                   fontWeight: 400,
                   color: ink,
                   lineHeight: 1.15,
-                  margin: "0 0 28px",
+                  margin: stepHelper(currentStep) ? "0 0 8px" : "0 0 28px",
                 }}
               >
                 {questionText(currentStep, collected)}
               </h2>
+              {stepHelper(currentStep) && (
+                <p style={{ fontFamily: sans, fontSize: 14, color: muted, lineHeight: 1.55, margin: "0 0 26px", maxWidth: 460 }}>
+                  {stepHelper(currentStep)}
+                </p>
+              )}
 
               <StepControl
                 step={currentStep}
@@ -1010,6 +1015,11 @@ function questionText(step: ClientStep, collected: Record<string, unknown>): str
   return typeof q === "function" ? q(collected) : q;
 }
 
+// Optional one-line clarifier shown under a structured question.
+function stepHelper(step: ClientStep): string | undefined {
+  return step.input && "helper" in step.input ? step.input.helper : undefined;
+}
+
 function StepControl({
   step,
   collected,
@@ -1073,15 +1083,16 @@ function Chip({
   onClick: () => void;
 }) {
   const Icon = option.icon === "user" ? User : option.icon === "users" ? Users : null;
+  const hasSub = !!option.sublabel;
   return (
     <button
       onClick={onClick}
       style={{
         display: "inline-flex",
-        alignItems: "center",
+        alignItems: hasSub ? "flex-start" : "center",
         gap: 8,
-        borderRadius: 999,
-        padding: "12px 20px",
+        borderRadius: hasSub ? 16 : 999,
+        padding: hasSub ? "12px 18px" : "12px 20px",
         cursor: "pointer",
         fontFamily: sans,
         fontSize: 15,
@@ -1093,8 +1104,24 @@ function Chip({
         transition: "background 0.15s, color 0.15s",
       }}
     >
-      {Icon && <Icon size={17} strokeWidth={2} style={{ opacity: 0.85 }} />}
-      {option.label}
+      {Icon && <Icon size={17} strokeWidth={2} style={{ opacity: 0.85, marginTop: hasSub ? 2 : 0 }} />}
+      {hasSub ? (
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span>{option.label}</span>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 400,
+              lineHeight: 1.35,
+              color: active ? "rgba(255,255,255,0.82)" : muted,
+            }}
+          >
+            {option.sublabel}
+          </span>
+        </span>
+      ) : (
+        option.label
+      )}
     </button>
   );
 }

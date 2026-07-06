@@ -369,6 +369,8 @@ const DEBT_PAYDOWN: ClientScript = {
         type: "choice",
         key: "consider_consolidation",
         question: "Want to explore consolidating or refinancing?",
+        helper:
+          "That means rolling your balances into one new loan or card, often at a lower rate, to simplify payments and cut interest.",
         options: [
           { value: "yes", label: "Yes, explore it" },
           { value: "no", label: "No, keep as-is" },
