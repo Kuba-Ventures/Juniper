@@ -398,6 +398,7 @@ const BABY_PLANNING: DialogueScript = {
     { id: "childcare", name: "Childcare strategy", input: { type: "choice", key: "childcare_preference" }, buildSystemPrompt: STRUCTURED_STEP("childcare") },
     { id: "costs", name: "Monthly cost", input: { type: "money", key: "monthly_cost_estimate" }, buildSystemPrompt: STRUCTURED_STEP("costs") },
     { id: "savings_goal", name: "Baby fund", input: { type: "money", key: "savings_goal" }, buildSystemPrompt: STRUCTURED_STEP("savings_goal") },
+    { id: "baby_saved", name: "Saved so far", input: { type: "money", key: "baby_saved" }, buildSystemPrompt: STRUCTURED_STEP("baby_saved") },
     { id: "college_fund", name: "College fund start", input: { type: "choice", key: "college_fund_start" }, buildSystemPrompt: STRUCTURED_STEP("college_fund") },
 
     {
@@ -416,11 +417,12 @@ The user answered a short tap-first questionnaire. The facts you have are:
 - childcare_preference: daycare | nanny | family (family or stay-home).
 - monthly_cost_estimate: expected monthly childcare cost (dollars).
 - savings_goal: one-time amount to save before the baby arrives (dollars).
+- baby_saved: how much they've already saved toward that goal (dollars, may be 0).
 - college_fund_start: immediately | later | no.
 - Any profile numbers above (total_savings) fill gaps.
 
 Keep the plan's numbers consistent (the user watched a live preview):
-- one_time_progress uses total_savings (or 0) as current, savings_goal as target.
+- one_time_progress uses baby_saved (NOT the goal, and default 0) as current, savings_goal as target. Do not set current equal to target unless baby_saved already equals savings_goal.
 - months_to_readiness = (target_year - current calendar year) * 12, floored at 0. If you are unsure of the current year, estimate reasonably.
 
 What to do:
