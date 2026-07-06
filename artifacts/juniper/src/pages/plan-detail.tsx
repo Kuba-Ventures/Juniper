@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanProjection } from "@/components/plan/plan-projection";
@@ -115,6 +115,7 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
         }}
         onPlanChanged={onPlanChanged}
         viewerIsInviter={isInviter}
+        connections={profile?.connections ?? []}
       />
     );
   }
@@ -149,14 +150,24 @@ function PlanView({
   onRestart,
   onPlanChanged,
   viewerIsInviter,
+  connections,
 }: {
   initialPlan: Plan;
   onRestart: () => void;
   onPlanChanged?: () => void;
   viewerIsInviter: boolean;
+  connections: string[];
 }) {
   const [plan, setPlan] = useState<Plan>(initialPlan);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  // "How?" on a next action bumps this nonce to auto-ask the plan chat.
+  const [ask, setAsk] = useState<{ text: string; nonce: number }>({ text: "", nonce: 0 });
+  function askJuniper(label: string) {
+    setAsk((a) => ({
+      text: `Walk me through this step from my plan: "${label}". Give me 2 to 4 concrete moves I can take, in plain language.`,
+      nonce: a.nonce + 1,
+    }));
+  }
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const planRef = useRef(plan);
@@ -234,7 +245,23 @@ function PlanView({
 
   return (
     <div style={{ height: "100%", overflowY: "auto", background: cream }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "44px 28px 80px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 28px 80px" }}>
+        <Link
+          href="/app"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontFamily: sans,
+            fontSize: 13,
+            fontWeight: 500,
+            color: muted,
+            textDecoration: "none",
+            marginBottom: 20,
+          }}
+        >
+          <ArrowLeft size={15} /> Back to dashboard
+        </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
           <p
             style={{
@@ -355,6 +382,7 @@ function PlanView({
                   domain={plan.domain}
                   onToggle={() => toggleNextAction(i)}
                   onNoteChange={(note) => updateNextActionNote(i, note)}
+                  onAskJuniper={askJuniper}
                 />
               ))}
             </ul>
@@ -367,7 +395,7 @@ function PlanView({
             case). Never reachable from the dialogue or an in-progress plan.
             Shown to both inviter and partner. */}
         {plan.status === "completed" && (plan.next_actions?.length ?? 0) > 0 && (
-          <PlanAffiliatePicks domain={plan.domain} />
+          <PlanAffiliatePicks domain={plan.domain} connections={connections} />
         )}
 
         <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
@@ -416,7 +444,7 @@ function PlanView({
           <PlanAlignment plan={plan} youAreInviter={viewerIsInviter} />
         )}
 
-        <PlanChat plan={plan} />
+        <PlanChat plan={plan} autoAsk={ask.text} autoAskNonce={ask.nonce} />
       </div>
     </div>
   );
@@ -584,11 +612,13 @@ function EditableNextActionRow({
   domain,
   onToggle,
   onNoteChange,
+  onAskJuniper,
 }: {
   action: PlanNextAction;
   domain: string;
   onToggle: () => void;
   onNoteChange: (note: string) => void;
+  onAskJuniper: (label: string) => void;
 }) {
   return (
     <li
@@ -629,7 +659,7 @@ function EditableNextActionRow({
         >
           {action.label}
         </span>
-        <NextActionLink domain={domain} label={action.label} />
+        <NextActionLink domain={domain} label={action.label} onAskJuniper={onAskJuniper} />
       </div>
       <NoteField note={action.note ?? ""} onCommit={onNoteChange} />
     </li>

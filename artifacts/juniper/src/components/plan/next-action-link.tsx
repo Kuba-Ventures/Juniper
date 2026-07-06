@@ -1,3 +1,4 @@
+import type React from "react";
 import { ArrowUpRight } from "lucide-react";
 import { partnersForDomain, type Partner } from "@/lib/partners";
 import { trackEvent } from "@/lib/analytics";
@@ -107,12 +108,47 @@ function outboundUrl(url: string, domain: string, sponsored: boolean): string {
   }
 }
 
-// A link beside a next-action when it maps to a partner or a helpful resource.
-// Renders nothing otherwise. stopPropagation keeps it from toggling the
+const linkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+  fontFamily: sans,
+  fontSize: 13,
+  fontWeight: 600,
+  color: sage,
+  textDecoration: "none",
+};
+
+// An affordance beside every next-action: a direct link when the action maps
+// to a partner/resource, otherwise a "How?" button that asks Juniper to walk
+// the user through the step. stopPropagation keeps it from toggling the
 // action's checkbox.
-export function NextActionLink({ domain, label }: { domain: string; label: string }) {
+export function NextActionLink({
+  domain,
+  label,
+  onAskJuniper,
+}: {
+  domain: string;
+  label: string;
+  onAskJuniper: (label: string) => void;
+}) {
   const r = resolveNextAction(domain, label);
-  if (!r) return null;
+  if (!r) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onAskJuniper(label);
+        }}
+        title="Ask Juniper how"
+        style={{ ...linkStyle, background: "none", border: "none", cursor: "pointer" }}
+      >
+        How? <ArrowUpRight size={14} strokeWidth={2.4} />
+      </button>
+    );
+  }
 
   return (
     <a
@@ -133,18 +169,7 @@ export function NextActionLink({ domain, label }: { domain: string; label: strin
         }
       }}
       title={r.sponsored && r.partner ? `Open ${r.partner}` : "Open resource"}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-        fontFamily: sans,
-        fontSize: 13,
-        fontWeight: 600,
-        color: sage,
-        textDecoration: "none",
-      }}
+      style={linkStyle}
     >
       {r.label} <ArrowUpRight size={14} strokeWidth={2.4} />
     </a>

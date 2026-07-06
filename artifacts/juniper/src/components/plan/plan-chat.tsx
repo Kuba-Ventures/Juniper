@@ -22,9 +22,13 @@ function stripEmDashes(text: string): string {
 
 type Props = {
   plan: Plan;
+  // When autoAskNonce increments, auto-send autoAsk (used by next-action
+  // "How?" buttons to ask Juniper to walk through a step).
+  autoAsk?: string;
+  autoAskNonce?: number;
 };
 
-export function PlanChat({ plan }: Props) {
+export function PlanChat({ plan, autoAsk, autoAskNonce }: Props) {
   const [messages, setMessages] = useState<ApiMessage[]>(() =>
     (plan.plan_chat_history ?? []).map((t) => ({ role: t.role, content: t.content })),
   );
@@ -36,6 +40,12 @@ export function PlanChat({ plan }: Props) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, streaming]);
+
+  // Auto-ask when a next-action "How?" button fires (nonce changes).
+  useEffect(() => {
+    if (autoAsk && autoAskNonce && autoAskNonce > 0) void sendTurn(autoAsk);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAskNonce]);
 
   const planRef = useRef(plan);
   planRef.current = plan;

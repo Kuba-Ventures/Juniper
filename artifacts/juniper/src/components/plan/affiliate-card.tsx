@@ -93,10 +93,12 @@ function AffiliateCard({
   partner,
   domain,
   primary,
+  used,
 }: {
   partner: Partner;
   domain: string;
   primary: boolean;
+  used: boolean;
 }) {
   const CategoryIcon = partner.categoryIcon;
   return (
@@ -138,7 +140,7 @@ function AffiliateCard({
           <span style={{ fontFamily: serif, fontSize: 17, fontWeight: 500, color: ink }}>
             {partner.name}
           </span>
-          {primary && (
+          {used ? (
             <span
               style={{
                 borderRadius: 999,
@@ -147,12 +149,29 @@ function AffiliateCard({
                 fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: "0.06em",
-                color: sage,
-                background: sageFill,
+                color: muted,
+                border: `1px solid ${border}`,
               }}
             >
-              RECOMMENDED
+              YOU USE THIS
             </span>
+          ) : (
+            primary && (
+              <span
+                style={{
+                  borderRadius: 999,
+                  padding: "2px 8px",
+                  fontFamily: sans,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  color: sage,
+                  background: sageFill,
+                }}
+              >
+                RECOMMENDED
+              </span>
+            )
           )}
         </div>
         <p
@@ -205,17 +224,37 @@ function AffiliateCard({
 // domain (hero first, marked RECOMMENDED) + the required FTC-style disclosure.
 // Renders nothing if the domain has no configured partners. Callers must gate
 // on plan completion (see PlanView).
-export function PlanAffiliatePicks({ domain }: { domain: string }) {
+export function PlanAffiliatePicks({
+  domain,
+  connections = [],
+}: {
+  domain: string;
+  connections?: string[];
+}) {
   const partners = partnersForDomain(domain);
   if (partners.length === 0) return null;
+
+  // "You use this" if a connection name matches the partner (e.g. "SoFi" ~
+  // "SoFi Savings"). Partners the user already uses drop below fresh ones, so
+  // the RECOMMENDED slot goes to something new.
+  const uses = (p: Partner) =>
+    connections.some((c) => c && p.name.toLowerCase().includes(c.toLowerCase()));
+  const ordered = [...partners].sort((a, b) => Number(uses(a)) - Number(uses(b)));
+  const firstUnusedIdx = ordered.findIndex((p) => !uses(p));
 
   return (
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Recommended for this step</h2>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {partners.map((partner, i) => (
-          <AffiliateCard key={partner.name} partner={partner} domain={domain} primary={i === 0} />
+        {ordered.map((partner, i) => (
+          <AffiliateCard
+            key={partner.name}
+            partner={partner}
+            domain={domain}
+            primary={i === firstUnusedIdx}
+            used={uses(partner)}
+          />
         ))}
       </div>
 
