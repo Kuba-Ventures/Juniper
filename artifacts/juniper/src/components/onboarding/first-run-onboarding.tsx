@@ -22,28 +22,41 @@ const GOALS = [
   "Plan a big purchase",
 ];
 
-// Common money accounts/tools for the lightweight "accounts I use" step. Stored
-// on the profile (local) to personalize recommendations. No data is linked.
-const CONNECTIONS = [
-  "Chase",
-  "Bank of America",
-  "Wells Fargo",
-  "Ally",
-  "SoFi",
-  "Marcus",
-  "Capital One",
-  "Amex",
-  "Fidelity",
-  "Vanguard",
-  "Robinhood",
-  "Monarch",
+// Common money accounts/tools for the lightweight "accounts I use" step,
+// grouped by type. Stored on the profile (local) to personalize
+// recommendations. No data is linked.
+const CONNECTION_GROUPS: { label: string; items: string[] }[] = [
+  {
+    label: "Banks & savings",
+    items: ["Chase", "Bank of America", "Wells Fargo", "Citi", "Capital One", "Ally", "SoFi", "Marcus", "Discover"],
+  },
+  {
+    label: "Investing",
+    items: ["Fidelity", "Vanguard", "Schwab", "Robinhood", "E*Trade", "Betterment"],
+  },
+  {
+    label: "Credit cards",
+    items: ["Amex", "Chase Sapphire", "Apple Card", "Venmo / PayPal"],
+  },
+  {
+    label: "Budgeting & tools",
+    items: ["Monarch", "Mint", "YNAB", "Rocket Money", "Empower", "Credit Karma"],
+  },
 ];
 
 type MoneyKey = "monthlyIncome" | "monthlyExpenses" | "totalSavings" | "totalDebt";
+type MultiGroup = { label: string; items: string[] };
 type Step =
   | { kind: "name" }
   | { kind: "money"; key: MoneyKey; question: string; helper?: string; chips: number[] }
-  | { kind: "multi"; key: "goals" | "connections"; question: string; helper?: string; options: string[] };
+  | {
+      kind: "multi";
+      key: "goals" | "connections";
+      question: string;
+      helper?: string;
+      options?: string[]; // flat list (goals)
+      groups?: MultiGroup[]; // grouped by type (connections)
+    };
 
 const STEPS: Step[] = [
   { kind: "name" },
@@ -52,7 +65,7 @@ const STEPS: Step[] = [
   { kind: "money", key: "totalSavings", question: "Total savings?", helper: "Checking, savings, and investments combined.", chips: [10000, 50000, 100000] },
   { kind: "money", key: "totalDebt", question: "Total debt?", helper: "All loans and card balances. Enter 0 if none.", chips: [0, 15000, 40000] },
   { kind: "multi", key: "goals", question: "What are you working toward?", helper: "Pick everything that applies.", options: GOALS },
-  { kind: "multi", key: "connections", question: "Which of these do you already use?", helper: "We'll tailor recommendations and skip suggesting what you already have.", options: CONNECTIONS },
+  { kind: "multi", key: "connections", question: "Which of these do you already use?", helper: "We'll tailor recommendations and skip suggesting what you already have.", groups: CONNECTION_GROUPS },
 ];
 
 const fmtMoney = (n: number) => {
@@ -183,33 +196,48 @@ export function FirstRunOnboarding({
               />
             )}
 
-            {step.kind === "multi" && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {step.options.map((opt) => {
-                  const selected = multi[step.key].includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      onClick={() =>
-                        setMulti((m) => ({
-                          ...m,
-                          [step.key]: selected ? m[step.key].filter((x) => x !== opt) : [...m[step.key], opt],
-                        }))
-                      }
-                      style={{
-                        borderRadius: 999, padding: "10px 16px", cursor: "pointer",
-                        fontFamily: sans, fontSize: 14, fontWeight: 500,
-                        color: selected ? "#fff" : ink,
-                        background: selected ? sage : sageFill,
-                        border: `1px solid ${selected ? sage : border}`,
-                      }}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {step.kind === "multi" && (() => {
+              const key = step.key;
+              const toggle = (opt: string) =>
+                setMulti((m) => ({
+                  ...m,
+                  [key]: m[key].includes(opt) ? m[key].filter((x) => x !== opt) : [...m[key], opt],
+                }));
+              const chip = (opt: string) => {
+                const selected = multi[key].includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => toggle(opt)}
+                    style={{
+                      borderRadius: 999, padding: "9px 15px", cursor: "pointer",
+                      fontFamily: sans, fontSize: 14, fontWeight: 500,
+                      color: selected ? "#fff" : ink,
+                      background: selected ? sage : sageFill,
+                      border: `1px solid ${selected ? sage : border}`,
+                    }}
+                  >
+                    {opt}
+                  </button>
+                );
+              };
+              // Grouped (connections) vs flat (goals).
+              if (step.groups) {
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 18, maxHeight: "48vh", overflowY: "auto" }}>
+                    {step.groups.map((g) => (
+                      <div key={g.label}>
+                        <p style={{ fontFamily: sans, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: muted, fontWeight: 600, margin: "0 0 8px" }}>
+                          {g.label}
+                        </p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{g.items.map(chip)}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>{(step.options ?? []).map(chip)}</div>;
+            })()}
 
             {/* nav */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 36 }}>
