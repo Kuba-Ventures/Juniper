@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, ArrowLeft, ArrowUpRight } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanProjection } from "@/components/plan/plan-projection";
-import { NextActionLink } from "@/components/plan/next-action-link";
+import { NextActionLink, MilestoneAssist } from "@/components/plan/next-action-link";
 import { DebtListSection } from "@/components/plan/debt-list";
 import { PlanChat } from "@/components/plan/plan-chat";
 import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
@@ -542,17 +542,6 @@ function EditableKpiCard({
   );
 }
 
-// Google Calendar "add event" template link for a milestone (a schedulable
-// reminder; the user picks the date in Google).
-function calendarUrl(label: string, domain: string): string {
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `Juniper: ${label}`,
-    details: `A milestone from your Juniper ${domain.replace(/-/g, " ")} plan.`,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
 // ── Editable milestone row ─────────────────────────────────────────────
 function EditableMilestoneRow({
   milestone,
@@ -568,20 +557,6 @@ function EditableMilestoneRow({
   onAskJuniper: (label: string) => void;
 }) {
   const completed = !!milestone.completed_at;
-  const assistStyle: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-    fontFamily: sans,
-    fontSize: 12.5,
-    fontWeight: 600,
-    color: sage,
-    textDecoration: "none",
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 0,
-  };
   return (
     <li
       style={{
@@ -636,19 +611,8 @@ function EditableMilestoneRow({
         )}
       </div>
       {!completed && (
-        <div style={{ display: "flex", gap: 18, marginLeft: 32 }}>
-          <button onClick={() => onAskJuniper(milestone.label)} style={assistStyle} title="Ask Juniper how">
-            How? <ArrowUpRight size={13} strokeWidth={2.4} />
-          </button>
-          <a
-            href={calendarUrl(milestone.label, domain)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={assistStyle}
-            title="Add a reminder to Google Calendar"
-          >
-            Add to calendar <ArrowUpRight size={13} strokeWidth={2.4} />
-          </a>
+        <div style={{ marginLeft: 32 }}>
+          <MilestoneAssist domain={domain} label={milestone.label} onAskJuniper={onAskJuniper} />
         </div>
       )}
     </li>

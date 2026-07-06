@@ -175,3 +175,103 @@ export function NextActionLink({
     </a>
   );
 }
+
+// ── Milestones ────────────────────────────────────────────────────────────
+// Milestones get a context-specific affordance, resolved in priority order:
+// (1) find-a-provider "near me" search, (2) add-to-calendar for date/deadline
+// milestones, (3) a partner/resource link (reusing next-action logic),
+// (4) a "How?" walk-through fallback.
+
+function mapsSearchUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query + " near me")}`;
+}
+
+// Google Calendar "add event" template (a schedulable reminder; the user picks
+// the date in Google).
+function calendarUrl(label: string, domain: string): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Juniper: ${label}`,
+    details: `A milestone from your Juniper ${domain.replace(/-/g, " ")} plan.`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+// Provider-finding milestones → a local "near me" search.
+const LOCAL_SEARCH: { keys: string[]; text: string; query: (label: string) => string }[] = [
+  {
+    keys: ["attorney", "lawyer", "family law", "legal counsel", "representation"],
+    text: "Lawyers near me",
+    query: (l) => (/estate|will|trust/.test(l.toLowerCase()) ? "estate planning attorney" : "family law attorney"),
+  },
+  { keys: ["daycare", "childcare", "child care", "nanny"], text: "Find childcare near me", query: () => "daycare" },
+  { keys: ["realtor", "real estate agent", "real estate"], text: "Realtors near me", query: () => "real estate agent" },
+  { keys: ["financial advisor", "financial planner"], text: "Advisors near me", query: () => "financial advisor" },
+  { keys: ["lender", "loan officer"], text: "Lenders near me", query: () => "mortgage lender" },
+];
+
+// Date/deadline milestones → add to calendar.
+const CALENDAR_KEYS = ["before the wedding", "days before", "by the wedding", "deadline", "expire"];
+
+type MilestoneAffordance =
+  | { kind: "link"; text: string; url: string; sponsored: boolean; partner?: string; category?: string }
+  | { kind: "calendar" }
+  | { kind: "ask" };
+
+export function resolveMilestoneAffordance(domain: string, label: string): MilestoneAffordance {
+  const l = label.toLowerCase();
+  for (const s of LOCAL_SEARCH) {
+    if (s.keys.some((k) => l.includes(k))) {
+      return { kind: "link", text: s.text, url: mapsSearchUrl(s.query(label)), sponsored: false };
+    }
+  }
+  if (CALENDAR_KEYS.some((k) => l.includes(k))) return { kind: "calendar" };
+  const r = resolveNextAction(domain, label);
+  if (r) return { kind: "link", text: r.label, url: r.url, sponsored: r.sponsored, partner: r.partner, category: r.category };
+  return { kind: "ask" };
+}
+
+// The single, context-appropriate affordance shown under a milestone.
+export function MilestoneAssist({
+  domain,
+  label,
+  onAskJuniper,
+}: {
+  domain: string;
+  label: string;
+  onAskJuniper: (label: string) => void;
+}) {
+  const a = resolveMilestoneAffordance(domain, label);
+
+  if (a.kind === "ask") {
+    return (
+      <button onClick={() => onAskJuniper(label)} title="Ask Juniper how" style={{ ...linkStyle, fontSize: 12.5, background: "none", border: "none", cursor: "pointer" }}>
+        How? <ArrowUpRight size={13} strokeWidth={2.4} />
+      </button>
+    );
+  }
+  if (a.kind === "calendar") {
+    return (
+      <a href={calendarUrl(label, domain)} target="_blank" rel="noopener noreferrer" title="Add a reminder to Google Calendar" style={{ ...linkStyle, fontSize: 12.5 }}>
+        Add to calendar <ArrowUpRight size={13} strokeWidth={2.4} />
+      </a>
+    );
+  }
+  return (
+    <a
+      href={outboundUrl(a.url, domain, a.sponsored)}
+      target="_blank"
+      rel={a.sponsored ? "sponsored noopener noreferrer" : "noopener noreferrer"}
+      onClick={() => {
+        if (a.sponsored && a.partner) {
+          trackEvent("affiliate_click", { partner: a.partner, category: a.category, plan_domain: domain, placement: "milestone_link" });
+        } else {
+          trackEvent("resource_click", { resource: a.url, plan_domain: domain, placement: "milestone_link" });
+        }
+      }}
+      style={{ ...linkStyle, fontSize: 12.5 }}
+    >
+      {a.text} <ArrowUpRight size={13} strokeWidth={2.4} />
+    </a>
+  );
+}
