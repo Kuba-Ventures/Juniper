@@ -3,8 +3,19 @@ import { Switch, Route, useLocation } from "wouter";
 import { Menu } from "lucide-react";
 import { AppSidebar, type Artifact, type Conversation } from "@/components/app-sidebar";
 import { ProfileSettings, type SettingsTab } from "@/components/profile/profile-settings";
-import { UserProfile, loadProfile, saveProfile, clearProfile, deleteRemoteProfile } from "@/lib/profile";
+import {
+  UserProfile,
+  loadProfile,
+  saveProfile,
+  clearProfile,
+  deleteRemoteProfile,
+  isOnboarded,
+  markOnboarded,
+  clearOnboarded,
+  hasProfileData,
+} from "@/lib/profile";
 import { deleteAllPlans } from "@/lib/plans";
+import { FirstRunOnboarding } from "@/components/onboarding/first-run-onboarding";
 import { supabase, getAccessToken } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { Dashboard } from "@/pages/dashboard";
@@ -283,6 +294,7 @@ export default function AppShell() {
     await Promise.all([deleteAllPlans(), deleteRemoteProfile()]);
     if (userEmail) {
       clearProfile(userEmail);
+      clearOnboarded(userEmail); // so first-run onboarding re-triggers after reset
       try {
         localStorage.removeItem(ARTIFACTS_KEY(userEmail));
         localStorage.removeItem(CONVERSATIONS_KEY(userEmail));
@@ -292,6 +304,27 @@ export default function AppShell() {
     }
     window.location.assign("/app");
   }, [userEmail]);
+
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const handleOnboardingComplete = useCallback(
+    (p: UserProfile, name: string) => {
+      setOnboardingDone(true);
+      markOnboarded(userEmail);
+      saveProfile(p, userEmail); // stores financials + goals + connections locally
+      setProfileState(p);
+      if (name && name !== displayName) setDisplayName(name);
+      // Connections has no remote column yet, so only the financial fields sync.
+      postRemoteProfile({
+        name: name || displayName,
+        monthly_income: p.monthlyIncome ?? null,
+        monthly_expenses: p.monthlyExpenses ?? null,
+        total_savings: p.totalSavings ?? null,
+        total_debt: p.totalDebt ?? null,
+        goals: p.goals ?? null,
+      });
+    },
+    [userEmail, displayName],
+  );
 
   const handleStartPlan = useCallback(
     (domain: Domain) => {
@@ -313,6 +346,22 @@ export default function AppShell() {
     onOpenSettings: () => openSettings("account"),
     userName: displayName,
   };
+
+  // First-run onboarding gate: new users (and anyone after a testing reset)
+  // capture their snapshot + connections once, so plans pre-fill and don't
+  // re-ask. Skipped for anyone already onboarded or who already has profile
+  // data. userEmail is empty while the session loads, so this stays false then.
+  const needsOnboarding =
+    !!userEmail && !onboardingDone && !isOnboarded(userEmail) && !hasProfileData(profile);
+  if (needsOnboarding) {
+    return (
+      <FirstRunOnboarding
+        email={userEmail}
+        initialName={initialName}
+        onComplete={handleOnboardingComplete}
+      />
+    );
+  }
 
   return (
     <div
