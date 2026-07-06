@@ -284,7 +284,7 @@ export function buildProjectionView(plan: Plan): ProjectionView | null {
     if (goal == null || goal <= 0 || targetYear == null) return null;
     const monthsOut = Math.max(6, (targetYear - new Date().getFullYear()) * 12);
     return savingsView({
-      current: 0, // baby fund starts fresh; we don't collect a "saved so far"
+      current: Math.max(0, num(collected.baby_saved) ?? 0),
       target: goal,
       months: monthsOut,
       apy: HYSA_APY,

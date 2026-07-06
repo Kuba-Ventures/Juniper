@@ -98,7 +98,9 @@ function babyYearOptions(): ChoiceOption[] {
     { value: y, label: "This year" },
     { value: y + 1, label: "Next year" },
     { value: y + 2, label: "In 2 years" },
-    { value: y + 3, label: "3+ years" },
+    { value: y + 3, label: "In 3 years" },
+    { value: y + 4, label: "In 4 years" },
+    { value: y + 5, label: "5+ years" },
   ];
 }
 
@@ -462,10 +464,25 @@ const BABY_PLANNING: ClientScript = {
         key: "savings_goal",
         question: "One-time savings goal before the baby arrives?",
         min: 0,
-        max: 100_000,
+        max: 1_000_000,
+        step: 5_000,
+        default: 20_000,
+        chips: [20_000, 50_000, 100_000],
+      },
+    },
+    {
+      id: "baby_saved",
+      name: "Saved so far",
+      input: {
+        type: "money",
+        key: "baby_saved",
+        question: "Saved toward this goal so far?",
+        helper: "What you've already set aside for the baby. The projection starts from here.",
+        min: 0,
+        max: 1_000_000,
         step: 1_000,
-        default: 10_000,
-        chips: [5_000, 10_000, 20_000],
+        default: 0,
+        chips: [0, 5_000, 20_000],
       },
     },
     {
