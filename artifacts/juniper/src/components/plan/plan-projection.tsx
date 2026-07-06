@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type React from "react";
 import type { Plan } from "@/lib/plans";
 import { buildProjectionView, type ProjectionView, type SeriesPoint } from "@/lib/projection";
@@ -19,11 +19,11 @@ const sectionHeading: React.CSSProperties = {
   margin: "0 0 14px",
 };
 
-// Chart geometry (viewBox units; the SVG scales to its container width).
-const W = 680;
+// Chart geometry. The viewBox WIDTH tracks the measured container width so
+// 1 viewBox unit == 1px and axis/label text stays readable on mobile (a fixed
+// wide viewBox scaled to 100% shrinks text to ~6px on a phone). Height fixed.
 const H = 240;
 const PAD = { left: 12, right: 72, top: 22, bottom: 30 };
-const plotW = W - PAD.left - PAD.right;
 const plotH = H - PAD.top - PAD.bottom;
 const baselineY = PAD.top + plotH;
 
@@ -34,9 +34,23 @@ export function PlanProjection({
   plan: Plan;
   onContributionChange?: (value: number) => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(640);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const cw = entries[0]?.contentRect.width;
+      if (cw) setW(Math.max(300, Math.round(cw)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const view = buildProjectionView(plan);
   if (!view) return null;
 
+  const plotW = w - PAD.left - PAD.right;
   const xOf = (month: number) => PAD.left + (view.months > 0 ? month / view.months : 0) * plotW;
   const yOf = (v: number) => PAD.top + plotH - (v / view.yMax) * plotH;
 
@@ -54,9 +68,9 @@ export function PlanProjection({
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Your projected path</h2>
 
-      <div style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "18px 18px 14px" }}>
+      <div ref={cardRef} style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "18px 18px 14px" }}>
         <svg
-          viewBox={`0 0 ${W} ${H}`}
+          viewBox={`0 0 ${w} ${H}`}
           width="100%"
           style={{ height: "auto", display: "block", overflow: "visible" }}
           role="img"
