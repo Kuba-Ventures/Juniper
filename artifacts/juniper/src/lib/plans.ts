@@ -29,6 +29,14 @@ export type PlanNextAction = {
   note?: string; // user-entered note (confirmation #, account name, etc.)
 };
 
+// A single debt the user lists on a Debt Paydown plan. Stored (as an array)
+// in current_state.debts — no table/migration. `apr` is a percentage (e.g. 22).
+export type DebtItem = {
+  name: string;
+  balance: number;
+  apr: number;
+};
+
 export type DialogueTurn = {
   role: "user" | "assistant";
   content: string;
