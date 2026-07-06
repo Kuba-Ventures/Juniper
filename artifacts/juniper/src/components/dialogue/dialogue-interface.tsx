@@ -200,16 +200,28 @@ export function DialogueInterface({
         init.has_partner = true;
         if (inviterFirstName) init.partner_first_name = inviterFirstName;
         Object.assign(init, (initialPlan?.partner_collected ?? {}) as Record<string, unknown>);
-        return init;
+      } else {
+        // Seed from the persisted structured answers first, then overlay any
+        // per-turn step data captured during legacy chat steps.
+        Object.assign(
+          init,
+          ((initialPlan?.current_state?.collected as Record<string, unknown>) ?? {}),
+        );
+        for (const turn of initialPlan?.dialogue_history ?? []) {
+          if (turn.step_complete_data) Object.assign(init, turn.step_complete_data);
+        }
       }
-      // Seed from the persisted structured answers first, then overlay any
-      // per-turn step data captured during legacy chat steps.
-      Object.assign(
-        init,
-        ((initialPlan?.current_state?.collected as Record<string, unknown>) ?? {}),
-      );
-      for (const turn of initialPlan?.dialogue_history ?? []) {
-        if (turn.step_complete_data) Object.assign(init, turn.step_complete_data);
+      // Pre-fill money steps from the saved profile so shared facts (savings,
+      // income, debt) aren't re-entered per plan. Only fills gaps; anything the
+      // user already answered wins. They can still adjust the value on-screen.
+      if (profile && script) {
+        for (const s of script.steps) {
+          const inp = s.input;
+          if (inp && inp.type === "money" && inp.profileSeed && init[inp.key] == null) {
+            const seed = inp.profileSeed(profile);
+            if (typeof seed === "number" && !Number.isNaN(seed)) init[inp.key] = seed;
+          }
+        }
       }
       return init;
     })(),

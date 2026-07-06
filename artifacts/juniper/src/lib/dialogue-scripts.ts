@@ -4,6 +4,8 @@
 // for structured (tap-first) steps — the full input spec to render the
 // control locally without an LLM round-trip.
 
+import type { UserProfile } from "./profile";
+
 export type ClientDialogueContext = {
   has_partner?: boolean | null;
   is_partner?: boolean;
@@ -46,6 +48,9 @@ export type MoneyInput = {
   chips: number[];
   default: number;
   also?: (value: number) => Record<string, unknown>;
+  // Pre-fill this step from the saved profile so shared facts (savings,
+  // income, debt) aren't re-entered per plan. Return undefined to skip.
+  profileSeed?: (p: UserProfile) => number | null | undefined;
 };
 
 export type TimelineInput = {
@@ -157,6 +162,7 @@ const HOME_BUYING: ClientScript = {
         step: 5_000,
         default: 50_000,
         chips: [0, 50_000, 100_000],
+        profileSeed: (p) => p.totalSavings,
       },
     },
     {
@@ -174,6 +180,8 @@ const HOME_BUYING: ClientScript = {
         chips: [150_000, 250_000, 400_000],
         // Synthesis and the profile model reason in monthly terms.
         also: (v) => ({ monthly_income: Math.round(v / 12) }),
+        // Profile stores monthly take-home; this step asks annual.
+        profileSeed: (p) => (typeof p.monthlyIncome === "number" ? p.monthlyIncome * 12 : undefined),
       },
     },
     { id: "synthesis", name: "Your plan", skipWhen: (ctx) => ctx.is_partner === true },
@@ -336,6 +344,7 @@ const DEBT_PAYDOWN: ClientScript = {
         step: 1_000,
         default: 25_000,
         chips: [10_000, 25_000, 50_000],
+        profileSeed: (p) => p.totalDebt,
       },
     },
     {
