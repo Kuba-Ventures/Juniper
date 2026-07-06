@@ -1447,8 +1447,8 @@ function ReadyState() {
 function BuildingState({ errored }: { errored: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-      <div style={{ width: 26, height: 26, marginBottom: 16 }}>
-        <JuniperBerry size={26} />
+      <div style={{ marginBottom: 16 }}>
+        <img src="/logo.png" alt="Juniper" style={{ width: 30, height: 30, objectFit: "contain" }} />
       </div>
       <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 400, color: ink, lineHeight: 1.15, margin: "0 0 10px" }}>
         Building your plan…
@@ -1679,7 +1679,7 @@ function LivePreview({
             justifyContent: "center",
           }}
         >
-          <JuniperBerry size={22} />
+          <img src="/logo.png" alt="Juniper" style={{ width: 28, height: 28, objectFit: "contain" }} />
         </div>
         <span
           style={{
