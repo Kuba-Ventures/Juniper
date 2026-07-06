@@ -37,6 +37,9 @@ export type ProjectionView = {
   markers: { month: number; label: string; value: number }[];
   readout: React.ReactNode;
   vehicle: string;
+  // When set, the user can adjust their monthly amount (savings mode); the
+  // projection recomputes the timeline at that amount. undefined = not editable.
+  editableMonthly?: number;
 };
 
 function num(v: unknown): number | null {
@@ -60,6 +63,12 @@ function monthLabel(ym?: string): string | null {
 
 // ── Savings: solve the monthly contribution that grows `current` to `target`
 // over `months`, compounding monthly at `apy`. ─────────────────────────────
+function addMonthsYM(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function savingsView(opts: {
   current: number;
   target: number;
@@ -68,26 +77,48 @@ function savingsView(opts: {
   vehicle: string;
   targetDate?: string;
   goalNoun: string; // "down payment target" / "baby fund"
+  // When set (>0), the user has chosen their own monthly amount; we solve for
+  // the timeline at that amount instead of solving the amount for the date.
+  overrideMonthly?: number;
 }): ProjectionView | null {
-  const { current, target, months, apy, vehicle, targetDate, goalNoun } = opts;
-  const m = Math.max(1, Math.round(months));
+  const { current, target, months, apy, vehicle, targetDate, goalNoun, overrideMonthly } = opts;
+  const baseMonths = Math.max(1, Math.round(months));
   if (target <= 0 || current >= target) return null;
   const i = apy / 12;
+  const monthlyNoInterest = (target - current) / baseMonths;
 
-  const monthlyNoInterest = (target - current) / m;
+  const usingOverride = overrideMonthly != null && overrideMonthly > 0;
   let pmt: number;
-  if (i === 0) pmt = monthlyNoInterest;
-  else {
-    const growth = Math.pow(1 + i, m);
-    pmt = (target - current * growth) / ((growth - 1) / i);
+  let horizon: number;
+  let reached = true;
+  let endDate: string | undefined = targetDate;
+
+  if (usingOverride) {
+    pmt = overrideMonthly as number;
+    let bal = current;
+    let mm = 0;
+    while (bal < target && mm < 1200) {
+      mm += 1;
+      bal = bal * (1 + i) + pmt;
+    }
+    reached = bal >= target;
+    horizon = reached ? Math.max(1, mm) : baseMonths;
+    endDate = reached ? addMonthsYM(mm) : targetDate;
+  } else {
+    if (i === 0) pmt = monthlyNoInterest;
+    else {
+      const growth = Math.pow(1 + i, baseMonths);
+      pmt = (target - current * growth) / ((growth - 1) / i);
+    }
+    pmt = Math.max(0, pmt);
+    horizon = baseMonths;
   }
-  pmt = Math.max(0, pmt);
 
   const primary: SeriesPoint[] = [{ month: 0, value: current }];
   const compare: SeriesPoint[] = [{ month: 0, value: current }];
   let bal = current;
   let principal = current;
-  for (let month = 1; month <= m; month++) {
+  for (let month = 1; month <= horizon; month++) {
     bal = bal * (1 + i) + pmt;
     principal = principal + pmt;
     primary.push({ month, value: bal });
@@ -99,23 +130,42 @@ function savingsView(opts: {
   for (const pct of [25, 50, 75]) {
     const threshold = target * (pct / 100);
     const hit = primary.find((p) => p.value >= threshold);
-    if (hit && hit.month > 0 && hit.month < m) markers.push({ month: hit.month, label: `${pct}%`, value: hit.value });
+    if (hit && hit.month > 0 && hit.month < horizon) markers.push({ month: hit.month, label: `${pct}%`, value: hit.value });
   }
 
   const apyPct = `${(apy * 100).toFixed(1)}%`;
-  const dateLabel = monthLabel(targetDate);
-  const readout = (
-    <>
-      Saving about <strong>{money(pmt)}/mo</strong> in {vehicle} ({apyPct} APY) reaches your{" "}
-      {money(target)} {goalNoun}
-      {dateLabel ? ` by ${dateLabel}` : ""}. Interest earns roughly {money(Math.round(interestEarned / 100) * 100)} of
-      that, so you set aside less than the {money(monthlyNoInterest)}/mo a plain account would need.
-    </>
-  );
+  const dateLabel = monthLabel(endDate);
+  const round100 = (n: number) => Math.round(n / 100) * 100;
+
+  let readout: React.ReactNode;
+  if (usingOverride && reached) {
+    readout = (
+      <>
+        At <strong>{money(pmt)}/mo</strong> in {vehicle} ({apyPct} APY), you'll reach your {money(target)} {goalNoun}{" "}
+        {dateLabel ? `around ${dateLabel}` : `in ${horizon} months`}. Interest chips in about {money(round100(interestEarned))}.
+      </>
+    );
+  } else if (usingOverride && !reached) {
+    readout = (
+      <>
+        At <strong>{money(pmt)}/mo</strong> you'd have about {money(bal)}
+        {monthLabel(targetDate) ? ` by ${monthLabel(targetDate)}` : ` in ${horizon} months`}, short of your {money(target)}{" "}
+        {goalNoun}. A little more each month closes the gap.
+      </>
+    );
+  } else {
+    readout = (
+      <>
+        Saving about <strong>{money(pmt)}/mo</strong> in {vehicle} ({apyPct} APY) reaches your {money(target)} {goalNoun}
+        {dateLabel ? ` by ${dateLabel}` : ""}. Interest earns roughly {money(round100(interestEarned))} of that, so you set
+        aside less than the {money(monthlyNoInterest)}/mo a plain account would need.
+      </>
+    );
+  }
 
   return {
     mode: "savings",
-    months: m,
+    months: horizon,
     yMax: Math.max(target * 1.08, bal * 1.02, 1),
     targetValue: target,
     showTargetLine: true,
@@ -126,10 +176,11 @@ function savingsView(opts: {
     compareLabel: "Contributions only",
     targetRefLabel: moneyShort(target),
     startLabel: `${moneyShort(current)} now`,
-    endAxisLabel: dateLabel ?? `${m} mo`,
+    endAxisLabel: dateLabel ?? `${horizon} mo`,
     markers,
     readout,
     vehicle,
+    editableMonthly: Math.round(pmt),
   };
 }
 
@@ -217,6 +268,7 @@ export function buildProjectionView(plan: Plan): ProjectionView | null {
       vehicle: "a high-yield savings account",
       targetDate: typeof collected.target_date === "string" ? collected.target_date : undefined,
       goalNoun: "down payment target",
+      overrideMonthly: num(collected.monthly_contribution) ?? undefined,
     });
   }
 
@@ -233,6 +285,7 @@ export function buildProjectionView(plan: Plan): ProjectionView | null {
       vehicle: "a high-yield savings account",
       targetDate: `${targetYear}-01`,
       goalNoun: "baby fund",
+      overrideMonthly: num(collected.monthly_contribution) ?? undefined,
     });
   }
 
