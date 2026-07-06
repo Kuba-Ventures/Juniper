@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type React from "react";
 import type { Plan } from "@/lib/plans";
 import { buildProjectionView, type ProjectionView, type SeriesPoint } from "@/lib/projection";
@@ -26,7 +27,13 @@ const plotW = W - PAD.left - PAD.right;
 const plotH = H - PAD.top - PAD.bottom;
 const baselineY = PAD.top + plotH;
 
-export function PlanProjection({ plan }: { plan: Plan }) {
+export function PlanProjection({
+  plan,
+  onContributionChange,
+}: {
+  plan: Plan;
+  onContributionChange?: (value: number) => void;
+}) {
   const view = buildProjectionView(plan);
   if (!view) return null;
 
@@ -125,8 +132,52 @@ export function PlanProjection({ plan }: { plan: Plan }) {
 
         {/* readout */}
         <p style={{ fontFamily: sans, fontSize: 13.5, color: ink, lineHeight: 1.55, margin: "14px 0 0" }}>{view.readout}</p>
+
+        {/* editable monthly amount (savings): recomputes the timeline above */}
+        {view.editableMonthly != null && onContributionChange && (
+          <ContributionField value={view.editableMonthly} onCommit={onContributionChange} />
+        )}
       </div>
     </section>
+  );
+}
+
+function ContributionField({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  // Reflect recomputed values from the parent when not actively editing.
+  if (!editing && text !== String(value)) setText(String(value));
+
+  const commit = () => {
+    setEditing(false);
+    const n = parseInt(text.replace(/[^\d]/g, ""), 10);
+    if (!Number.isNaN(n) && n !== value) onCommit(n);
+    else setText(String(value));
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}` }}>
+      <label style={{ fontFamily: sans, fontSize: 13, color: muted }}>I can save</label>
+      <span style={{ display: "inline-flex", alignItems: "baseline", borderBottom: `2px solid ${editing ? sage : border}`, paddingBottom: 1 }}>
+        <span style={{ fontFamily: sans, fontSize: 15, color: ink, fontWeight: 600 }}>$</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={editing ? text : Number(value).toLocaleString("en-US")}
+          onChange={(e) => setText(e.target.value.replace(/[^\d]/g, ""))}
+          onFocus={() => { setEditing(true); setText(String(value)); }}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          aria-label="Monthly amount"
+          style={{
+            width: `${Math.max(4, (editing ? text : String(value)).length + 1)}ch`,
+            fontFamily: sans, fontSize: 15, fontWeight: 600, color: ink,
+            border: "none", outline: "none", background: "transparent", padding: "0 2px",
+          }}
+        />
+      </span>
+      <span style={{ fontFamily: sans, fontSize: 13, color: muted }}>/mo</span>
+    </div>
   );
 }
 

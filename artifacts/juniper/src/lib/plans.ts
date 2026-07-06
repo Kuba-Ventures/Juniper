@@ -26,6 +26,7 @@ export type PlanMilestone = {
 export type PlanNextAction = {
   label: string;
   completed: boolean;
+  note?: string; // user-entered note (confirmation #, account name, etc.)
 };
 
 export type DialogueTurn = {

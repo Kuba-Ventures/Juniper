@@ -178,6 +178,7 @@ function PlanView({
         kpis: next.kpis,
         milestones: next.milestones,
         next_actions: next.next_actions,
+        current_state: next.current_state,
       });
       if (saved) {
         setSaveStatus("saved");
@@ -209,6 +210,21 @@ function PlanView({
       i === index ? { ...a, completed: !a.completed } : a,
     );
     scheduleSave({ ...plan, next_actions });
+  }
+  function updateNextActionNote(index: number, note: string) {
+    const next_actions = plan.next_actions.map((a, i) =>
+      i === index ? { ...a, note: note.trim() || undefined } : a,
+    );
+    scheduleSave({ ...plan, next_actions });
+  }
+  // User's chosen monthly amount, stored in current_state.collected so the
+  // projection can recompute the timeline at that rate.
+  function updateMonthlyContribution(value: number) {
+    const collected = {
+      ...((plan.current_state?.collected as Record<string, unknown>) ?? {}),
+      monthly_contribution: value,
+    };
+    scheduleSave({ ...plan, current_state: { ...(plan.current_state ?? {}), collected } });
   }
 
   return (
@@ -296,7 +312,9 @@ function PlanView({
         {/* Interest-aware savings projection. Same gate as the rest of the
             completed-plan view; renders only for savings-projection domains
             with the needed inputs (see planProjectionInput). */}
-        {plan.status === "completed" && <PlanProjection plan={plan} />}
+        {plan.status === "completed" && (
+          <PlanProjection plan={plan} onContributionChange={updateMonthlyContribution} />
+        )}
 
         {plan.milestones?.length > 0 && (
           <section style={{ marginBottom: 32 }}>
@@ -324,6 +342,7 @@ function PlanView({
                   action={a}
                   domain={plan.domain}
                   onToggle={() => toggleNextAction(i)}
+                  onNoteChange={(note) => updateNextActionNote(i, note)}
                 />
               ))}
             </ul>
@@ -552,53 +571,115 @@ function EditableNextActionRow({
   action,
   domain,
   onToggle,
+  onNoteChange,
 }: {
   action: PlanNextAction;
   domain: string;
   onToggle: () => void;
+  onNoteChange: (note: string) => void;
 }) {
   return (
     <li
-      onClick={onToggle}
       style={{
         background: "#fff",
         border: `1px solid ${border}`,
         borderRadius: 10,
         padding: "12px 16px",
         display: "flex",
-        alignItems: "center",
-        gap: 12,
-        cursor: "pointer",
+        flexDirection: "column",
+        gap: 8,
       }}
     >
-      <span
-        aria-hidden
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 5,
-          border: `1.5px solid ${action.completed ? sage : border}`,
-          background: action.completed ? sage : "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        {action.completed && <Check size={13} color="#fff" strokeWidth={3} />}
-      </span>
-      <span
-        style={{
-          color: action.completed ? muted : ink,
-          fontSize: 15,
-          flex: 1,
-          textDecoration: action.completed ? "line-through" : "none",
-        }}
-      >
-        {action.label}
-      </span>
-      <NextActionLink domain={domain} label={action.label} />
+      <div onClick={onToggle} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <span
+          aria-hidden
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            border: `1.5px solid ${action.completed ? sage : border}`,
+            background: action.completed ? sage : "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {action.completed && <Check size={13} color="#fff" strokeWidth={3} />}
+        </span>
+        <span
+          style={{
+            color: action.completed ? muted : ink,
+            fontSize: 15,
+            flex: 1,
+            textDecoration: action.completed ? "line-through" : "none",
+          }}
+        >
+          {action.label}
+        </span>
+        <NextActionLink domain={domain} label={action.label} />
+      </div>
+      <NoteField note={action.note ?? ""} onCommit={onNoteChange} />
     </li>
+  );
+}
+
+// Optional per-action note (confirmation #, account name, a reminder). Starts
+// as a subtle "Add a note" affordance; persists on blur.
+function NoteField({ note, onCommit }: { note: string; onCommit: (note: string) => void }) {
+  const [open, setOpen] = useState(note.length > 0);
+  const [text, setText] = useState(note);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          alignSelf: "flex-start",
+          marginLeft: 32,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: sans,
+          fontSize: 12.5,
+          color: sage,
+          fontWeight: 500,
+          padding: 0,
+        }}
+      >
+        + Add a note
+      </button>
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      value={text}
+      autoFocus={note.length === 0}
+      placeholder="Add a note, e.g. account name or confirmation #"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        if (text.trim() !== note) onCommit(text);
+        if (text.trim().length === 0) setOpen(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      style={{
+        marginLeft: 32,
+        width: "calc(100% - 32px)",
+        boxSizing: "border-box",
+        border: `1px solid ${border}`,
+        borderRadius: 8,
+        padding: "8px 10px",
+        fontFamily: sans,
+        fontSize: 13.5,
+        color: ink,
+        outline: "none",
+        background: "rgba(92,122,101,0.04)",
+      }}
+    />
   );
 }
 
