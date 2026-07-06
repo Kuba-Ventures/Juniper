@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
 import { PlanProjection } from "@/components/plan/plan-projection";
+import { NextActionLink } from "@/components/plan/next-action-link";
 import { PlanChat } from "@/components/plan/plan-chat";
 import { InvitePartnerCard } from "@/components/plan/invite-partner-card";
 import { PlanAlignment } from "@/components/plan/plan-alignment";
@@ -321,6 +322,7 @@ function PlanView({
                 <EditableNextActionRow
                   key={i}
                   action={a}
+                  domain={plan.domain}
                   onToggle={() => toggleNextAction(i)}
                 />
               ))}
@@ -548,9 +550,11 @@ function EditableMilestoneRow({
 // ── Editable next-action row ───────────────────────────────────────────
 function EditableNextActionRow({
   action,
+  domain,
   onToggle,
 }: {
   action: PlanNextAction;
+  domain: string;
   onToggle: () => void;
 }) {
   return (
@@ -593,6 +597,7 @@ function EditableNextActionRow({
       >
         {action.label}
       </span>
+      <NextActionLink domain={domain} label={action.label} />
     </li>
   );
 }
