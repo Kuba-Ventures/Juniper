@@ -246,25 +246,14 @@ export function PlanAffiliatePicks({
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Recommended for this step</h2>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {ordered.map((partner, i) => (
-          <AffiliateCard
-            key={partner.name}
-            partner={partner}
-            domain={domain}
-            primary={i === firstUnusedIdx}
-            used={uses(partner)}
-          />
-        ))}
-      </div>
-
-      {/* Required FTC-style disclosure — kept visible, not behind a tooltip. */}
+      {/* Required FTC-style disclosure — MUST appear ABOVE the links (before
+          the user can click out), not below. Kept visible, not behind a tooltip. */}
       <div
         style={{
           display: "flex",
           alignItems: "flex-start",
           gap: 8,
-          marginTop: 12,
+          marginBottom: 12,
           borderRadius: 10,
           padding: 12,
           background: "#fff",
@@ -276,6 +265,18 @@ export function PlanAffiliatePicks({
           Juniper may earn a commission if you open an account through these links. We rank by fit
           for your plan, not by payout.
         </p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {ordered.map((partner, i) => (
+          <AffiliateCard
+            key={partner.name}
+            partner={partner}
+            domain={domain}
+            primary={i === firstUnusedIdx}
+            used={uses(partner)}
+          />
+        ))}
       </div>
     </section>
   );
