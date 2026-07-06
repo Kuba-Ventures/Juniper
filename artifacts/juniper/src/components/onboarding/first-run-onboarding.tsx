@@ -57,7 +57,7 @@ const STEPS: Step[] = [
 
 const fmtMoney = (n: number) => {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1000)}K`;
+  if (n >= 1_000) { const k = n / 1000; return `$${k % 1 === 0 ? k : k.toFixed(1)}K`; }
   return `$${n}`;
 };
 
