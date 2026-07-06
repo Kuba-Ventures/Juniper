@@ -4,11 +4,54 @@ export type UserProfile = {
   totalSavings?: number;
   totalDebt?: number;
   goals?: string[];
+  // Lightweight "accounts I use" list (partner names). Local-only for now; the
+  // remote user_profiles table has no column for it yet.
+  connections?: string[];
   completedAt?: string;
 };
 
 function profileKey(email?: string) {
   return email ? `juniper_profile_${email}` : "juniper_profile";
+}
+
+function onboardedKey(email?: string) {
+  return email ? `juniper_onboarded_${email}` : "juniper_onboarded";
+}
+
+// Whether the user has finished (or dismissed) first-run onboarding. Cleared
+// by the testing reset so onboarding re-triggers.
+export function isOnboarded(email?: string): boolean {
+  try {
+    return localStorage.getItem(onboardedKey(email)) === "1";
+  } catch {
+    return false;
+  }
+}
+export function markOnboarded(email?: string): void {
+  try {
+    localStorage.setItem(onboardedKey(email), "1");
+  } catch {
+    /* ignore */
+  }
+}
+export function clearOnboarded(email?: string): void {
+  try {
+    localStorage.removeItem(onboardedKey(email));
+  } catch {
+    /* ignore */
+  }
+}
+
+// True if the profile already carries meaningful financial data (so an
+// existing user isn't shown onboarding).
+export function hasProfileData(p: UserProfile | null): boolean {
+  if (!p) return false;
+  return (
+    typeof p.monthlyIncome === "number" ||
+    typeof p.monthlyExpenses === "number" ||
+    typeof p.totalSavings === "number" ||
+    typeof p.totalDebt === "number"
+  );
 }
 
 export function loadProfile(email?: string): UserProfile | null {
