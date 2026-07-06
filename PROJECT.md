@@ -1,13 +1,13 @@
 # Juniper
 *AI copilot for couples navigating major financial life transitions.*
 
-*Last updated: 2026-07-05 by kuba-vault*
+*Last updated: 2026-07-06 by kuba-vault*
 
 ---
 
 ## TL;DR
 
-Juniper helps engaged and newly married couples model the financial tradeoffs behind big decisions (buying a home, combining finances, paying down debt, planning for a baby, prenups) and structures the conversation between partners before commitments are made. All five planning domains run end-to-end in production at `juniper-api-server.vercel.app` with Supabase Auth, partner invites, and side-by-side plan alignment. Since the MVP, the account UX was fixed (Account/Financial-snapshot tabs, email + Sign Out), the forced snapshot modal was removed in favor of conversational onboarding, and a full pre-launch growth stack shipped: waitlist capture, GA4 analytics, and a Google Sheets growth dashboard fed by Supabase webhooks + the GA4 Data API. The build is quiet since June 1; next focus is still real email for invites and Plaid/Monarch wiring on the Connections page.
+Juniper helps engaged and newly married couples model the financial tradeoffs behind big decisions (buying a home, combining finances, paying down debt, planning for a baby, prenups) and align on them before commitments are made. All five domains run end-to-end in production at `juniper-api-server.vercel.app`. This session (23 PRs) reworked onboarding from an open-ended per-turn LLM chat into a guided, tap-first flow: structured choice/money/timeline steps are answered client-side with no LLM call, a live plan-preview card fills in as answers arrive, and only synthesis (plus rare sensitive free-text steps) still hits Anthropic — cutting per-plan LLM spend sharply. Completed plans gained interest-aware savings/debt projection charts, affiliate click-out recommendation cards, a debt-list builder that feeds the payoff projection, and next actions that each link out or offer a "How?" walkthrough. A single first-run onboarding flow (snapshot + goals + "accounts I use" connections) and a "reset plans & preferences" testing control also shipped. Next: partner URLs and rates are still demo placeholders — real affiliate programs, disclosures, and (for regulated categories) licensing are required before going live.
 
 ---
 
@@ -26,14 +26,14 @@ Juniper helps engaged and newly married couples model the financial tradeoffs be
 - **Engagement manager:** self-directed
 - **Lead:** Finley
 - **Cadence:** N/A (internal build)
-- **Next milestone:** Email invites + Plaid/Monarch Connections wiring — TBD
-- **Flags:** on-track (last commit 2026-06-01, no activity since)
+- **Next milestone:** Approved affiliate programs + real partner URLs/rates/disclosures before monetized surfaces go live — TBD
+- **Flags:** shipping (23 PRs merged this session; `main` at merge of PR #23)
 
 ---
 
 ## Where we are right now
 
-All five planning domains (Home Buying, Combining Finances, Debt Paydown, Baby Planning, Prenup & Legal) run end-to-end in production with guided dialogues, interactive plan views, in-plan chat, and partner invite + alignment. Since the MVP landed, the June 1 work was pre-launch growth infrastructure and UX cleanup: the forced financial-snapshot modal is gone (the dialogue collects missing numbers conversationally), the top-bar account button now opens a proper Account tab (name, email, Sign out), waitlist sign-ups now actually persist (`/api/waitlist` + a `waitlist` table), and GA4 is wired on the landing page firing a `sign_up` event on waitlist submit. A Google Sheets admin dashboard mirrors waitlist/user rows via Supabase Database Webhooks and pulls trailing-30-day GA4 metrics via the Data API. No active blockers. The repo has been quiet since 2026-06-01. Remaining open loops are email automation for partner invites and the still-stubbed Connections page.
+Onboarding was rebuilt this session. The plan dialogue used to make an LLM call every turn; now the structured steps (choice/money/timeline) across all five plans are answered client-side with no Anthropic call, a live plan-preview card fills in as answers land, an "N questions left" countdown shows progress, and the plan appears instantly at the end. Only genuinely open/sensitive steps (e.g. Prenup carveouts) stay as `text` LLM steps, and synthesis is still the one LLM call per plan — so per-plan LLM spend dropped a lot. Completed plans got materially richer: interest-aware SVG projection charts (savings mode solves the required monthly contribution and lets the user edit "I can save $X/mo"; debt mode contrasts a 0% balance transfer vs a typical APR), affiliate click-out recommendation cards, a debt-list builder that sums balances and blends APR into the payoff projection, and next actions that each either link out (affiliate or a free resource like Credit Karma) or offer a "How?" button that asks the plan chat to walk the step. A single first-run onboarding flow (name → snapshot → goals → grouped "accounts I use") now gates new users, and money steps pre-fill from the saved profile. A "Reset plans & preferences" testing control wipes plans + profile via new owner-scoped DELETE endpoints. The one thing gating a monetized launch: every partner URL and rate is a demo placeholder.
 
 ---
 
@@ -41,30 +41,32 @@ All five planning domains (Home Buying, Combining Finances, Debt Paydown, Baby P
 
 **Frontend / UI**
 - React + Vite + wouter SPA at `artifacts/juniper/` with sub-routes `/app`, `/app/chat`, `/app/plans/:domain`, `/app/connections`
+- **Tap-first plan onboarding** across all 5 domains — `dialogue-interface.tsx` renders a `StructuredFlow` for choice/money/timeline steps answered client-side with NO LLM call, a live plan-preview card (`right` column) that fills in as answers arrive, and an "N questions left" countdown (`remainingQuestions`); only `text` steps route to the LLM. Client script schema in `src/lib/dialogue-scripts.ts` (`StepInput = ChoiceInput | MoneyInput | TimelineInput | TextInput`, plus `profileSeed` to pre-fill money steps from the saved profile)
+- **Single first-run onboarding flow** (`components/onboarding/first-run-onboarding.tsx`): name → financial snapshot → goals → grouped "accounts I use" connections; gated in `pages/app-shell.tsx` on `!isOnboarded(email) && !hasProfileData(profile)`, re-triggered after the testing reset
+- **Completed-plan projection charts** (`lib/projection.tsx` + `components/plan/plan-projection.tsx`): custom SVG. Savings mode (Home Buying, Baby) solves the required monthly contribution with compound interest and exposes an editable "I can save $X/mo" that recomputes the timeline; debt mode (Debt Paydown) contrasts a 0% balance transfer vs a typical blended APR. Illustrative constants: 3.5% HYSA APY, 22% card APR
+- **Affiliate click-out cards** (`components/plan/affiliate-card.tsx`, config in `lib/partners.ts` keyed by domain): real brand logos via Google favicon service (`s2/favicons`) with monogram fallback, FTC-style disclosure, GA4 `affiliate_click` event (prod-only) with a `subid` query param. Connection-aware — a partner the user already "uses" gets a "You use this" badge and is deprioritized. All partner URLs are PLACEHOLDERS (`example.com/partners/...`)
+- **Debt-list builder** (`components/plan/debt-list.tsx`): list debts (name/balance/APR) persisted to `current_state.debts`; summed balance + blended APR feed the payoff projection. No migration
+- **Actionable next actions** (`components/plan/next-action-link.tsx`): each links out (affiliate or free resource like Credit Karma for credit score) or shows a "How?" button that asks the plan chat to walk the step; per-action notes persisted. Fires GA4 `resource_click` / `affiliate_click`
+- **Top "Back to dashboard" button** on the plan view (`pages/plan-detail.tsx`)
 - Domain-tile dashboard with active-plan widgets (KPI bars + next action)
-- Onboarding gate + profile questionnaire
 - Click-to-edit KPIs, milestones, and actions on plan view (800ms debounced save)
-- In-plan chat scoped to a specific plan's context
-- General chat demoted to sidebar
-- `DialogueInterface` component with `role: 'inviter' | 'partner'` modes
-- `PlanAlignment` side-by-side answer comparison view
-- `/invite/:token` landing page for partner acceptance
-- Connections page with "Coming soon" placeholder cards
-- Marketing site (hero, FAQ, footer, waitlist) on watercolor-house theme; waitlist form fires GA4 `sign_up` on success
-- Tabbed `ProfileSettings` modal (Account | Financial snapshot) replacing the old `ProfileQuestionnaire`; top-bar name button opens Account (name, email, Sign out)
-- Onboarding is conversational — no forced snapshot modal on "new plan"; the dialogue collects missing numbers one turn at a time
+- In-plan chat scoped to a specific plan's context; general chat demoted to sidebar
+- `DialogueInterface` component with `role: 'inviter' | 'partner'` modes; `PlanAlignment` side-by-side answer comparison; `/invite/:token` partner-acceptance landing
+- Connections page with "Coming soon" placeholder cards (remote wiring still stubbed)
+- Marketing site (hero, FAQ, footer, waitlist) on watercolor-house theme; waitlist form fires GA4 `sign_up`
+- Tabbed `ProfileSettings` modal (Account | Financial snapshot); top-bar name button opens Account (name, email, Sign out). Includes a testing-only "Reset plans & preferences" control
 - GA4 (gtag.js) loader in `src/lib/analytics.ts`, production-only, initialized in `App.tsx`; SPA route views via GA4 Enhanced Measurement
-- Home-screen icons + `site.webmanifest` (apple-touch-icon 180, icon-192/512, favicon-32) on brand cream `#FAF7F2`
+- Home-screen icons + `site.webmanifest` on brand cream `#FAF7F2`
 
 **Backend / data**
 - Vercel Edge Functions in `api/`: `chat.ts`, `dialogue.ts`, `plans.ts`, `plan-chat.ts`, `invites.ts`, `profile.ts`, `waitlist.ts`
+- `api/_dialogue-scripts.ts` mirrors the frontend script indices; structured (tap-first) steps are stubbed server-side since they no longer need an LLM turn. Partner-mode aware (skips inviter-only steps)
+- **`DELETE` on `api/plans.ts`** (deletes the user's owned plans) and **`api/profile.ts`** (deletes the user's profile row), both RLS owner-scoped — backing the "reset plans & preferences" control, which also clears local caches + the onboarded flag
 - `api/waitlist.ts` — public unauthenticated endpoint, inserts `{ email, journey_stage, source }` via anon key; treats duplicate (409) as success
 - Supabase JWT verification with ES256 (JWKS) and HS256 fallback in `api/_supabase-jwt.ts`
 - Defensive env reading via `api/_env.ts` (strips CR/LF and non-printable chars)
-- Dialogue scripts per-domain in `api/_dialogue-scripts.ts`; partner-mode aware (skips inviter-only steps)
-- Tolerant JSON parser with brace-balancing fallback for synthesis output
-- Em-dash strip backstop in `displayContent()`
-- 6 SQL migrations: `0001_user_profiles_auth`, `0002_plans`, `0003_plan_chat`, `0004_partner_support`, `0005_invite_rpcs`, `0006_waitlist`
+- Tolerant JSON parser with brace-balancing fallback for synthesis output; em-dash strip backstop in `displayContent()`
+- 6 SQL migrations: `0001_user_profiles_auth`, `0002_plans`, `0003_plan_chat`, `0004_partner_support`, `0005_invite_rpcs`, `0006_waitlist` (no new migration this session — debts live in existing `current_state` JSON, connections are localStorage-only)
 - `plan_chat_history` JSONB; `plans` table with partner columns + RLS; `accept_invite` SECURITY DEFINER RPC
 - `waitlist` table — insert-only via anon (RLS allows INSERT, no SELECT), unique index on `lower(email)`
 
@@ -84,7 +86,7 @@ All five planning domains (Home Buying, Combining Finances, Debt Paydown, Baby P
 | Backend | Vercel Edge Functions (TypeScript) | `api/` |
 | Database | Supabase Postgres + RLS | project `ggtditfackvvfeehyebz` |
 | Auth | Supabase Auth (ES256 JWTs via JWKS) | `api/_supabase-jwt.ts` |
-| AI/LLM | Anthropic Claude `claude-sonnet-4-6` | `@anthropic-ai/sdk` 0.37.0 |
+| AI/LLM | Anthropic Claude `claude-sonnet-4-6` | `@anthropic-ai/sdk` ^0.37.0; now mostly synthesis + rare text steps (tap-first structured steps make no LLM call) |
 | Hosting | Vercel | `vercel.json` |
 | Analytics | Google Analytics 4 (gtag.js) | `src/lib/analytics.ts`, ID `G-C6W0BFQ3ZG` |
 | Growth ops | Google Apps Script + Sheets | `*.gs` files in parent dir; Supabase webhooks + GA4 Data API |
@@ -102,16 +104,27 @@ External services in use (from env vars and code):
 |---|---|---|---|
 | Supabase | Auth, Postgres, JWKS, Database Webhooks | free tier | live |
 | Vercel | Hosting + Edge Functions | free tier | live |
-| Anthropic Claude | LLM for dialogue + synthesis | ~$0.10–0.20 per full plan generation | live |
-| Google Analytics 4 | Landing/app analytics + `sign_up` conversion | free | live |
+| Anthropic Claude | LLM for synthesis + rare open/text steps | lower than before — structured steps make no LLM call; synthesis remains ~1 call per plan | live |
+| Google favicon service (`s2/favicons`) | Partner brand logos on affiliate cards | free | live (Clearbit logo API was shut down; swapped) |
+| Affiliate partners (SoFi, Marcus, Monarch, Policygenius, Ladder, HelloPrenup, Trust & Will, balance-transfer) | Monetized click-outs on completed plans | usage-based (rev-share, TBD) | placeholder — URLs are `example.com`, no programs approved yet |
+| Free resources (Credit Karma, etc.) | Non-monetized next-action links | free | live |
+| Google Analytics 4 | Landing/app analytics + `sign_up`, `affiliate_click`, `resource_click` events | free | live |
 | Google Apps Script + Sheets | Growth dashboard: mirror waitlist/users, pull GA4 | free | live |
-| Plaid / Monarch | Account connections | unknown | planned (Connections page stubbed) |
+| Plaid / Monarch | Account connections (real wiring) | unknown | planned (Connections page stubbed; "accounts I use" is localStorage-only) |
 | Resend / Supabase magic link | Email for partner invites | unknown | planned |
 
 ---
 
 ## Decisions log
 
+- **2026-07-06 — Tap-first structured steps over per-turn LLM dialogue** — The onboarding dialogue made an Anthropic call every turn just to parse a numeric or choice answer. Structured `choice`/`money`/`timeline` steps are now answered client-side with no LLM call; only genuinely open/sensitive `text` steps (e.g. Prenup carveouts) and the single synthesis call still hit the LLM. Cuts per-plan spend and latency, and makes the flow deterministic and previewable. Backend script indices were kept in sync (`api/_dialogue-scripts.ts`) with structured steps stubbed.
+- **2026-07-06 — Live plan-preview card during onboarding** — With structured answers landing client-side, the plan can build up visibly as questions are answered, plus an "N questions left" countdown. Reduces the "am I almost done / what am I getting" uncertainty of the old open chat.
+- **2026-07-06 — Affiliate config in code, not a table** — Offers are few and change rarely, so `lib/partners.ts` (keyed by domain) avoids a migration + GRANT/RLS footgun. First entry per domain is the hero (the only one rendered). Migrate to a `partners` table only when offers need to change without a deploy.
+- **2026-07-06 — All partner URLs are placeholders until programs are approved** — Ship the surface and plumbing (subid, disclosure, GA4 `affiliate_click`) now; swap `example.com` links for real referral URLs once affiliate programs are approved. Regulated categories (mortgage, insurance, credit cards, legal) may need specific disclosures/licensing first.
+- **2026-07-06 — Google favicon service for brand logos** — Clearbit's logo API was shut down and no longer resolves. Google's `s2/favicons` is a live, free source; the colored monogram tile is the automatic fallback if an image fails. Demo-quality; swap for hosted/inlined assets at launch.
+- **2026-07-06 — Illustrative projection rates, not live rates** — Projection charts use fixed constants (3.5% HYSA APY, 22% card APR) rather than pulling real partner rates. Deterministic, client-side, and touches nothing in the synthesis prompt or stored plan shape. Tie to real rates when offers are approved.
+- **2026-07-06 — Debts in `current_state` JSON, no migration** — The debt-list builder persists to `current_state.debts` inside the existing plan JSON, so no schema change or GRANT was needed. Payoff projection sums balances and blends APR.
+- **2026-07-06 — "Accounts I use" connections are localStorage-only** — Onboarding captures which tools the user already uses to tailor/deprioritize recommendations. Stored client-side for now (no remote column); a small migration with GRANT SELECT + owner RLS would add cross-device sync later.
 - **2026-06-01 — GA4 loads production-only, custom events only** — `initAnalytics()` no-ops unless `import.meta.env.PROD`, so local dev never pollutes the property. Page views (incl. SPA route changes) come from GA4 Enhanced Measurement, so code only fires custom events like `sign_up`.
 - **2026-06-01 — Growth dashboard in Google Sheets over a built admin UI** — Pre-launch, a Sheet fed by Supabase Database Webhooks + the GA4 Data API is enough and needs no product surface. Header-driven column mapping so reordering columns doesn't break ingestion.
 - **2026-06-01 — Apps Script secret rides in the query string** — Apps Script web apps can't read request headers, so the webhook receiver authenticates via `?secret=` in the deployed URL.
@@ -131,6 +144,10 @@ External services in use (from env vars and code):
 
 ## Open loops
 
+- [ ] Replace placeholder partner URLs with approved affiliate links + add category-specific disclosures/licensing for regulated offers (mortgage, insurance, credit cards, legal) before any monetized surface goes live — Finley
+- [ ] Tie projection rates (3.5% HYSA / 22% APR) to real partner rates once offers are approved — Finley
+- [ ] Migrate "accounts I use" connections to a remote column (GRANT SELECT + owner RLS) for cross-device sync — Finley
+- [ ] Debt-list CSV upload + per-debt avalanche/snowball amortization (deferred refinements) — Finley
 - [ ] Automated email for partner invites (Resend or Supabase magic link) — Finley
 - [ ] Real Plaid / Monarch wiring on Connections page (currently "Coming soon" placeholders) — Finley
 - [ ] Multi-language and accessibility audit pass — Finley
@@ -143,7 +160,9 @@ External services in use (from env vars and code):
 
 ## Risks & known issues
 
-- **Anthropic cost is uncapped** — no spending limit configured. Estimated ~$0.10–0.20 per full plan, but a runaway prompt loop or abuse could spike.
+- **Partner URLs, logos, and rates are demo placeholders** — every affiliate `url` is `example.com`, logos come from a favicon service, and projection rates are fixed constants. Regulated categories (mortgage, insurance, credit cards, legal) likely need specific disclosures/licensing. Do not launch monetized surfaces on these; they are plumbing/UX only.
+- **Anthropic cost is uncapped** — no spending limit configured. Per-plan spend dropped this session (structured steps no longer call the LLM; synthesis is ~1 call per plan), but a runaway prompt loop or abuse could still spike.
+- **"Accounts I use" is localStorage-only** — connections don't sync across devices and are lost if local storage is cleared; no remote source of truth yet.
 - **Connections page is non-functional** — placeholders only; user expectation could outrun the build.
 - **Apps Script webhook secret is committed** — the growth pipeline's shared secret (`jnpr_whk_...`) is hard-coded in `juniper-sheet-webhook.gs`. Those files sit outside the git repo, but the secret is plaintext; rotate before any wider sharing.
 - **Growth pipeline is out-of-repo** — the `.gs` files live in the parent directory and aren't version-controlled with the app, so their state can drift silently.
@@ -192,6 +211,8 @@ GA4 measurement ID (`G-C6W0BFQ3ZG`) and the Apps Script webhook secret are hard-
 
 ## Changelog
 
+- **2026-07-06:** kuba-vault refresh — caught PROJECT.md up on 23 PRs (`main` at merge of PR #23). Through-line: onboarding reworked from per-turn LLM chat to a guided tap-first flow (structured choice/money/timeline steps answered client-side, live plan-preview card, "N questions left", instant plan; only text steps + synthesis hit the LLM). Completed plans gained interest-aware projection charts (`lib/projection.tsx`), affiliate click-out cards (`lib/partners.ts` — placeholder URLs, favicon logos, GA4 `affiliate_click`), a debt-list builder (`current_state.debts`, no migration), and actionable next actions with links / "How?" walkthrough. Added a single first-run onboarding flow, profile-seeded money steps, a "reset plans & preferences" testing control (new DELETE endpoints on `plans`/`profile`), and a top "Back to dashboard" button. Verified all claims against code. Added 8 decisions, 4 open loops, 3 risks; refreshed status/what's-built/integrations/tech-stack. Flag: shipping.
+- **2026-07-05 (Jun 30–Jul 5, per commits):** 23-PR session — tap-first onboarding, plan projection charts, affiliate cards + favicon logo fix (Clearbit dead), debt-list builder, actionable next actions with connection-aware recs, first-run onboarding, profile pre-fill, money-chip rounding fix, Baby Planning input fixes.
 - **2026-07-05:** kuba-vault refresh — caught PROJECT.md up on 5 commits from May 30–Jun 1: GA4 analytics, waitlist capture (`/api/waitlist` + `0006_waitlist`), Google Sheets growth pipeline, tabbed ProfileSettings + fixed account UX, conversational onboarding, app icons/manifest, sidebar rename. Added 5 decisions, resolved the account-UX open loop, updated integrations + tech stack. No code changes; repo quiet since Jun 1.
 - **2026-06-01:** Added GA4 (gtag.js) to landing/app — production-only loader, `sign_up` event on waitlist submit.
 - **2026-06-01:** Renamed sidebar nav "Saved from chat" → "Saved plans".
