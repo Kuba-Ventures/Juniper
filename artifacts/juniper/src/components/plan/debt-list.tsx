@@ -68,6 +68,10 @@ export function DebtListSection({
 
   return (
     <section style={{ marginBottom: 32 }}>
+      {/* Tighten the fixed columns on small screens so the name field keeps room. */}
+      <style>{`@media (max-width: 480px) {
+        .jun-debt-grid { grid-template-columns: 1fr 82px 58px 24px !important; gap: 6px !important; }
+      }`}</style>
       <h2 style={sectionHeading}>Your debts</h2>
       <p style={{ fontFamily: sans, fontSize: 13, color: muted, margin: "0 0 14px", lineHeight: 1.5 }}>
         List each balance and its interest rate. The projection below uses your real total and blended
@@ -77,7 +81,7 @@ export function DebtListSection({
       {rows.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {/* header labels */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 28px", gap: 8, padding: "0 2px" }}>
+          <div className="jun-debt-grid" style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 28px", gap: 8, padding: "0 2px" }}>
             {["Debt", "Balance", "APR %", ""].map((h, idx) => (
               <span
                 key={idx}
@@ -89,7 +93,7 @@ export function DebtListSection({
           </div>
 
           {rows.map((r, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 28px", gap: 8, alignItems: "center" }}>
+            <div key={i} className="jun-debt-grid" style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 28px", gap: 8, alignItems: "center" }}>
               <input
                 type="text"
                 value={r.name}
