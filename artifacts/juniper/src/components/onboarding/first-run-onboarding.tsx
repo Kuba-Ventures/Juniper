@@ -2,6 +2,7 @@ import { useState } from "react";
 import type React from "react";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
+import { trackEngagement } from "@/lib/analytics";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -198,11 +199,15 @@ export function FirstRunOnboarding({
 
             {step.kind === "multi" && (() => {
               const key = step.key;
-              const toggle = (opt: string) =>
+              const toggle = (opt: string) => {
+                // Toggling an "accounts I use" connection is a meaningful (WAU)
+                // action; goals selection isn't in the meaningful set.
+                if (key === "connections") trackEngagement("connection_toggled");
                 setMulti((m) => ({
                   ...m,
                   [key]: m[key].includes(opt) ? m[key].filter((x) => x !== opt) : [...m[key], opt],
                 }));
+              };
               const chip = (opt: string) => {
                 const selected = multi[key].includes(opt);
                 return (

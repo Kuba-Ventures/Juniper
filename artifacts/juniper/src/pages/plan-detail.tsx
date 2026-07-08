@@ -21,6 +21,7 @@ import {
 import { getClientScript } from "@/lib/dialogue-scripts";
 import { useSession } from "@/lib/use-session";
 import { UserProfile } from "@/lib/profile";
+import { trackEngagement } from "@/lib/analytics";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -180,6 +181,11 @@ function PlanView({
     (!plan.next_actions || plan.next_actions.length === 0);
 
   function scheduleSave(next: Plan) {
+    // Every editable field (KPI, milestone, next action, contribution, debts)
+    // funnels through here, so this is the single place a plan-field edit
+    // becomes a meaningful (WAU) action. Only user edits call scheduleSave;
+    // it never runs on load.
+    trackEngagement("plan_field_edited", { plan_domain: next.domain });
     setPlan(next);
     setSaveStatus("saving");
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
