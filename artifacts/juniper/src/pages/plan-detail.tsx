@@ -23,6 +23,7 @@ import { getClientScript } from "@/lib/dialogue-scripts";
 import { useSession } from "@/lib/use-session";
 import { UserProfile } from "@/lib/profile";
 import { trackEngagement } from "@/lib/analytics";
+import { fetchConnectionNames } from "@/lib/plaid";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -43,6 +44,13 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const script = getClientScript(domain);
+  // Real linked-institution names (from Plaid), merged with the onboarding
+  // "accounts I use" list to drive the marketplace "You use this" badges.
+  // Degrades to [] when Plaid isn't linked/configured.
+  const [plaidConnections, setPlaidConnections] = useState<string[]>([]);
+  useEffect(() => {
+    fetchConnectionNames().then(setPlaidConnections);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +125,7 @@ export function PlanDetail({ domain, profile, onPlanChanged }: Props) {
         }}
         onPlanChanged={onPlanChanged}
         viewerIsInviter={isInviter}
-        connections={profile?.connections ?? []}
+        connections={[...(profile?.connections ?? []), ...plaidConnections]}
       />
     );
   }
