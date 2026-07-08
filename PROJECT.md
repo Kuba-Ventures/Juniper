@@ -1,13 +1,13 @@
 # Juniper
 *AI copilot for couples navigating major financial life transitions.*
 
-*Last updated: 2026-07-06 by kuba-vault*
+*Last updated: 2026-07-08 by kuba-vault*
 
 ---
 
 ## TL;DR
 
-Juniper helps engaged and newly married couples model the financial tradeoffs behind big decisions (buying a home, combining finances, paying down debt, planning for a baby, prenups) and align on them before commitments are made. All five domains run end-to-end in production at `juniper-api-server.vercel.app`. This session (23 PRs) reworked onboarding from an open-ended per-turn LLM chat into a guided, tap-first flow: structured choice/money/timeline steps are answered client-side with no LLM call, a live plan-preview card fills in as answers arrive, and only synthesis (plus rare sensitive free-text steps) still hits Anthropic — cutting per-plan LLM spend sharply. Completed plans gained interest-aware savings/debt projection charts, affiliate click-out recommendation cards, a debt-list builder that feeds the payoff projection, and next actions that each link out or offer a "How?" walkthrough. A single first-run onboarding flow (snapshot + goals + "accounts I use" connections) and a "reset plans & preferences" testing control also shipped. Next: partner URLs and rates are still demo placeholders — real affiliate programs, disclosures, and (for regulated categories) licensing are required before going live.
+Juniper helps engaged and newly married couples model the financial tradeoffs behind big decisions (buying a home, combining finances, paying down debt, planning for a baby, prenups) and align on them before commitments are made. All five domains run end-to-end in production at `juniper-api-server.vercel.app`; the phase is post-MVP GTM iteration. This session shipped four workstreams, all merged to `main` (PRs #28–#33): WAU instrumentation (a canonical `engaged_session` GA4 event + `user_id` for signed-in users), a marketplace of seeded service listings on completed plans, a cross-plan portfolio summary on the dashboard for users with 2+ plans, and Plaid account linking. Plaid is live in production but running on Plaid **Sandbox** — you can connect an institution and see accounts + balances, with the access token held in a server-only Supabase table the browser can never read. Two compliance gates block real monetization: partner/affiliate URLs are still `example.com` placeholders pending affiliate licensing, and Plaid real-data access is gated on Plaid's production review. Next: clear those gates, then wire Plaid balances into auto-filled plan inputs.
 
 ---
 
@@ -26,14 +26,14 @@ Juniper helps engaged and newly married couples model the financial tradeoffs be
 - **Engagement manager:** self-directed
 - **Lead:** Finley
 - **Cadence:** N/A (internal build)
-- **Next milestone:** Approved affiliate programs + real partner URLs/rates/disclosures before monetized surfaces go live — TBD
-- **Flags:** shipping (23 PRs merged this session; `main` at merge of PR #23)
+- **Next milestone:** Clear the two compliance gates — approved affiliate programs (real partner URLs/rates/disclosures) and Plaid Production access — before monetized surfaces and real bank data go live — TBD
+- **Flags:** shipping (PRs #28–#33 merged this session; `main` at merge of PR #33)
 
 ---
 
 ## Where we are right now
 
-Onboarding was rebuilt this session. The plan dialogue used to make an LLM call every turn; now the structured steps (choice/money/timeline) across all five plans are answered client-side with no Anthropic call, a live plan-preview card fills in as answers land, an "N questions left" countdown shows progress, and the plan appears instantly at the end. Only genuinely open/sensitive steps (e.g. Prenup carveouts) stay as `text` LLM steps, and synthesis is still the one LLM call per plan — so per-plan LLM spend dropped a lot. Completed plans got materially richer: interest-aware SVG projection charts (savings mode solves the required monthly contribution and lets the user edit "I can save $X/mo"; debt mode contrasts a 0% balance transfer vs a typical APR), affiliate click-out recommendation cards, a debt-list builder that sums balances and blends APR into the payoff projection, and next actions that each either link out (affiliate or a free resource like Credit Karma) or offer a "How?" button that asks the plan chat to walk the step. A single first-run onboarding flow (name → snapshot → goals → grouped "accounts I use") now gates new users, and money steps pre-fill from the saved profile. A "Reset plans & preferences" testing control wipes plans + profile via new owner-scoped DELETE endpoints. The one thing gating a monetized launch: every partner URL and rate is a demo placeholder.
+This session focused on GTM: measuring engagement, deepening the recommendation surface, and starting real account connections. Four workstreams landed. **WAU instrumentation** (#28): `analytics.ts` now fires one canonical `engaged_session` GA4 event per browser session (module-level guard) at six meaningful moments — plan step advance, plan completion, plan-field edits, plan-chat sends, and connection toggles — and sets a GA4 `user_id` for signed-in users so WAU can be counted as distinct users with an engaged session in the trailing 7 days. **Marketplace** (#29/#30): `partners.ts` gained `blurb`/`tags`/`source` fields and 4–5 seeded listings per domain; a new "Explore services" grid renders on completed plans below a single featured hero (the hero card used to render every partner). **Portfolio summary** (#31/#32): a client-side rollup at the top of the dashboard (2+ active plans only) aggregating active count, total savings target, monthly committed-vs-required, total debt + blended APR, and the nearest milestone / top next action. **Plaid account linking** (#33) is the biggest piece: the old "Coming soon" Connections stub is now a real Plaid Link flow — connect an institution, list accounts + balances, disconnect — running on Plaid Sandbox in production and verified end-to-end against Tartan Bank. The Plaid access token lives in a server-only table (`plaid_items`, migration 0007) with no client grants; the browser only ever gets sanitized account snapshots. Two compliance gates remain before real money moves: affiliate URLs are still `example.com` placeholders, and Plaid real-data access needs Plaid's production review.
 
 ---
 
@@ -44,7 +44,9 @@ Onboarding was rebuilt this session. The plan dialogue used to make an LLM call 
 - **Tap-first plan onboarding** across all 5 domains — `dialogue-interface.tsx` renders a `StructuredFlow` for choice/money/timeline steps answered client-side with NO LLM call, a live plan-preview card (`right` column) that fills in as answers arrive, and an "N questions left" countdown (`remainingQuestions`); only `text` steps route to the LLM. Client script schema in `src/lib/dialogue-scripts.ts` (`StepInput = ChoiceInput | MoneyInput | TimelineInput | TextInput`, plus `profileSeed` to pre-fill money steps from the saved profile)
 - **Single first-run onboarding flow** (`components/onboarding/first-run-onboarding.tsx`): name → financial snapshot → goals → grouped "accounts I use" connections; gated in `pages/app-shell.tsx` on `!isOnboarded(email) && !hasProfileData(profile)`, re-triggered after the testing reset
 - **Completed-plan projection charts** (`lib/projection.tsx` + `components/plan/plan-projection.tsx`): custom SVG. Savings mode (Home Buying, Baby) solves the required monthly contribution with compound interest and exposes an editable "I can save $X/mo" that recomputes the timeline; debt mode (Debt Paydown) contrasts a 0% balance transfer vs a typical blended APR. Illustrative constants: 3.5% HYSA APY, 22% card APR
-- **Affiliate click-out cards** (`components/plan/affiliate-card.tsx`, config in `lib/partners.ts` keyed by domain): real brand logos via Google favicon service (`s2/favicons`) with monogram fallback, FTC-style disclosure, GA4 `affiliate_click` event (prod-only) with a `subid` query param. Connection-aware — a partner the user already "uses" gets a "You use this" badge and is deprioritized. All partner URLs are PLACEHOLDERS (`example.com/partners/...`)
+- **Marketplace on completed plans** (`components/plan/marketplace-list.tsx`): an "Explore services" grid of every seeded listing for the plan's domain (hero first). Config in `lib/partners.ts`, now with `blurb`, optional `tags[]`, and `source` (`'curated' | 'scraped' | 'self-listed'`); 22 seeded listings across the 5 domains (all URLs still `example.com`). Preserves FTC disclosure, `affiliate_click` with a `subid` (placement: `marketplace`), and connection-aware "You use this" badge + deprioritize
+- **Featured affiliate hero** (`components/plan/affiliate-card.tsx`): `PlanAffiliatePicks` now renders only the single best-fit hero (the first configured partner the user does NOT already use); the full set lives in the marketplace grid below, so partners aren't shown twice. Real brand logos via Google favicon service (`s2/favicons`) with monogram fallback, FTC-style disclosure, GA4 `affiliate_click` (prod-only) with `subid`
+- **Cross-plan portfolio summary** (`components/dashboard/portfolio-summary.tsx`): rendered above the domain-tile grid on the dashboard, shown only for 2+ active plans. Client-side rollup of already-fetched plans — active count, total savings target, monthly committed-vs-required (reuses `buildProjectionView`), total debt balance + blended APR across `current_state.debts`, nearest milestone + top next action (each links into its plan), per-plan chips for shapes that don't map to a number. No backend, no migration, no new API calls
 - **Debt-list builder** (`components/plan/debt-list.tsx`): list debts (name/balance/APR) persisted to `current_state.debts`; summed balance + blended APR feed the payoff projection. No migration
 - **Actionable next actions** (`components/plan/next-action-link.tsx`): each links out (affiliate or free resource like Credit Karma for credit score) or shows a "How?" button that asks the plan chat to walk the step; per-action notes persisted. Fires GA4 `resource_click` / `affiliate_click`
 - **Top "Back to dashboard" button** on the plan view (`pages/plan-detail.tsx`)
@@ -52,21 +54,23 @@ Onboarding was rebuilt this session. The plan dialogue used to make an LLM call 
 - Click-to-edit KPIs, milestones, and actions on plan view (800ms debounced save)
 - In-plan chat scoped to a specific plan's context; general chat demoted to sidebar
 - `DialogueInterface` component with `role: 'inviter' | 'partner'` modes; `PlanAlignment` side-by-side answer comparison; `/invite/:token` partner-acceptance landing
-- Connections page with "Coming soon" placeholder cards (remote wiring still stubbed)
+- **Plaid account linking** (`pages/connections.tsx`, rewritten): real Plaid Link flow via `react-plaid-link` and `src/lib/plaid.ts` — connect an institution, list linked accounts + balances, unlink. Fires `trackEngagement('connection_linked')`. `plan-detail.tsx` merges linked institution names (`fetchConnectionNames`) with the onboarding "accounts I use" list to drive the marketplace "You use this" badges. Live in production on Plaid **Sandbox**; setup doc at `artifacts/juniper/PLAID_SETUP.md`
+- **WAU instrumentation** (`src/lib/analytics.ts`): `setAnalyticsUser(userId)` sets a GA4 `user_id` (called from `use-session.ts` when an authed session resolves; absent for anon/marketing). `trackEngagement(action)` fires one canonical `engaged_session` event per browser session via a module-level `hasEngagedThisSession` guard; `affiliate_click`/`resource_click` auto-route through it. Fired at: plan step advance + completion (`dialogue-interface`), plan-field edits (`plan-detail`), plan-chat sends (`plan-chat`), connection toggle (`first-run-onboarding`), and Plaid link (`connections`). WAU = distinct `user_id` with an `engaged_session` in the trailing 7 days. All prod-only
 - Marketing site (hero, FAQ, footer, waitlist) on watercolor-house theme; waitlist form fires GA4 `sign_up`
 - Tabbed `ProfileSettings` modal (Account | Financial snapshot); top-bar name button opens Account (name, email, Sign out). Includes a testing-only "Reset plans & preferences" control
 - GA4 (gtag.js) loader in `src/lib/analytics.ts`, production-only, initialized in `App.tsx`; SPA route views via GA4 Enhanced Measurement
 - Home-screen icons + `site.webmanifest` on brand cream `#FAF7F2`
 
 **Backend / data**
-- Vercel Edge Functions in `api/`: `chat.ts`, `dialogue.ts`, `plans.ts`, `plan-chat.ts`, `invites.ts`, `profile.ts`, `waitlist.ts`
+- Vercel Edge Functions in `api/`: `chat.ts`, `dialogue.ts`, `plans.ts`, `plan-chat.ts`, `invites.ts`, `profile.ts`, `waitlist.ts`, plus `plaid/{link-token,exchange,accounts,remove}.ts`
+- **Plaid edge endpoints** call Plaid directly over `fetch` (no SDK, edge-safe): `link-token` (creates a Link token), `exchange` (public token → access token, stored server-side), `accounts` (returns sanitized snapshots), `remove` (unlinks). Helpers `api/_plaid.ts` (Plaid fetch wrapper) and `api/_supabase-admin.ts` (service-role client). The Plaid `access_token` never leaves the server
 - `api/_dialogue-scripts.ts` mirrors the frontend script indices; structured (tap-first) steps are stubbed server-side since they no longer need an LLM turn. Partner-mode aware (skips inviter-only steps)
 - **`DELETE` on `api/plans.ts`** (deletes the user's owned plans) and **`api/profile.ts`** (deletes the user's profile row), both RLS owner-scoped — backing the "reset plans & preferences" control, which also clears local caches + the onboarded flag
 - `api/waitlist.ts` — public unauthenticated endpoint, inserts `{ email, journey_stage, source }` via anon key; treats duplicate (409) as success
 - Supabase JWT verification with ES256 (JWKS) and HS256 fallback in `api/_supabase-jwt.ts`
 - Defensive env reading via `api/_env.ts` (strips CR/LF and non-printable chars)
 - Tolerant JSON parser with brace-balancing fallback for synthesis output; em-dash strip backstop in `displayContent()`
-- 6 SQL migrations: `0001_user_profiles_auth`, `0002_plans`, `0003_plan_chat`, `0004_partner_support`, `0005_invite_rpcs`, `0006_waitlist` (no new migration this session — debts live in existing `current_state` JSON, connections are localStorage-only)
+- 7 SQL migrations: `0001_user_profiles_auth`, `0002_plans`, `0003_plan_chat`, `0004_partner_support`, `0005_invite_rpcs`, `0006_waitlist`, `0007_plaid_items`. `0007` is a **server-only** token store — the deliberate inverse of every other table: RLS enabled with a restrictive `USING (false)` policy, `REVOKE ALL` from anon/authenticated, `GRANT ALL` to `service_role` only, reachable exclusively via the service-role key from Edge functions. Stores `access_token` (never client-readable) + a sanitized `accounts` JSONB snapshot. Applied to the production Supabase DB
 - `plan_chat_history` JSONB; `plans` table with partner columns + RLS; `accept_invite` SECURITY DEFINER RPC
 - `waitlist` table — insert-only via anon (RLS allows INSERT, no SELECT), unique index on `lower(email)`
 
@@ -87,6 +91,7 @@ Onboarding was rebuilt this session. The plan dialogue used to make an LLM call 
 | Database | Supabase Postgres + RLS | project `ggtditfackvvfeehyebz` |
 | Auth | Supabase Auth (ES256 JWTs via JWKS) | `api/_supabase-jwt.ts` |
 | AI/LLM | Anthropic Claude `claude-sonnet-4-6` | `@anthropic-ai/sdk` ^0.37.0; now mostly synthesis + rare text steps (tap-first structured steps make no LLM call) |
+| Bank data | Plaid (Sandbox) | `react-plaid-link` ^4.1.1; edge endpoints call Plaid over `fetch` (no SDK); server-only token store `plaid_items` reached via Supabase service-role key |
 | Hosting | Vercel | `vercel.json` |
 | Analytics | Google Analytics 4 (gtag.js) | `src/lib/analytics.ts`, ID `G-C6W0BFQ3ZG` |
 | Growth ops | Google Apps Script + Sheets | `*.gs` files in parent dir; Supabase webhooks + GA4 Data API |
@@ -110,13 +115,19 @@ External services in use (from env vars and code):
 | Free resources (Credit Karma, etc.) | Non-monetized next-action links | free | live |
 | Google Analytics 4 | Landing/app analytics + `sign_up`, `affiliate_click`, `resource_click` events | free | live |
 | Google Apps Script + Sheets | Growth dashboard: mirror waitlist/users, pull GA4 | free | live |
-| Plaid / Monarch | Account connections (real wiring) | unknown | planned (Connections page stubbed; "accounts I use" is localStorage-only) |
+| Plaid | Bank/investment account linking (connect institution, show accounts + balances) | usage-based (billing starts at Production; Sandbox is free) | live on Sandbox in production — link + display verified; Production access gated on Plaid's compliance review |
 | Resend / Supabase magic link | Email for partner invites | unknown | planned |
 
 ---
 
 ## Decisions log
 
+- **2026-07-08 — Plaid access token in a server-only table, never client-readable** — `plaid_items` (migration 0007) is the deliberate inverse of every other table: `REVOKE ALL` from anon/authenticated, RLS with a restrictive `USING (false)` policy, `GRANT ALL` to `service_role` only. Edge functions reach it with the Supabase service-role key; the browser only ever receives sanitized account snapshots (no tokens, no account/routing numbers). A leaked user JWT reading via PostgREST gets zero rows.
+- **2026-07-08 — Call Plaid over `fetch`, no SDK** — The Plaid Node SDK isn't edge-safe, so the four `api/plaid/*` endpoints call Plaid's REST API directly via `fetch` through a thin `api/_plaid.ts` wrapper. Keeps the functions on the Edge runtime like the rest of `api/`.
+- **2026-07-08 — Ship Plaid on Sandbox in production, gate real data on Plaid review** — Link + display works end-to-end in prod against Plaid Sandbox (verified with Tartan Bank). Going live on real bank data requires Plaid Production access (application review + beneficial owners + billing) — a compliance gate parallel to the affiliate-licensing one. `PLAID_PRODUCTS` and the stored snapshot are shaped to grow into transactions/liabilities/investments and auto-filled plan inputs; those data tiers are deferred until the gate clears.
+- **2026-07-08 — WAU = distinct `user_id` with an `engaged_session` in trailing 7 days** — Rather than raw page views, engagement is a single canonical `engaged_session` GA4 event fired once per browser session (module-level guard) at genuinely meaningful moments, with a GA4 `user_id` set for signed-in users. Makes WAU a clean distinct-user count. Reporting adds a WAU column to `juniper-growth-ga4-pull.gs` (out-of-repo).
+- **2026-07-08 — Marketplace listings carry a `source` provenance field** — `partners.ts` listings are tagged `curated | scraped | self-listed` so a bootstrapped grid (scraped from public listings, DoorDash-style) can coexist with real self-listed merchants later. Still code-config, not a table; all URLs remain `example.com` until affiliate licensing clears.
+- **2026-07-08 — Portfolio summary is a pure client-side rollup** — The dashboard summary for 2+ plans aggregates already-fetched plan data (reusing `buildProjectionView`) with no backend, migration, or new API call. Cheapest path to a cross-plan view; revisit if it needs server-side aggregation.
 - **2026-07-06 — Tap-first structured steps over per-turn LLM dialogue** — The onboarding dialogue made an Anthropic call every turn just to parse a numeric or choice answer. Structured `choice`/`money`/`timeline` steps are now answered client-side with no LLM call; only genuinely open/sensitive `text` steps (e.g. Prenup carveouts) and the single synthesis call still hit the LLM. Cuts per-plan spend and latency, and makes the flow deterministic and previewable. Backend script indices were kept in sync (`api/_dialogue-scripts.ts`) with structured steps stubbed.
 - **2026-07-06 — Live plan-preview card during onboarding** — With structured answers landing client-side, the plan can build up visibly as questions are answered, plus an "N questions left" countdown. Reduces the "am I almost done / what am I getting" uncertainty of the old open chat.
 - **2026-07-06 — Affiliate config in code, not a table** — Offers are few and change rarely, so `lib/partners.ts` (keyed by domain) avoids a migration + GRANT/RLS footgun. First entry per domain is the hero (the only one rendered). Migrate to a `partners` table only when offers need to change without a deploy.
@@ -149,10 +160,13 @@ External services in use (from env vars and code):
 - [ ] Migrate "accounts I use" connections to a remote column (GRANT SELECT + owner RLS) for cross-device sync — Finley
 - [ ] Debt-list CSV upload + per-debt avalanche/snowball amortization (deferred refinements) — Finley
 - [ ] Automated email for partner invites (Resend or Supabase magic link) — Finley
-- [ ] Real Plaid / Monarch wiring on Connections page (currently "Coming soon" placeholders) — Finley
+- [ ] Get Plaid Production access (application review + beneficial owners + billing), then flip `PLAID_ENV=production` + production secret to move off Sandbox — Finley
+- [ ] Plaid data tiers: auto-fill plan inputs (savings/debt) from real balances, and pull transactions/liabilities/investments (grow `PLAID_PRODUCTS` + the stored snapshot) — deferred until Production access — Finley
+- [x] Real Plaid wiring on Connections page — shipped on Sandbox (link + display, unlink); Production access still pending (done 2026-07-08, PR #33)
 - [ ] Multi-language and accessibility audit pass — Finley
 - [ ] Partner display-name handling — partner sees inviter as "your partner" generically because `user_profiles.name` isn't fetched for partner-side dialogue — Finley
 - [ ] Token expiration / revocation UI for invites — Finley
+- [ ] Add a WAU column to `juniper-growth-ga4-pull.gs` (out-of-repo) reporting distinct `user_id` with an `engaged_session` in the trailing 7 days — Finley
 - [ ] Configure spending limits on Anthropic API — Finley
 - [x] Better account button UX — now opens Account tab (name, email, Sign out) instead of the snapshot modal (done 2026-05-30)
 
@@ -162,8 +176,9 @@ External services in use (from env vars and code):
 
 - **Partner URLs, logos, and rates are demo placeholders** — every affiliate `url` is `example.com`, logos come from a favicon service, and projection rates are fixed constants. Regulated categories (mortgage, insurance, credit cards, legal) likely need specific disclosures/licensing. Do not launch monetized surfaces on these; they are plumbing/UX only.
 - **Anthropic cost is uncapped** — no spending limit configured. Per-plan spend dropped this session (structured steps no longer call the LLM; synthesis is ~1 call per plan), but a runaway prompt loop or abuse could still spike.
-- **"Accounts I use" is localStorage-only** — connections don't sync across devices and are lost if local storage is cleared; no remote source of truth yet.
-- **Connections page is non-functional** — placeholders only; user expectation could outrun the build.
+- **Plaid runs on Sandbox in production** — the Connections page is fully wired but talks to Plaid Sandbox, so it only links fake/test institutions (e.g. Tartan Bank) with fake balances. Real bank linking needs Plaid Production access (compliance review); until then, do not represent it to users as connecting their real accounts.
+- **Plaid service-role key is a high-value secret** — `SUPABASE_SERVICE_ROLE_KEY` bypasses RLS entirely and is what reads the `plaid_items` token store. It lives only in Vercel env (Production + Preview); it must never reach the client bundle or a `VITE_`-prefixed var.
+- **"Accounts I use" (onboarding) is still localStorage-only** — Plaid linked-institution names now come from the server, but the onboarding-captured list they're merged with is still client-side; that half doesn't sync across devices.
 - **Apps Script webhook secret is committed** — the growth pipeline's shared secret (`jnpr_whk_...`) is hard-coded in `juniper-sheet-webhook.gs`. Those files sit outside the git repo, but the secret is plaintext; rotate before any wider sharing.
 - **Growth pipeline is out-of-repo** — the `.gs` files live in the parent directory and aren't version-controlled with the app, so their state can drift silently.
 - **Partner display name is generic** — minor UX paper cut on partner-side dialogue and plan view.
@@ -203,7 +218,13 @@ Subtle enough to repeat, so worth keeping a section:
 - `SUPABASE_ANON_KEY` (backend) and `VITE_SUPABASE_ANON_KEY` (frontend) — anon public JWT
 - `SUPABASE_JWT_SECRET` (backend) — legacy secret, kept as fallback for HS256-mode projects
 - `ANTHROPIC_API_KEY` (backend)
+- `SUPABASE_SERVICE_ROLE_KEY` (backend) — bypasses RLS; used only by the Plaid edge functions to reach the server-only `plaid_items` store. Never expose to the client
+- `PLAID_CLIENT_ID`, `PLAID_SECRET` (backend) — Plaid credentials; `PLAID_SECRET` swaps to the Production secret at go-live
+- `PLAID_ENV` (backend) — currently `sandbox`; flip to `production` at go-live
+- `PLAID_PRODUCTS` (backend, optional, default `auth`), `PLAID_COUNTRY_CODES` (backend, optional, default `US`), `PLAID_REDIRECT_URI` (backend, optional — only for OAuth banks, must be registered in the Plaid dashboard)
 - `VITE_SIGNUP_INVITE_CODE` (frontend, optional) — gates open signups during private preview
+
+Plaid + service-role vars are set in Vercel on both Production and Preview. Setup doc: `artifacts/juniper/PLAID_SETUP.md`.
 
 GA4 measurement ID (`G-C6W0BFQ3ZG`) and the Apps Script webhook secret are hard-coded in `src/lib/analytics.ts` and the `.gs` files respectively, not env vars.
 
@@ -211,6 +232,7 @@ GA4 measurement ID (`G-C6W0BFQ3ZG`) and the Apps Script webhook secret are hard-
 
 ## Changelog
 
+- **2026-07-08:** kuba-vault refresh — caught PROJECT.md up on the GTM session (PRs #28–#33, `main` at merge of #33). WS1 WAU instrumentation (`analytics.ts`: `setAnalyticsUser` + one canonical `engaged_session` per session, fired at six moments; WAU = distinct `user_id` in trailing 7 days). WS2 marketplace (`partners.ts` gained `blurb`/`tags`/`source`, 22 seeded listings; `marketplace-list.tsx` grid on completed plans; hero card now renders only the single featured pick). WS3 cross-plan portfolio summary (`portfolio-summary.tsx`, dashboard, 2+ plans, pure client-side rollup). Plaid account linking (#33): migration `0007_plaid_items` server-only token store (RLS `false`, service-role only), edge endpoints `api/plaid/*` calling Plaid over `fetch`, `react-plaid-link` flow in `connections.tsx`, live in prod on Plaid Sandbox and verified against Tartan Bank; Plaid names merged into marketplace "You use this" badges. Verified all claims against code. Added 6 decisions; updated status/where-we-are/what's-built/tech-stack/integrations/open-loops/risks/env-vars. Two compliance gates outstanding: affiliate licensing (URLs still `example.com`) and Plaid Production access. Flag: shipping.
 - **2026-07-06:** kuba-vault refresh — caught PROJECT.md up on 23 PRs (`main` at merge of PR #23). Through-line: onboarding reworked from per-turn LLM chat to a guided tap-first flow (structured choice/money/timeline steps answered client-side, live plan-preview card, "N questions left", instant plan; only text steps + synthesis hit the LLM). Completed plans gained interest-aware projection charts (`lib/projection.tsx`), affiliate click-out cards (`lib/partners.ts` — placeholder URLs, favicon logos, GA4 `affiliate_click`), a debt-list builder (`current_state.debts`, no migration), and actionable next actions with links / "How?" walkthrough. Added a single first-run onboarding flow, profile-seeded money steps, a "reset plans & preferences" testing control (new DELETE endpoints on `plans`/`profile`), and a top "Back to dashboard" button. Verified all claims against code. Added 8 decisions, 4 open loops, 3 risks; refreshed status/what's-built/integrations/tech-stack. Flag: shipping.
 - **2026-07-05 (Jun 30–Jul 5, per commits):** 23-PR session — tap-first onboarding, plan projection charts, affiliate cards + favicon logo fix (Clearbit dead), debt-list builder, actionable next actions with connection-aware recs, first-run onboarding, profile pre-fill, money-chip rounding fix, Baby Planning input fixes.
 - **2026-07-05:** kuba-vault refresh — caught PROJECT.md up on 5 commits from May 30–Jun 1: GA4 analytics, waitlist capture (`/api/waitlist` + `0006_waitlist`), Google Sheets growth pipeline, tabbed ProfileSettings + fixed account UX, conversational onboarding, app icons/manifest, sidebar rename. Added 5 decisions, resolved the account-UX open loop, updated integrations + tech stack. No code changes; repo quiet since Jun 1.
