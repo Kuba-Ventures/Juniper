@@ -220,10 +220,11 @@ function AffiliateCard({
   );
 }
 
-// The full picks block for a completed plan: every configured partner for the
-// domain (hero first, marked RECOMMENDED) + the required FTC-style disclosure.
-// Renders nothing if the domain has no configured partners. Callers must gate
-// on plan completion (see PlanView).
+// The featured hero recommendation for a completed plan: the single best-fit
+// partner for the domain + the required FTC-style disclosure. The full set of
+// providers is browsable in the marketplace grid (MarketplaceList) below this
+// section. Renders nothing if the domain has no configured partners. Callers
+// must gate on plan completion (see PlanView).
 export function PlanAffiliatePicks({
   domain,
   connections = [],
@@ -235,18 +236,17 @@ export function PlanAffiliatePicks({
   if (partners.length === 0) return null;
 
   // "You use this" if a connection name matches the partner (e.g. "SoFi" ~
-  // "SoFi Savings"). Partners the user already uses drop below fresh ones, so
-  // the RECOMMENDED slot goes to something new.
+  // "SoFi Savings"). The featured slot goes to the first configured partner the
+  // user does NOT already use; if they use them all, fall back to the hero.
   const uses = (p: Partner) =>
     connections.some((c) => c && p.name.toLowerCase().includes(c.toLowerCase()));
-  const ordered = [...partners].sort((a, b) => Number(uses(a)) - Number(uses(b)));
-  const firstUnusedIdx = ordered.findIndex((p) => !uses(p));
+  const featured = partners.find((p) => !uses(p)) ?? partners[0];
 
   return (
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Recommended for this step</h2>
 
-      {/* Required FTC-style disclosure — MUST appear ABOVE the links (before
+      {/* Required FTC-style disclosure — MUST appear ABOVE the link (before
           the user can click out), not below. Kept visible, not behind a tooltip. */}
       <div
         style={{
@@ -267,17 +267,7 @@ export function PlanAffiliatePicks({
         </p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {ordered.map((partner, i) => (
-          <AffiliateCard
-            key={partner.name}
-            partner={partner}
-            domain={domain}
-            primary={i === firstUnusedIdx}
-            used={uses(partner)}
-          />
-        ))}
-      </div>
+      <AffiliateCard partner={featured} domain={domain} primary used={uses(featured)} />
     </section>
   );
 }

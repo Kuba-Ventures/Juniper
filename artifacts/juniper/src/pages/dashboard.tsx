@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Domain } from "@/components/dashboard/domain-tile-grid";
 import { DomainTileGrid } from "@/components/dashboard/domain-tile-grid";
+import { PortfolioSummary } from "@/components/dashboard/portfolio-summary";
 import { fetchPlans, type Plan } from "@/lib/plans";
 
 const ink = "#2A2A2A";
@@ -30,6 +31,8 @@ export function Dashboard({ userName, onStartPlan, plansVersion }: Props) {
     };
   }, [plansVersion]);
 
+  const plans = useMemo(() => Object.values(plansByDomain), [plansByDomain]);
+
   return (
     <div style={{ height: "100%", overflowY: "auto" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: "56px 28px 80px" }}>
@@ -51,6 +54,8 @@ export function Dashboard({ userName, onStartPlan, plansVersion }: Props) {
             and ends with a plan you can return to and update over time.
           </p>
         </header>
+
+        <PortfolioSummary plans={plans} />
 
         <DomainTileGrid onStart={onStartPlan} plansByDomain={plansByDomain} />
       </div>
