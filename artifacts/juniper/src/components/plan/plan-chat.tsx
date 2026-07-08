@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { getAccessToken } from "@/lib/supabase";
 import { savePlan, type Plan, type PlanChatTurn } from "@/lib/plans";
+import { trackEngagement } from "@/lib/analytics";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -55,6 +56,8 @@ export function PlanChat({ plan, autoAsk, autoAskNonce }: Props) {
 
   async function sendTurn(rawText: string) {
     if (streaming || !rawText.trim()) return;
+    // Sending a plan-chat message is a meaningful (WAU) action.
+    trackEngagement("plan_chat_message", { plan_domain: planRef.current.domain });
     setStreaming(true);
     setErrored(false);
     setInput("");

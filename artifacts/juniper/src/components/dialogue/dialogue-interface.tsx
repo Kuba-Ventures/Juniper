@@ -25,6 +25,7 @@ import {
   type PlanNextAction,
 } from "@/lib/plans";
 import { UserProfile } from "@/lib/profile";
+import { trackEngagement } from "@/lib/analytics";
 
 const sage = "#5C7A65";
 const cream = "#FAF7F2";
@@ -284,6 +285,9 @@ export function DialogueInterface({
   function recordAnswer(patch: Record<string, unknown>) {
     if (!script || streamingRef.current || completedRef.current) return;
 
+    // Advancing a plan dialogue step is a meaningful (WAU) action.
+    trackEngagement("plan_step_advanced", { plan_domain: domain });
+
     const nextCollected = { ...collectedRef.current, ...patch };
     collectedRef.current = nextCollected;
     setCollected(nextCollected);
@@ -497,6 +501,8 @@ export function DialogueInterface({
 
     if (planData && !isPartner) {
       completedRef.current = true;
+      // Reaching a finished, synthesized plan is a meaningful (WAU) action.
+      trackEngagement("plan_completed", { plan_domain: domain });
       const goal = planData.goal as PlanGoal | undefined;
       const kpis = (planData.kpis ?? []) as PlanKpi[];
       const milestones = (planData.milestones ?? []) as PlanMilestone[];
@@ -554,6 +560,8 @@ export function DialogueInterface({
     }
 
     if (stepData) {
+      // Completing an open-ended dialogue step is a meaningful (WAU) action.
+      trackEngagement("plan_step_advanced", { plan_domain: domain });
       const nextCollected = { ...currentCollected, ...stepData };
       collectedRef.current = nextCollected;
       setCollected(nextCollected);
