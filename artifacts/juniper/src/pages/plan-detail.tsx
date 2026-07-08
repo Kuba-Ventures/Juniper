@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Check, ArrowLeft } from "lucide-react";
 import { DialogueInterface } from "@/components/dialogue/dialogue-interface";
 import { PlanAffiliatePicks } from "@/components/plan/affiliate-card";
+import { MarketplaceList } from "@/components/plan/marketplace-list";
 import { PlanProjection } from "@/components/plan/plan-projection";
 import { NextActionLink, MilestoneAssist } from "@/components/plan/next-action-link";
 import { DebtListSection } from "@/components/plan/debt-list";
@@ -403,7 +404,12 @@ function PlanView({
             case). Never reachable from the dialogue or an in-progress plan.
             Shown to both inviter and partner. */}
         {plan.status === "completed" && (plan.next_actions?.length ?? 0) > 0 && (
-          <PlanAffiliatePicks domain={plan.domain} connections={connections} />
+          <>
+            <PlanAffiliatePicks domain={plan.domain} connections={connections} />
+            {/* Browsable marketplace of all providers for this domain, below
+                the featured hero recommendation. */}
+            <MarketplaceList domain={plan.domain} connections={connections} />
+          </>
         )}
 
         <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
