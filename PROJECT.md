@@ -1,7 +1,7 @@
 # Juniper
 *AI copilot for couples navigating major financial life transitions.*
 
-*Last updated: 2026-07-08 by kuba-vault*
+*Last updated: 2026-08-02 by Finley*
 
 ---
 
@@ -27,13 +27,31 @@ Juniper helps engaged and newly married couples model the financial tradeoffs be
 - **Lead:** Finley
 - **Cadence:** N/A (internal build)
 - **Next milestone:** Clear the two compliance gates — approved affiliate programs (real partner URLs/rates/disclosures) and Plaid Production access — before monetized surfaces and real bank data go live — TBD
-- **Flags:** shipping (PRs #28–#33 merged this session; `main` at merge of PR #33)
+- **Flags:** scoping — two workstreams in flight (Plaid next iteration + web layout/design refresh; see **In flight**). Awaiting direction from Finley; no new code yet (`main` at merge of PR #34)
 
 ---
 
 ## Where we are right now
 
 This session focused on GTM: measuring engagement, deepening the recommendation surface, and starting real account connections. Four workstreams landed. **WAU instrumentation** (#28): `analytics.ts` now fires one canonical `engaged_session` GA4 event per browser session (module-level guard) at six meaningful moments — plan step advance, plan completion, plan-field edits, plan-chat sends, and connection toggles — and sets a GA4 `user_id` for signed-in users so WAU can be counted as distinct users with an engaged session in the trailing 7 days. **Marketplace** (#29/#30): `partners.ts` gained `blurb`/`tags`/`source` fields and 4–5 seeded listings per domain; a new "Explore services" grid renders on completed plans below a single featured hero (the hero card used to render every partner). **Portfolio summary** (#31/#32): a client-side rollup at the top of the dashboard (2+ active plans only) aggregating active count, total savings target, monthly committed-vs-required, total debt + blended APR, and the nearest milestone / top next action. **Plaid account linking** (#33) is the biggest piece: the old "Coming soon" Connections stub is now a real Plaid Link flow — connect an institution, list accounts + balances, disconnect — running on Plaid Sandbox in production and verified end-to-end against Tartan Bank. The Plaid access token lives in a server-only table (`plaid_items`, migration 0007) with no client grants; the browser only ever gets sanitized account snapshots. Two compliance gates remain before real money moves: affiliate URLs are still `example.com` placeholders, and Plaid real-data access needs Plaid's production review.
+
+---
+
+## In flight (2026-08-02)
+
+> 🚧 **Scaffolding — details pending from Finley.** Two workstreams are being scoped/started this cycle. The bullets below are placeholders to be filled in as direction lands; nothing here is built or committed yet (repo `main` is still at the merge of PR #34, the 2026-07-08 doc refresh). Treat everything in this section as *planned*, not *done*, until moved into **What's built** with a code reference.
+
+**Plaid — next iteration** *(direction TBD)*
+- _Production access / env:_ still on Plaid **Sandbox** as of this writing; whether Production access has cleared (flip `PLAID_ENV=production` + Production secret) is pending confirmation.
+- _Data tiers:_ candidate expansion beyond `auth` (transactions / liabilities / investments) via `PLAID_PRODUCTS` + a richer stored snapshot — not yet started.
+- _Plan wiring:_ auto-filling plan inputs (savings / debt balances) from real linked balances — not yet started.
+- _(Fill in the actual scope here as Finley directs.)_
+
+**New web layout + design** *(direction TBD)*
+- _Scope:_ TBD — visual refresh (palette / type / spacing / motion) vs. structural re-layout (navigation, page structure, marketing vs. app shell) not yet decided.
+- _Source of truth:_ no `DESIGN.md` or new mockups in the repo yet; may stand one up (see `design-consultation` / `DESIGN.md` convention) once the direction is set.
+- _Surfaces likely touched:_ marketing site, app shell (`pages/app-shell.tsx`), dashboard, plan detail, connections — to be confirmed.
+- _(Fill in the actual design direction, references, and affected components here as Finley directs.)_
 
 ---
 
@@ -163,6 +181,8 @@ External services in use (from env vars and code):
 - [ ] Get Plaid Production access (application review + beneficial owners + billing), then flip `PLAID_ENV=production` + production secret to move off Sandbox — Finley
 - [ ] Plaid data tiers: auto-fill plan inputs (savings/debt) from real balances, and pull transactions/liabilities/investments (grow `PLAID_PRODUCTS` + the stored snapshot) — deferred until Production access — Finley
 - [x] Real Plaid wiring on Connections page — shipped on Sandbox (link + display, unlink); Production access still pending (done 2026-07-08, PR #33)
+- [ ] **New web layout + design refresh** — direction TBD (visual vs. structural); stand up `DESIGN.md` source-of-truth if warranted; see **In flight** — Finley
+- [ ] **Plaid next iteration** — confirm Production access status, scope data tiers (transactions/liabilities/investments) and plan-input auto-fill; see **In flight** — Finley
 - [ ] Multi-language and accessibility audit pass — Finley
 - [ ] Partner display-name handling — partner sees inviter as "your partner" generically because `user_profiles.name` isn't fetched for partner-side dialogue — Finley
 - [ ] Token expiration / revocation UI for invites — Finley
@@ -232,6 +252,7 @@ GA4 measurement ID (`G-C6W0BFQ3ZG`) and the Apps Script webhook secret are hard-
 
 ## Changelog
 
+- **2026-08-02:** Finley — added an **In flight** section scaffolding two upcoming workstreams (Plaid next iteration + new web layout/design refresh), plus matching Open-loops entries and a Status flag change (`shipping` → `scoping`). No code changes; repo `main` unchanged since PR #34. Placeholders are explicitly marked *planned/details-pending* and will be filled in as direction lands, then promoted into What's-built with code references. Purpose: keep Claude in full context loop before the changes start.
 - **2026-07-08:** kuba-vault refresh — caught PROJECT.md up on the GTM session (PRs #28–#33, `main` at merge of #33). WS1 WAU instrumentation (`analytics.ts`: `setAnalyticsUser` + one canonical `engaged_session` per session, fired at six moments; WAU = distinct `user_id` in trailing 7 days). WS2 marketplace (`partners.ts` gained `blurb`/`tags`/`source`, 22 seeded listings; `marketplace-list.tsx` grid on completed plans; hero card now renders only the single featured pick). WS3 cross-plan portfolio summary (`portfolio-summary.tsx`, dashboard, 2+ plans, pure client-side rollup). Plaid account linking (#33): migration `0007_plaid_items` server-only token store (RLS `false`, service-role only), edge endpoints `api/plaid/*` calling Plaid over `fetch`, `react-plaid-link` flow in `connections.tsx`, live in prod on Plaid Sandbox and verified against Tartan Bank; Plaid names merged into marketplace "You use this" badges. Verified all claims against code. Added 6 decisions; updated status/where-we-are/what's-built/tech-stack/integrations/open-loops/risks/env-vars. Two compliance gates outstanding: affiliate licensing (URLs still `example.com`) and Plaid Production access. Flag: shipping.
 - **2026-07-06:** kuba-vault refresh — caught PROJECT.md up on 23 PRs (`main` at merge of PR #23). Through-line: onboarding reworked from per-turn LLM chat to a guided tap-first flow (structured choice/money/timeline steps answered client-side, live plan-preview card, "N questions left", instant plan; only text steps + synthesis hit the LLM). Completed plans gained interest-aware projection charts (`lib/projection.tsx`), affiliate click-out cards (`lib/partners.ts` — placeholder URLs, favicon logos, GA4 `affiliate_click`), a debt-list builder (`current_state.debts`, no migration), and actionable next actions with links / "How?" walkthrough. Added a single first-run onboarding flow, profile-seeded money steps, a "reset plans & preferences" testing control (new DELETE endpoints on `plans`/`profile`), and a top "Back to dashboard" button. Verified all claims against code. Added 8 decisions, 4 open loops, 3 risks; refreshed status/what's-built/integrations/tech-stack. Flag: shipping.
 - **2026-07-05 (Jun 30–Jul 5, per commits):** 23-PR session — tap-first onboarding, plan projection charts, affiliate cards + favicon logo fix (Clearbit dead), debt-list builder, actionable next actions with connection-aware recs, first-run onboarding, profile pre-fill, money-chip rounding fix, Baby Planning input fixes.
