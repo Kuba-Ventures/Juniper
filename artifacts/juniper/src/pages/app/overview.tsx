@@ -1,26 +1,22 @@
 import { useState, type ReactNode } from "react";
-import { PageHeader } from "@/components/juniper/app-frame";
+import { Link } from "wouter";
 import {
-  subscriptions as seedSubs,
-  money, money2, type Subscription, type Budget, type Txn, type SpendCat,
+  plans, subscriptions as seedSubs,
+  money, moneyK, money2,
+  type Budget, type Account, type Subscription, type Txn,
 } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
-import { BrandTile, SpendingDonut } from "@/components/juniper/primitives";
+import {
+  BrandTile, planMark, cssVar, NetWorthChart, SpendingDonut, MiniRing,
+} from "@/components/juniper/primitives";
 
-type Tab = "overview" | "transactions" | "budgets" | "subs";
-const TABS: [Tab, string][] = [["overview", "Overview"], ["transactions", "Transactions"], ["budgets", "Budgets"], ["subs", "Subscriptions"]];
+const UpArrow = () => (
+  <svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" strokeLinecap="round" /></svg>
 );
-
-function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
-    </div>
-  );
-}
 
 function Budgets({ items }: { items: Budget[] }) {
   return (
@@ -39,6 +35,21 @@ function Budgets({ items }: { items: Budget[] }) {
         );
       })}
     </div>
+  );
+}
+
+function AccountGroup({ title, arr }: { title: string; arr: Account[] }) {
+  return (
+    <>
+      <div className="subhead">{title}</div>
+      {arr.map((a, i) => (
+        <div className="row" key={i}>
+          <BrandTile name={a.n} letter={a.n[0]} k={a.k} />
+          <div><div className="nm">{a.n}</div><div className="mt">{a.i}</div></div>
+          <div className="amt">{money(a.v)} {a.apr && <span className="apr-chip">{a.apr}</span>}</div>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -64,6 +75,14 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
         ))}
         {!rows.length && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>No matching transactions.</div>}
       </div>
+    </div>
+  );
+}
+
+function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   );
 }
@@ -137,41 +156,97 @@ function SubscriptionsPanel() {
   );
 }
 
-export function Spending() {
-  const [tab, setTab] = useState<Tab>("overview");
+export default function Overview({ name }: { name: string }) {
   const { data } = useFinances();
-  const spending: SpendCat[] = data.spending;
-  const budgets: Budget[] = data.budgets;
-  const transactions: Txn[] = data.transactions;
+  const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
+  const first = (name || "there").split(" ")[0];
+  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
   return (
     <div className="frame">
-      <PageHeader
-        title="Spending"
-        sub="Every transaction, categorized — budgets, and the subscriptions hiding in your recurring charges."
-        actions={
-          <>
-            <div className="pills"><button>June</button><button className="on">July</button><button>Aug</button></div>
-            <button className="btn ghost sm">Export</button>
-          </>
-        }
-      />
-
-      <div className="pills" style={{ margin: "0 2px 16px" }} role="tablist">
-        {TABS.map(([t, label]) => (
-          <button key={t} className={tab === t ? "on" : undefined} onClick={() => setTab(t)}>{label}</button>
-        ))}
+      <div className="greet">
+        <h1>Good morning, {first}</h1>
+        <div className="meta"><span>{today}</span><span>·</span><span className="up">Net worth up {money(netWorth.changeAbs)} this month</span></div>
       </div>
 
-      {tab === "overview" && (
-        <div className="grid two">
-          <div className="card"><div className="card-head"><h3>Where it went — {money(totalSpent)}</h3></div><SpendingDonut data={spending} /></div>
-          <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div><Budgets items={budgets} /></div>
+      <div className="score-strip" style={{ marginBottom: 16 }}>
+        <MiniRing score={score.value} />
+        <div>
+          <div className="st-t">Juniper Score <span className="band">{score.value} · {score.band}</span></div>
+          <div className="st-s"><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</div>
         </div>
-      )}
-      {tab === "transactions" && <TransactionsPanel items={transactions} />}
-      {tab === "budgets" && <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit budgets</button></div><Budgets items={budgets} /></div>}
-      {tab === "subs" && <SubscriptionsPanel />}
+        <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
+      </div>
+
+      <div className="grid hero" style={{ marginBottom: 16 }}>
+        <div className="card pad-lg">
+          <div className="card-head">
+            <div>
+              <div className="eyebrow">Net worth</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 6 }}>
+                <span className="big-num tnum">{money(netWorth.value)}</span>
+                <span className="delta up" style={{ marginBottom: 5 }}><UpArrow />{netWorth.changePct}%</span>
+              </div>
+            </div>
+            <div className="pills" role="group" aria-label="Range">
+              <button>1M</button><button>3M</button><button>6M</button><button className="on">1Y</button><button>All</button>
+            </div>
+          </div>
+          <NetWorthChart series={netWorth.series} labels={netWorth.labels} />
+          <div className="cf-foot">
+            <div><div className="l">Income · {cashflow.month}</div><div className="v pos tnum">+{money(cashflow.income)}</div></div>
+            <div><div className="l">Spent</div><div className="v tnum">{money(cashflow.spent)}</div></div>
+            <div><div className="l">Saved</div><div className="v acc tnum">{money(cashflow.saved)}</div></div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
+          <div className="plans-col">
+            {plans.filter((p) => !p.done).map((p, i) => {
+              const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
+              return (
+                <Link href="/app/plans" className="plan-row" key={i}>
+                  <div className="track" style={{ background: cssVar(p.k) }}>{planMark(p)}</div>
+                  <div className="pr-body">
+                    <div className="pr-top">
+                      <span className="pt">{p.t}</span>
+                      {p.target ? <span className="amt tnum">{moneyK(p.saved)} <small>/ {moneyK(p.target)}</small></span> : null}
+                    </div>
+                    <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(p.k) }} /></div>
+                    <div className="pr-bot"><span>{p.note}</span><span className={`status ${p.st}`}>{p.stl}</span></div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid two" style={{ marginBottom: 16 }}>
+        <div className="card">
+          <div className="card-head"><h3>Where it went — {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
+          <SpendingDonut data={spending} />
+        </div>
+        <div className="card">
+          <div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div>
+          <Budgets items={budgets} />
+        </div>
+      </div>
+
+      <div className="grid two" style={{ marginBottom: 16 }}>
+        <TransactionsPanel items={transactions} />
+        <div className="card">
+          <div className="card-head"><h3>Accounts</h3><span className="link">Manage</span></div>
+          <div className="rows">
+            <AccountGroup title="Cash" arr={accounts.cash} />
+            <AccountGroup title="Investments" arr={accounts.invest} />
+            <AccountGroup title="Debts" arr={accounts.debt} />
+          </div>
+        </div>
+      </div>
+
+      <SubscriptionsPanel />
     </div>
   );
 }

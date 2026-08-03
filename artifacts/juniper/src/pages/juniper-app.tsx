@@ -2,10 +2,9 @@ import { Route, Switch } from "wouter";
 import { useSession } from "@/lib/use-session";
 import { WorkspaceProvider } from "@/lib/workspace";
 import { AppBar } from "@/components/juniper/app-frame";
-import Home from "@/pages/app/home";
+import Overview from "@/pages/app/overview";
 import { Recommended } from "@/pages/app/recommended";
 import { Credit } from "@/pages/app/credit";
-import { Spending } from "@/pages/app/spending";
 import { Score } from "@/pages/app/score";
 import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
@@ -36,8 +35,7 @@ export default function JuniperApp() {
       <div className="jnpr">
         <AppBar name={name} email={email} />
         <Switch>
-          <Route path="/app">{() => <Home name={name} />}</Route>
-          <Route path="/app/spending" component={Spending} />
+          <Route path="/app">{() => <Overview name={name} />}</Route>
           <Route path="/app/score" component={Score} />
           <Route path="/app/admin" component={Admin} />
           <Route path="/app/plans" component={Plans} />

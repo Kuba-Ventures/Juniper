@@ -7,8 +7,7 @@ import { InviteModal } from "@/components/juniper/invite-modal";
 type NavItem = { path: string; label: string; count?: number };
 
 const PERSONAL_NAV: NavItem[] = [
-  { path: "/app", label: "Home" },
-  { path: "/app/spending", label: "Spending" },
+  { path: "/app", label: "Overview" },
   { path: "/app/plans", label: "Plans", count: 4 },
   { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
