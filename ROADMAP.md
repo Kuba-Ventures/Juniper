@@ -79,13 +79,15 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 4 — Juniper Score engine **(build)**
+## Stage 4 — Juniper Score engine **(build)** — *in progress*
 
 *Decided: proprietary 0–100 Juniper Score; credit shown as a factor (Stage 0).*
 
-- [ ] Define factors, weights, formula — savings rate, DTI/debt load, emergency-fund months, retirement pace, credit health
-- [ ] Compute from Stage 3 data; store score history for the 8-month trend
-- [ ] Generate ranked "ways to improve" from factor gaps; cross-link each to the relevant plan
+- [x] **Define factors, weights, formula** → `api/_score.ts` (pure, I/O-free, unit-testable). Five weighted factors each scored 0–100: savings rate (0.25), emergency fund (0.25), debt load (0.20, debt-to-income), investing pace (0.15), credit health (0.15). Overall = weighted sum; bands At risk / Building / Fair / Healthy / Excellent.
+- [x] **Compute from Stage 3 data + store history** → `api/_finance-snapshot.ts` assembles the inputs (trailing-90-day income/spending + account balances) so `/api/finances` and the writer score off the same numbers. `POST /api/score/compute` upserts one `score_history` row per (user, day) for the trend + delta (migration `0009_score_history.sql`). `/api/finances` now returns the live score, trend, and delta; `syncFinances()` fires the compute on link/refresh.
+- [x] **Ranked "ways to improve" cross-linked to plans** → the engine emits improvements ranked by weighted headroom (potential points), each linked to the relevant plan icon. New **Score breakdown page** (`src/pages/app/score.tsx`, routed `/app/score`) shows the ring + trend, per-factor bars, and the ranked levers; the Home score strip links to it.
+- Ops to activate (like Stage 3): apply migration `0009`; the score goes live once an item is linked + synced. Until then the UI shows the demo score.
+- Later: real credit-score/utilization ingestion into the credit factor (Stage 10); age-aware retirement-pace target; score-change notifications (Stage 11).
 
 ---
 

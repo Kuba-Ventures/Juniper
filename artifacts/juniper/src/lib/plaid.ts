@@ -71,7 +71,7 @@ export async function exchangePublicToken(
 // (the sync resumes from its cursor; the snapshot upserts one row per day).
 // Returns whether at least one leg succeeded; degrades quietly when Plaid /
 // storage isn't configured yet so callers never block the UI on it.
-export async function syncFinances(): Promise<{ transactions: boolean; netWorth: boolean }> {
+export async function syncFinances(): Promise<{ transactions: boolean; netWorth: boolean; score: boolean }> {
   const call = async (path: string) => {
     try {
       const res = await authedFetch(path, { method: "POST" });
@@ -80,11 +80,14 @@ export async function syncFinances(): Promise<{ transactions: boolean; netWorth:
       return false;
     }
   };
+  // Transactions + net worth first (they populate what the score reads), then
+  // snapshot the Juniper Score for the trend/delta history.
   const [transactions, netWorth] = await Promise.all([
     call("/api/plaid/transactions-sync"),
     call("/api/plaid/networth-snapshot"),
   ]);
-  return { transactions, netWorth };
+  const score = await call("/api/score/compute");
+  return { transactions, netWorth, score };
 }
 
 export async function fetchPlaidItems(): Promise<PlaidItem[]> {

@@ -55,6 +55,7 @@ interface RawFinances {
   budgets?: Budget[];
   transactions?: { m: string; c: string; v: number; d: string; inc?: boolean }[];
   accounts?: { cash: Omit<Account, "k">[]; invest: Omit<Account, "k">[]; debt: Omit<Account, "k">[] };
+  score?: FinanceData["score"];
 }
 
 function withColors(raw: RawFinances): FinanceData {
@@ -71,7 +72,9 @@ function withColors(raw: RawFinances): FinanceData {
       invest: color(raw.accounts?.invest ?? []),
       debt: color(raw.accounts?.debt ?? []),
     },
-    score: MOCK.score, // Stage 4 computes the real score; demo value until then
+    // Stage 4: the server computes the real Juniper Score; fall back to the demo
+    // value if an older payload omits it.
+    score: raw.score ?? MOCK.score,
   };
 }
 

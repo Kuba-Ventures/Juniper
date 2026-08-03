@@ -60,9 +60,9 @@ export default function Home({ name }: { name: string }) {
         <MiniRing score={score.value} />
         <div>
           <div className="st-t">Juniper Score <span className="band">{score.value} · {score.band}</span></div>
-          <div className="st-s"><b>+{score.delta} pts</b> this month · biggest lever: {score.lever}</div>
+          <div className="st-s"><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</div>
         </div>
-        <Link href="/app/credit" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
+        <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
       </div>
 
       <div className="grid hero" style={{ marginBottom: 16 }}>
