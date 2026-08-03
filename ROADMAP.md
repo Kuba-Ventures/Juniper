@@ -70,7 +70,7 @@ Shell is done; remaining screens and states:
 - **3c — Categorization** [ ] Map Plaid `personal_finance_category.primary` → Juniper categories (Housing, Groceries & dining, …) + merchant rules + user overrides (`category` / `category_source`).
 - **3d — Budgets** [ ] CRUD + monthly rollups (spent per category from transactions) + over-budget logic.
 - **3e — Net worth history** [ ] Daily balance snapshots (Plaid returns current balances only) → the trend line.
-- **3f — Frontend data layer** [ ] `useFinances()` queries fetching transactions / budgets / accounts / net worth; swap the `mock-data` selectors behind the same shapes, with a graceful fallback to mock until a user has linked + synced.
+- **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home is wired.** Remaining polish: adopt the hook in Spending/Accounts too, and add a sync trigger (call `POST /api/plaid/transactions-sync`, e.g. on link / periodically).
 
 ---
 
