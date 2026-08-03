@@ -63,6 +63,55 @@ async function fetchPartners(): Promise<MarketplaceOffer[] | null> {
   }
 }
 
+// A personalized "Picked for you" card — a marketplace offer plus the reason it
+// was matched to this member.
+export interface PickOffer extends MarketplaceOffer { match: string }
+
+interface RawPick {
+  name: string; category: string; headline?: string | null; blurb?: string | null;
+  tags?: string[] | null; url?: string | null; source?: string | null; reason: string;
+}
+
+function pickToOffer(p: RawPick, i: number): PickOffer {
+  return { ...toOffer(p, i), match: p.reason };
+}
+
+// The mock "picked" fallback — the seeded listings that carry a match reason.
+const SEED_PICKS: PickOffer[] = listings
+  .filter((m) => m.match)
+  .map((m) => ({ n: m.n, cat: m.cat, logo: m.logo, k: m.k, stat: m.stat, blurb: m.blurb, tags: m.tags, src: m.src, match: m.match! }));
+
+async function fetchPicks(): Promise<PickOffer[] | null> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch("/api/recommendations", { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { linked?: boolean; picks?: RawPick[] };
+    if (!data?.linked) return null;      // not synced -> keep demo picks
+    return (data.picks ?? []).map(pickToOffer);
+  } catch {
+    return null;
+  }
+}
+
+// Starts on the demo picks; swaps to personalized picks once the member is
+// linked + synced. An empty live result (no gaps to address) is respected —
+// that's a real "you're all set" state, distinct from the mock fallback.
+export function usePicks(): { picks: PickOffer[]; source: "mock" | "live"; loading: boolean } {
+  const [picks, setPicks] = useState<PickOffer[]>(SEED_PICKS);
+  const [source, setSource] = useState<"mock" | "live">("mock");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    fetchPicks()
+      .then((live) => { if (alive && live) { setPicks(live); setSource("live"); } })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+  return { picks, source, loading };
+}
+
 // Starts on the seeded catalog so the page renders instantly, then swaps to the
 // live DB catalog once it loads (kept on the seed if empty/unconfigured).
 export function usePartners(): { offers: MarketplaceOffer[]; source: "seed" | "live"; loading: boolean } {
