@@ -7,6 +7,18 @@ import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
 export type Msg = { role: "user" | "assistant"; content: string };
+
+export interface PlanStep { title: string; detail: string; timeline?: string; amount?: string }
+export interface PlanReport {
+  title: string;
+  headline: string;
+  situation: string;
+  recommendation: string;
+  steps: PlanStep[];
+  assumptions?: string[];
+  generatedAt: number;
+}
+
 export interface Thread {
   id: string;
   title: string;
@@ -15,6 +27,7 @@ export interface Thread {
   planContext?: string; // set when the thread was opened from a plan
   planTitle?: string;
   messages: Msg[];
+  report?: PlanReport; // last saved PDF plan (saved by default on generate)
 }
 
 const KEY = "jnpr.planner.threads.v1";
@@ -119,6 +132,24 @@ export function useThreads() {
   }, []);
 
   return { threads, create, remove, update };
+}
+
+// Synthesize the conversation into a structured, saveable plan (rendered to PDF
+// client-side). Grounding is inherited from the chat the plan is built from.
+export async function generateReport(messages: Msg[], planContext?: string): Promise<PlanReport> {
+  const token = await getAccessToken();
+  const res = await fetch("/api/planner/report", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ messages, planContext }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as Omit<PlanReport, "generatedAt"> & { error?: string };
+  if (data.error) throw new Error(data.error);
+  return { ...data, generatedAt: Date.now() };
 }
 
 // Stream one planner turn. Appends the user message, streams the assistant

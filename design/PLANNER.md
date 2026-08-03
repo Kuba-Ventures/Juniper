@@ -207,8 +207,12 @@ Each phase ships independently and leaves the app working.
   entry points.*
 - **P3 — Knowledge retrieval.** Ship the curated KB + `search_knowledge`, with
   citations and as-of stamps. *Outcome: accurate HYSA/529/LLC/estate answers.*
-- **P4 — PDF plan export.** Structured-output plan synthesis → branded HTML → PDF,
-  downloadable and saved to plans. *Outcome: the family-office deliverable.*
+- **P4 — PDF plan export. ✅ Shipped.** `POST /api/planner/report` synthesizes the
+  conversation into a structured plan via forced tool-use, rendered into a branded
+  sheet and saved to PDF via the browser's print-to-PDF (no dependency; print CSS
+  isolates the sheet). The report is saved to the thread by default and re-openable.
+  *Outcome: the family-office deliverable.* (Built on opus-5; when the SDK bump lands,
+  it inherits adaptive thinking with the rest of the planner.)
 
 Partner-chat (the shared workspace's human-to-human thread) and the AI planner
 **coexist** — the planner is the AI layer, partner-chat is the couple's own
