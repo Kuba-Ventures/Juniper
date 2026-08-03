@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { listings, listingCategories, type Listing } from "@/lib/mock-data";
 import { BrandTile } from "@/components/juniper/primitives";
-import { submitListing } from "@/lib/marketplace";
+import { submitListing, usePartners } from "@/lib/marketplace";
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" strokeLinecap="round" /></svg>
@@ -91,12 +91,15 @@ function ListingCard({ m, rec }: { m: Listing; rec?: boolean }) {
 export function Recommended() {
   const [cat, setCat] = useState("All");
   const [listOpen, setListOpen] = useState(false);
+  // Library reads the DB-backed catalog (usePartners), starting on the seed.
+  // "Picked for you" stays on the personalized mock until per-user matching
+  // (from linked accounts + goals) is wired — that's a data tie-in, not a swap.
+  const { offers } = usePartners();
   const picked = listings.filter((m) => m.match);
-  const library = listings
-    .filter((m) => !m.match)
-    .filter((m) => cat === "All" || m.cat === cat)
-    .slice()
-    .sort((a, b) => (a.use ? 1 : 0) - (b.use ? 1 : 0));
+  const pickedNames = new Set(picked.map((m) => m.n));
+  const library = offers
+    .filter((m) => !pickedNames.has(m.n))
+    .filter((m) => cat === "All" || m.cat === cat);
 
   return (
     <div className="frame">
