@@ -10,6 +10,7 @@ export interface Offer {
   name: string;
   category: string;
   domain?: string | null;
+  headline?: string | null; // short stat line, e.g. "4.30% APY"
   blurb?: string | null;
   description?: string | null;
   fit?: string | null;

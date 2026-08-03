@@ -28,7 +28,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!SUPABASE_URL || !adminConfigured()) return json({ partners: [] });
 
   const domain = new URL(req.url).searchParams.get("domain");
-  const select = "id,name,category,domain,blurb,description,fit,tags,url,logo_url,source,est_benefit,sort_order";
+  const select = "id,name,category,domain,headline,blurb,description,fit,tags,url,logo_url,source,est_benefit,sort_order";
   let query = `partners?status=eq.active&select=${select}`;
   if (domain) query += `&domain=eq.${encodeURIComponent(domain)}`;
 

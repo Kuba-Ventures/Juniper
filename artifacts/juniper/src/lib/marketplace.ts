@@ -1,6 +1,83 @@
 // Marketplace client helpers (Stage 5). The self-listing submission is the
-// supply side: a merchant submits an offer, it lands in the moderation queue.
+// supply side; usePartners() is the demand side — it reads the DB-backed
+// catalog (GET /api/partners) so offers change without a deploy, falling back
+// to the seeded `listings` until the table is populated.
+import { useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
+import { listings, type SeriesKey } from "@/lib/mock-data";
+
+// The shape a marketplace card renders (a superset-compatible view of both the
+// live partner rows and the seeded `listings`).
+export interface MarketplaceOffer {
+  n: string;        // name
+  cat: string;      // category
+  logo: string;     // monogram fallback (BrandTile keys the real logo off `n`)
+  k: SeriesKey;     // tile color
+  stat: string;     // short headline stat
+  blurb: string;
+  tags: string[];
+  src: "curated" | "self";
+  url?: string;
+}
+
+// Raw row from GET /api/partners (already benefit-ranked server-side).
+interface RawPartner {
+  name: string; category: string; headline?: string | null; blurb?: string | null;
+  tags?: string[] | null; url?: string | null; source?: string | null;
+}
+
+const CYCLE: SeriesKey[] = ["--jnpr-c1", "--jnpr-c2", "--jnpr-c3", "--jnpr-c4", "--jnpr-c5", "--jnpr-c6"];
+
+function toOffer(p: RawPartner, i: number): MarketplaceOffer {
+  return {
+    n: p.name,
+    cat: p.category,
+    logo: p.name.charAt(0),
+    k: CYCLE[i % CYCLE.length],
+    stat: p.headline || "",
+    blurb: p.blurb || "",
+    tags: p.tags ?? [],
+    src: p.source === "self-listed" ? "self" : "curated",
+    url: p.url || undefined,
+  };
+}
+
+// The seeded catalog, mapped to the card shape — the mock/offline fallback.
+const SEED: MarketplaceOffer[] = listings.map((m) => ({
+  n: m.n, cat: m.cat, logo: m.logo, k: m.k, stat: m.stat, blurb: m.blurb, tags: m.tags, src: m.src,
+}));
+
+async function fetchPartners(): Promise<MarketplaceOffer[] | null> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch("/api/partners", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { partners?: RawPartner[] };
+    const rows = data?.partners ?? [];
+    if (!rows.length) return null; // empty catalog -> keep the seed
+    return rows.map(toOffer);
+  } catch {
+    return null;
+  }
+}
+
+// Starts on the seeded catalog so the page renders instantly, then swaps to the
+// live DB catalog once it loads (kept on the seed if empty/unconfigured).
+export function usePartners(): { offers: MarketplaceOffer[]; source: "seed" | "live"; loading: boolean } {
+  const [offers, setOffers] = useState<MarketplaceOffer[]>(SEED);
+  const [source, setSource] = useState<"seed" | "live">("seed");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    fetchPartners()
+      .then((live) => { if (alive && live) { setOffers(live); setSource("live"); } })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+  return { offers, source, loading };
+}
 
 export interface ListingSubmission {
   name: string;
