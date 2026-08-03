@@ -6,6 +6,7 @@ import { Recommended } from "@/pages/app/recommended";
 import { Credit } from "@/pages/app/credit";
 import { Spending } from "@/pages/app/spending";
 import { Score } from "@/pages/app/score";
+import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
 import "@/styles/juniper.css";
 
@@ -29,6 +30,7 @@ export default function JuniperApp() {
         <Route path="/app">{() => <Home name={name} />}</Route>
         <Route path="/app/spending" component={Spending} />
         <Route path="/app/score" component={Score} />
+        <Route path="/app/admin" component={Admin} />
         <Route path="/app/plans" component={Plans} />
         <Route path="/app/credit" component={Credit} />
         <Route path="/app/recommended" component={Recommended} />
