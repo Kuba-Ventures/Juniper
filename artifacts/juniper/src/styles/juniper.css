@@ -53,7 +53,22 @@
 .jnpr .plaid-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--jnpr-good)}
 .jnpr .avatar{width:33px;height:33px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);
   display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer}
-@media(max-width:900px){.jnpr .nav .lbl{display:none}.jnpr .nav a{padding:8px}.jnpr .plaid-pill{display:none}}
+/* The primary nav is text-only (no icons), so hiding the labels on mobile
+   left empty tap targets and a lone count badge. Instead, keep the labels
+   and give the nav its own full-width, horizontally-scrollable row beneath
+   the brand/account row. */
+@media(max-width:900px){
+  .jnpr .appbar-in{flex-wrap:wrap;column-gap:12px;row-gap:8px;padding:10px 16px}
+  .jnpr .brand{order:1}
+  .jnpr .ws-wrap{order:2}
+  .jnpr .spacer{order:3}
+  .jnpr .icon-btn{order:4}
+  .jnpr .acct-wrap{order:5}
+  .jnpr .plaid-pill{display:none}
+  .jnpr .nav{order:6;flex-basis:100%;min-width:0;margin-left:0;overflow-x:auto;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .jnpr .nav::-webkit-scrollbar{display:none}
+}
 
 .jnpr .frame{max-width:1160px;margin:24px auto 40px;padding:0 22px}
 
