@@ -411,10 +411,8 @@
     <nav class="nav" aria-label="Primary">
       <button data-page="home" class="on"><span class="lbl">Home</span></button>
       <button data-page="spending"><span class="lbl">Spending</span></button>
-      <button data-page="subscriptions"><span class="lbl">Subscriptions</span></button>
       <button data-page="plans"><span class="lbl">Plans</span><span class="count">4</span></button>
       <button data-page="marketplace"><span class="lbl">Marketplace</span></button>
-      <button data-page="accounts"><span class="lbl">Accounts</span></button>
       <button data-page="credit"><span class="lbl">Credit</span></button>
     </nav>
     <span class="spacer"></span>
@@ -476,16 +474,37 @@
         <button class="btn ghost sm">Export</button>
       </div>
     </div>
-    <div class="pills" style="margin:0 2px 16px" role="tablist">
-      <button class="on">Overview</button><button>Transactions</button><button>Budgets</button><button>Recurring</button>
+    <div class="pills" id="spendTabs" style="margin:0 2px 16px" role="tablist">
+      <button class="on" data-tab="overview">Overview</button><button data-tab="transactions">Transactions</button><button data-tab="budgets">Budgets</button><button data-tab="subs">Subscriptions</button>
     </div>
-    <div class="grid two" style="margin-bottom:16px">
-      <div class="card"><div class="card-head"><h3>Where it went — $5,940</h3></div>
-        <div class="donut-wrap"><div class="chart" id="donutSpend"></div><div class="legend" id="legendSpend"></div></div></div>
-      <div class="card"><div class="card-head"><h3>Budgets</h3><button class="link">Edit</button></div><div id="budgetsSpend"></div></div>
+
+    <div class="tabpanel" data-panel="overview">
+      <div class="grid two">
+        <div class="card"><div class="card-head"><h3>Where it went — $5,940</h3></div>
+          <div class="donut-wrap"><div class="chart" id="donutSpend"></div><div class="legend" id="legendSpend"></div></div></div>
+        <div class="card"><div class="card-head"><h3>Budgets</h3><button class="link">Edit</button></div><div id="budgetsSpend"></div></div>
+      </div>
     </div>
-    <div class="card"><div class="card-head"><h3>Transactions</h3><span class="search" style="max-width:220px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search transactions"></span></div>
-      <div class="rows" id="txSpend"></div></div>
+
+    <div class="tabpanel" data-panel="transactions" hidden>
+      <div class="card"><div class="card-head"><h3>Transactions</h3><span class="search" style="max-width:220px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search transactions"></span></div>
+        <div class="rows" id="txSpend"></div></div>
+    </div>
+
+    <div class="tabpanel" data-panel="budgets" hidden>
+      <div class="card"><div class="card-head"><h3>Budgets</h3><button class="link">Edit budgets</button></div><div id="budgetsSpend2"></div></div>
+    </div>
+
+    <div class="tabpanel" data-panel="subs" hidden>
+      <div class="sum-strip">
+        <div class="sum-card"><div class="l">Monthly total</div><div class="v tnum">$182</div><div class="s">8 subscriptions · $2,183/yr</div></div>
+        <div class="sum-card"><div class="l">Flagged to review</div><div class="v tnum">3</div><div class="s">price hikes + unused</div></div>
+        <div class="sum-card"><div class="l">You could save</div><div class="v acc tnum">$85/mo</div><div class="s">~$1,020/yr on 2 unused</div></div>
+      </div>
+      <div class="card"><div class="card-head"><h3>Subscriptions</h3><span style="font-size:11.5px;color:var(--ink-3);font-weight:600">Sorted by next charge</span></div>
+        <div class="rows" id="subsList"></div></div>
+      <p class="disc">Juniper submits cancellations on your behalf and confirms once done — often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
+    </div>
   </section>
 
   <!-- ============ PLANS ============ -->
@@ -517,27 +536,6 @@
     <p class="disc">Juniper may earn a commission when you open an account through the marketplace. Listings marked <b>curated</b> are reviewed by Juniper; <b>self-listed</b> are submitted by the provider. Ranking reflects fit to your finances, never payment.</p>
   </section>
 
-  <!-- ============ ACCOUNTS ============ -->
-  <section class="page" data-page="accounts">
-    <div class="page-head">
-      <div><h1>Accounts</h1><p class="sub">Everything you've linked, in one place. Balances refresh automatically through Plaid.</p></div>
-      <div class="page-actions">
-        <span class="plaid-pill"><span class="dot"></span>7 linked · updated 2h ago</span>
-        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Link account</button>
-      </div>
-    </div>
-    <div class="card pad-lg" style="margin-bottom:16px">
-      <div class="nw-summary">
-        <div><div class="eyebrow">Total net worth</div><div class="b tnum">$67,330</div></div>
-        <div class="split">
-          <div><div class="l">Assets</div><div class="v tnum">$101,370</div></div>
-          <div><div class="l">Debts</div><div class="v neg tnum">−$34,040</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="grid acct-grid" id="acctPage"></div>
-  </section>
-
   <!-- ============ SCORE BREAKDOWN ============ -->
   <section class="page" data-page="score">
     <button class="back-link" data-page="home">← Back to Home</button>
@@ -567,22 +565,6 @@
       <div id="recsScore"></div>
       <div class="disc">Juniper may earn a commission when you open an account through these links. Offers are ranked by estimated benefit to you, not by payout. Rates are illustrative until you link the account.</div>
     </div>
-  </section>
-
-  <!-- ============ SUBSCRIPTIONS ============ -->
-  <section class="page" data-page="subscriptions">
-    <div class="page-head">
-      <div><h1>Subscriptions</h1><p class="sub">Every recurring charge Juniper found in your transactions — cancel the ones you don't want in a tap, with your OK.</p></div>
-      <div class="page-actions"><div class="pills"><button class="on">Active</button><button>Flagged</button><button>Canceled</button></div></div>
-    </div>
-    <div class="sum-strip">
-      <div class="sum-card"><div class="l">Monthly total</div><div class="v tnum">$182</div><div class="s">8 subscriptions · $2,183/yr</div></div>
-      <div class="sum-card"><div class="l">Flagged to review</div><div class="v tnum">3</div><div class="s">price hikes + unused</div></div>
-      <div class="sum-card"><div class="l">You could save</div><div class="v acc tnum">$85/mo</div><div class="s">~$1,020/yr on 2 unused</div></div>
-    </div>
-    <div class="card"><div class="card-head"><h3>Active subscriptions</h3><span style="font-size:11.5px;color:var(--ink-3);font-weight:600">Sorted by next charge</span></div>
-      <div class="rows" id="subsList"></div></div>
-    <p class="disc">Juniper submits cancellations on your behalf and confirms once done — often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
   </section>
 
   <!-- ============ CREDIT MONITORING ============ -->
@@ -863,14 +845,14 @@ renderSubs();
 sparkline($('#creditSpark'),D.credit.trend);creditAlerts($('#creditAlerts'));creditFactors($('#creditFactors'));cardsBreakdown($('#cardsBreakdown'));
 netWorth('nwHome');donut('donutHome','legendHome');budgets($('#budgetsHome'));txRows($('#txHome'));acctRows($('#acctHome'));
 $('#plansHome').innerHTML=D.plans.map(planRow).join('');
-donut('donutSpend','legendSpend');budgets($('#budgetsSpend'));txRows($('#txSpend'),8);
+donut('donutSpend','legendSpend');budgets($('#budgetsSpend'));budgets($('#budgetsSpend2'));txRows($('#txSpend'),8);
 $('#plansPage').innerHTML=D.plans.map(planLg).join('');
-mktCards($('#mktPage'));acctPage($('#acctPage'));
+mktCards($('#mktPage'));
 
 /* nav */
 const NOTES={
   home:`<b>Home.</b> The perfected dashboard. Slim Juniper Score strip (links to a breakdown page — no offers here), net worth + your plans in the hero with cashflow demoted to a footer, then Mint-style spending + budgets, and transactions + accounts. No recommendations live on this page.`,
-  spending:`<b>Spending.</b> The Mint deep-dive — month selector, Overview / Transactions / Budgets / Recurring tabs, the full category breakdown, budgets, and a searchable transaction table.`,
+  spending:`<b>Spending.</b> The Mint deep-dive with working sub-tabs — <b>Overview</b> (category donut + budgets), <b>Transactions</b> (searchable table), <b>Budgets</b>, and <b>Subscriptions</b> (moved in from its own page: recurring charges, flags, and one-click cancel with the approval modal). Accounts now lives only on Home for now; nav is Home · Spending · Plans · Marketplace · Credit.`,
   plans:`<b>Plans.</b> The value-add hub. Every plan shows funding progress and the next concrete step. A recommendation appears <b>inside a plan only when relevant</b> — see the "Pay off student loans" card, where the SoFi balance-transfer offer accelerates that specific plan. The other plans carry none.`,
   marketplace:`<b>Marketplace.</b> Browse services by category, matched to your finances. Curated vs. self-listed provenance is labeled (supply-side self-listing lives behind "List your service"), and things you already use are badged.`,
   accounts:`<b>Accounts.</b> The Plaid surface — net worth summary up top, then everything grouped into cash / investments / debts with live balances and a "Link account" entry point.`,
@@ -883,6 +865,12 @@ function setPage(k){$$('.page').forEach(p=>p.classList.toggle('on',p.dataset.pag
   $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.page===k));
   $('#note').innerHTML=NOTES[k]||'';window.scrollTo({top:0,behavior:'smooth'});}
 $$('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+
+/* Spending sub-tabs (Overview / Transactions / Budgets / Subscriptions) */
+$$('#spendTabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('#spendTabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.tabpanel').forEach(p=>p.hidden=(p.dataset.panel!==b.dataset.tab));
+}));
 $$('[data-page]').forEach(el=>{if(el.classList.contains('page')||el.closest('.nav'))return;
   el.addEventListener('click',()=>setPage(el.dataset.page));});
 
