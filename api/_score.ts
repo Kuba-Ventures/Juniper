@@ -168,12 +168,16 @@ function creditFactor(i: ScoreInput): Factor {
 // ── Improvement templates ────────────────────────────────────────────────────
 // Each below-target factor becomes a ranked, plan-linked next step. Potential
 // points ≈ the weighted headroom left in that factor.
+// planIcon cross-links an improvement to a plan ONLY when the plan genuinely
+// matches the lever. Debt paydown maps to a debt plan; the others have no
+// one-to-one plan in the default set, so they stay null and the UI offers to
+// start a dedicated plan instead (never hijack an unrelated goal like a baby fund).
 const TEMPLATES: Record<FactorKey, { title: string; detail: string; planIcon: string | null }> = {
-  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", planIcon: "baby" },
-  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income.", planIcon: "home" },
+  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", planIcon: null },
+  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income.", planIcon: null },
   debt: { title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", planIcon: "debt" },
-  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", planIcon: "home" },
-  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score.", planIcon: "debt" },
+  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", planIcon: null },
+  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score.", planIcon: null },
 };
 
 export function computeScore(input: ScoreInput): ScoreResult {

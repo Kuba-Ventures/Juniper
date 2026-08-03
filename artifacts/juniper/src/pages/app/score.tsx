@@ -62,7 +62,7 @@ function Improvements({ items }: { items: ScoreImprovement[] }) {
               <div style={{ fontSize: 12.5, color: "var(--jnpr-ink-3)", margin: "4px 0 2px" }}>{im.detail}</div>
               {plan
                 ? <Link href="/app/plans" className="link">Work on “{plan.t}” →</Link>
-                : <span style={{ fontSize: 12, color: "var(--jnpr-ink-3)" }}>Set up a plan to track this</span>}
+                : <Link href="/app/plans" className="link">Start a plan for this →</Link>}
             </div>
           </div>
         );
@@ -102,9 +102,16 @@ export function Score() {
               </p>
             </div>
           </div>
-          <div>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>Score · last {score.trend.length} months</div>
-            <PlanSpark data={score.trend} k="--jnpr-accent" />
+          <div className="score-trend">
+            <div className="st-head">
+              <span className="eyebrow">Score · last {score.trend.length} months</span>
+              <span className={`delta ${score.delta >= 0 ? "up" : "down"}`}>{score.delta >= 0 ? "+" : ""}{score.delta}</span>
+            </div>
+            <PlanSpark data={score.trend} k="--jnpr-accent" height={96} />
+            <div className="st-foot">
+              <span>{score.trend[0]} · {score.trend.length} mo ago</span>
+              <span><b className="tnum">{score.value}</b> · now</span>
+            </div>
           </div>
         </div>
       </div>
