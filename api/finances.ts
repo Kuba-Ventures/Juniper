@@ -7,6 +7,8 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
+import { fetchScoreInput } from "./_finance-snapshot";
+import { computeScore } from "./_score";
 
 export const config = { runtime: "edge" };
 
@@ -33,6 +35,7 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
 type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null };
 type Bud = { category: string; limit_amount: number };
 type Snap = { as_of: string; net_worth: number };
+type ScoreRow = { as_of: string; value: number };
 type Acct = { name: string; mask: string | null; type: string | null; subtype: string | null; balance: number | null };
 type Item = { institution_name: string | null; accounts: Acct[] };
 
@@ -103,6 +106,24 @@ export default async function handler(req: Request): Promise<Response> {
   const changeAbs = series.length > 1 ? value - series[0] : 0;
   const changePct = series.length > 1 && series[0] ? Math.round((changeAbs / series[0]) * 1000) / 10 : 0;
 
+  // Juniper Score — computed from the same data, with trend + delta from the
+  // stored history (written by /api/score/compute). Shares one engine so the
+  // dashboard strip, the breakdown page, and the writer never disagree.
+  const { input } = await fetchScoreInput(uid);
+  const computed = computeScore(input);
+  const scoreRows = await rows<ScoreRow>(`score_history?user_id=eq.${uid}&select=as_of,value&order=as_of.asc&limit=400`);
+  const trend = scoreRows.length ? scoreRows.map((s) => s.value) : [computed.value];
+  const priorValue = scoreRows.length > 1 ? scoreRows[0].value : computed.value;
+  const scoreOut = {
+    value: computed.value,
+    band: computed.band,
+    delta: computed.value - priorValue,
+    lever: computed.lever,
+    trend,
+    factors: computed.factors,
+    improvements: computed.improvements,
+  };
+
   return json({
     linked: true,
     netWorth: { value, changeAbs, changePct, series, labels },
@@ -111,5 +132,6 @@ export default async function handler(req: Request): Promise<Response> {
     budgets: budgetsOut,
     transactions,
     accounts,
+    score: scoreOut,
   });
 }

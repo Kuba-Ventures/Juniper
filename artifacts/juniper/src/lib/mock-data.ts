@@ -92,11 +92,37 @@ export const subscriptions: Subscription[] = [
   { n: "Amazon Prime", cat: "Shopping", amt: 14.99, next: "Sep 3", k: "--jnpr-c2" },
 ];
 
-export const score = {
+export type FactorKey = "savings" | "emergency" | "debt" | "investing" | "credit";
+export type FactorStatus = "strong" | "fair" | "weak";
+export interface ScoreFactor { key: FactorKey; label: string; score: number; weight: number; status: FactorStatus; detail: string }
+export interface ScoreImprovement { factor: FactorKey; title: string; detail: string; potentialPts: number; planIcon: string | null }
+export interface Score {
+  value: number;
+  band: string;
+  delta: number;
+  lever: string;
+  trend: number[];
+  factors: ScoreFactor[];
+  improvements: ScoreImprovement[];
+}
+export const score: Score = {
   value: 78,
   band: "Healthy",
   delta: 4,
-  lever: "build your emergency fund to 6 months",
+  lever: "build your emergency fund",
+  trend: [68, 70, 71, 73, 74, 75, 74, 78],
+  factors: [
+    { key: "savings", label: "Savings rate", score: 82, weight: 0.25, status: "strong", detail: "You're saving about 22% of your income — great pace." },
+    { key: "emergency", label: "Emergency fund", score: 58, weight: 0.25, status: "fair", detail: "3.5 months of expenses saved — target is 6 months." },
+    { key: "debt", label: "Debt load", score: 71, weight: 0.20, status: "fair", detail: "Your debt is about 0.9× your annual income — moderate." },
+    { key: "investing", label: "Investing pace", score: 74, weight: 0.15, status: "fair", detail: "You've invested about 0.7× your annual income — keep contributing." },
+    { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726 — good." },
+  ],
+  improvements: [
+    { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11, planIcon: "baby" },
+    { factor: "debt", title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", potentialPts: 6, planIcon: "debt" },
+    { factor: "investing", title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", potentialPts: 4, planIcon: "home" },
+  ],
 };
 
 export interface CreditAlert { t: string; d: string; dir: "up" | "down"; imp: string }
