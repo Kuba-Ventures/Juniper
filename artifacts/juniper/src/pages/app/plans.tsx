@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { plans as seedPlans, money, type Plan, type SeriesKey } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
+import { useThreads, previewOf, relativeTime } from "@/lib/planner";
 import { PartnerPanel } from "@/components/juniper/partner-panel";
 import { planMark, cssVar, PlanSpark, PlanIcon } from "@/components/juniper/primitives";
 
@@ -254,18 +255,40 @@ function EditForm({ plan, onSave, onDelete, onClose }: { plan: Plan; onSave: (p:
   const [monthly, setMonthly] = useState(plan.monthly || "");
   const [date, setDate] = useState(plan.date || "");
   const [, navigate] = useLocation();
+  const { threads } = useThreads();
+  const chats = threads.filter((t) => t.planTitle === plan.t);
   const ask = (q: string) => navigate(`/app/ask?q=${encodeURIComponent(q)}&plan=${encodeURIComponent(plan.t)}`);
+  const newChat = () => navigate(`/app/ask?plan=${encodeURIComponent(plan.t)}`);
+  const openChat = (id: string) => navigate(`/app/ask?thread=${encodeURIComponent(id)}`);
   return (
     <Backdrop onClose={onClose}>
       <div className="ask-plan-cta">
         <div className="ask-plan-head">
           <div><b>Ask Juniper about this plan</b><small>Grounded in your real numbers</small></div>
-          <button className="btn sm" onClick={() => ask(`Help me think through my ${plan.t} plan.`)}>Open chat →</button>
+          <button className="btn sm" onClick={newChat}>New chat →</button>
         </div>
         <div className="ask-faqs">
           {faqsFor(plan.icon).map((q) => <button key={q} className="ask-faq" onClick={() => ask(q)}>{q}</button>)}
         </div>
       </div>
+
+      {chats.length > 0 && (
+        <div className="plan-chats">
+          <div className="pc-lbl">Conversations about this plan</div>
+          {chats.map((t) => (
+            <button className="pc-item" key={t.id} onClick={() => openChat(t.id)}>
+              <span className="pc-berry"><PlanIcon name="target" /></span>
+              <span className="pc-main">
+                <span className="pc-t">{t.title}</span>
+                {previewOf(t) && <span className="pc-p">{previewOf(t)}</span>}
+              </span>
+              <span className="pc-w">{relativeTime(t.updatedAt)}</span>
+              <span className="pc-arr">›</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <h3>Edit plan</h3>
       <p>Update the goal or remove it. Progress is funded from your linked accounts.</p>
       <div className="field"><label>Goal name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>

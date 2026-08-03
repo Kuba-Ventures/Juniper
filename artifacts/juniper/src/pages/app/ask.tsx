@@ -46,22 +46,32 @@ export default function Ask() {
 
   const active: Thread | undefined = threads.find((t) => t.id === activeId);
 
-  // Plan-scoped entry: /app/ask?q=…&plan=…  → make a thread and auto-send once.
+  // Deep links from a plan:
+  //   ?thread=<id>        → open an existing chat
+  //   ?q=…&plan=…         → new plan-scoped chat, auto-ask the question
+  //   ?plan=…             → new, empty plan-scoped chat, ready to type
   useEffect(() => {
     if (seeded.current) return;
     const params = new URLSearchParams(search);
+    const threadId = params.get("thread");
     const q = params.get("q");
-    if (!q) return;
-    seeded.current = true;
     const plan = params.get("plan") || undefined;
+    if (!threadId && !q && !plan) return;
+    seeded.current = true;
+
+    if (threadId) {
+      setActiveId(threadId);
+      navigate("/app/ask", { replace: true });
+      return;
+    }
     const t = create({
-      title: titleFrom(q),
+      title: q ? titleFrom(q) : "New chat",
       planTitle: plan,
       planContext: plan ? `Plan: ${plan}` : undefined,
     });
     setActiveId(t.id);
     navigate("/app/ask", { replace: true });
-    void send(q, t);
+    if (q) void send(q, t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 

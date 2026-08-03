@@ -48,6 +48,28 @@ export function titleFrom(text: string): string {
   return t.length > 48 ? t.slice(0, 46) + "…" : t || "New chat";
 }
 
+// Last assistant line of a thread, trimmed for a one-line preview in lists.
+export function previewOf(t: Thread): string {
+  const last = [...t.messages].reverse().find((m) => m.role === "assistant");
+  const src = last?.content ?? t.messages[t.messages.length - 1]?.content ?? "";
+  const clean = src.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+  return clean.length > 96 ? clean.slice(0, 94) + "…" : clean;
+}
+
+// "just now" / "2h ago" / "Yesterday" / "Mar 4" — for chat list timestamps.
+export function relativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return "Yesterday";
+  if (day < 7) return `${day}d ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 // A tiny store shared across the page so the rail and the thread view stay in
 // sync without prop-drilling. Components subscribe via useThreads().
 type Listener = () => void;
