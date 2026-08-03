@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Juniper — Partner layer (Honeydue-inspired)</title>
+<style>
+:root{
+  --ground:#F4F7F3; --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+  --ink:#232B21; --ink-2:#556052; --ink-3:#889081; --line:#E3E9E1; --line-2:#EEF2EC;
+  --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3;
+  --head:#173D28; --pine:#234E37;
+  --good:#2F8558; --good-soft:#E1EFE6; --warn:#A9781E; --warn-soft:#F4ECD6; --bad:#B4523B; --bad-soft:#F3E2DC;
+  --maya:#3E6FB0; --maya-soft:#E4ECF6; --devin:#9455A8; --devin-soft:#EFE6F3; --shared:#2F8558;
+  --c1:#2F8558; --c2:#A8781E; --c5:#9455A8; --c6:#5E7D2E;
+  --r:16px; --r-sm:11px;
+  --shadow:0 1px 2px rgba(20,32,20,.05), 0 8px 24px -14px rgba(20,32,20,.13);
+  --shadow-lg:0 2px 8px rgba(20,32,20,.08), 0 24px 50px -22px rgba(20,32,20,.22);
+  --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--ff);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px;padding:0 0 60px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+.tnum{font-variant-numeric:tabular-nums}
+h1,h2,h3,h4{letter-spacing:-.01em;color:var(--head);font-weight:650}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.section-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:38px 2px 14px;display:flex;align-items:center;gap:9px}
+.section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* top brand strip */
+.topbar{background:color-mix(in srgb,var(--ground) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.topbar .in{max-width:1080px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:18px;color:var(--head)}
+.logo .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:16px}
+.note{margin-left:auto;font-size:12.5px;color:var(--ink-3)}
+
+/* page header band */
+.band{background:var(--pine);border-radius:var(--r);padding:22px 24px;margin:20px 0 6px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.band h1{font-size:23px;color:#FBFDFB}
+.band .sub{color:#B9D3BE;font-size:13.5px;margin-top:4px;max-width:60ch}
+.band .who{display:flex;align-items:center;gap:8px}
+.ava{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;border:2px solid #FBFDFB}
+.ava.m{background:var(--maya)} .ava.d{background:var(--devin)}
+.ava-stack{display:flex} .ava-stack .ava:nth-child(2){margin-left:-10px}
+.pill-light{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#DDEBDE;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:6px 12px;border-radius:20px}
+
+/* cards + grid */
+.grid{display:grid;gap:16px}
+.two{grid-template-columns:1.3fr 1fr}
+.two-eq{grid-template-columns:1fr 1fr}
+.three{grid-template-columns:repeat(3,1fr)}
+@media(max-width:820px){.two,.two-eq,.three{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.card.pad{padding:22px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.card h3{font-size:14px}
+.link{font-size:12.5px;font-weight:600;color:var(--accent);cursor:pointer}
+.btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:7px 12px;font-size:12.5px}
+.chip{font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:20px}
+.chip.shared{color:var(--shared);background:var(--good-soft)} .chip.priv{color:var(--ink-3);background:var(--surface-3)}
+.chip.m{color:var(--maya);background:var(--maya-soft)} .chip.d{color:var(--devin);background:var(--devin-soft)}
+
+/* invite flow strip */
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:820px){.flow{grid-template-columns:1fr}}
+.flow .step-n{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase;margin-bottom:10px}
+.mini-panel{display:flex;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
+.pp-mark{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.pp-title{font-weight:650;font-size:13px}
+.pp-sub{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.field{margin:12px 0}
+.field label{display:block;font-size:12px;font-weight:650;color:var(--ink-2);margin-bottom:5px}
+.field input{width:100%;font:inherit;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px;color:var(--ink)}
+.share{display:flex;gap:8px;margin-top:6px}
+.share input{flex:1;min-width:0;font:inherit;font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px}
+
+/* net worth split */
+.big-num{font-size:34px;font-weight:750;letter-spacing:-.025em;line-height:1;color:var(--ink)}
+.split-bar{height:12px;border-radius:20px;overflow:hidden;display:flex;margin:16px 0 10px;background:var(--line-2)}
+.split-bar i{height:100%}
+.split-legend{display:flex;gap:18px;font-size:12px;color:var(--ink-2)}
+.split-legend .k{display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%}
+.delta{font-size:12.5px;font-weight:650;color:var(--good)}
+
+/* account rows */
+.rows > .row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line-2)}
+.rows > .row:first-child{border-top:0}
+.tile{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:0 0 auto}
+.subhead{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 2px;display:flex;align-items:center;gap:8px}
+.subhead:first-child{margin-top:0}
+.nm{font-weight:600;font-size:13.5px}
+.mt{font-size:11.5px;color:var(--ink-3)}
+.amt{margin-left:auto;font-weight:700;font-size:13.5px;text-align:right}
+.amt.neg{color:var(--bad)}
+
+/* goals */
+.goal{padding:13px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);margin-bottom:12px}
+.goal:last-child{margin-bottom:0}
+.goal .g-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.goal .g-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff}
+.goal .g-t{font-weight:650;font-size:13.5px}
+.goal .g-amt{margin-left:auto;font-weight:700;font-size:13px}.goal .g-amt small{color:var(--ink-3);font-weight:550}
+.bar{height:8px;border-radius:20px;background:var(--line-2);overflow:hidden;display:flex}
+.contrib{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-top:7px}
+.contrib b{font-weight:650}
+
+/* bills */
+.bill{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line-2)}
+.bill:first-child{border-top:0}
+.bill .due{width:44px;height:44px;border-radius:10px;background:var(--surface-3);display:grid;place-items:center;text-align:center;flex:0 0 auto;line-height:1.05}
+.bill .due .d{font-weight:750;font-size:15px;color:var(--ink)}.bill .due .mo{font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--ink-3)}
+.bill .b-amt{margin-left:auto;font-weight:700;font-size:13.5px}
+.bill.soon .due{background:var(--warn-soft)}.bill.soon .due .d{color:var(--warn)}
+
+/* transaction chat */
+.txchat{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.txchat .tx{display:flex;align-items:center;gap:12px;padding:13px;background:var(--surface-2)}
+.txchat .tx .amt{color:var(--ink)}
+.thread{padding:12px 13px;display:flex;flex-direction:column;gap:9px;background:var(--surface)}
+.msg{display:flex;gap:9px;align-items:flex-end}
+.msg.me{flex-direction:row-reverse}
+.bubble{max-width:74%;font-size:12.5px;padding:8px 11px;border-radius:13px;line-height:1.4}
+.msg.them .bubble{background:var(--surface-3);color:var(--ink);border-bottom-left-radius:4px}
+.msg.me .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg .who-mini{font-size:9.5px;color:var(--ink-3);margin:0 2px}
+.reactions{display:flex;gap:6px;padding:0 13px 12px;background:var(--surface)}
+.react{font-size:12px;border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:3px 9px;cursor:pointer}
+.react.on{border-color:var(--accent);background:var(--accent-soft)}
+.chatbar{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--line-2);background:var(--surface)}
+.chatbar input{flex:1;font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:8px 13px}
+
+/* privacy */
+.priv-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line-2)}
+.priv-row:first-child{border-top:0}
+.priv-row .p-t{font-weight:600;font-size:13px}.priv-row .p-s{font-size:11.5px;color:var(--ink-3)}
+.toggle{margin-left:auto;width:42px;height:24px;border-radius:20px;background:var(--surface-3);position:relative;cursor:pointer;flex:0 0 auto;transition:background .15s}
+.toggle i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .15s}
+.toggle.on{background:var(--accent)}.toggle.on i{left:21px}
+.disc{font-size:11.5px;color:var(--ink-3);margin:14px 2px 0;line-height:1.5}
+.caption{font-size:12.5px;color:var(--ink-2);margin:2px 2px 14px}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="in">
+  <div class="logo"><span class="mark">✦</span> Juniper</div>
+  <span class="note">Design preview · partner layer + shared dashboard · Honeydue-inspired, pine identity</span>
+</div></div>
+
+<div class="wrap">
+
+  <!-- ============ INVITE FLOW ============ -->
+  <div class="section-label">1 · The invite — solo-first, partner is an optional layer</div>
+  <p class="caption">Juniper works fully solo. The partner layer is opt-in and privacy-first: only shared goals become mutual — individual accounts, net worth, and spending stay private unless you choose otherwise.</p>
+
+  <div class="flow">
+    <div class="card">
+      <div class="step-n">On your Plans page</div>
+      <div class="mini-panel">
+        <div class="pp-mark">♡</div>
+        <div style="flex:1;min-width:0">
+          <div class="pp-title">Planning with a partner?</div>
+          <div class="pp-sub">Invite them to share goals together.</div>
+        </div>
+        <button class="btn ghost sm">Invite partner</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="step-n">Create a private link</div>
+      <div class="field" style="margin:0"><label>Partner's first name (optional)</label><input value="Devin" readonly></div>
+      <div class="share"><input value="juniper.com/invite/8fk3…q2" readonly><button class="btn sm">Copy</button></div>
+      <div class="pp-sub" style="margin-top:9px">They open the link → join your shared goals.</div>
+    </div>
+    <div class="card">
+      <div class="step-n">Connected</div>
+      <div class="mini-panel">
+        <div class="ava-stack"><div class="ava m">M</div><div class="ava d">D</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="pp-title">Planning with Devin</div>
+          <div class="pp-sub">Sharing 2 goals · accounts stay private</div>
+        </div>
+        <button class="btn ghost sm">Manage</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SHARED DASHBOARD ============ -->
+  <div class="section-label">2 · The shared dashboard</div>
+
+  <div class="band">
+    <div>
+      <h1>Shared with Devin</h1>
+      <div class="sub">Both your finances in one view — collaborate on your own terms, keep what's private, private.</div>
+    </div>
+    <div class="who">
+      <div class="ava-stack"><div class="ava m">M</div><div class="ava d">D</div></div>
+      <span class="pill-light">● Both connected</span>
+    </div>
+  </div>
+
+  <!-- combined net worth + goals -->
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card pad">
+      <div class="card-head"><div class="eyebrow">Combined net worth</div><span class="link">This month ▾</span></div>
+      <div style="display:flex;align-items:flex-end;gap:12px">
+        <span class="big-num tnum">$186,400</span>
+        <span class="delta" style="margin-bottom:5px">▲ $3,120 this month</span>
+      </div>
+      <div class="split-bar"><i style="width:56%;background:var(--maya)"></i><i style="width:44%;background:var(--devin)"></i></div>
+      <div class="split-legend">
+        <span class="k"><span class="dot" style="background:var(--maya)"></span> Maya · <b class="tnum">$104,600</b></span>
+        <span class="k"><span class="dot" style="background:var(--devin)"></span> Devin · <b class="tnum">$81,800</b></span>
+      </div>
+      <div class="disc">Each person's net worth is rolled up from their own linked accounts. Neither of you sees the other's individual transactions unless shared below.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Shared goals</h3><span class="link">+ New</span></div>
+      <div class="goal">
+        <div class="g-top"><div class="g-ic" style="background:var(--c1)">⌂</div><span class="g-t">Home down payment</span><span class="g-amt tnum">$41k <small>/ $80k</small></span></div>
+        <div class="bar"><i style="width:32%;background:var(--maya)"></i><i style="width:19%;background:var(--devin)"></i></div>
+        <div class="contrib"><span><b style="color:var(--maya)">Maya</b> $26k · <b style="color:var(--devin)">Devin</b> $15k</span><span>51% funded</span></div>
+      </div>
+      <div class="goal">
+        <div class="g-top"><div class="g-ic" style="background:var(--c5)">♥</div><span class="g-t">Wedding</span><span class="g-amt tnum">$12k <small>/ $30k</small></span></div>
+        <div class="bar"><i style="width:22%;background:var(--maya)"></i><i style="width:18%;background:var(--devin)"></i></div>
+        <div class="contrib"><span><b style="color:var(--maya)">Maya</b> $6.5k · <b style="color:var(--devin)">Devin</b> $5.5k</span><span>40% funded</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- accounts (collaborate on your own terms) + bills -->
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-head"><h3>Accounts</h3><span class="link">Collaborate on your own terms →</span></div>
+      <div class="rows">
+        <div class="subhead"><span class="dot" style="background:var(--shared)"></span> Shared</div>
+        <div class="row"><div class="tile" style="background:var(--c1)">A</div><div><div class="nm">Ally Joint Savings</div><div class="mt">Both · House fund</div></div><div class="amt tnum">$41,200 <span class="chip shared">Shared</span></div></div>
+        <div class="row"><div class="tile" style="background:var(--c6)">C</div><div><div class="nm">Chase Joint Checking</div><div class="mt">Both · Bills</div></div><div class="amt tnum">$5,840 <span class="chip shared">Shared</span></div></div>
+
+        <div class="subhead"><span class="dot" style="background:var(--maya)"></span> Maya's</div>
+        <div class="row"><div class="tile" style="background:var(--maya)">F</div><div><div class="nm">Fidelity Brokerage</div><div class="mt">Balance shared · activity private</div></div><div class="amt tnum">$62,300 <span class="chip m">Balance only</span></div></div>
+        <div class="row"><div class="tile" style="background:var(--maya)">S</div><div><div class="nm">Amex — personal</div><div class="mt">Not shared</div></div><div class="amt tnum" style="color:var(--ink-3)">•••• <span class="chip priv">Private</span></div></div>
+
+        <div class="subhead"><span class="dot" style="background:var(--devin)"></span> Devin's</div>
+        <div class="row"><div class="tile" style="background:var(--devin)">V</div><div><div class="nm">Vanguard 401(k)</div><div class="mt">Balance shared · activity private</div></div><div class="amt tnum">$54,100 <span class="chip d">Balance only</span></div></div>
+        <div class="row"><div class="tile" style="background:var(--devin)">S</div><div><div class="nm">Student loan</div><div class="mt">Shared</div></div><div class="amt neg tnum">−$18,900 <span class="chip d">Shared</span></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Bills &amp; reminders</h3><span class="link">All bills</span></div>
+      <div>
+        <div class="bill soon"><div class="due"><div class="d">14</div><div class="mo">Aug</div></div><div><div class="nm">Rent</div><div class="mt">Maya pays · due in 3 days</div></div><div class="b-amt tnum">$2,400</div></div>
+        <div class="bill"><div class="due"><div class="d">18</div><div class="mo">Aug</div></div><div><div class="nm">PG&amp;E + Internet</div><div class="mt">Devin pays</div></div><div class="b-amt tnum">$210</div></div>
+        <div class="bill"><div class="due"><div class="d">22</div><div class="mo">Aug</div></div><div><div class="nm">Car insurance</div><div class="mt">Shared · split 50/50</div></div><div class="b-amt tnum">$156</div></div>
+      </div>
+      <div class="disc">Both of you get a nudge when a shared bill is due — so nothing slips.</div>
+    </div>
+  </div>
+
+  <!-- transaction chat + privacy -->
+  <div class="grid two-eq">
+    <div class="card">
+      <div class="card-head"><h3>Talk about a transaction</h3><span class="pp-sub">👍 or ask — right on the charge</span></div>
+      <div class="txchat">
+        <div class="tx"><div class="tile" style="background:var(--c2)">W</div><div><div class="nm">Whole Foods</div><div class="mt">Groceries · Aug 8</div></div><div class="amt tnum">$142.60</div></div>
+        <div class="reactions"><span class="react on">👍 1</span><span class="react">❤️</span><span class="react">😂</span><span class="react">＋</span></div>
+        <div class="thread">
+          <div class="msg them"><div><div class="who-mini">Devin</div><div class="bubble">what was this one? 👀</div></div></div>
+          <div class="msg me"><div style="text-align:right"><div class="who-mini">You</div><div class="bubble">groceries for Saturday's dinner party 🎉</div></div></div>
+        </div>
+        <div class="chatbar"><input placeholder="Message Devin…" readonly><button class="btn sm">Send</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>What Devin can see</h3><span class="chip shared">Your controls</span></div>
+      <div>
+        <div class="priv-row"><div><div class="p-t">Shared goals &amp; contributions</div><div class="p-s">Always on for goals you both join</div></div><div class="toggle on"><i></i></div></div>
+        <div class="priv-row"><div><div class="p-t">Shared &amp; joint account balances</div><div class="p-s">Ally, Chase Joint, split bills</div></div><div class="toggle on"><i></i></div></div>
+        <div class="priv-row"><div><div class="p-t">My account balances (totals only)</div><div class="p-s">Fidelity, 401(k) — balance, not transactions</div></div><div class="toggle on"><i></i></div></div>
+        <div class="priv-row"><div><div class="p-t">My individual transactions</div><div class="p-s">Personal spending stays private</div></div><div class="toggle"><i></i></div></div>
+        <div class="priv-row"><div><div class="p-t">My Juniper Score</div><div class="p-s">Share your 0–100 financial health</div></div><div class="toggle"><i></i></div></div>
+      </div>
+      <div class="disc">Collaborate on your own terms — flip any of these any time. Devin sees the same controls for their side.</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
