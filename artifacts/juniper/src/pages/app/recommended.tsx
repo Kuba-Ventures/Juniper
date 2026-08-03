@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { listings, listingCategories, type Listing } from "@/lib/mock-data";
 import { BrandTile } from "@/components/juniper/primitives";
-import { submitListing, usePartners } from "@/lib/marketplace";
+import { submitListing, usePartners, usePicks } from "@/lib/marketplace";
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" strokeLinecap="round" /></svg>
@@ -91,11 +91,11 @@ function ListingCard({ m, rec }: { m: Listing; rec?: boolean }) {
 export function Recommended() {
   const [cat, setCat] = useState("All");
   const [listOpen, setListOpen] = useState(false);
-  // Library reads the DB-backed catalog (usePartners), starting on the seed.
-  // "Picked for you" stays on the personalized mock until per-user matching
-  // (from linked accounts + goals) is wired — that's a data tie-in, not a swap.
+  // Library reads the DB-backed catalog; "Picked for you" is personalized from
+  // the member's financial signals (usePicks). Both start on the seed/mock and
+  // swap to live data once the member is linked + synced.
   const { offers } = usePartners();
-  const picked = listings.filter((m) => m.match);
+  const { picks: picked } = usePicks();
   const pickedNames = new Set(picked.map((m) => m.n));
   const library = offers
     .filter((m) => !pickedNames.has(m.n))
@@ -116,10 +116,14 @@ export function Recommended() {
 
       {listOpen && <ListYourService onClose={() => setListOpen(false)} />}
 
-      <div className="sec-title">Picked for you</div>
-      <div className="grid mkt-grid" style={{ marginBottom: 28 }}>
-        {picked.map((m) => <ListingCard key={m.n} m={m} rec />)}
-      </div>
+      {picked.length > 0 && (
+        <>
+          <div className="sec-title">Picked for you</div>
+          <div className="grid mkt-grid" style={{ marginBottom: 28 }}>
+            {picked.map((m) => <ListingCard key={m.n} m={m} rec />)}
+          </div>
+        </>
+      )}
 
       <div className="lib-head">
         <div className="sec-title">Library</div>

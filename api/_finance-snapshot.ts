@@ -18,9 +18,22 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
 // stable across a partial current month.
 const WINDOW_DAYS = 90;
 
+// Richer breakdown for personalized marketplace picks — separates the debt kinds
+// and precomputes the ratios the pick rules read.
+export interface PickSignals {
+  monthlySpending: number;
+  cashReserves: number;
+  emergencyMonths: number;   // cashReserves / monthlySpending
+  cardDebt: number;          // revolving (credit) balances
+  loanDebt: number;          // installment (loan) balances
+  investmentBalance: number;
+  annualIncome: number;
+}
+
 export interface FinanceSnapshot {
   linked: boolean;
   input: ScoreInput;
+  signals: PickSignals;
 }
 
 // UTC yyyy-mm-dd for `daysAgo` before now, without Date.now-in-a-loop concerns.
@@ -38,7 +51,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
 
   // Not enough to score off yet — caller keeps the demo mock.
   if (!items.length || !txns.length) {
-    return { linked: false, input: emptyInput() };
+    return { linked: false, input: emptyInput(), signals: emptySignals() };
   }
 
   // Plaid convention: positive amount = money out, negative = money in.
@@ -48,17 +61,20 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   const monthlySpending = outflow / months;
   const monthlyIncome = inflow / months;
 
-  let cashReserves = 0, investmentBalance = 0, totalDebt = 0;
+  let cashReserves = 0, investmentBalance = 0, cardDebt = 0, loanDebt = 0;
   for (const it of items) {
     for (const a of it.accounts || []) {
       const bal = a.balance || 0;
       const type = (a.type || "").toLowerCase();
       if (type === "depository") cashReserves += bal;
       else if (type === "investment" || type === "brokerage") investmentBalance += bal;
-      else if (type === "credit" || type === "loan") totalDebt += Math.abs(bal);
+      else if (type === "credit") cardDebt += Math.abs(bal);
+      else if (type === "loan") loanDebt += Math.abs(bal);
     }
   }
+  const totalDebt = cardDebt + loanDebt;
   const totalAssets = cashReserves + investmentBalance;
+  const emergencyMonths = monthlySpending > 0 ? cashReserves / monthlySpending : 0;
 
   return {
     linked: true,
@@ -72,9 +88,22 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       // creditScore / creditUtilization left undefined until we ingest credit
       // data (Stage 10); the engine falls back to a neutral credit factor.
     },
+    signals: {
+      monthlySpending: Math.round(monthlySpending),
+      cashReserves: Math.round(cashReserves),
+      emergencyMonths: Math.round(emergencyMonths * 10) / 10,
+      cardDebt: Math.round(cardDebt),
+      loanDebt: Math.round(loanDebt),
+      investmentBalance: Math.round(investmentBalance),
+      annualIncome: Math.round(monthlyIncome * 12),
+    },
   };
 }
 
 function emptyInput(): ScoreInput {
   return { monthlyIncome: 0, monthlySpending: 0, cashReserves: 0, totalDebt: 0, totalAssets: 0, investmentBalance: 0 };
+}
+
+function emptySignals(): PickSignals {
+  return { monthlySpending: 0, cashReserves: 0, emergencyMonths: 0, cardDebt: 0, loanDebt: 0, investmentBalance: 0, annualIncome: 0 };
 }
