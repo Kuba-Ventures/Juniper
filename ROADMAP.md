@@ -12,7 +12,7 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 
 - **Post-login home:** Mint-style dashboard — net worth + plans hero, spending-by-category, budgets, transactions, accounts.
 - **Recommendations:** live **only inside a relevant plan** and on the **Score breakdown** page — never floating on the dashboard.
-- **Visual identity:** **Juniper.com** skin — warm cream `#FAF7F2` + serif display (matches the live marketing site), warm-brown dark mode. Real bonsai logo (`artifacts/juniper/public/logo.png`).
+- **Visual identity:** **cool off-white + pine** — background `#F4F7F3`, pine-green accent `#1C4A31`, dark-green headers & UI icons, and each page's header/intro is a **pine-filled band** with light text. White cards, multi-color plan/category tiles, and real brand logos kept for contrast. Real bonsai logo (`artifacts/juniper/public/logo.png`). Dark-green dark mode included. *(Superseded the earlier cream + serif "Juniper.com" direction.)*
 - **Prototype reference:** `design/juniper-app-mock.html` — a self-contained, clickable design mock (open in any browser; ☾/☀ toggles theme). Covers Home, Spending, **Subscriptions**, Plans, Marketplace, Accounts, the **Score breakdown**, and **Credit monitoring**. This is a design reference, not production code.
 - **Planned surfaces not yet designed:** Ask Juniper advisor (Stage 11).
 
