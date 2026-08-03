@@ -1,8 +1,6 @@
 import { Link } from "wouter";
-import {
-  netWorth, cashflow, spending, budgets, transactions, accounts, plans, score,
-  money, moneyK, money2,
-} from "@/lib/mock-data";
+import { plans, money, moneyK, money2, type Budget, type Account } from "@/lib/mock-data";
+import { useFinances } from "@/lib/finances";
 import {
   BrandTile, planMark, cssVar, NetWorthChart, SpendingDonut, MiniRing,
 } from "@/components/juniper/primitives";
@@ -11,10 +9,10 @@ const UpArrow = () => (
   <svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
-function Budgets() {
+function Budgets({ items }: { items: Budget[] }) {
   return (
     <div>
-      {budgets.map((b, i) => {
+      {items.map((b, i) => {
         const pct = Math.min(100, Math.round((b.s / b.l) * 100));
         const over = b.s > b.l;
         return (
@@ -31,7 +29,7 @@ function Budgets() {
   );
 }
 
-function AccountGroup({ title, arr }: { title: string; arr: typeof accounts.cash }) {
+function AccountGroup({ title, arr }: { title: string; arr: Account[] }) {
   return (
     <>
       <div className="subhead">{title}</div>
@@ -47,6 +45,8 @@ function AccountGroup({ title, arr }: { title: string; arr: typeof accounts.cash
 }
 
 export default function Home({ name }: { name: string }) {
+  const { data } = useFinances();
+  const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   return (
@@ -117,7 +117,7 @@ export default function Home({ name }: { name: string }) {
         </div>
         <div className="card">
           <div className="card-head"><h3>Budgets</h3><Link href="/app/spending" className="link">Edit</Link></div>
-          <Budgets />
+          <Budgets items={budgets} />
         </div>
       </div>
 

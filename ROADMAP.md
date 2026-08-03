@@ -71,6 +71,11 @@ Shell is done; remaining screens and states:
 - **3d — Budgets** [x] `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions.
 - **3e — Net worth history** [x] `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line.
 - **3f — Frontend data layer** [ ] `useFinances()` queries fetching transactions / budgets / accounts / net worth; swap the `mock-data` selectors behind the same shapes, with a graceful fallback to mock until a user has linked + synced.
+- **3b — Transactions sync** [ ] Add `transactions` to `PLAID_PRODUCTS`; `api/plaid/transactions-sync.ts` pulling Plaid `/transactions/sync` by cursor into the table (service-role, user-scoped, dedup on `plaid_transaction_id`).
+- **3c — Categorization** [ ] Map Plaid `personal_finance_category.primary` → Juniper categories (Housing, Groceries & dining, …) + merchant rules + user overrides (`category` / `category_source`).
+- **3d — Budgets** [ ] CRUD + monthly rollups (spent per category from transactions) + over-budget logic.
+- **3e — Net worth history** [ ] Daily balance snapshots (Plaid returns current balances only) → the trend line.
+- **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home is wired.** Remaining polish: adopt the hook in Spending/Accounts too, and add a sync trigger (call `POST /api/plaid/transactions-sync`, e.g. on link / periodically).
 
 ---
 
