@@ -7,6 +7,7 @@
 // localStorage so it survives navigation. All data behind it is mock for now —
 // real cross-partner data sharing is a later backend stage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { fetchPartner } from "@/lib/partner";
 
 export type Workspace = "personal" | "shared";
 
@@ -53,6 +54,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify({ workspace, partner })); } catch { /* ignore */ }
   }, [workspace, partner]);
+
+  // Sync from the server: a real active partnership connects (and names) the
+  // partner. Only ever upgrades to connected — it won't undo a local demo preview.
+  useEffect(() => {
+    let alive = true;
+    fetchPartner().then((d) => {
+      if (alive && d?.connected) setPartner({ name: d.partner?.name || "Devin", connected: true });
+    });
+    return () => { alive = false; };
+  }, []);
 
   // Never sit in the shared workspace without a partner connected.
   const setWorkspace = useCallback((w: Workspace) => {

@@ -4,6 +4,10 @@ import { cssVar, planMark } from "@/components/juniper/primitives";
 import { SharedPage } from "@/components/juniper/shared-frame";
 import { combined, sharedAccounts, sharedGoals, you, partner as demoPartner, type SharedAccount } from "@/lib/shared-data";
 import { useWorkspace } from "@/lib/workspace";
+import { usePartner } from "@/lib/partner";
+import type { SeriesKey } from "@/lib/mock-data";
+
+const GOAL_CYCLE: SeriesKey[] = ["--jnpr-c1", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6"];
 
 const privacyChip = { shared: "Shared", balance: "Balance only", private: "Private" } as const;
 
@@ -23,8 +27,15 @@ function AccountRow({ a }: { a: SharedAccount }) {
 
 export function SharedOverview() {
   const { partner } = useWorkspace();
+  const { data } = usePartner();
   const name = partner.name || demoPartner.name;
-  const yShare = Math.round((combined.youShare / combined.netWorth) * 100);
+  // Live combined net worth + shared goals when a real partnership exists; else demo.
+  const live = data?.connected ? data : null;
+  const c = live?.combined ?? combined;
+  const goals = live?.goals?.length
+    ? live.goals.map((g, i) => ({ t: g.t, icon: g.icon, k: GOAL_CYCLE[i % GOAL_CYCLE.length], target: g.target, you: g.you, partner: g.partner }))
+    : sharedGoals;
+  const yShare = c.netWorth ? Math.round((c.youShare / c.netWorth) * 100) : 50;
   const pShare = 100 - yShare;
   const mine = sharedAccounts.filter((a) => a.owner === "you");
   const theirs = sharedAccounts.filter((a) => a.owner === "partner");
@@ -35,12 +46,12 @@ export function SharedOverview() {
       {/* combined net worth */}
       <div className="card pad-lg together" style={{ marginBottom: 16 }}>
         <div className="eyebrow">Together</div>
-        <div className="big-num tnum" style={{ margin: "6px 0 2px" }}>{money(combined.netWorth)}</div>
-        <div className="delta up" style={{ fontSize: 13 }}>▲ {money(combined.changeAbs)} this month</div>
+        <div className="big-num tnum" style={{ margin: "6px 0 2px" }}>{money(c.netWorth)}</div>
+        {!live && <div className="delta up" style={{ fontSize: 13 }}>▲ {money(combined.changeAbs)} this month</div>}
         <div className="split-bar"><i style={{ width: `${yShare}%`, background: cssVar(you.k) }} /><i style={{ width: `${pShare}%`, background: cssVar(demoPartner.k) }} /></div>
         <div className="split-legend">
-          <span><span className="dot" style={{ background: cssVar(you.k) }} /> {you.name} · <b className="tnum">{money(combined.youShare)}</b></span>
-          <span><span className="dot" style={{ background: cssVar(demoPartner.k) }} /> {name} · <b className="tnum">{money(combined.partnerShare)}</b></span>
+          <span><span className="dot" style={{ background: cssVar(you.k) }} /> {you.name} · <b className="tnum">{money(c.youShare)}</b></span>
+          <span><span className="dot" style={{ background: cssVar(demoPartner.k) }} /> {name} · <b className="tnum">{money(c.partnerShare)}</b></span>
         </div>
       </div>
 
@@ -66,7 +77,7 @@ export function SharedOverview() {
       {/* shared goals */}
       <div className="card">
         <div className="card-head"><h3>Shared goals</h3><Link href="/app/shared/goals" className="link">+ New shared goal</Link></div>
-        {sharedGoals.map((g, i) => {
+        {goals.map((g, i) => {
           const funded = g.you + g.partner;
           const pct = Math.round((funded / g.target) * 100);
           return (
