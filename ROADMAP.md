@@ -50,13 +50,14 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 2 — Rebuild the shell in the real codebase **(build)**
+## Stage 2 — Rebuild the shell in the real codebase **(build)** — *in progress*
 
-- [ ] Stand up `DESIGN.md` + Tailwind theme from the locked Juniper.com tokens (cream/serif, warm-brown dark)
-- [ ] New top nav + routing, replacing the plan-centric shell ♻️ *(`pages/app-shell.tsx`, wouter sub-routes)*
-- [ ] Embed the real logo + app icons across the app shell ♻️ *(`public/logo.png`, `site.webmanifest`)*
-- [ ] Port pages to React components: Home, Spending, Plans, Marketplace, Accounts, Score
+- [x] Stand up `DESIGN.md` + design tokens (offpine cool off-white + pine) — `artifacts/juniper/DESIGN.md` + scoped `src/styles/juniper.css` (`.jnpr`)
+- [x] New top nav + routing, replacing the plan-centric shell — `src/pages/juniper-app.tsx` + `components/juniper/app-frame.tsx` (Home · Spending · Plans · Credit · Recommended); routed at `/app/*` in `App.tsx` (old `app-shell.tsx` kept, unrouted)
+- [x] Embed the real logo + app icons across the app shell — `public/logo.png` in the app bar
+- [~] Port pages to React components — **Home done** (`src/pages/app/home.tsx` + mock data + chart primitives, typecheck/build/SSR verified); Spending / Plans / Credit / Recommended are live pine-header stubs, bodies porting next
 - [ ] Fold in existing surfaces ♻️ *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*
+- Data: components read `src/lib/mock-data.ts` (typed selectors) so the Stage-3 swap to live data is data-layer only
 
 ---
 
