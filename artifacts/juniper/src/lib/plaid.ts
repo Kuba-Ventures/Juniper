@@ -65,6 +65,28 @@ export async function exchangePublicToken(
   }
 }
 
+// Kick the server-side data pipeline for the caller's linked items: pull new
+// transactions (/transactions/sync) and snapshot net worth. Fire-and-report —
+// both run server-side, are user-scoped by JWT, and are safe to call repeatedly
+// (the sync resumes from its cursor; the snapshot upserts one row per day).
+// Returns whether at least one leg succeeded; degrades quietly when Plaid /
+// storage isn't configured yet so callers never block the UI on it.
+export async function syncFinances(): Promise<{ transactions: boolean; netWorth: boolean }> {
+  const call = async (path: string) => {
+    try {
+      const res = await authedFetch(path, { method: "POST" });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+  const [transactions, netWorth] = await Promise.all([
+    call("/api/plaid/transactions-sync"),
+    call("/api/plaid/networth-snapshot"),
+  ]);
+  return { transactions, netWorth };
+}
+
 export async function fetchPlaidItems(): Promise<PlaidItem[]> {
   try {
     const res = await authedFetch("/api/plaid/accounts");

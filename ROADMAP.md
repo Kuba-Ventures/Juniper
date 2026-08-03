@@ -70,7 +70,7 @@ Shell is done; remaining screens and states:
 - **3c — Categorization** [~] core map in `api/_categorize.ts` (Plaid `personal_finance_category` primary/detailed → Juniper categories, used by the sync). Merchant rules + user overrides (`category_source='user'`) still to add.
 - **3d — Budgets** [x] `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions.
 - **3e — Net worth history** [x] `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line.
-- **3f — Frontend data layer** [ ] `useFinances()` queries fetching transactions / budgets / accounts / net worth; swap the `mock-data` selectors behind the same shapes, with a graceful fallback to mock until a user has linked + synced.
+- **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home, Spending, and the Accounts/Connections surface all read live data.** Sync trigger: `syncFinances()` (`src/lib/plaid.ts`) fires `POST /api/plaid/transactions-sync` + `POST /api/plaid/networth-snapshot` automatically on link, and on the manual **"Refresh data now"** button in Connections.
 - **3b — Transactions sync** [ ] Add `transactions` to `PLAID_PRODUCTS`; `api/plaid/transactions-sync.ts` pulling Plaid `/transactions/sync` by cursor into the table (service-role, user-scoped, dedup on `plaid_transaction_id`).
 - **3c — Categorization** [ ] Map Plaid `personal_finance_category.primary` → Juniper categories (Housing, Groceries & dining, …) + merchant rules + user overrides (`category` / `category_source`).
 - **3d — Budgets** [ ] CRUD + monthly rollups (spent per category from transactions) + over-budget logic.
@@ -153,6 +153,20 @@ Ongoing credit-score tracking and alerts on the Score/credit page (distinct from
 - [ ] **"Ask Juniper"** LLM advisor — money Q&A (investing, transaction structuring) with dashboard context; needs prompt safety + financial-advice disclaimers *(deferred from Stage 0)*
 - [ ] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md)*
 - [ ] Cross-device sync for "accounts I use" *(open loop from PROJECT.md)*
+
+---
+
+## Stage 12 — Auth & onboarding flow **(design + build)**
+
+The front door: a branded **log-in / sign-up** experience and the first-run path from account creation → connect accounts → first dashboard. Supabase Auth + RLS already exist under the hood (see reuse inventory) — this stage is the *product* layer on top: the screens, the reskin to the current cool-off-white + pine identity, and the sequencing into the app.
+
+**Sequencing:** best done **alongside finalizing the page designs (Stage 1)** so the auth screens share the locked visual system, and **before launch (Stage 8)** since new users can't reach the product without it. It's split out as its own stage so the sign-up funnel gets deliberate design attention rather than being an afterthought.
+
+- [ ] **(design)** Sign-up / log-in / password-reset screens in the pine identity — mock first (matching `design/juniper-app-mock.html`), then port
+- [ ] **(design)** First-run onboarding sequence: create account → *(optional)* invite partner → **connect accounts** (reuse `connections.tsx`) → land on dashboard (mock fallback until synced)
+- [ ] **(build)** Wire screens to Supabase Auth (email/password + magic link; consider Google OAuth); session + `RequireAuth` already route `/app/*`
+- [ ] **(build)** Empty/first-run dashboard state — the "connect your first account" nudge that flips to live data once synced (ties into Stage 3f `useFinances`)
+- [ ] Account settings surface — profile, linked institutions (Connections), partner, sign-out
 
 ---
 
