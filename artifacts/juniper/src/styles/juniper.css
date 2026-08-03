@@ -75,10 +75,14 @@
 
 /* ---------- cards & grid ---------- */
 .jnpr .grid{display:grid;gap:16px}
+/* Grid children default to min-width:auto and refuse to shrink below their
+   content, which pushed the whole app wider than the viewport on phones.
+   Letting them shrink to their track keeps everything inside the screen. */
+.jnpr .grid > *{min-width:0}
 .jnpr .card{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);padding:18px;box-shadow:var(--jnpr-shadow)}
 .jnpr .card.pad-lg{padding:22px}
 .jnpr .card h3{font-size:14px}
-.jnpr .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.jnpr .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;margin-bottom:14px;flex-wrap:wrap}
 .jnpr .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--jnpr-ink-3)}
 .jnpr .link{font-size:12.5px;font-weight:600;color:var(--jnpr-accent);text-decoration:none;cursor:pointer;background:none;border:0;padding:0;font-family:inherit}
 .jnpr .link:hover{text-decoration:underline}
@@ -103,7 +107,7 @@
 .jnpr .delta svg{width:12px;height:12px}
 
 .jnpr .cf-foot{display:flex;gap:1px;margin-top:14px;background:var(--jnpr-line);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);overflow:hidden}
-.jnpr .cf-foot > div{flex:1;background:var(--jnpr-surface);padding:10px 13px}
+.jnpr .cf-foot > div{flex:1;min-width:0;background:var(--jnpr-surface);padding:10px 13px}
 .jnpr .cf-foot .l{font-size:11px;color:var(--jnpr-ink-3);font-weight:600}
 .jnpr .cf-foot .v{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:-.01em}
 .jnpr .cf-foot .v.pos{color:var(--jnpr-good)}.jnpr .cf-foot .v.acc{color:var(--jnpr-accent)}
