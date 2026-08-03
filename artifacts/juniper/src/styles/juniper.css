@@ -495,3 +495,48 @@
 .jnpr .pc-p{font-size:11.5px;color:var(--jnpr-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jnpr .pc-w{font-size:11px;color:var(--jnpr-ink-3);flex:0 0 auto;white-space:nowrap}
 .jnpr .pc-arr{color:var(--jnpr-ink-3);font-size:17px;flex:0 0 auto;line-height:1}
+
+/* Ask Juniper — thread toolbar + report action */
+.jnpr .ask-tools{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--jnpr-line-2);min-height:52px}
+.jnpr .ask-scope.inline{align-self:auto;margin:0}
+.jnpr .ask-tool-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.jnpr .ask-tool-err{font-size:11.5px;color:var(--jnpr-bad);font-weight:600}
+
+/* Plan report (printable to PDF) */
+.jnpr .rp-overlay{position:fixed;inset:0;z-index:120;background:rgba(15,20,15,.55);backdrop-filter:blur(3px);display:flex;flex-direction:column}
+.jnpr .rp-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:var(--jnpr-surface);border-bottom:1px solid var(--jnpr-line)}
+.jnpr .rp-bar-t{font-size:12.5px;font-weight:700;color:var(--jnpr-ink-3);letter-spacing:.04em;text-transform:uppercase}
+.jnpr .rp-scroll{flex:1;overflow-y:auto;padding:28px 20px 60px;display:flex;justify-content:center}
+/* the sheet is always "paper" so the on-screen preview matches the PDF */
+.jnpr .rp-sheet{width:100%;max-width:720px;background:#fff;color:#232B21;border-radius:6px;box-shadow:0 30px 60px -24px rgba(0,0,0,.5);padding:52px 56px 40px;height:max-content}
+.jnpr .rp-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E3E9E1;padding-bottom:16px;margin-bottom:26px}
+.jnpr .rp-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#1C4A31}
+.jnpr .rp-brand img{width:22px;height:22px;object-fit:contain}
+.jnpr .rp-meta{font-size:11.5px;color:#889081;font-weight:600}
+.jnpr .rp-title{font-size:27px;line-height:1.15;letter-spacing:-.02em;margin:0 0 10px;color:#171E17;text-wrap:balance}
+.jnpr .rp-headline{font-size:15.5px;line-height:1.5;color:#1C4A31;font-weight:600;margin:0 0 8px}
+.jnpr .rp-sec{margin-top:26px}
+.jnpr .rp-sec h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5C7A65;margin:0 0 9px}
+.jnpr .rp-sec p{font-size:14.5px;line-height:1.7;color:#2A3327;margin:0}
+.jnpr .rp-steps{list-style:none;counter-reset:rp;margin:0;padding:0}
+.jnpr .rp-steps li{counter-increment:rp;position:relative;padding:0 0 16px 40px;margin:0}
+.jnpr .rp-steps li:before{content:counter(rp);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#E1EBE3;color:#1C4A31;font-size:13px;font-weight:700;display:grid;place-items:center}
+.jnpr .rp-steps li:not(:last-child):after{content:"";position:absolute;left:13px;top:30px;bottom:6px;width:1.5px;background:#E3E9E1}
+.jnpr .rp-step-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.jnpr .rp-step-t{font-size:14.5px;font-weight:700;color:#171E17}
+.jnpr .rp-step-tags{display:flex;gap:6px;flex:0 0 auto}
+.jnpr .rp-tag{font-size:11px;font-weight:700;color:#556052;background:#EEF2EC;border-radius:20px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.jnpr .rp-tag.amt{color:#1C4A31;background:#E1EBE3}
+.jnpr .rp-step-d{font-size:13.5px;line-height:1.6;color:#3A4436;margin:4px 0 0}
+.jnpr .rp-assume{margin:0;padding-left:18px}
+.jnpr .rp-assume li{font-size:13px;line-height:1.6;color:#556052;margin-bottom:4px}
+.jnpr .rp-foot{margin-top:30px;padding-top:16px;border-top:1px solid #E3E9E1;font-size:11.5px;line-height:1.6;color:#889081}
+
+@media print{
+  body *{visibility:hidden !important}
+  .jnpr .rp-sheet,.jnpr .rp-sheet *{visibility:visible !important}
+  .jnpr .rp-overlay{position:static;background:none;backdrop-filter:none}
+  .jnpr .rp-bar{display:none !important}
+  .jnpr .rp-scroll{overflow:visible;padding:0;display:block}
+  .jnpr .rp-sheet{position:absolute;left:0;top:0;max-width:none;width:100%;box-shadow:none;border-radius:0;padding:0}
+}

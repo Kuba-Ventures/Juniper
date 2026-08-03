@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useThreads, streamTurn, titleFrom, type Thread } from "@/lib/planner";
+import { useThreads, streamTurn, titleFrom, generateReport, type Thread } from "@/lib/planner";
+import { PlanReportView } from "@/components/juniper/plan-report";
 
 // Global starter prompts (the standalone surface). Plan-scoped chats arrive
 // pre-seeded with a question from the Plans page, so they skip this screen.
@@ -39,12 +40,33 @@ export default function Ask() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportErr, setReportErr] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const search = useSearch();
   const [, navigate] = useLocation();
   const seeded = useRef(false);
 
   const active: Thread | undefined = threads.find((t) => t.id === activeId);
+
+  // Reset the report overlay when switching threads.
+  useEffect(() => { setShowReport(false); setReportErr(false); }, [activeId]);
+
+  async function makeReport() {
+    if (!active || reportBusy) return;
+    setReportBusy(true);
+    setReportErr(false);
+    try {
+      const report = await generateReport(active.messages, active.planContext);
+      update(active.id, (x) => ({ ...x, report, updatedAt: Date.now() }));
+      setShowReport(true);
+    } catch {
+      setReportErr(true);
+    } finally {
+      setReportBusy(false);
+    }
+  }
 
   // Deep links from a plan:
   //   ?thread=<id>        → open an existing chat
@@ -144,8 +166,27 @@ export default function Ask() {
             </div>
           ) : (
             <>
+              <div className="ask-tools">
+                {active.planTitle
+                  ? <span className="ask-scope inline">Grounded in your <b>{active.planTitle}</b> plan</span>
+                  : <span />}
+                {active.messages.some((m) => m.role === "assistant") && !streaming && (
+                  <span className="ask-tool-actions">
+                    {reportErr && <span className="ask-tool-err">Couldn't build the plan. Try again.</span>}
+                    {reportBusy ? (
+                      <button className="btn sm ghost" disabled>Preparing plan…</button>
+                    ) : active.report ? (
+                      <>
+                        <button className="btn sm ghost" onClick={makeReport}>Update</button>
+                        <button className="btn sm" onClick={() => setShowReport(true)}>View plan (PDF)</button>
+                      </>
+                    ) : (
+                      <button className="btn sm" onClick={makeReport}>Save as plan (PDF)</button>
+                    )}
+                  </span>
+                )}
+              </div>
               <div className="ask-thread" ref={scrollRef}>
-                {active.planTitle && <div className="ask-scope">Grounded in your <b>{active.planTitle}</b> plan</div>}
                 {active.messages.map((m, i) => (
                   <div key={i} className={`ask-turn ${m.role}`}>
                     {m.role === "assistant" && <div className="ask-who">Juniper</div>}
@@ -164,6 +205,10 @@ export default function Ask() {
           )}
         </section>
       </div>
+
+      {showReport && active?.report && (
+        <PlanReportView report={active.report} planTitle={active.planTitle} onClose={() => setShowReport(false)} />
+      )}
     </div>
   );
 }
