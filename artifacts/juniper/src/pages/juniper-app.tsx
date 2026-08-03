@@ -9,6 +9,7 @@ import { Spending } from "@/pages/app/spending";
 import { Score } from "@/pages/app/score";
 import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
+import Ask from "@/pages/app/ask";
 import { SharedOverview } from "@/pages/app/shared/overview";
 import { SharedAccounts } from "@/pages/app/shared/accounts";
 import { SharedGoals } from "@/pages/app/shared/goals";
@@ -40,6 +41,7 @@ export default function JuniperApp() {
           <Route path="/app/score" component={Score} />
           <Route path="/app/admin" component={Admin} />
           <Route path="/app/plans" component={Plans} />
+          <Route path="/app/ask" component={Ask} />
           <Route path="/app/credit" component={Credit} />
           <Route path="/app/recommended" component={Recommended} />
           <Route path="/app/shared" component={SharedOverview} />

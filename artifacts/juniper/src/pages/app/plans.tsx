@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { plans as seedPlans, money, type Plan, type SeriesKey } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
@@ -54,6 +55,19 @@ const TEMPLATES: [string, string, SeriesKey][] = [
 ];
 
 const parseNum = (s: string) => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
+
+// Per-plan FAQs — the questions people actually ask about each goal. They open
+// the AI planner (Ask Juniper) pre-seeded and scoped to this plan.
+const FAQS: Record<string, string[]> = {
+  home: ["How much home can I afford?", "How big a down payment do I need?", "Should I clear debt before I buy?"],
+  debt: ["What's the fastest way to pay this off?", "Avalanche or snowball for me?", "Should I consolidate or refinance?"],
+  shield: ["How many months should this cover?", "Where should I keep my emergency fund?", "Am I building it fast enough?"],
+  baby: ["How can I plan for my child's education?", "What's a 529 and should I open one?", "How much should a baby fund cover?"],
+  sun: ["Am I saving enough for retirement?", "Roth or traditional for me?", "How do I catch up if I'm behind?"],
+  wedding: ["How do I budget for a wedding?", "How much should I set aside monthly?"],
+  combine: ["How do we combine finances fairly?", "Should we split bills or pool them?"],
+};
+const faqsFor = (icon?: string): string[] => FAQS[icon ?? ""] ?? ["How do I reach this goal faster?", "How much should I set aside each month?", "Is this goal realistic for me?"];
 
 const PlusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
@@ -239,8 +253,19 @@ function EditForm({ plan, onSave, onDelete, onClose }: { plan: Plan; onSave: (p:
   const [target, setTarget] = useState(String(plan.target || 0));
   const [monthly, setMonthly] = useState(plan.monthly || "");
   const [date, setDate] = useState(plan.date || "");
+  const [, navigate] = useLocation();
+  const ask = (q: string) => navigate(`/app/ask?q=${encodeURIComponent(q)}&plan=${encodeURIComponent(plan.t)}`);
   return (
     <Backdrop onClose={onClose}>
+      <div className="ask-plan-cta">
+        <div className="ask-plan-head">
+          <div><b>Ask Juniper about this plan</b><small>Grounded in your real numbers</small></div>
+          <button className="btn sm" onClick={() => ask(`Help me think through my ${plan.t} plan.`)}>Open chat →</button>
+        </div>
+        <div className="ask-faqs">
+          {faqsFor(plan.icon).map((q) => <button key={q} className="ask-faq" onClick={() => ask(q)}>{q}</button>)}
+        </div>
+      </div>
       <h3>Edit plan</h3>
       <p>Update the goal or remove it. Progress is funded from your linked accounts.</p>
       <div className="field"><label>Goal name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>

@@ -213,14 +213,35 @@ conversation. They don't merge.
 
 ---
 
-## 8. Open questions for review
+## 8. Decisions (defaults chosen — open to change)
 
-1. **KB scope for launch** — how broad should the v1 curated knowledge base be? (Lean
-   list: HYSA, brokerage, Roth/traditional, 529, HSA, LLC basics, estate primer.)
-2. **PDF persistence** — save every exported plan to the user's account by default, or
-   download-only until they opt to save?
-3. **Plan-scoped strictness** — should the plan-scoped planner refuse off-topic
-   questions and redirect to global, or answer briefly then steer back (current
-   `plan-chat` behavior)?
-4. **Partner visibility** — in the shared workspace, is the planner household-aware
-   (sees both partners' shared accounts) from day one, or personal-only in v1?
+1. **KB scope for launch** → the lean list: HYSA, brokerage, Roth/traditional, 529,
+   HSA, LLC basics, estate primer. Each note carries an "as-of" year. We widen after
+   launch based on what people actually ask.
+2. **PDF persistence** → **save by default.** Every exported plan is saved to the
+   user's account (retrievable later) *and* downloaded. A plan you can't find again
+   isn't a plan.
+3. **Plan-scoped strictness** → **answer briefly, then steer back** (keep the current
+   `plan-chat` behavior). Hard refusals feel broken; a gentle redirect keeps one
+   coherent planner.
+4. **Partner visibility** → **personal-only in v1.** The planner reasons over the
+   signed-in user's own accounts. Household-aware planning (both partners' shared
+   accounts) is a fast-follow once the personal planner is solid.
+
+## 9. Chat surfaces & threads (added scope)
+
+The planner is reachable as its own destination, not only from a plan:
+
+- **Standalone "Ask Juniper"** — a top-level nav item and page (`/app/ask`),
+  separate from Plans. This is the home of general questions.
+- **Multiple chats** — a left rail lists your chat threads with a **New chat**
+  button; each thread keeps its own history. v1 stores threads in the browser
+  (localStorage); server-synced threads are a fast-follow.
+- **Plan FAQs** — every plan surfaces a short set of the questions people actually
+  ask about that goal (Baby → *"How can I plan for my child's education?"*; Home →
+  *"How much home can I afford?"*). Tapping one opens the planner in a new,
+  plan-scoped thread with the question pre-asked. There's also a plain **"Ask
+  Juniper about this plan"** entry for anything else.
+
+So: plan-scoped chats are seeded *from* a plan but live *in* the same Ask Juniper
+surface, alongside your general chats — one planner, many threads, two ways in.

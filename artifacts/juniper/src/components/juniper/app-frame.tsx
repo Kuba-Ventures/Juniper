@@ -10,6 +10,7 @@ const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Home" },
   { path: "/app/spending", label: "Spending" },
   { path: "/app/plans", label: "Plans", count: 4 },
+  { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
   { path: "/app/recommended", label: "Recommended" },
 ];
