@@ -112,11 +112,11 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 7 — Reframe Plans + couples **(build)**
+## Stage 7 — Reframe Plans + couples **(build)** — *in progress*
 
-- [ ] Reframe the 5 planning domains as goals inside the new dashboard (funded from real balances) ♻️
-- [ ] Apply the audience decision — **solo default with "invite partner" layer** ♻️ *(decided Stage 0; partner invites + alignment already built)*
-- [ ] Auto-fill plan inputs (savings / debt) from linked balances *(open loop from PROJECT.md)*
+- [x] **Reframe the domains as goals funded from real balances** ♻️ — the new Plans page's create flow seeds a goal from the member's linked balances (a debt-payoff goal targets actual debt, an emergency fund uses 6× real spend + current cash, retirement pulls in invested balances), and the header reflects "funded from your linked balances" once live. *(Per-plan account designation — pinning a specific account to a goal — is a future refinement.)*
+- [x] **Auto-fill plan inputs (savings / debt) from linked balances** → `prefillFor()` in `src/pages/app/plans.tsx` reads `useFinances()` and pre-fills target/saved with a "from your accounts" hint per template.
+- [ ] Apply the audience decision — **solo default with "invite partner" layer** ♻️ *(decided Stage 0; partner invites + alignment already built — surface `createInvite()` (domain-scoped, `src/lib/invites.ts`) in the new shell as an optional layer. Next PR.)*
 
 ---
 

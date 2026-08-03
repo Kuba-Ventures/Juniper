@@ -242,6 +242,8 @@
 .jnpr .form-col input:focus,.jnpr .form-col select:focus,.jnpr .form-col textarea:focus{border-color:var(--jnpr-accent)}
 .jnpr .form-col textarea{resize:vertical;min-height:64px}
 .jnpr .form-error{background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:9px 12px;font-size:12.5px;margin-bottom:12px}
+.jnpr .prefill-hint{display:flex;align-items:flex-start;gap:8px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep);border-radius:var(--jnpr-r-sm);padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:14px}
+.jnpr .prefill-hint svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;stroke:var(--jnpr-accent);fill:none}
 
 /* ---------- score trend mini-chart ---------- */
 .jnpr .score-trend{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px 16px 12px}

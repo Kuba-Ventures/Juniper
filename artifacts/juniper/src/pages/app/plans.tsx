@@ -1,7 +1,40 @@
 import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { plans as seedPlans, money, type Plan, type SeriesKey } from "@/lib/mock-data";
+import { useFinances } from "@/lib/finances";
 import { planMark, cssVar, PlanSpark, PlanIcon } from "@/components/juniper/primitives";
+
+// Balances distilled from the member's linked accounts, used to auto-fill a new
+// plan so goals are funded from real money instead of guessed inputs.
+export interface Balances { totalDebt: number; totalCash: number; totalInvest: number; monthlySpend: number }
+
+interface Prefill { target: number; saved: number; hint: string }
+
+// What to seed a new plan's fields with, per template, from real balances.
+function prefillFor(icon: string, b: Balances): Prefill {
+  switch (icon) {
+    case "debt":
+      return b.totalDebt > 0
+        ? { target: b.totalDebt, saved: 0, hint: `Your linked balances show ${money(b.totalDebt)} of debt to pay off.` }
+        : { target: 0, saved: 0, hint: "" };
+    case "shield": {
+      const target = Math.round(b.monthlySpend * 6);
+      return b.monthlySpend > 0
+        ? { target, saved: Math.min(b.totalCash, target), hint: `6 months at ~${money(b.monthlySpend)}/mo spending — you have ${money(b.totalCash)} in cash so far.` }
+        : { target: 0, saved: 0, hint: "" };
+    }
+    case "sun":
+      return b.totalInvest > 0
+        ? { target: 0, saved: b.totalInvest, hint: `You have ${money(b.totalInvest)} invested so far — set a target to track your pace.` }
+        : { target: 0, saved: 0, hint: "" };
+    case "home":
+      return b.totalCash > 0
+        ? { target: 0, saved: 0, hint: `You have ${money(b.totalCash)} in cash that could seed a down payment.` }
+        : { target: 0, saved: 0, hint: "" };
+    default:
+      return { target: 0, saved: 0, hint: "" };
+  }
+}
 
 type Filter = "active" | "completed" | "all";
 type ModalState =
@@ -80,13 +113,22 @@ export default function Plans() {
   const [modal, setModal] = useState<ModalState>(null);
   const close = () => setModal(null);
 
+  const { data, source } = useFinances();
+  const balances: Balances = {
+    totalDebt: data.accounts.debt.reduce((a, x) => a + Math.abs(x.v), 0),
+    totalCash: data.accounts.cash.reduce((a, x) => a + x.v, 0),
+    totalInvest: data.accounts.invest.reduce((a, x) => a + x.v, 0),
+    monthlySpend: data.cashflow.spent,
+  };
+  const linked = source === "live";
+
   const shown = list.filter((p) => (filter === "all" ? true : filter === "completed" ? p.done : !p.done));
 
   return (
     <div className="frame">
       <PageHeader
         title="Plans"
-        sub="Your money goals — funded from real balances, with the next step always in view."
+        sub={linked ? "Your money goals, funded from your linked balances — with the next step always in view." : "Your money goals — funded from real balances, with the next step always in view."}
         actions={
           <>
             <div className="pills">
@@ -130,6 +172,7 @@ export default function Plans() {
       {modal?.k === "form" && (
         <CreateForm
           state={modal}
+          prefill={prefillFor(modal.icon, balances)}
           onBack={() => setModal({ k: "new" })}
           onCreate={(plan) => { setList((cur) => [plan, ...cur]); setFilter("active"); close(); }}
         />
@@ -147,28 +190,40 @@ export default function Plans() {
   );
 }
 
-function CreateForm({ state, onBack, onCreate }: { state: { icon: string; label: string; color: SeriesKey }; onBack: () => void; onCreate: (p: Plan) => void }) {
+function CreateForm({ state, prefill, onBack, onCreate }: { state: { icon: string; label: string; color: SeriesKey }; prefill: Prefill; onBack: () => void; onCreate: (p: Plan) => void }) {
   const isCustom = state.label === "Custom goal";
   const [name, setName] = useState(isCustom ? "" : state.label);
-  const [target, setTarget] = useState("");
+  const [target, setTarget] = useState(prefill.target ? String(prefill.target) : "");
+  const [saved, setSaved] = useState(prefill.saved ? String(prefill.saved) : "");
   const [monthly, setMonthly] = useState("");
   const [date, setDate] = useState("");
   return (
     <Backdrop onClose={onBack}>
       <h3>{isCustom ? "Custom goal" : state.label}</h3>
       <p>Name it and set a target — Juniper starts funding it from your linked accounts.</p>
+      {prefill.hint && (
+        <div className="prefill-hint"><PlanIcon name="target" /><span>{prefill.hint}</span></div>
+      )}
       <div className="field"><label>Goal name</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. New car fund" /></div>
       <div className="field2">
         <div className="field"><label>Target amount ($)</label><input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="numeric" placeholder="10,000" /></div>
-        <div className="field"><label>Monthly</label><input value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="$300/mo" /></div>
+        <div className="field"><label>Saved so far ($)</label><input value={saved} onChange={(e) => setSaved(e.target.value)} inputMode="numeric" placeholder="0" /></div>
       </div>
-      <div className="field"><label>Target date</label><input value={date} onChange={(e) => setDate(e.target.value)} placeholder="Dec 2027" /></div>
+      <div className="field2">
+        <div className="field"><label>Monthly</label><input value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="$300/mo" /></div>
+        <div className="field"><label>Target date</label><input value={date} onChange={(e) => setDate(e.target.value)} placeholder="Dec 2027" /></div>
+      </div>
       <div className="modal-actions">
-        <button className="btn" onClick={() => onCreate({
-          t: name.trim() || state.label, icon: state.icon, ab: (name.trim() || state.label)[0].toUpperCase(),
-          k: state.color, saved: 0, target: parseNum(target), pct: 0, st: "new", stl: "New",
-          monthly: monthly.trim() || "Not set", date: date.trim() || "No date set", note: "Just created", next: "Add your first contribution",
-        })}>Create plan</button>
+        <button className="btn" onClick={() => {
+          const t = parseNum(target), s = parseNum(saved);
+          onCreate({
+            t: name.trim() || state.label, icon: state.icon, ab: (name.trim() || state.label)[0].toUpperCase(),
+            k: state.color, saved: s, target: t, pct: t ? Math.round((s / t) * 100) : 0, st: "new", stl: "New",
+            monthly: monthly.trim() || "Not set", date: date.trim() || "No date set",
+            note: s > 0 ? "Funded from your accounts" : "Just created",
+            next: s > 0 ? "Keep contributing to stay on pace" : "Add your first contribution",
+          });
+        }}>Create plan</button>
         <button className="btn ghost" onClick={onBack}>Back</button>
       </div>
     </Backdrop>
