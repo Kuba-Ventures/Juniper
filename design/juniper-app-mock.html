@@ -131,8 +131,8 @@
   .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;font-size:18px}
   .brand .mark{width:auto;height:32px;flex:0 0 auto;object-fit:contain;display:block}
   .nav{display:flex;gap:2px;margin-left:6px}
-  .nav button{appearance:none;border:0;background:transparent;font-size:13.5px;font-weight:550;color:var(--ink-3);
-    padding:7px 13px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:color .15s,background .15s}
+  .nav button{appearance:none;border:0;background:transparent;font-size:13px;font-weight:550;color:var(--ink-3);
+    padding:7px 10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,background .15s;white-space:nowrap}
   .nav button:hover{color:var(--ink);background:var(--surface-3)}
   .nav button.on{color:var(--accent);background:var(--accent-soft);font-weight:650}
   .nav .count{font-size:11px;font-weight:700;background:var(--surface);color:var(--ink-3);padding:0 6px;border-radius:20px;line-height:18px}
@@ -392,6 +392,14 @@
   .cfactor .cn{font-weight:600;font-size:13px}.cfactor .cv{font-size:11.5px;color:var(--ink-3);margin-top:1px}
   .cfactor .cr{margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
   .cr.exc{color:var(--good);background:var(--good-soft)}.cr.good{color:var(--accent);background:var(--accent-soft)}.cr.fair{color:var(--warn);background:var(--warn-soft)}
+  .util-hero{display:flex;align-items:center;gap:22px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+  .util-hero .big{font-size:32px;font-weight:750;letter-spacing:-.02em;font-family:var(--ff)}
+  .util-hero .ub{flex:1;min-width:220px}
+  .card-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid var(--line-2)}.card-row:first-child{border-top:0}
+  .card-row .ci{flex:1;min-width:0}.card-row .cn{font-weight:650;font-size:13.5px}.card-row .csub{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+  .card-row .util{width:150px;flex:0 0 auto}
+  .card-row .util .ut{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px}.card-row .util .ut .hi{color:var(--warn)}
+  @media(max-width:560px){.card-row .util{width:110px}}
   .note{max-width:1160px;margin:0 auto;padding:8px 22px 44px;color:var(--ink-3);font-size:12px;line-height:1.6}
   .note b{color:var(--ink-2)}
 </style>
@@ -407,6 +415,7 @@
       <button data-page="plans"><span class="lbl">Plans</span><span class="count">4</span></button>
       <button data-page="marketplace"><span class="lbl">Marketplace</span></button>
       <button data-page="accounts"><span class="lbl">Accounts</span></button>
+      <button data-page="credit"><span class="lbl">Credit</span></button>
     </nav>
     <span class="spacer"></span>
     <span class="plaid-pill"><span class="dot"></span>7 linked</span>
@@ -578,9 +587,8 @@
 
   <!-- ============ CREDIT MONITORING ============ -->
   <section class="page" data-page="credit">
-    <button class="back-link" data-page="score">← Back to Score</button>
     <div class="page-head">
-      <div><h1>Credit score</h1><p class="sub">Monitored monthly with a soft pull that never affects your score — with an alert whenever something changes.</p></div>
+      <div><h1>Credit</h1><p class="sub">Your credit score, monitored monthly with a soft pull that never affects it — plus every card and how much of your limit you're using.</p></div>
       <div class="page-actions"><span class="plaid-pill"><span class="dot"></span>Updated Jul 28</span></div>
     </div>
     <div class="card pad-lg" style="margin-bottom:16px">
@@ -602,6 +610,11 @@
         <div><div class="eyebrow" style="margin-bottom:8px">Score · last 8 months</div><div class="chart" id="creditSpark"></div></div>
       </div>
     </div>
+    <div class="card pad-lg" style="margin-bottom:16px">
+      <div class="card-head"><h3>Credit cards</h3><span style="font-size:11.5px;color:var(--ink-3);font-weight:600">3 cards</span></div>
+      <div id="cardsBreakdown"></div>
+    </div>
+
     <div class="grid two">
       <div class="card"><div class="card-head"><h3>Recent alerts</h3><button class="link">All alerts</button></div><div id="creditAlerts"></div></div>
       <div class="card"><div class="card-head"><h3>What affects your score</h3></div><div id="creditFactors"></div></div>
@@ -782,6 +795,16 @@ function creditAlerts(el){el.innerHTML=D.credit.alerts.map(a=>`
     <span class="imp ${a.dir}">${a.imp}</span></div>`).join('');}
 function creditFactors(el){el.innerHTML=D.credit.factors.map(f=>`
   <div class="cfactor"><div><div class="cn">${f.n}</div><div class="cv">${f.v}</div></div><span class="cr ${f.cls}">${f.r}</span></div>`).join('');}
+function cardsBreakdown(el){const tb=D.cards.reduce((a,c)=>a+c.bal,0),tl=D.cards.reduce((a,c)=>a+c.limit,0),tu=Math.round(tb/tl*100);
+  el.innerHTML=`<div class="util-hero">
+    <div><div class="eyebrow">Overall utilization</div><div class="big tnum">${tu}%</div>
+      <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">${money(tb)} of ${money(tl)} across ${D.cards.length} cards</div></div>
+    <div class="ub"><div class="bar" style="height:10px"><i style="width:${tu}%;background:${tu>30?'var(--warn)':'var(--accent)'}"></i></div>
+      <div style="font-size:11.5px;color:var(--ink-3);margin-top:7px">Under 30% is best for your score — you're ${tu>30?'a bit above':'under'} the line, driven mostly by the Quicksilver card.</div></div></div>`
+    +D.cards.map(c=>{const u=Math.round(c.bal/c.limit*100);return `<div class="card-row">${tile(c.logo,c.k)}
+      <div class="ci"><div class="cn">${c.n}</div><div class="csub">${money(c.bal)} of ${money(c.limit)} limit · <span class="apr-chip">${c.apr} APR</span></div></div>
+      <div class="util"><div class="ut"><span>Used</span><span class="${u>30?'hi':''}">${u}%</span></div>
+        <div class="bar"><i style="width:${u}%;background:${u>30?'var(--warn)':'var(--accent)'}"></i></div></div></div>`;}).join('');}
 function recsScore(el){el.innerHTML=D.recs.map((r,i)=>`
   <div class="rec-row"><div class="rank">${i+1}</div><div class="save"><b class="tnum">$${r.save}</b><span>/yr</span></div>
     <div class="rb"><h4>${r.h}</h4><p>${r.p}</p>
@@ -790,6 +813,10 @@ function recsScore(el){el.innerHTML=D.recs.map((r,i)=>`
 
 /* score-page data */
 D.scoreHistory=[70,71,72,72,74,74,76,78];
+D.recs=[
+  {save:540,h:'Move your Sapphire balance off 24.9% APR',p:'A 0% balance-transfer card would save about $540 in interest this year on your $2,180 balance.',partner:'SoFi',tag:'Balance transfer'},
+  {save:207,h:'Your checking earns ~0% — a HYSA earns 4.3%',p:'Parking your $4,820 cushion in a high-yield savings account earns roughly $207 a year with no lockup.',partner:'Marcus',tag:'High-yield savings'},
+  {save:310,h:'Refinance student loans below 5.8%',p:'With a 726 score and steady income, a refinance could shave your rate and save ~$310 a year.',partner:'Earnest',tag:'Student refi'}];
 D.recs[0].plan='Pay off student loans';
 D.factorsFull=[
   {n:'Savings rate',v:'28% of income',rate:'Strong',s:'g',impact:'High',stand:85,blurb:'You save 28% of take-home — well above the 20% guideline. This is the biggest thing lifting your score.'},
@@ -819,6 +846,10 @@ D.credit={trend:[690,698,705,710,712,718,718,726],
     {n:'Total accounts',v:'9 accounts',r:'Good',cls:'good'},
     {n:'Hard inquiries',v:'2 in the last 2 years',r:'Fair',cls:'fair'},
     {n:'Derogatory marks',v:'None',r:'Excellent',cls:'exc'}]};
+D.cards=[
+  {n:'Capital One Quicksilver',bal:1310,limit:2500,apr:'26.1%',logo:'Q',k:'--c2'},
+  {n:'Chase Sapphire Preferred',bal:2180,limit:5800,apr:'24.9%',logo:'C',k:'--c4'},
+  {n:'Amex Blue Cash',bal:640,limit:4000,apr:'22.4%',logo:'A',k:'--c3'}];
 
 /* render */
 $('#homeScore').innerHTML=`<div class="mini-ring"></div>
@@ -829,7 +860,7 @@ ring($('#homeScore .mini-ring'),78);
 gauge($('#gaugeScore'),78,{r:96,sw:15});sparkline($('#sparkScore'),D.scoreHistory);
 factorsList($('#factorsList'));recsScore($('#recsScore'));
 renderSubs();
-sparkline($('#creditSpark'),D.credit.trend);creditAlerts($('#creditAlerts'));creditFactors($('#creditFactors'));
+sparkline($('#creditSpark'),D.credit.trend);creditAlerts($('#creditAlerts'));creditFactors($('#creditFactors'));cardsBreakdown($('#cardsBreakdown'));
 netWorth('nwHome');donut('donutHome','legendHome');budgets($('#budgetsHome'));txRows($('#txHome'));acctRows($('#acctHome'));
 $('#plansHome').innerHTML=D.plans.map(planRow).join('');
 donut('donutSpend','legendSpend');budgets($('#budgetsSpend'));txRows($('#txSpend'),8);
@@ -845,7 +876,7 @@ const NOTES={
   accounts:`<b>Accounts.</b> The Plaid surface — net worth summary up top, then everything grouped into cash / investments / debts with live balances and a "Link account" entry point.`,
   score:`<b>Score breakdown.</b> The Credit-Karma-style health page behind "See breakdown": the gauge and its 8-month trend, the five factors that drive it (each with your standing, its impact weight, and what to do), and the ranked, affiliate-linked ways to improve — the one that maps to a plan links back to it. The Credit-health factor links through to the Credit page.`,
   subscriptions:`<b>Subscriptions (Stage 9).</b> Recurring charges detected from transactions, sorted by next charge, with price-hike / unused flags and a monthly-total + potential-savings summary. Click <b>Cancel</b> on any row to see the approval modal — amount, next charge, yearly savings, and "Request cancellation." Confirm one to watch it flip to "Cancellation requested." Real cancellation is an assisted/partner flow behind that button, gated on your approval.`,
-  credit:`<b>Credit monitoring (Stage 10).</b> Reached from the Score page's Credit-health factor. The 300–850 score on a banded scale, its 8-month trend, a change-alerts feed (utilization up, on-time payment, new inquiry), and the factors affecting it. Distinct from the proprietary Juniper Score; a soft pull via a credit-data provider, with FCRA/consent handled in the build.`
+  credit:`<b>Credit (Stage 10).</b> Now its own top-level page (also linked from the Score's credit factor). The 300–850 score on a banded scale, its 8-month trend, a <b>credit-card breakdown</b> (each card's balance, limit, per-card utilization + APR, plus overall utilization vs the 30% line), a change-alerts feed, and the factors affecting the score. Distinct from the proprietary Juniper Score; a soft pull via a credit-data provider, FCRA/consent handled in the build.`
 };
 $('#note').innerHTML=NOTES.home;
 function setPage(k){$$('.page').forEach(p=>p.classList.toggle('on',p.dataset.page===k));
