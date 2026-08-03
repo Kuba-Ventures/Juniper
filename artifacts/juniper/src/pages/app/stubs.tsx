@@ -17,9 +17,6 @@ function Stub({ title, sub, note }: { title: string; sub: string; note: string }
 export function Plans() {
   return <Stub title="Plans" sub="Your money goals — funded from real balances, with the next step always in view." note="Plans grid with create / edit — porting next." />;
 }
-export function Credit() {
-  return <Stub title="Credit" sub="Your credit score, monitored monthly — plus every card and how much of your limit you're using." note="Credit score, trend, alerts, and card utilization — porting next." />;
-}
 export function Recommended() {
   return <Stub title="Recommended for you" sub="Money moves picked for your situation — plus a library of vetted options to explore." note="Picked-for-you + Library — porting next." />;
 }

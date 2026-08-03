@@ -99,6 +99,34 @@ export const score = {
   lever: "build your emergency fund to 6 months",
 };
 
+export interface CreditAlert { t: string; d: string; dir: "up" | "down"; imp: string }
+export interface CreditFactor { n: string; v: string; r: string; cls: "exc" | "good" | "fair" }
+export const credit = {
+  score: 726, band: "Good", delta: 8, updated: "Jul 28",
+  trend: [690, 698, 705, 710, 712, 718, 718, 726],
+  alerts: [
+    { t: "Score went up 8 points", d: "Jul 28", dir: "up", imp: "+8" },
+    { t: "Credit utilization rose to 34%", d: "Jul 22", dir: "down", imp: "▼" },
+    { t: "On-time payment reported — Toyota Financial", d: "Jul 15", dir: "up", imp: "▲" },
+    { t: "New hard inquiry — auto loan", d: "Jun 30", dir: "down", imp: "−5" },
+  ] as CreditAlert[],
+  factors: [
+    { n: "Payment history", v: "100% on-time", r: "Excellent", cls: "exc" },
+    { n: "Credit utilization", v: "34% — aim under 30%", r: "Fair", cls: "fair" },
+    { n: "Age of credit", v: "6 yr 4 mo average", r: "Good", cls: "good" },
+    { n: "Total accounts", v: "9 accounts", r: "Good", cls: "good" },
+    { n: "Hard inquiries", v: "2 in the last 2 years", r: "Fair", cls: "fair" },
+    { n: "Derogatory marks", v: "None", r: "Excellent", cls: "exc" },
+  ] as CreditFactor[],
+};
+
+export interface CreditCard { n: string; bal: number; limit: number; apr: string; k: SeriesKey }
+export const creditCards: CreditCard[] = [
+  { n: "Capital One Quicksilver", bal: 1310, limit: 2500, apr: "26.1%", k: "--jnpr-c2" },
+  { n: "Chase Sapphire Preferred", bal: 2180, limit: 5800, apr: "24.9%", k: "--jnpr-c4" },
+  { n: "Amex Blue Cash", bal: 640, limit: 4000, apr: "22.4%", k: "--jnpr-c3" },
+];
+
 // Merchant/brand -> logo key (see mock-logos.ts). Falls back to a monogram tile.
 export const LOGO_KEY: Record<string, string> = {
   SoFi: "sofi", Marcus: "marcus", Earnest: "earnest", Ally: "ally", Fidelity: "fidelity",
