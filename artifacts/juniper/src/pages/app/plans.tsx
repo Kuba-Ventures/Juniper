@@ -74,7 +74,11 @@ const PlusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
 );
 
-function PlanCard({ p, onOpen }: { p: Plan; onOpen: () => void }) {
+const ChatIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a8 8 0 01-11.5 7.2L4 20l1-4.7A8 8 0 1121 12z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+function PlanCard({ p, onOpen, onAsk, chatCount }: { p: Plan; onOpen: () => void; onAsk: () => void; chatCount: number }) {
   const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
   return (
     <div className={`card plan-lg ${p.done ? "done" : ""}`} onClick={onOpen}>
@@ -97,7 +101,12 @@ function PlanCard({ p, onOpen }: { p: Plan; onOpen: () => void }) {
           </div>
         )}
         <div className="next"><b>{p.done ? "Outcome:" : "Next:"}</b> {p.next}</div>
-        <div className="edit-hint">Click to view &amp; edit →</div>
+        <div className="plan-foot">
+          <span className="edit-hint">Click to view &amp; edit →</span>
+          <button className="plan-ask" onClick={(e) => { e.stopPropagation(); onAsk(); }}>
+            <ChatIcon />Ask Juniper{chatCount > 0 && <span className="pa-badge">{chatCount}</span>}
+          </button>
+        </div>
       </div>
       {p.rec && (
         <div className="embed-rec">
@@ -128,6 +137,9 @@ export default function Plans() {
   const [filter, setFilter] = useState<Filter>("active");
   const [modal, setModal] = useState<ModalState>(null);
   const close = () => setModal(null);
+  const [, navigate] = useLocation();
+  const { threads } = useThreads();
+  const chatCountFor = (t: string) => threads.filter((x) => x.planTitle === t).length;
 
   const { data, source } = useFinances();
   const balances: Balances = {
@@ -163,7 +175,15 @@ export default function Plans() {
 
       <div className="grid plan-grid">
         {shown.length ? (
-          shown.map((p) => <PlanCard key={list.indexOf(p)} p={p} onOpen={() => setModal({ k: "edit", i: list.indexOf(p) })} />)
+          shown.map((p) => (
+            <PlanCard
+              key={list.indexOf(p)}
+              p={p}
+              chatCount={chatCountFor(p.t)}
+              onOpen={() => setModal({ k: "edit", i: list.indexOf(p) })}
+              onAsk={() => navigate(`/app/ask?plan=${encodeURIComponent(p.t)}`)}
+            />
+          ))
         ) : (
           <div className="card" style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>No {filter} plans yet.</div>
         )}

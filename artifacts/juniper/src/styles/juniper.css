@@ -191,8 +191,13 @@
 .jnpr .plan-spark{margin:12px 0 2px}
 .jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
 .jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
-.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;margin-top:10px;opacity:0;transition:opacity .15s}
+.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;opacity:0;transition:opacity .15s}
 .jnpr .plan-lg:hover .edit-hint{opacity:1}
+.jnpr .plan-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .plan-ask{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent-deep);background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
+.jnpr .plan-ask:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}
+.jnpr .plan-ask svg{width:14px;height:14px}
+.jnpr .plan-ask .pa-badge{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-radius:20px;font-size:10px;font-weight:700;padding:0 6px;min-width:16px;text-align:center}
 .jnpr .embed-rec{margin:0 18px 18px;display:flex;gap:12px;align-items:center;padding:13px;border-radius:var(--jnpr-r-sm);background:linear-gradient(180deg,var(--jnpr-accent-soft),var(--jnpr-surface-2));border:1px solid var(--jnpr-line)}
 .jnpr .embed-rec .save{font-weight:750;font-size:15px;color:var(--jnpr-accent-deep);white-space:nowrap;text-align:center}
 .jnpr .embed-rec .save small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--jnpr-ink-3)}
