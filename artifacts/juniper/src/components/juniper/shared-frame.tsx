@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { useWorkspace } from "@/lib/workspace";
+import { usePartner } from "@/lib/partner";
 import { InviteModal } from "@/components/juniper/invite-modal";
 import { you, partner as demoPartner } from "@/lib/shared-data";
 
-// Couple header band for every shared sub-page.
-function SharedHeader({ title, sub, name }: { title: string; sub?: string; name: string }) {
+// Couple header band for every shared sub-page. `live` distinguishes a real,
+// accepted partnership (both accounts linked) from the demo preview, so the
+// status pill tells the truth instead of always claiming "Both connected".
+function SharedHeader({ title, sub, name, live }: { title: string; sub?: string; name: string; live: boolean }) {
   return (
     <div className="page-head shared-head">
       <div>
@@ -13,7 +16,9 @@ function SharedHeader({ title, sub, name }: { title: string; sub?: string; name:
       </div>
       <div className="page-actions">
         <span className="duo-ava"><span className="d1">{you.initial}</span><span className="d2">{name.charAt(0).toUpperCase()}</span></span>
-        <span className="plaid-pill"><span className="dot" />Both connected</span>
+        {live
+          ? <span className="plaid-pill"><span className="dot" />Both connected</span>
+          : <span className="plaid-pill demo">Preview · demo data</span>}
       </div>
     </div>
   );
@@ -22,8 +27,10 @@ function SharedHeader({ title, sub, name }: { title: string; sub?: string; name:
 // Wraps a shared page: guards on partner-connected, renders the couple header.
 export function SharedPage({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   const { partner } = useWorkspace();
+  const { data } = usePartner();
   const [invite, setInvite] = useState(false);
   const name = partner.name || demoPartner.name;
+  const live = !!data?.connected;
 
   if (!partner.connected) {
     return (
@@ -41,7 +48,7 @@ export function SharedPage({ title, sub, children }: { title: string; sub?: stri
 
   return (
     <div className="frame">
-      <SharedHeader title={title} sub={sub} name={name} />
+      <SharedHeader title={title} sub={sub} name={name} live={live} />
       {children}
     </div>
   );
