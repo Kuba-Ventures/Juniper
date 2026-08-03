@@ -2,7 +2,8 @@ import { Route, Switch } from "wouter";
 import { useSession } from "@/lib/use-session";
 import { AppBar } from "@/components/juniper/app-frame";
 import Home from "@/pages/app/home";
-import { Spending, Plans, Credit, Recommended } from "@/pages/app/stubs";
+import { Spending, Credit, Recommended } from "@/pages/app/stubs";
+import Plans from "@/pages/app/plans";
 import "@/styles/juniper.css";
 
 function displayName(email: string, metaName?: string) {

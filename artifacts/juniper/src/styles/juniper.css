@@ -172,3 +172,49 @@
 .jnpr .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .jnpr .donut-center .dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3)}
 .jnpr .donut-center .dv{font-size:24px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+
+/* ---------- plans page (big cards) ---------- */
+.jnpr .plan-grid{grid-template-columns:1fr 1fr}
+@media(max-width:760px){.jnpr .plan-grid{grid-template-columns:1fr}}
+.jnpr .plan-lg{padding:0;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s}
+.jnpr .plan-lg:hover{border-color:var(--jnpr-accent)}
+.jnpr .plan-lg.done{opacity:.9}
+.jnpr .plan-lg .ph{display:flex;align-items:center;gap:12px;padding:18px 18px 0}
+.jnpr .plan-lg .ph .track{width:38px;height:38px;border-radius:10px;font-size:15px}
+.jnpr .plan-lg .pt{font-weight:700;font-size:16px;color:var(--jnpr-ink)}
+.jnpr .plan-lg .pn{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .plan-lg .body{padding:16px 18px}
+.jnpr .plan-lg .nums{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+.jnpr .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .plan-lg .nums .big small{font-size:12px;color:var(--jnpr-ink-3);font-weight:550}
+.jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
+.jnpr .plan-spark{margin:12px 0 2px}
+.jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
+.jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
+.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;margin-top:10px;opacity:0;transition:opacity .15s}
+.jnpr .plan-lg:hover .edit-hint{opacity:1}
+.jnpr .embed-rec{margin:0 18px 18px;display:flex;gap:12px;align-items:center;padding:13px;border-radius:var(--jnpr-r-sm);background:linear-gradient(180deg,var(--jnpr-accent-soft),var(--jnpr-surface-2));border:1px solid var(--jnpr-line)}
+.jnpr .embed-rec .save{font-weight:750;font-size:15px;color:var(--jnpr-accent-deep);white-space:nowrap;text-align:center}
+.jnpr .embed-rec .save small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .embed-rec .eb h4{font-size:12.5px;margin-bottom:2px;color:var(--jnpr-ink)}
+.jnpr .embed-rec .eb p{margin:0;font-size:11.5px;color:var(--jnpr-ink-2);line-height:1.4}
+.jnpr .embed-rec .eb .cta{margin-top:8px;display:flex;gap:8px;align-items:center}
+.jnpr .partner{font-size:11px;color:var(--jnpr-ink-3)}.jnpr .partner b{color:var(--jnpr-ink-2)}
+
+/* ---------- modal + forms ---------- */
+.jnpr .modal-bg{position:fixed;inset:0;background:rgba(15,20,15,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.jnpr .modal{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);max-width:440px;width:100%;padding:24px;box-shadow:var(--jnpr-shadow-lg)}
+.jnpr .modal h3{font-size:19px;margin-bottom:9px;color:var(--jnpr-ink)}
+.jnpr .modal p{font-size:13.5px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 0 15px}
+.jnpr .modal-actions{display:flex;gap:10px}.jnpr .modal-actions .btn{flex:1;justify-content:center}
+.jnpr .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.jnpr .field label{font-size:11.5px;font-weight:600;color:var(--jnpr-ink-3)}
+.jnpr .field input{font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--jnpr-line);border-radius:9px;background:var(--jnpr-surface-2);color:var(--jnpr-ink);outline:none;width:100%}
+.jnpr .field input:focus{border-color:var(--jnpr-accent)}
+.jnpr .field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.jnpr .tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jnpr .tmpl{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface-2);font-family:inherit;font-size:13px;font-weight:600;color:var(--jnpr-ink);cursor:pointer;text-align:left}
+.jnpr .tmpl:hover{border-color:var(--jnpr-accent)}
+.jnpr .tmpl-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+.jnpr .tmpl-ic svg{width:58%;height:58%;display:block;color:#fff}
+.jnpr .disc{font-size:10.5px;color:var(--jnpr-ink-3);margin-top:14px;line-height:1.45}

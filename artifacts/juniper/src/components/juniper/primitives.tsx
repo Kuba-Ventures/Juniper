@@ -34,6 +34,22 @@ export function planMark(p: { icon?: string; ab: string }) {
   return p.icon && ICONS[p.icon] ? <PlanIcon name={p.icon} /> : <>{p.ab}</>;
 }
 
+/* ---------- plan trajectory sparkline ---------- */
+export function PlanSpark({ data, k }: { data: number[]; k: string }) {
+  const W = 300, H = 38, pad = 3, min = Math.min(...data), max = Math.max(...data), rng = max - min || 1;
+  const x = (i: number) => pad + (i * (W - 2 * pad)) / (data.length - 1);
+  const y = (v: number) => pad + (1 - (v - min) / rng) * (H - 2 * pad);
+  const line = data.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const area = `M${x(0)} ${y(data[0])} ` + data.map((v, i) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + ` L${x(data.length - 1)} ${H - pad} L${x(0)} ${H - pad} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="none" style={{ display: "block", height: 38, overflow: "visible" }}>
+      <path d={area} fill={cssVar(k)} opacity={0.1} />
+      <path d={line} fill="none" stroke={cssVar(k)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={x(data.length - 1)} cy={y(data[data.length - 1])} r={3} fill={cssVar(k)} stroke="var(--jnpr-surface)" strokeWidth={2} />
+    </svg>
+  );
+}
+
 /* ---------- net-worth area chart with hover ---------- */
 export function NetWorthChart({ series, labels, height = 150 }: { series: number[]; labels: string[]; height?: number }) {
   const W = 560, H = height, padL = 6, padR = 6, padT = 12, padB = 18;
