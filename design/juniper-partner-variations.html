@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Juniper — Partner pages · 3 variations each</title>
+<style>
+:root{
+  --ground:#F4F7F3; --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+  --ink:#232B21; --ink-2:#556052; --ink-3:#889081; --line:#E3E9E1; --line-2:#EEF2EC;
+  --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3;
+  --head:#173D28; --pine:#234E37;
+  --good:#2F8558; --good-soft:#E1EFE6; --warn:#A9781E; --warn-soft:#F4ECD6; --bad:#B4523B; --bad-soft:#F3E2DC;
+  --maya:#3E6FB0; --maya-soft:#E4ECF6; --devin:#9455A8; --devin-soft:#EFE6F3; --shared:#2F8558;
+  --c1:#2F8558; --c2:#A8781E; --c5:#9455A8; --c6:#5E7D2E;
+  --r:16px; --r-sm:11px;
+  --shadow:0 1px 2px rgba(20,32,20,.05), 0 8px 24px -14px rgba(20,32,20,.13);
+  --shadow-lg:0 2px 8px rgba(20,32,20,.08), 0 24px 50px -22px rgba(20,32,20,.22);
+  --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#EEF2EC;color:var(--ink);font-family:var(--ff);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px;padding:0 0 80px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+.tnum{font-variant-numeric:tabular-nums}
+h1,h2,h3,h4{letter-spacing:-.01em;color:var(--head);font-weight:650}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* page structure */
+.hero-title{padding:34px 22px 6px;max-width:1120px;margin:0 auto}
+.hero-title h1{font-size:26px}
+.hero-title p{color:var(--ink-2);font-size:14px;margin-top:6px;max-width:70ch}
+.rail{font-size:13px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:44px 2px 4px;padding-top:22px;border-top:2px solid var(--line)}
+.rail-sub{font-size:13px;color:var(--ink-2);margin:0 2px 16px}
+.vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:940px){.vgrid{grid-template-columns:1fr}}
+.variant{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.vlabel{display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--surface-3);border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.vlabel .n{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.vlabel .tag{margin-left:auto;font-weight:600;color:var(--ink-3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+.screen{padding:16px;min-height:460px;background:var(--ground)}
+
+/* shared bits */
+.ava{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:0 0 auto}
+.ava.m{background:var(--maya)} .ava.d{background:var(--devin)}
+.ava-stack{display:flex} .ava-stack .ava+.ava{margin-left:-9px;border:2px solid #fff}
+.btn{border:0;font-weight:650;font-size:12.5px;padding:9px 14px;border-radius:9px;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit}
+.btn.block{width:100%}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:6px 11px;font-size:11.5px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:13px;box-shadow:var(--shadow)}
+.chip{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px}
+.chip.shared{color:var(--shared);background:var(--good-soft)} .chip.priv{color:var(--ink-3);background:var(--surface-3)}
+.chip.m{color:var(--maya);background:var(--maya-soft)} .chip.d{color:var(--devin);background:var(--devin-soft)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.bar{height:7px;border-radius:20px;background:var(--line-2);overflow:hidden;display:flex}
+.tile{border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+.muted{color:var(--ink-3);font-size:11px}
+.big{font-size:28px;font-weight:750;letter-spacing:-.025em;color:var(--ink);line-height:1}
+.pinehdr{background:var(--pine);border-radius:12px;padding:14px 15px;color:#fff}
+.pinehdr .s{color:#B9D3BE;font-size:11.5px;margin-top:2px}
+.g-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.g-ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:12px;flex:0 0 auto}
+.acc{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line-2)}
+.acc:first-child{border-top:0}
+.amt{margin-left:auto;font-weight:700;font-size:12.5px}
+.sub-lbl{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:11px 0 3px;display:flex;align-items:center;gap:6px}
+.react{font-size:11px;border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:2px 8px}
+.react.on{border-color:var(--accent);background:var(--accent-soft)}
+.bubble{max-width:80%;font-size:11.5px;padding:7px 10px;border-radius:12px;line-height:1.35}
+.feed-item{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--line-2)}
+.feed-item:first-child{border-top:0}
+.feed-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;font-size:14px}
+.toggle{width:34px;height:20px;border-radius:20px;background:var(--surface-3);position:relative;flex:0 0 auto}
+.toggle i{position:absolute;top:2.5px;left:2.5px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on{background:var(--accent)}.toggle.on i{left:16.5px}
+</style>
+</head>
+<body>
+
+<div class="hero-title">
+  <div class="eyebrow">Design preview</div>
+  <h1>Partner pages — 3 variations each</h1>
+  <p>The two pages a partner (Devin) sees: the <b>invite / accept landing</b> when they open your link, and the <b>shared dashboard</b> once connected. Pick a favorite of each (mix &amp; match welcome) and I'll refine to perfect, then build it.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- =================== INVITE / ACCEPT =================== -->
+  <div class="rail">A · Invite &amp; accept — what Devin sees opening Maya's link</div>
+  <div class="rail-sub">Goal: warm, trustworthy, obvious what's shared vs private, one clear action.</div>
+
+  <div class="vgrid">
+    <!-- A1 centered welcome -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">1</span> Centered welcome <span class="tag">warm · personal</span></div>
+      <div class="screen" style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:34px">
+        <div class="ava-stack" style="justify-content:center"><div class="ava m" style="width:46px;height:46px;font-size:17px">M</div><div class="ava d" style="width:46px;height:46px;font-size:17px">D</div></div>
+        <div>
+          <h2 style="font-size:20px">Maya invited you to plan together</h2>
+          <p class="muted" style="font-size:12.5px;margin-top:5px;max-width:34ch">Join Maya on Juniper to work toward shared goals — your own accounts stay private.</p>
+        </div>
+        <div class="card" style="width:100%;text-align:left">
+          <div class="muted" style="margin-bottom:8px">You'll share</div>
+          <div class="g-row" style="margin-bottom:7px"><div class="g-ic" style="background:var(--c1)">⌂</div><div style="flex:1"><b style="font-size:12.5px">Home down payment</b><div class="muted">$41k of $80k</div></div></div>
+          <div class="g-row" style="margin:0"><div class="g-ic" style="background:var(--c5)">♥</div><div style="flex:1"><b style="font-size:12.5px">Wedding</b><div class="muted">$12k of $30k</div></div></div>
+        </div>
+        <button class="btn block">Accept &amp; connect your accounts</button>
+        <div class="muted" style="font-size:10.5px">🔒 Bank-grade, read-only. You choose what to share next.</div>
+      </div>
+    </div>
+
+    <!-- A2 split trust -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">2</span> Split — trust-forward <span class="tag">reassuring</span></div>
+      <div class="screen" style="padding:0">
+        <div style="background:var(--pine);padding:22px 16px;color:#fff">
+          <div class="ava-stack"><div class="ava m" style="width:38px;height:38px;font-size:14px">M</div><div class="ava d" style="width:38px;height:38px;font-size:14px">D</div></div>
+          <h2 style="color:#fff;font-size:18px;margin-top:12px">Maya wants to plan with you</h2>
+          <p style="color:#B9D3BE;font-size:12px;margin-top:5px">Two people, one plan — on your own terms.</p>
+        </div>
+        <div style="padding:14px 16px">
+          <div class="muted" style="margin-bottom:8px">Here's the deal</div>
+          <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:11px"><span style="color:var(--good)">✓</span><div><b style="font-size:12.5px">Shared goals are mutual</b><div class="muted">See progress and who's contributing.</div></div></div>
+          <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:11px"><span style="color:var(--good)">✓</span><div><b style="font-size:12.5px">Your accounts stay private</b><div class="muted">Share balances only, or nothing — your call.</div></div></div>
+          <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:16px"><span style="color:var(--good)">✓</span><div><b style="font-size:12.5px">Leave anytime</b><div class="muted">Disconnecting unshares everything instantly.</div></div></div>
+          <button class="btn block">Continue</button>
+          <button class="btn ghost block" style="margin-top:8px">Not now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- A3 guided -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">3</span> Guided steps <span class="tag">onboarding-style</span></div>
+      <div class="screen">
+        <div style="display:flex;gap:6px;margin-bottom:14px"><i style="flex:1;height:4px;border-radius:2px;background:var(--accent)"></i><i style="flex:1;height:4px;border-radius:2px;background:var(--accent)"></i><i style="flex:1;height:4px;border-radius:2px;background:var(--line)"></i></div>
+        <div class="muted">Step 2 of 3</div>
+        <h2 style="font-size:18px;margin:4px 0 3px">Say hi to Maya 👋</h2>
+        <p class="muted" style="font-size:12px;margin-bottom:14px">She's already set up 2 goals. Add your accounts and you'll both see progress.</p>
+        <div class="card" style="margin-bottom:10px;display:flex;align-items:center;gap:10px"><div class="ava m" style="width:34px;height:34px;font-size:13px">M</div><div style="flex:1"><b style="font-size:12.5px">Maya Chen</b><div class="muted">Invited you · just now</div></div><span class="chip shared">Inviter</span></div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="muted" style="margin-bottom:9px">What you're joining</div>
+          <div class="g-row" style="margin-bottom:8px"><div class="g-ic" style="background:var(--c1)">⌂</div><div style="flex:1"><b style="font-size:12px">Home down payment</b><div class="bar" style="margin-top:4px"><i style="width:51%;background:var(--c1)"></i></div></div></div>
+          <div class="g-row" style="margin:0"><div class="g-ic" style="background:var(--c5)">♥</div><div style="flex:1"><b style="font-size:12px">Wedding</b><div class="bar" style="margin-top:4px"><i style="width:40%;background:var(--c5)"></i></div></div></div>
+        </div>
+        <button class="btn block">Connect my accounts →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== SHARED DASHBOARD =================== -->
+  <div class="rail">B · Shared dashboard — once connected</div>
+  <div class="rail-sub">Goal: the combined picture at a glance, honoring "collaborate on your own terms." Three organizing principles below.</div>
+
+  <div class="vgrid">
+    <!-- B1 combined-first -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">1</span> Combined-first <span class="tag">one merged view</span></div>
+      <div class="screen">
+        <div class="pinehdr" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between"><div><b style="font-size:14px">Shared with Maya</b><div class="s">Combined net worth</div></div><div class="ava-stack"><div class="ava m" style="width:26px;height:26px;font-size:11px">M</div><div class="ava d" style="width:26px;height:26px;font-size:11px">D</div></div></div>
+        <div class="card" style="margin-bottom:10px">
+          <div class="big tnum">$186,400</div>
+          <div style="font-size:11px;color:var(--good);font-weight:650;margin:3px 0 9px">▲ $3,120 this month</div>
+          <div class="bar" style="height:10px"><i style="width:56%;background:var(--maya)"></i><i style="width:44%;background:var(--devin)"></i></div>
+          <div style="display:flex;gap:14px;margin-top:7px;font-size:10.5px"><span><span class="dot" style="background:var(--maya)"></span> Maya 56%</span><span><span class="dot" style="background:var(--devin)"></span> Devin 44%</span></div>
+        </div>
+        <div class="card" style="margin-bottom:10px">
+          <div class="muted" style="margin-bottom:9px">Shared goals</div>
+          <div class="g-row" style="margin-bottom:9px"><div class="g-ic" style="background:var(--c1)">⌂</div><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11.5px"><b>Home</b><span class="tnum">$41k/$80k</span></div><div class="bar" style="margin-top:4px"><i style="width:32%;background:var(--maya)"></i><i style="width:19%;background:var(--devin)"></i></div></div></div>
+          <div class="g-row" style="margin:0"><div class="g-ic" style="background:var(--c5)">♥</div><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11.5px"><b>Wedding</b><span class="tnum">$12k/$30k</span></div><div class="bar" style="margin-top:4px"><i style="width:22%;background:var(--maya)"></i><i style="width:18%;background:var(--devin)"></i></div></div></div>
+        </div>
+        <div class="card">
+          <div class="sub-lbl" style="margin-top:0"><span class="dot" style="background:var(--shared)"></span> Shared accounts</div>
+          <div class="acc"><div class="tile" style="width:24px;height:24px;background:var(--c1)">A</div><span style="font-size:12px">Ally Joint</span><span class="amt tnum">$41,200</span></div>
+          <div class="sub-lbl"><span class="dot" style="background:var(--maya)"></span> Maya · <span class="dot" style="background:var(--devin)"></span> Devin</div>
+          <div class="acc"><div class="tile" style="width:24px;height:24px;background:var(--maya)">F</div><span style="font-size:12px">Fidelity</span><span class="chip m">Balance</span><span class="amt tnum">$62,300</span></div>
+          <div class="acc"><div class="tile" style="width:24px;height:24px;background:var(--devin)">V</div><span style="font-size:12px">401(k)</span><span class="chip d">Balance</span><span class="amt tnum">$54,100</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B2 his & hers -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">2</span> Side-by-side <span class="tag">yours · shared · theirs</span></div>
+      <div class="screen">
+        <div class="card" style="margin-bottom:10px;text-align:center;padding:12px"><div class="muted">Together</div><div class="big tnum" style="font-size:24px">$186,400</div><div style="font-size:10.5px;color:var(--good);font-weight:650">▲ $3,120 this month</div></div>
+        <div class="card" style="margin-bottom:10px;background:var(--good-soft);border-color:#CDE6D6">
+          <div class="sub-lbl" style="margin-top:0"><span class="dot" style="background:var(--shared)"></span> Shared</div>
+          <div class="acc" style="border-top:0"><div class="tile" style="width:22px;height:22px;background:var(--c1)">A</div><span style="font-size:11.5px">Ally Joint</span><span class="amt tnum">$41.2k</span></div>
+          <div class="acc"><div class="tile" style="width:22px;height:22px;background:var(--c6)">C</div><span style="font-size:11.5px">Chase Bills</span><span class="amt tnum">$5.8k</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="card" style="border-top:3px solid var(--maya)">
+            <div style="text-align:center;margin-bottom:8px"><div class="ava m" style="width:28px;height:28px;font-size:11px;margin:0 auto">M</div><b style="font-size:11.5px;display:block;margin-top:4px">Maya</b><span class="muted tnum">$104.6k</span></div>
+            <div class="acc" style="border-top:0"><span style="font-size:10.5px;flex:1">Fidelity</span><span class="tnum" style="font-size:10.5px;font-weight:700">$62.3k</span></div>
+            <div class="acc"><span style="font-size:10.5px;flex:1">Amex</span><span class="chip priv">Private</span></div>
+          </div>
+          <div class="card" style="border-top:3px solid var(--devin)">
+            <div style="text-align:center;margin-bottom:8px"><div class="ava d" style="width:28px;height:28px;font-size:11px;margin:0 auto">D</div><b style="font-size:11.5px;display:block;margin-top:4px">Devin</b><span class="muted tnum">$81.8k</span></div>
+            <div class="acc" style="border-top:0"><span style="font-size:10.5px;flex:1">401(k)</span><span class="tnum" style="font-size:10.5px;font-weight:700">$54.1k</span></div>
+            <div class="acc"><span style="font-size:10.5px;flex:1">Loan</span><span class="tnum" style="font-size:10.5px;font-weight:700;color:var(--bad)">−$18.9k</span></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <div class="muted" style="margin-bottom:7px">Shared goals</div>
+          <div class="g-row" style="margin:0"><div class="g-ic" style="background:var(--c1);width:22px;height:22px">⌂</div><div style="flex:1;font-size:11px"><b>Home</b> · 51%</div><span class="tnum" style="font-size:11px">$41k/$80k</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B3 activity feed -->
+    <div class="variant">
+      <div class="vlabel"><span class="n">3</span> Activity-forward <span class="tag">Honeydue feed</span></div>
+      <div class="screen">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><div class="ava-stack"><div class="ava m" style="width:28px;height:28px;font-size:11px">M</div><div class="ava d" style="width:28px;height:28px;font-size:11px">D</div></div><div style="flex:1"><b style="font-size:13px">You &amp; Maya</b><div class="muted">$186.4k together · ▲ $3.1k</div></div><span class="chip shared">2 goals</span></div>
+        <div class="card">
+          <div class="feed-item" style="padding-top:2px">
+            <div class="feed-ic" style="background:var(--warn-soft)">🔔</div>
+            <div style="flex:1"><b style="font-size:12px">Rent due in 3 days</b><div class="muted">Maya pays · $2,400 · Aug 14</div><button class="btn sm" style="margin-top:6px">Remind Maya</button></div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-ic" style="background:var(--maya-soft)">🛒</div>
+            <div style="flex:1"><b style="font-size:12px">Whole Foods · $142.60</b><div class="muted">Maya · Groceries</div>
+              <div style="margin-top:6px"><span class="react on">👍 You</span></div>
+              <div style="margin-top:7px;display:flex;justify-content:flex-end"><div class="bubble" style="background:var(--accent);color:#fff">was this the dinner party? 🎉</div></div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-ic" style="background:var(--good-soft)">↑</div>
+            <div style="flex:1"><b style="font-size:12px">Devin added $500 to Home</b><div class="muted">You · 2 days ago · now 51% funded</div>
+              <div class="bar" style="margin-top:6px"><i style="width:51%;background:var(--c1)"></i></div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-ic" style="background:var(--devin-soft)">💬</div>
+            <div style="flex:1"><b style="font-size:12px">Maya</b><div style="margin-top:5px;display:flex"><div class="bubble" style="background:var(--surface-3)">can we up the wedding goal to $35k?</div></div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:7px;margin-top:10px"><input style="flex:1;font:inherit;font-size:11.5px;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:8px 12px" placeholder="Message Maya…" readonly><button class="btn sm">Send</button></div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--ink-3);margin:26px 2px 0;line-height:1.55">Every variation keeps the locked pine identity, Maya = <span style="color:var(--maya);font-weight:600">blue</span> / Devin = <span style="color:var(--devin);font-weight:600">violet</span> so ownership reads at a glance, and the privacy model (Shared · Balance-only · Private) is consistent throughout. Tell me your pick for each — and any mix (e.g. "A2 header + B3 feed") — and I'll refine.</p>
+
+</div>
+</body>
+</html>

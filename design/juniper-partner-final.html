@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Juniper — Partner experience (final direction)</title>
+<style>
+:root{
+  --ground:#F4F7F3; --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+  --ink:#232B21; --ink-2:#556052; --ink-3:#889081; --line:#E3E9E1; --line-2:#EEF2EC;
+  --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3;
+  --head:#173D28; --pine:#234E37;
+  --good:#2F8558; --good-soft:#E1EFE6; --warn:#A9781E; --warn-soft:#F4ECD6; --bad:#B4523B; --bad-soft:#F3E2DC;
+  --maya:#3E6FB0; --maya-soft:#E4ECF6; --devin:#9455A8; --devin-soft:#EFE6F3; --shared:#2F8558;
+  --c1:#2F8558; --c2:#A8781E; --c5:#9455A8; --c6:#5E7D2E;
+  --r:16px; --r-sm:11px;
+  --shadow:0 1px 2px rgba(20,32,20,.05), 0 8px 24px -14px rgba(20,32,20,.13);
+  --shadow-lg:0 2px 8px rgba(20,32,20,.08), 0 24px 50px -22px rgba(20,32,20,.22);
+  --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#EEF2EC;color:var(--ink);font-family:var(--ff);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px;padding-bottom:70px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+.tnum{font-variant-numeric:tabular-nums}
+h1,h2,h3,h4{letter-spacing:-.01em;color:var(--head);font-weight:650}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.rail{font-size:13px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:40px 2px 4px;padding-top:22px;border-top:2px solid var(--line)}
+.rail-sub{font-size:13px;color:var(--ink-2);margin:0 2px 16px}
+.hero-title{padding:32px 22px 4px;max-width:1080px;margin:0 auto}
+.hero-title h1{font-size:25px}.hero-title p{color:var(--ink-2);font-size:14px;margin-top:6px}
+
+.ava{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:0 0 auto}
+.ava.m{background:var(--maya)} .ava.d{background:var(--devin)}
+.ava-stack{display:flex} .ava-stack .ava+.ava{margin-left:-9px;border:2px solid #fff}
+.btn{border:0;font-weight:650;font-size:13px;padding:10px 15px;border-radius:9px;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit}
+.btn.block{width:100%}.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}.btn.sm{padding:6px 11px;font-size:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.card.sm{padding:15px;border-radius:var(--r-sm)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.card h3{font-size:14px}
+.link{font-size:12.5px;font-weight:600;color:var(--accent);cursor:pointer}
+.chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.chip.shared{color:var(--shared);background:var(--good-soft)} .chip.priv{color:var(--ink-3);background:var(--surface-3)}
+.chip.m{color:var(--maya);background:var(--maya-soft)} .chip.d{color:var(--devin);background:var(--devin-soft)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.bar{height:8px;border-radius:20px;background:var(--line-2);overflow:hidden;display:flex}
+.tile{border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:0 0 auto}
+.muted{color:var(--ink-3);font-size:12px}
+.big{font-size:30px;font-weight:750;letter-spacing:-.025em;color:var(--ink);line-height:1}
+.grid{display:grid;gap:16px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:840px){.two,.three{grid-template-columns:1fr}}
+
+/* ---- invite (A1) ---- */
+.invite-frame{max-width:430px;margin:0 auto}
+.invite{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:30px 26px;text-align:center}
+.invite h2{font-size:21px;margin-top:14px}
+.g-mini{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line-2)}
+.g-mini:first-child{border-top:0}
+.g-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:12px;flex:0 0 auto}
+
+/* ---- dashboard header + tabs ---- */
+.band{background:var(--pine);border-radius:var(--r);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:var(--shadow);flex-wrap:wrap}
+.band h1{font-size:20px;color:#FBFDFB}.band .s{color:#B9D3BE;font-size:12.5px;margin-top:2px}
+.pill-light{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#DDEBDE;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:6px 11px;border-radius:20px}
+.tabs{display:inline-flex;background:var(--surface-3);border:1px solid var(--line);border-radius:10px;padding:4px;gap:3px;margin:14px 0}
+.tabs button{border:0;background:transparent;color:var(--ink-2);font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:inherit}
+.tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+
+/* ---- accounts ---- */
+.acc{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line-2)}
+.acc:first-child{border-top:0}
+.sub-lbl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 2px;display:flex;align-items:center;gap:6px}
+.amt{margin-left:auto;font-weight:700;font-size:13px}.amt.neg{color:var(--bad)}
+.col-card{border-top:3px solid var(--line)}
+.col-head{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.col-head .nm{font-weight:650;font-size:13px}.col-head .tot{margin-left:auto;font-weight:700;font-size:13px}
+
+/* ---- goals ---- */
+.goal{padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);margin-bottom:11px}
+.goal:last-child{margin-bottom:0}
+.goal .g-top{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.contrib{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-top:6px}
+
+/* ---- bills ---- */
+.bill{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line-2)}
+.bill:first-child{border-top:0}
+.due{width:44px;height:44px;border-radius:10px;background:var(--surface-3);display:grid;place-items:center;text-align:center;flex:0 0 auto;line-height:1.05}
+.due .d{font-weight:750;font-size:15px}.due .mo{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--ink-3)}
+.bill.soon .due{background:var(--warn-soft)}.bill.soon .due .d{color:var(--warn)}
+
+/* ---- chat ---- */
+.txchat{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.txchat .tx{display:flex;align-items:center;gap:11px;padding:12px;background:var(--surface-2)}
+.reactions{display:flex;gap:6px;padding:0 12px 11px;background:var(--surface)}
+.react{font-size:11.5px;border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:3px 9px;cursor:pointer}
+.react.on{border-color:var(--accent);background:var(--accent-soft)}
+.thread{padding:11px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface);border-top:1px solid var(--line-2)}
+.msg{display:flex}.msg.me{justify-content:flex-end}
+.bubble{max-width:78%;font-size:12px;padding:8px 11px;border-radius:13px;line-height:1.4}
+.msg.them .bubble{background:var(--surface-3);color:var(--ink);border-bottom-left-radius:4px}
+.msg.me .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.chatbar{display:flex;gap:8px;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line-2)}
+.chatbar input{flex:1;font:inherit;font-size:12px;border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:8px 12px}
+
+/* ---- privacy ---- */
+.priv-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line-2)}
+.priv-row:first-child{border-top:0}
+.priv-row .p-t{font-weight:600;font-size:13px}.priv-row .p-s{font-size:11.5px;color:var(--ink-3)}
+.toggle{margin-left:auto;width:42px;height:24px;border-radius:20px;background:var(--surface-3);position:relative;cursor:pointer;flex:0 0 auto}
+.toggle i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on{background:var(--accent)}.toggle.on i{left:21px}
+.toggle.lock{background:var(--good);opacity:.6}
+.disc{font-size:11.5px;color:var(--ink-3);margin-top:12px;line-height:1.5}
+.share{display:flex;gap:8px;margin-top:8px}
+.share input{flex:1;min-width:0;font:inherit;font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px}
+</style>
+</head>
+<body>
+
+<div class="hero-title">
+  <div class="eyebrow">Final direction</div>
+  <h1>Partner experience — A1 invite + B2 dashboard, with chat, bills &amp; privacy</h1>
+  <p style="color:var(--ink-2);font-size:14px">Your picks, extended with the Honeydue features you wanted. The shared dashboard keeps the side-by-side "yours · shared · theirs" identity and adds Bills, Activity/chat, and the what-you-share controls as tabs.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== A1 INVITE ===== -->
+  <div class="rail">A1 · Invite &amp; accept</div>
+  <div class="rail-sub">Warm, centered, obvious what's shared — one clear action.</div>
+  <div class="invite-frame">
+    <div class="invite">
+      <div class="ava-stack" style="justify-content:center"><div class="ava m" style="width:48px;height:48px;font-size:18px">M</div><div class="ava d" style="width:48px;height:48px;font-size:18px">D</div></div>
+      <h2>Maya invited you to plan together</h2>
+      <p class="muted" style="font-size:13px;margin:6px auto 0;max-width:32ch">Join Maya on Juniper to work toward shared goals. Your own accounts stay private — you choose what to share.</p>
+      <div class="card sm" style="margin:18px 0;text-align:left">
+        <div class="muted" style="margin-bottom:6px">You'll be sharing</div>
+        <div class="g-mini"><div class="g-ic" style="background:var(--c1)">⌂</div><div style="flex:1"><b style="font-size:13px">Home down payment</b><div class="muted">51% · $41k of $80k</div></div></div>
+        <div class="g-mini"><div class="g-ic" style="background:var(--c5)">♥</div><div style="flex:1"><b style="font-size:13px">Wedding</b><div class="muted">40% · $12k of $30k</div></div></div>
+      </div>
+      <button class="btn block">Accept &amp; connect your accounts</button>
+      <button class="btn ghost block" style="margin-top:9px">Maybe later</button>
+      <div class="muted" style="font-size:10.5px;margin-top:13px">🔒 Bank-grade, read-only via Plaid. Nothing is shared until you pick it on the next screen.</div>
+    </div>
+  </div>
+
+  <!-- ===== B2 DASHBOARD ===== -->
+  <div class="rail">B2 · Shared dashboard</div>
+  <div class="rail-sub">Side-by-side identity + the features you asked for, organized as tabs.</div>
+
+  <div class="band">
+    <div><h1>Shared with Maya</h1><div class="s">Both your finances, on your own terms</div></div>
+    <div style="display:flex;align-items:center;gap:9px"><div class="ava-stack"><div class="ava m" style="width:30px;height:30px;font-size:12px">M</div><div class="ava d" style="width:30px;height:30px;font-size:12px">D</div></div><span class="pill-light">● Both connected</span></div>
+  </div>
+
+  <div class="tabs"><button class="on">Overview</button><button>Bills</button><button>Activity</button><button>Sharing</button></div>
+
+  <!-- OVERVIEW (B2) -->
+  <div class="eyebrow" style="margin:4px 2px 10px">Overview tab</div>
+  <div class="card" style="text-align:center;margin-bottom:16px">
+    <div class="muted">Together</div>
+    <div class="big tnum" style="margin:4px 0 2px">$186,400</div>
+    <div style="font-size:12px;color:var(--good);font-weight:650">▲ $3,120 this month</div>
+    <div class="bar" style="height:11px;max-width:520px;margin:14px auto 8px"><i style="width:56%;background:var(--maya)"></i><i style="width:44%;background:var(--devin)"></i></div>
+    <div style="display:flex;gap:20px;justify-content:center;font-size:12px"><span><span class="dot" style="background:var(--maya)"></span> Maya · <b class="tnum">$104.6k</b></span><span><span class="dot" style="background:var(--devin)"></span> Devin · <b class="tnum">$81.8k</b></span></div>
+  </div>
+
+  <div class="card" style="background:var(--good-soft);border-color:#CDE6D6;margin-bottom:16px">
+    <div class="card-head" style="margin-bottom:8px"><h3 style="display:flex;align-items:center;gap:7px"><span class="dot" style="background:var(--shared)"></span> Shared accounts</h3><span class="link">Manage</span></div>
+    <div class="acc"><div class="tile" style="width:30px;height:30px;background:var(--c1)">A</div><div><div style="font-weight:600;font-size:13px">Ally Joint Savings</div><div class="muted">House fund</div></div><span class="amt tnum">$41,200</span></div>
+    <div class="acc"><div class="tile" style="width:30px;height:30px;background:var(--c6)">C</div><div><div style="font-weight:600;font-size:13px">Chase Joint Checking</div><div class="muted">Bills</div></div><span class="amt tnum">$5,840</span></div>
+  </div>
+
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card col-card" style="border-top-color:var(--maya)">
+      <div class="col-head"><div class="ava m" style="width:30px;height:30px;font-size:12px">M</div><span class="nm">Maya</span><span class="tot tnum">$104.6k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Fidelity Brokerage</span><span class="chip m">Balance only</span><span class="tnum" style="font-weight:700;font-size:12.5px;margin-left:8px">$62.3k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Chase Checking</span><span class="chip m">Balance only</span><span class="tnum" style="font-weight:700;font-size:12.5px;margin-left:8px">$8.2k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Amex — personal</span><span class="chip priv">Private</span><span class="tnum" style="color:var(--ink-3);margin-left:8px">••••</span></div>
+    </div>
+    <div class="card col-card" style="border-top-color:var(--devin)">
+      <div class="col-head"><div class="ava d" style="width:30px;height:30px;font-size:12px">D</div><span class="nm">Devin</span><span class="tot tnum">$81.8k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Vanguard 401(k)</span><span class="chip d">Balance only</span><span class="tnum" style="font-weight:700;font-size:12.5px;margin-left:8px">$54.1k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Ally HYSA</span><span class="chip d">Balance only</span><span class="tnum" style="font-weight:700;font-size:12.5px;margin-left:8px">$46.6k</span></div>
+      <div class="acc"><span style="font-size:12.5px;flex:1">Student loan</span><span class="chip d">Shared</span><span class="amt neg tnum" style="margin-left:8px">−$18.9k</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:8px">
+    <div class="card-head"><h3>Shared goals</h3><span class="link">+ New shared goal</span></div>
+    <div class="goal">
+      <div class="g-top"><div class="g-ic" style="background:var(--c1)">⌂</div><b style="font-size:13.5px;flex:1">Home down payment</b><span class="tnum" style="font-weight:700;font-size:13px">$41k <small style="color:var(--ink-3)">/ $80k</small></span></div>
+      <div class="bar"><i style="width:32%;background:var(--maya)"></i><i style="width:19%;background:var(--devin)"></i></div>
+      <div class="contrib"><span><b style="color:var(--maya)">Maya</b> $26k · <b style="color:var(--devin)">Devin</b> $15k</span><span>51% funded</span></div>
+    </div>
+    <div class="goal">
+      <div class="g-top"><div class="g-ic" style="background:var(--c5)">♥</div><b style="font-size:13.5px;flex:1">Wedding</b><span class="tnum" style="font-weight:700;font-size:13px">$12k <small style="color:var(--ink-3)">/ $30k</small></span></div>
+      <div class="bar"><i style="width:22%;background:var(--maya)"></i><i style="width:18%;background:var(--devin)"></i></div>
+      <div class="contrib"><span><b style="color:var(--maya)">Maya</b> $6.5k · <b style="color:var(--devin)">Devin</b> $5.5k</span><span>40% funded</span></div>
+    </div>
+  </div>
+
+  <!-- BILLS + ACTIVITY (the other tabs, shown together for review) -->
+  <div class="eyebrow" style="margin:26px 2px 10px">Bills tab &amp; Activity tab</div>
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-head"><h3>Bills &amp; reminders</h3><span class="link">Add bill</span></div>
+      <div class="bill soon"><div class="due"><div class="d">14</div><div class="mo">Aug</div></div><div style="flex:1"><div style="font-weight:600;font-size:13px">Rent</div><div class="muted">Maya pays · due in 3 days</div></div><div style="text-align:right"><div class="tnum" style="font-weight:700">$2,400</div><button class="btn sm" style="margin-top:4px">Nudge</button></div></div>
+      <div class="bill"><div class="due"><div class="d">18</div><div class="mo">Aug</div></div><div style="flex:1"><div style="font-weight:600;font-size:13px">PG&amp;E + Internet</div><div class="muted">Devin pays</div></div><div class="tnum" style="font-weight:700">$210</div></div>
+      <div class="bill"><div class="due"><div class="d">22</div><div class="mo">Aug</div></div><div style="flex:1"><div style="font-weight:600;font-size:13px">Car insurance</div><div class="muted">Shared · split 50/50</div></div><div class="tnum" style="font-weight:700">$156</div></div>
+      <div class="disc">Both of you get a reminder before a shared bill is due — so nothing slips.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Activity &amp; chat</h3><span class="muted">👍 or ask, on any charge</span></div>
+      <div class="txchat">
+        <div class="tx"><div class="tile" style="width:32px;height:32px;background:var(--c2)">W</div><div style="flex:1"><div style="font-weight:600;font-size:13px">Whole Foods</div><div class="muted">Maya · Groceries · Aug 8</div></div><div class="tnum" style="font-weight:700">$142.60</div></div>
+        <div class="reactions"><span class="react on">👍 You</span><span class="react">❤️</span><span class="react">😂</span><span class="react">＋</span></div>
+        <div class="thread">
+          <div class="msg them"><div class="bubble">what was this one? 👀</div></div>
+          <div class="msg me"><div class="bubble">groceries for Saturday's dinner party 🎉</div></div>
+        </div>
+        <div class="chatbar"><input placeholder="Message Maya…" readonly><button class="btn sm">Send</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARING (privacy) -->
+  <div class="eyebrow" style="margin:26px 2px 10px">Sharing tab — what each person shows the other</div>
+  <div class="card" style="margin-bottom:30px">
+    <div class="card-head"><h3>What Maya can see from you</h3><span class="chip shared">Your controls</span></div>
+    <div class="priv-row"><div><div class="p-t">Shared goals &amp; contributions</div><div class="p-s">Always on for goals you both join</div></div><div class="toggle lock on"><i></i></div></div>
+    <div class="priv-row"><div><div class="p-t">Joint &amp; shared account balances</div><div class="p-s">Ally Joint, Chase Bills, split bills</div></div><div class="toggle on"><i></i></div></div>
+    <div class="priv-row"><div><div class="p-t">My account balances (totals only)</div><div class="p-s">Fidelity, 401(k) — the number, not the transactions</div></div><div class="toggle on"><i></i></div></div>
+    <div class="priv-row"><div><div class="p-t">My individual transactions</div><div class="p-s">Personal spending stays private</div></div><div class="toggle"><i></i></div></div>
+    <div class="priv-row"><div><div class="p-t">My Juniper Score</div><div class="p-s">Share your 0–100 financial health number</div></div><div class="toggle"><i></i></div></div>
+    <div class="disc">🔒 Collaborate on your own terms — flip any of these anytime. Maya sees the same controls for her side, and disconnecting unshares everything instantly.</div>
+  </div>
+
+</div>
+</body>
+</html>
