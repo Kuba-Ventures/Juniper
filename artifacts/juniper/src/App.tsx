@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import SignIn from "@/pages/auth/sign-in";
 import SignUp from "@/pages/auth/sign-up";
-import AppShell from "@/pages/app-shell";
+import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
 import { RequireAuth } from "@/components/auth/require-auth";
 
@@ -26,7 +26,7 @@ function Router() {
       <Route path="/app/*?">
         {() => (
           <RequireAuth>
-            <AppShell />
+            <JuniperApp />
           </RequireAuth>
         )}
       </Route>
