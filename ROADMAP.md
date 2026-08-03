@@ -91,13 +91,14 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 5 — Marketplace + monetization **(build + compliance)**
+## Stage 5 — Marketplace + monetization **(build + compliance)** — *in progress*
 
-- [ ] Migrate `partners.ts` → a `partners` table (edit offers without a deploy) ♻️
-- [ ] Merchant **self-listing** submission + moderation queue (the supply side)
-- [ ] Affiliate link / subid management; keep FTC disclosure + `affiliate_click` tracking ♻️
-- [ ] Rank offers by estimated benefit to the user (not payout)
-- [ ] **(compliance)** Approved affiliate programs, real URLs, category-specific disclosures/licensing (mortgage, insurance, credit, legal) — replaces all `example.com` placeholders
+- [~] **Migrate `partners.ts` → a `partners` table** (edit offers without a deploy) ♻️ — table + serving endpoint shipped (`0010_partners.sql`, `GET /api/partners`, benefit-ranked, active-only, `{partners:[]}` fallback so the UI keeps its seed until populated). Still to do: seed the table from the `partners.ts` config and swap the Recommended/plan-detail displays onto `/api/partners`.
+- [x] **Merchant self-listing submission + moderation queue** (the supply side) → `partner_submissions` table + `POST /api/partners/submit` (validates, http(s)-only URL, JWT-scoped, lands `pending`) + a working **"List your service"** modal on Recommended. Admin moderation UI to promote approved rows into `partners` is the remaining follow-up.
+- [~] **Affiliate link / subid management; keep FTC disclosure + `affiliate_click`** ♻️ — disclosure + `affiliate_click` tracking already in place and untouched; `partners.url` + subid wiring lands with the display-swap above.
+- [x] **Rank offers by estimated benefit to the user (not payout)** → `api/_offers.ts` `rankByBenefit()` (pure): sorts by estimated user benefit, then curator trust, then explicit order/name — never payout. Used by `GET /api/partners`.
+- [ ] **(compliance)** Approved affiliate programs, real URLs, category-specific disclosures/licensing (mortgage, insurance, credit, legal) — replaces all `example.com` placeholders. *(Business/legal — gates monetization going live; the plumbing above is ready for it.)*
+- Ops to activate: apply migration `0010`; the marketplace stays on its seed config until the `partners` table is populated.
 
 ---
 

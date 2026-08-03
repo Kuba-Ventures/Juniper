@@ -236,6 +236,12 @@
 .jnpr .modal .fr{display:flex;justify-content:space-between;font-size:13px}.jnpr .modal .fr .k{color:var(--jnpr-ink-3)}.jnpr .modal .fr .v{font-weight:650;color:var(--jnpr-ink)}
 .jnpr .modal .save-hl{color:var(--jnpr-accent);font-weight:750}
 .jnpr .modal .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
+.jnpr .form-col{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.jnpr .form-col label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .form-col input,.jnpr .form-col select,.jnpr .form-col textarea{font:inherit;font-size:13.5px;font-weight:450;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px;outline:none;width:100%}
+.jnpr .form-col input:focus,.jnpr .form-col select:focus,.jnpr .form-col textarea:focus{border-color:var(--jnpr-accent)}
+.jnpr .form-col textarea{resize:vertical;min-height:64px}
+.jnpr .form-error{background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:9px 12px;font-size:12.5px;margin-bottom:12px}
 
 /* ---------- credit page ---------- */
 .jnpr .credit-hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
