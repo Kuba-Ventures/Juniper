@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { plans as seedPlans, money, type Plan, type SeriesKey } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
+import { PartnerPanel } from "@/components/juniper/partner-panel";
 import { planMark, cssVar, PlanSpark, PlanIcon } from "@/components/juniper/primitives";
 
 // Balances distilled from the member's linked accounts, used to auto-fill a new
@@ -142,6 +143,8 @@ export default function Plans() {
           </>
         }
       />
+
+      <PartnerPanel />
 
       <div className="grid plan-grid">
         {shown.length ? (

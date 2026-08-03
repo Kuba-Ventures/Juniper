@@ -244,6 +244,17 @@
 .jnpr .form-error{background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:9px 12px;font-size:12.5px;margin-bottom:12px}
 .jnpr .prefill-hint{display:flex;align-items:flex-start;gap:8px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep);border-radius:var(--jnpr-r-sm);padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:14px}
 .jnpr .prefill-hint svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;stroke:var(--jnpr-accent);fill:none}
+.jnpr .share-link{display:flex;gap:8px;margin-bottom:16px}
+.jnpr .share-link input{flex:1;min-width:0;font:inherit;font-size:12.5px;color:var(--jnpr-ink-2);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px}
+.jnpr .share-link .btn{flex:0 0 auto}
+/* ---------- partner panel (Stage 7 couples layer) ---------- */
+.jnpr .partner-panel{display:flex;align-items:center;gap:13px;padding:13px 16px;margin-bottom:16px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);box-shadow:var(--jnpr-shadow)}
+.jnpr .partner-panel .pp-mark{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent)}
+.jnpr .partner-panel .pp-mark svg{width:18px;height:18px}
+.jnpr .partner-panel .pp-body{flex:1;min-width:0}
+.jnpr .partner-panel .pp-title{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .partner-panel .pp-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .partner-panel .btn{flex:0 0 auto}
 
 /* ---------- score trend mini-chart ---------- */
 .jnpr .score-trend{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px 16px 12px}
