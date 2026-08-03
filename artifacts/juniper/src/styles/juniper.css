@@ -34,10 +34,14 @@
 /* ---------- app bar ---------- */
 .jnpr .appbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--jnpr-ground) 90%,transparent);
   backdrop-filter:saturate(1.3) blur(12px);border-bottom:1px solid var(--jnpr-line)}
-.jnpr .appbar-in{max-width:1160px;margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:18px}
+/* The bar now stacks three rows: brand + account controls, the centered
+   workspace switcher, then the primary nav. */
+.jnpr .appbar-in{max-width:1160px;margin:0 auto;padding:10px 22px 11px;display:flex;flex-direction:column;gap:9px}
+.jnpr .appbar-top{display:flex;align-items:center;gap:14px}
+.jnpr .appbar-ws{display:flex;justify-content:center}
 .jnpr .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;font-size:18px;color:var(--jnpr-head)}
 .jnpr .brand img{width:auto;height:32px;flex:0 0 auto;object-fit:contain;display:block}
-.jnpr .nav{display:flex;gap:2px;margin-left:6px}
+.jnpr .nav{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}
 .jnpr .nav a{font-size:13px;font-weight:550;color:var(--jnpr-ink-3);text-decoration:none;padding:7px 10px;border-radius:9px;
   cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,background .15s;white-space:nowrap;border:0;background:transparent;font-family:inherit}
 .jnpr .nav a:hover{color:var(--jnpr-ink);background:var(--jnpr-surface-3)}
@@ -53,19 +57,13 @@
 .jnpr .plaid-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--jnpr-good)}
 .jnpr .avatar{width:33px;height:33px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);
   display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer}
-/* The primary nav is text-only (no icons), so hiding the labels on mobile
-   left empty tap targets and a lone count badge. Instead, keep the labels
-   and give the nav its own full-width, horizontally-scrollable row beneath
-   the brand/account row. */
+/* The primary nav is text-only (no icons). On mobile it keeps its own row
+   (below the brand/account row and the centered switcher) and scrolls
+   horizontally rather than wrapping, so every label keeps a real tap target. */
 @media(max-width:900px){
-  .jnpr .appbar-in{flex-wrap:wrap;column-gap:12px;row-gap:8px;padding:10px 16px}
-  .jnpr .brand{order:1}
-  .jnpr .ws-wrap{order:2}
-  .jnpr .spacer{order:3}
-  .jnpr .icon-btn{order:4}
-  .jnpr .acct-wrap{order:5}
+  .jnpr .appbar-in{padding:9px 16px 10px;gap:8px}
   .jnpr .plaid-pill{display:none}
-  .jnpr .nav{order:6;flex-basis:100%;min-width:0;margin-left:0;overflow-x:auto;
+  .jnpr .nav{flex-wrap:nowrap;justify-content:flex-start;min-width:0;overflow-x:auto;
     scrollbar-width:none;-ms-overflow-style:none}
   .jnpr .nav::-webkit-scrollbar{display:none}
 }
@@ -352,7 +350,12 @@
 /* dropdown popovers */
 .jnpr .pop-scrim{position:fixed;inset:0;z-index:45}
 .jnpr .pop{position:absolute;top:44px;z-index:46;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:12px;box-shadow:var(--jnpr-shadow-lg);padding:6px;min-width:210px}
-.jnpr .ws-menu{left:0}
+.jnpr .ws-menu{left:50%;transform:translateX(-50%)}
+/* Quiet invite: a soft accent line inside the Shared Overview row, shown
+   until a partner is connected. */
+.jnpr .ws-cta{display:inline-flex;align-items:center;gap:4px;margin-top:2px;font-size:10.5px;font-weight:650;color:var(--jnpr-accent)}
+.jnpr .ws-cta svg{width:11px;height:11px}
+.jnpr .pop-i:hover .ws-cta{text-decoration:underline}
 .jnpr .acct-wrap{position:relative}
 .jnpr .acct-menu{right:0;width:218px}
 .jnpr .pop-lbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3);padding:7px 10px 4px}
