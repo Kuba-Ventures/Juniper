@@ -61,16 +61,16 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 3 — Data spine: transactions → categories → budgets ⚠️ **(build)**
+## Stage 3 — Data spine: transactions → categories → budgets ⚠️ **(build)** — *in progress*
 
-**The core of the Mint pitch. None of this exists yet — the biggest single lift.**
+**The core of the Mint pitch — the biggest single lift.** Built on Plaid **Sandbox** now; goes live when Production clears (Stage 6). Sub-staged:
 
-- [ ] Add Plaid `transactions` product (plus `liabilities` / `investments`); sync + store ♻️ *(extends `api/plaid/*`, `PLAID_PRODUCTS`, `plaid_items`)*
-- [ ] Transactions schema + owner RLS + Data API grants
-- [ ] Categorization engine — Plaid categories + merchant rules + user overrides
-- [ ] Budgets — schema, CRUD, monthly rollups, over-budget logic
-- [ ] Net worth history — daily balance snapshots (Plaid returns current balances only) to build the trend line
-- [ ] Wire Home / Spending / Accounts to real data (replace mock)
+- **3a — Schema** [~] `transactions`, `budgets`, `net_worth_snapshots` tables (owner RLS + Data API grants, following the `0002_plans` pattern) + a server-only `transactions_cursor` on `plaid_items`. → `supabase/migrations/0008_transactions_budgets.sql` **(written; must be applied to the Supabase project to activate — ops step, like prior migrations).**
+- **3b — Transactions sync** [ ] Add `transactions` to `PLAID_PRODUCTS`; `api/plaid/transactions-sync.ts` pulling Plaid `/transactions/sync` by cursor into the table (service-role, user-scoped, dedup on `plaid_transaction_id`).
+- **3c — Categorization** [ ] Map Plaid `personal_finance_category.primary` → Juniper categories (Housing, Groceries & dining, …) + merchant rules + user overrides (`category` / `category_source`).
+- **3d — Budgets** [ ] CRUD + monthly rollups (spent per category from transactions) + over-budget logic.
+- **3e — Net worth history** [ ] Daily balance snapshots (Plaid returns current balances only) → the trend line.
+- **3f — Frontend data layer** [ ] `useFinances()` queries fetching transactions / budgets / accounts / net worth; swap the `mock-data` selectors behind the same shapes, with a graceful fallback to mock until a user has linked + synced.
 
 ---
 
