@@ -7,14 +7,21 @@ import { getAccessToken } from "@/lib/supabase";
 
 export interface PartnerPrefs { share_balances: boolean; share_transactions: boolean; share_score: boolean }
 export interface PartnerGoal { id: string; t: string; icon: string; target: number; you: number; partner: number }
+export type AccountScope = "shared" | "balance" | "private";
+export interface PartnerAccount { account_id: string; n: string; inst: string; v: number; owner: "you" | "partner" | "shared"; scope: AccountScope; mine: boolean }
 export interface PartnerData {
   connected: boolean;
   pending?: boolean;
   partner?: { name: string };
   prefs?: { me: PartnerPrefs; partner: PartnerPrefs };
   goals?: PartnerGoal[];
+  accounts?: PartnerAccount[];
   combined?: { netWorth: number; youShare: number; partnerShare: number };
 }
+
+export interface PartnerBill { id: string; name: string; amount: number; dueDay: number | null; split: boolean; payer: "you" | "partner" | "shared" }
+export interface PartnerMessage { id: string; who: "you" | "partner"; body: string; txnRef: string | null; txnMerchant: string | null; createdAt: string }
+export interface PartnerReaction { target: string; emoji: string; count: number; byMe: boolean }
 
 async function authed(path: string, init?: RequestInit): Promise<Response | null> {
   const token = await getAccessToken();
@@ -44,8 +51,47 @@ export const invitePartner = () => post("invite");
 export const acceptInvite = (token: string) => post("accept", { token });
 export const disconnectPartner = () => post("disconnect");
 export const setSharingPrefs = (prefs: Partial<PartnerPrefs>) => post("set-prefs", prefs);
+export const setAccountShare = (accountId: string, scope: AccountScope) => post("set-account-share", { accountId, scope });
 export const addSharedGoal = (title: string, icon: string, target: number) => post("add-goal", { title, icon, target });
 export const addContribution = (goalId: string, amount: number) => post("add-contribution", { goalId, amount });
+
+// ── Bills (/api/partner/bills) ───────────────────────────────────────────────
+export async function fetchBills(): Promise<PartnerBill[] | null> {
+  try {
+    const res = await authed("/api/partner/bills");
+    if (!res || !res.ok) return null;
+    const d = (await res.json()) as { connected?: boolean; bills?: PartnerBill[] };
+    if (!d.connected) return null;
+    return d.bills ?? [];
+  } catch { return null; }
+}
+export async function addBill(b: { name: string; amount: number; dueDay?: number; payer: "you" | "partner" | "shared"; split?: boolean }) {
+  const res = await authed("/api/partner/bills", { method: "POST", body: JSON.stringify(b) });
+  return !!res && res.ok;
+}
+export async function deleteBill(id: string) {
+  const res = await authed(`/api/partner/bills?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  return !!res && res.ok;
+}
+
+// ── Activity (/api/partner/activity) ─────────────────────────────────────────
+export async function fetchActivity(): Promise<{ messages: PartnerMessage[]; reactions: PartnerReaction[] } | null> {
+  try {
+    const res = await authed("/api/partner/activity");
+    if (!res || !res.ok) return null;
+    const d = (await res.json()) as { connected?: boolean; messages?: PartnerMessage[]; reactions?: PartnerReaction[] };
+    if (!d.connected) return null;
+    return { messages: d.messages ?? [], reactions: d.reactions ?? [] };
+  } catch { return null; }
+}
+export async function sendMessage(text: string, txnRef?: string, txnMerchant?: string) {
+  const res = await authed("/api/partner/activity", { method: "POST", body: JSON.stringify({ action: "message", body: text, txnRef, txnMerchant }) });
+  return !!res && res.ok;
+}
+export async function reactTo(target: string, emoji: string) {
+  const res = await authed("/api/partner/activity", { method: "POST", body: JSON.stringify({ action: "react", target, emoji }) });
+  return !!res && res.ok;
+}
 
 // Fetches the shared overview once; `refresh()` re-pulls after a mutation.
 export function usePartner(): { data: PartnerData | null; loading: boolean; refresh: () => void } {
@@ -57,6 +103,32 @@ export function usePartner(): { data: PartnerData | null; loading: boolean; refr
     let alive = true;
     setLoading(true);
     fetchPartner().then((d) => { if (alive) { setData(d); setLoading(false); } });
+    return () => { alive = false; };
+  }, [tick]);
+  return { data, loading, refresh };
+}
+
+export function useBills(): { bills: PartnerBill[] | null; loading: boolean; refresh: () => void } {
+  const [bills, setBills] = useState<PartnerBill[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    let alive = true;
+    fetchBills().then((b) => { if (alive) { setBills(b); setLoading(false); } });
+    return () => { alive = false; };
+  }, [tick]);
+  return { bills, loading, refresh };
+}
+
+export function useActivity(): { data: { messages: PartnerMessage[]; reactions: PartnerReaction[] } | null; loading: boolean; refresh: () => void } {
+  const [data, setData] = useState<{ messages: PartnerMessage[]; reactions: PartnerReaction[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    let alive = true;
+    fetchActivity().then((d) => { if (alive) { setData(d); setLoading(false); } });
     return () => { alive = false; };
   }, [tick]);
   return { data, loading, refresh };
