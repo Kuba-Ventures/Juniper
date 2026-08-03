@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { createInvite } from "@/lib/invites";
+import { invitePartner } from "@/lib/partner";
 import { useWorkspace } from "@/lib/workspace";
 
-// The invite flow reachable from the account menu (and Plans). Generates a real
-// shareable link via the domain-scoped createInvite; and, because the shared
-// experience runs on mock data for now, offers a clearly-labeled "preview the
-// shared space" shortcut that connects the demo partner so you can walk through it.
-const INVITE_DOMAIN = "combining-finances";
+// The invite flow reachable from the account menu (and Plans). Creates a real
+// partnership invite link via /api/partner; and, because full data sharing needs
+// both partners linked, offers a clearly-labeled "preview the shared space"
+// shortcut that connects the demo partner so you can walk through it.
 
 function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
@@ -28,10 +27,10 @@ export function InviteModal({ onClose }: { onClose: () => void }) {
 
   const createLink = async () => {
     setBusy(true); setError(null);
-    const res = await createInvite(INVITE_DOMAIN, name.trim() || undefined);
+    const res = await invitePartner();
     setBusy(false);
-    if (res?.url) setUrl(res.url);
-    else setError("We couldn't generate a live link yet — you can still preview the shared space below.");
+    if (res.ok && res.url) setUrl(res.url);
+    else setError(res.error || "We couldn't generate a live link yet — you can still preview the shared space below.");
   };
 
   const copy = async () => {
