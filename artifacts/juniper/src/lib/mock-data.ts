@@ -119,9 +119,9 @@ export const score: Score = {
     { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726 — good." },
   ],
   improvements: [
-    { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11, planIcon: "baby" },
+    { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11, planIcon: null },
     { factor: "debt", title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", potentialPts: 6, planIcon: "debt" },
-    { factor: "investing", title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", potentialPts: 4, planIcon: "home" },
+    { factor: "investing", title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", potentialPts: 4, planIcon: null },
   ],
 };
 

@@ -237,6 +237,13 @@
 .jnpr .modal .save-hl{color:var(--jnpr-accent);font-weight:750}
 .jnpr .modal .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
 
+/* ---------- score trend mini-chart ---------- */
+.jnpr .score-trend{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px 16px 12px}
+.jnpr .score-trend .st-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.jnpr .score-trend .st-head .delta{font-size:12px}
+.jnpr .score-trend .st-foot{display:flex;align-items:baseline;justify-content:space-between;margin-top:9px;font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .score-trend .st-foot b{color:var(--jnpr-ink);font-weight:700;font-size:13px}
+
 /* ---------- credit page ---------- */
 .jnpr .credit-hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
 @media(max-width:720px){.jnpr .credit-hero{grid-template-columns:1fr}}

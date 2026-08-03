@@ -35,17 +35,22 @@ export function planMark(p: { icon?: string; ab: string }) {
 }
 
 /* ---------- plan trajectory sparkline ---------- */
-export function PlanSpark({ data, k }: { data: number[]; k: string }) {
-  const W = 300, H = 38, pad = 3, min = Math.min(...data), max = Math.max(...data), rng = max - min || 1;
+export function PlanSpark({ data, k, height = 38 }: { data: number[]; k: string; height?: number }) {
+  // viewBox height tracks the render height so the stroke stays crisp (no
+  // vertical distortion) as the spark grows. A little top/bottom padding keeps
+  // the trend off the edges; the y-range hugs min→max so the shape reads clearly.
+  const W = 300, H = height, pad = Math.max(3, Math.round(height * 0.12));
+  const min = Math.min(...data), max = Math.max(...data), rng = max - min || 1;
   const x = (i: number) => pad + (i * (W - 2 * pad)) / (data.length - 1);
   const y = (v: number) => pad + (1 - (v - min) / rng) * (H - 2 * pad);
   const line = data.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
   const area = `M${x(0)} ${y(data[0])} ` + data.map((v, i) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + ` L${x(data.length - 1)} ${H - pad} L${x(0)} ${H - pad} Z`;
+  const r = Math.max(3, Math.round(height * 0.06));
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="none" style={{ display: "block", height: 38, overflow: "visible" }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="none" style={{ display: "block", height, overflow: "visible" }}>
       <path d={area} fill={cssVar(k)} opacity={0.1} />
       <path d={line} fill="none" stroke={cssVar(k)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={x(data.length - 1)} cy={y(data[data.length - 1])} r={3} fill={cssVar(k)} stroke="var(--jnpr-surface)" strokeWidth={2} />
+      <circle cx={x(data.length - 1)} cy={y(data[data.length - 1])} r={r} fill={cssVar(k)} stroke="var(--jnpr-surface)" strokeWidth={2} />
     </svg>
   );
 }
