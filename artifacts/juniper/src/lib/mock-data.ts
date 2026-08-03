@@ -80,6 +80,18 @@ export const plans: Plan[] = [
   { t: "Wedding fund", ab: "W", icon: "wedding", saved: 18000, target: 18000, pct: 100, note: "Completed Jun 2025", st: "done", stl: "Completed", k: "--jnpr-c6", done: true, monthly: "—", date: "Reached Jun 2025", traj: [3, 6, 9, 12, 14, 16, 17.5, 18], next: "Goal reached — rolled the surplus into the home down payment" },
 ];
 
+export interface Subscription { n: string; cat: string; amt: number; next: string; k: SeriesKey; flag?: string; canceled?: boolean }
+export const subscriptions: Subscription[] = [
+  { n: "Netflix", cat: "Streaming", amt: 22.99, next: "Aug 12", k: "--jnpr-c4", flag: "Price rose $3 in June" },
+  { n: "Planet Fitness", cat: "Fitness", amt: 24.99, next: "Aug 15", k: "--jnpr-c1", flag: "Not used in 2 months" },
+  { n: "Adobe Creative Cloud", cat: "Software", amt: 59.99, next: "Aug 18", k: "--jnpr-c4", flag: "Not used in 3 months" },
+  { n: "iCloud+", cat: "Storage", amt: 9.99, next: "Aug 20", k: "--jnpr-c3" },
+  { n: "ChatGPT Plus", cat: "Software", amt: 20.0, next: "Aug 22", k: "--jnpr-c6" },
+  { n: "The New York Times", cat: "News", amt: 17.0, next: "Aug 25", k: "--jnpr-c5" },
+  { n: "Spotify", cat: "Music", amt: 11.99, next: "Aug 28", k: "--jnpr-c1" },
+  { n: "Amazon Prime", cat: "Shopping", amt: 14.99, next: "Sep 3", k: "--jnpr-c2" },
+];
+
 export const score = {
   value: 78,
   band: "Healthy",

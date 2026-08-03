@@ -55,7 +55,7 @@ Shell is done; remaining screens and states:
 - [x] Stand up `DESIGN.md` + design tokens (offpine cool off-white + pine) — `artifacts/juniper/DESIGN.md` + scoped `src/styles/juniper.css` (`.jnpr`)
 - [x] New top nav + routing, replacing the plan-centric shell — `src/pages/juniper-app.tsx` + `components/juniper/app-frame.tsx` (Home · Spending · Plans · Credit · Recommended); routed at `/app/*` in `App.tsx` (old `app-shell.tsx` kept, unrouted)
 - [x] Embed the real logo + app icons across the app shell — `public/logo.png` in the app bar
-- [~] Port pages to React components — **Home + Plans done** (`src/pages/app/home.tsx`, `plans.tsx`; Plans has icons, trajectory sparklines, Active/Completed/All filter, and create/edit/delete via hand-built modals — typecheck/build/SSR verified); Spending / Credit / Recommended are live pine-header stubs, bodies porting next
+- [~] Port pages to React components — **Home + Plans + Spending done** (`src/pages/app/home.tsx`, `plans.tsx`, `spending.tsx`; Spending has working Overview/Transactions/Budgets/Subscriptions tabs, searchable transactions, and the one-click-cancel approval flow — typecheck/build/SSR verified); Credit / Recommended are live pine-header stubs, bodies porting next
 - [ ] Fold in existing surfaces ♻️ *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*
 - Data: components read `src/lib/mock-data.ts` (typed selectors) so the Stage-3 swap to live data is data-layer only
 

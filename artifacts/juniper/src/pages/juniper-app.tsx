@@ -2,7 +2,8 @@ import { Route, Switch } from "wouter";
 import { useSession } from "@/lib/use-session";
 import { AppBar } from "@/components/juniper/app-frame";
 import Home from "@/pages/app/home";
-import { Spending, Credit, Recommended } from "@/pages/app/stubs";
+import { Credit, Recommended } from "@/pages/app/stubs";
+import { Spending } from "@/pages/app/spending";
 import Plans from "@/pages/app/plans";
 import "@/styles/juniper.css";
 

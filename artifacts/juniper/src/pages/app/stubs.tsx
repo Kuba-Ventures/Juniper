@@ -14,9 +14,6 @@ function Stub({ title, sub, note }: { title: string; sub: string; note: string }
   );
 }
 
-export function Spending() {
-  return <Stub title="Spending" sub="Every transaction, categorized — budgets, and the subscriptions hiding in your recurring charges." note="Spending (Overview / Transactions / Budgets / Subscriptions) — porting next." />;
-}
 export function Plans() {
   return <Stub title="Plans" sub="Your money goals — funded from real balances, with the next step always in view." note="Plans grid with create / edit — porting next." />;
 }
