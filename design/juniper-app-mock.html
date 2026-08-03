@@ -305,6 +305,19 @@
   .tmpl{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2);font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left}
   .tmpl:hover{border-color:var(--accent)}
   .tmpl-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+  .track svg,.tmpl-ic svg{width:58%;height:58%;display:block;color:#fff}
+  .plan-lg{cursor:pointer;transition:border-color .15s}
+  .plan-lg:hover{border-color:var(--accent)}
+  .plan-lg .edit-hint{font-size:11px;color:var(--ink-3);font-weight:600;margin-top:10px;opacity:0;transition:opacity .15s}
+  .plan-lg:hover .edit-hint{opacity:1}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:11.5px;font-weight:600;color:var(--ink-3)}
+  .field input{font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);color:var(--ink);outline:none;width:100%}
+  .field input:focus{border-color:var(--accent)}
+  .field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sec-title{font-size:13px;font-weight:700;margin:2px 2px 12px;color:var(--ink)}
+  .lib-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 2px 14px}
+  .lib-head .sec-title{margin:0}
   .mkt-top{display:flex;align-items:center;gap:11px}
   .mkt-logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:0 0 auto}
   .mkt-card .mn{font-weight:650;font-size:14px}.mkt-card .mc{font-size:11.5px;color:var(--ink-3)}
@@ -426,8 +439,8 @@
       <button data-page="home" class="on"><span class="lbl">Home</span></button>
       <button data-page="spending"><span class="lbl">Spending</span></button>
       <button data-page="plans"><span class="lbl">Plans</span><span class="count">4</span></button>
-      <button data-page="marketplace"><span class="lbl">Marketplace</span></button>
       <button data-page="credit"><span class="lbl">Credit</span></button>
+      <button data-page="marketplace"><span class="lbl">Recommended</span></button>
     </nav>
     <span class="spacer"></span>
     <span class="plaid-pill"><span class="dot"></span>7 linked</span>
@@ -537,17 +550,24 @@
   <!-- ============ MARKETPLACE ============ -->
   <section class="page" data-page="marketplace">
     <div class="page-head">
-      <div><h1>Marketplace</h1><p class="sub">Banking, saving, and money services — vetted and matched to where you actually are.</p></div>
+      <div><h1>Recommended for you</h1><p class="sub">Money moves picked for your situation — plus a library of vetted options to explore.</p></div>
       <div class="page-actions">
-        <span class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search services"></span>
+        <span class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search options"></span>
         <button class="btn ghost sm">List your service</button>
       </div>
     </div>
-    <div class="pills" id="mktCats" style="margin:0 2px 16px;flex-wrap:wrap">
-      <button class="on" data-cat="All">All</button><button data-cat="Banking">Banking</button><button data-cat="Saving">Saving</button><button data-cat="Debt">Debt</button><button data-cat="Investing">Investing</button><button data-cat="Insurance">Insurance</button><button data-cat="Estate">Estate</button>
+
+    <div class="sec-title">Picked for you</div>
+    <div class="grid mkt-grid" id="mktRec" style="margin-bottom:28px"></div>
+
+    <div class="lib-head">
+      <div class="sec-title">Library</div>
+      <div class="pills" id="mktCats" style="flex-wrap:wrap">
+        <button class="on" data-cat="All">All</button><button data-cat="Banking">Banking</button><button data-cat="Saving">Saving</button><button data-cat="Debt">Debt</button><button data-cat="Investing">Investing</button><button data-cat="Insurance">Insurance</button><button data-cat="Estate">Estate</button>
+      </div>
     </div>
-    <div class="grid mkt-grid" id="mktPage"></div>
-    <p class="disc">Juniper may earn a commission when you open an account through the marketplace. Listings marked <b>curated</b> are reviewed by Juniper; <b>self-listed</b> are submitted by the provider. Ranking reflects fit to your finances, never payment.</p>
+    <div class="grid mkt-grid" id="mktLib"></div>
+    <p class="disc">Juniper may earn a commission when you open an account through these links. "Picked for you" reflects your linked accounts and goals; the library is everything else. <b>Curated</b> listings are reviewed by Juniper; <b>self-listed</b> are submitted by the provider. Ranking reflects fit to your finances, never payment.</p>
   </section>
 
   <!-- ============ SCORE BREAKDOWN ============ -->
@@ -676,11 +696,11 @@ const D={
     invest:[{n:'Fidelity Brokerage',i:'Fidelity',v:14250,k:'--c5'},{n:'Vanguard 401(k)',i:'Vanguard',v:63900,k:'--c1'}],
     debt:[{n:'Chase Sapphire',i:'Credit card',v:-2180,apr:'24.9%',k:'--c4'},{n:'Student loans',i:'Earnest',v:-22400,apr:'5.8%',k:'--c2'},{n:'Toyota auto loan',i:'auto',v:-9460,apr:'6.4%',k:'--c6'}]},
   plans:[
-    {t:'Buy a home',ab:'H',saved:28000,target:60000,pct:47,note:'Down payment · Mar 2027',st:'ok',stl:'On track',k:'--c1',monthly:'$850/mo',date:'Ready Mar 2027',traj:[12,15,18,20,23,25,27,28],next:'Auto-transfer $850/mo to the Ally HYSA'},
-    {t:'Pay off student loans',ab:'S',saved:0,target:0,pct:38,note:'$22,400 left · 5.8%',st:'ok',stl:'On track',k:'--c2',monthly:'$520/mo',date:'Debt-free 2029',traj:[30,28.6,27.2,26,24.9,23.8,22.9,22.4],down:true,next:'Keep paying $520/mo — debt-free by 2029',rec:{save:540,h:'Speed up this plan',p:'Move your Sapphire balance off 24.9% APR — frees ~$45/mo toward the payoff.',partner:'SoFi'}},
-    {t:'Baby fund',ab:'B',saved:4200,target:12000,pct:35,note:'Started 3 weeks ago',st:'new',stl:'New',k:'--c5',monthly:'Not set',date:'Due Feb 2027',traj:[0.5,1,1.6,2.4,3,3.4,3.9,4.2],next:'Set a monthly amount to stay on pace'},
-    {t:'Combine finances',ab:'C',saved:0,target:0,pct:0,note:'2 steps left in setup',st:'setup',stl:'Setup',k:'--c3',next:'Invite Devin to finish linking accounts'},
-    {t:'Wedding fund',ab:'W',saved:18000,target:18000,pct:100,note:'Completed Jun 2025',st:'done',stl:'Completed',k:'--c6',done:true,monthly:'—',date:'Reached Jun 2025',traj:[3,6,9,12,14,16,17.5,18],next:'Goal reached — rolled the surplus into the home down payment'}],
+    {t:'Buy a home',ab:'H',icon:'home',saved:28000,target:60000,pct:47,note:'Down payment · Mar 2027',st:'ok',stl:'On track',k:'--c1',monthly:'$850/mo',date:'Ready Mar 2027',traj:[12,15,18,20,23,25,27,28],next:'Auto-transfer $850/mo to the Ally HYSA'},
+    {t:'Pay off student loans',ab:'S',icon:'debt',saved:0,target:0,pct:38,note:'$22,400 left · 5.8%',st:'ok',stl:'On track',k:'--c2',monthly:'$520/mo',date:'Debt-free 2029',traj:[30,28.6,27.2,26,24.9,23.8,22.9,22.4],down:true,next:'Keep paying $520/mo — debt-free by 2029',rec:{save:540,h:'Speed up this plan',p:'Move your Sapphire balance off 24.9% APR — frees ~$45/mo toward the payoff.',partner:'SoFi'}},
+    {t:'Baby fund',ab:'B',icon:'baby',saved:4200,target:12000,pct:35,note:'Started 3 weeks ago',st:'new',stl:'New',k:'--c5',monthly:'Not set',date:'Due Feb 2027',traj:[0.5,1,1.6,2.4,3,3.4,3.9,4.2],next:'Set a monthly amount to stay on pace'},
+    {t:'Combine finances',ab:'C',icon:'combine',saved:0,target:0,pct:0,note:'2 steps left in setup',st:'setup',stl:'Setup',k:'--c3',next:'Invite Devin to finish linking accounts'},
+    {t:'Wedding fund',ab:'W',icon:'wedding',saved:18000,target:18000,pct:100,note:'Completed Jun 2025',st:'done',stl:'Completed',k:'--c6',done:true,monthly:'—',date:'Reached Jun 2025',traj:[3,6,9,12,14,16,17.5,18],next:'Goal reached — rolled the surplus into the home down payment'}],
   mkt:[
     {n:'SoFi',cat:'Debt',logo:'S',k:'--c2',stat:'0% APR · 21 mo',blurb:'Balance transfers with no interest for up to 21 months and no annual fee.',tags:['Balance transfer','No fee'],src:'curated',match:'your Sapphire card is at 24.9% APR'},
     {n:'Marcus',cat:'Saving',logo:'M',k:'--c1',stat:'4.30% APY',blurb:'High-yield savings with no minimums and no fees.',tags:['No minimums'],src:'curated',match:'$4,820 is sitting in ~0% checking'},
@@ -703,6 +723,17 @@ const LKEY={
   'Capital One Quicksilver':'capitalone','Chase Sapphire Preferred':'chase','Amex Blue Cash':'amex'};
 const blogo=(name,letter,k,big)=>{const key=LKEY[name];const cls=big?'blogo-lg':'blogo';
   return key&&LOGOS[key]?`<img class="${cls}" src="${LOGOS[key]}" alt="">`:(big?`<div class="mkt-logo" style="background:var(${k})">${letter}</div>`:tile(letter,k));};
+const ICONS={
+  home:'<path d="M3 11l9-7 9 7"/><path d="M5 10v9h14v-9"/>',
+  debt:'<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M2.5 10h19"/>',
+  baby:'<circle cx="12" cy="12" r="8"/><path d="M9 10h.01M15 10h.01"/><path d="M9 14.5c1.2 1.2 4.8 1.2 6 0"/>',
+  combine:'<path d="M9.5 8a4 4 0 000 8"/><path d="M14.5 16a4 4 0 000-8"/><path d="M8.5 12h7"/>',
+  wedding:'<path d="M12 20s-6.5-4.2-9-8.2A4.5 4.5 0 0112 6a4.5 4.5 0 019 5.8c-2.5 4-9 8.2-9 8.2z"/>',
+  shield:'<path d="M12 3l7 3v6c0 4-3 6.8-7 8-4-1.2-7-4-7-8V6z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>'};
+const pIcon=key=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[key]||''}</svg>`;
+const pMark=p=>p.icon&&ICONS[p.icon]?pIcon(p.icon):p.ab;
 function acctRows(el){const g=D.accts,sec=(t,arr)=>`<div class="subhead">${t}</div>`+arr.map(a=>`
   <div class="row">${blogo(a.n,a.n[0],a.k)}<div><div class="nm">${a.n}</div><div class="mt">${a.i}</div></div>
     <div class="amt">${money(a.v)} ${a.apr?`<span class="apr-chip">${a.apr}</span>`:''}</div></div>`).join('');
@@ -715,7 +746,7 @@ function budgets(el){el.innerHTML=D.budgets.map(b=>{const pct=Math.min(100,Math.
     <span class="r"><b class="tnum">${money(b.s)}</b> of ${money(b.l)} ${over?`· <span class="flag">${money(b.s-b.l)} over</span>`:''}</span></div>
     <div class="bar"><i style="width:${pct}%"></i></div></div>`;}).join('');}
 function planRow(p){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
-  return `<div class="plan-row"><div class="track" style="background:var(${p.k})">${p.ab}</div>
+  return `<div class="plan-row"><div class="track" style="background:var(${p.k})">${pMark(p)}</div>
     <div class="pr-body"><div class="pr-top"><span class="pt">${p.t}</span>
       ${p.target?`<span class="amt tnum">${moneyK(p.saved)} <small>/ ${moneyK(p.target)}</small></span>`:''}</div>
       <div class="bar"><i style="width:${prog}%;background:var(${p.k})"></i></div>
@@ -727,8 +758,8 @@ function planSpark(data,k,down){const W=300,H=38,pad=3,min=Math.min(...data),max
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="display:block;height:38px;overflow:visible">
     <path d="${area}" fill="var(${k})" opacity=".10"/><path d="${line}" fill="none" stroke="var(${k})" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="${x(data.length-1)}" cy="${y(data.at(-1))}" r="3" fill="var(${k})" stroke="var(--surface)" stroke-width="2"/></svg>`;}
-function planLg(p){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
-  return `<div class="card plan-lg ${p.done?'done':''}"><div class="ph"><div class="track" style="background:var(${p.k})">${p.ab}</div>
+function planLg(p,pi){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
+  return `<div class="card plan-lg ${p.done?'done':''}" data-pi="${pi}"><div class="ph"><div class="track" style="background:var(${p.k})">${pMark(p)}</div>
     <div style="flex:1"><div class="pt">${p.t}</div><div class="pn">${p.note}</div></div><span class="status ${p.st}">${p.stl}</span></div>
     <div class="body"><div class="nums">
       <div class="big tnum">${p.target?money(p.saved):prog+'%'}${p.target?`<small> / ${money(p.target)}</small>`:''}</div>
@@ -736,30 +767,55 @@ function planLg(p){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
       <div class="bar"><i style="width:${prog}%;background:var(${p.k})"></i></div>
       ${p.traj?`<div class="plan-spark">${planSpark(p.traj,p.k,p.down)}</div>`:''}
       ${p.monthly?`<div class="plan-meta"><span>${p.down?'Paying':p.done?'Saved':'Saving'} <b>${p.monthly}</b></span><span class="pm-date">${p.date}</span></div>`:''}
-      <div class="next"><b>${p.done?'Outcome:':'Next:'}</b> ${p.next}</div></div>
+      <div class="next"><b>${p.done?'Outcome:':'Next:'}</b> ${p.next}</div>
+      <div class="edit-hint">Click to view &amp; edit →</div></div>
     ${p.rec?`<div class="embed-rec"><div class="save tnum">$${p.rec.save}<small>/yr</small></div>
       <div class="eb"><h4>${p.rec.h}</h4><p>${p.rec.p}</p>
         <div class="cta"><button class="btn sm">See offer</button><span class="partner">via <b>${p.rec.partner}</b></span></div></div></div>`:''}</div>`;}
-function renderPlans(f){f=f||'active';const list=D.plans.filter(p=>f==='all'?true:f==='completed'?p.done:!p.done);
-  $('#plansPage').innerHTML=list.length?list.map(planLg).join(''):`<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3);padding:32px">No ${f} plans yet.</div>`;}
-function mktCards(el,cat){cat=cat||'All';
-  const list=D.mkt.filter(m=>cat==='All'||m.cat===cat).slice()
-    .sort((a,b)=>(b.match?1:0)-(a.match?1:0)||(a.use?1:0)-(b.use?1:0));
-  el.innerHTML=list.map(m=>`<div class="card mkt-card ${m.use?'used':''} ${m.match?'matched':''}">
-    ${m.match?`<div class="mkt-ribbon">Recommended for you</div>`:''}
-    <div class="mkt-top">${blogo(m.n,m.logo,m.k,true)}
-      <div style="flex:1;min-width:0"><div class="mn">${m.n}</div><div class="mc">${m.cat}</div></div>
-      ${m.use?`<span class="use-badge">You use this</span>`:''}</div>
-    <div class="mkt-stat">${m.stat}</div>
-    <p>${m.blurb}</p>
-    ${m.match?`<div class="mkt-why">Because ${m.match}.</div>`:''}
-    <div class="tags">${m.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    <div class="mkt-foot"><span class="src ${m.src}">${m.src==='self'?'Self-listed':'Curated'}</span><button class="btn sm">View</button></div></div>`).join('');}
-function openNewPlan(){const T=[['Home','Buy a home','--c1'],['Debt','Pay off debt','--c4'],['Fund','Emergency fund','--c3'],['Baby','Baby & family','--c5'],['Retire','Retirement','--c2'],['Goal','Custom goal','--c6']];
+let PF='active';
+function renderPlans(f){if(f)PF=f;const list=D.plans.filter(p=>PF==='all'?true:PF==='completed'?p.done:!p.done);
+  $('#plansPage').innerHTML=list.length?list.map(p=>planLg(p,D.plans.indexOf(p))).join(''):`<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3);padding:32px">No ${PF} plans yet.</div>`;
+  $$('#plansPage .plan-lg').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('button'))return;openPlanEdit(+c.dataset.pi);}));}
+function mktCard(m,rec){return `<div class="card mkt-card ${m.use?'used':''}">
+  <div class="mkt-top">${blogo(m.n,m.logo,m.k,true)}
+    <div style="flex:1;min-width:0"><div class="mn">${m.n}</div><div class="mc">${m.cat}</div></div>
+    ${m.use?`<span class="use-badge">You use this</span>`:''}</div>
+  <div class="mkt-stat">${m.stat}</div>
+  <p>${m.blurb}</p>
+  ${rec&&m.match?`<div class="mkt-why">Because ${m.match}.</div>`:''}
+  <div class="tags">${m.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+  <div class="mkt-foot"><span class="src ${m.src}">${m.src==='self'?'Self-listed':'Curated'}</span><button class="btn sm">View</button></div></div>`;}
+function renderRec(){$('#mktRec').innerHTML=D.mkt.filter(m=>m.match).map(m=>mktCard(m,true)).join('');}
+function renderLib(cat){cat=cat||'All';const list=D.mkt.filter(m=>!m.match).filter(m=>cat==='All'||m.cat===cat).slice().sort((a,b)=>(a.use?1:0)-(b.use?1:0));
+  $('#mktLib').innerHTML=list.length?list.map(m=>mktCard(m,false)).join(''):`<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3);padding:28px">No options in this category.</div>`;}
+function openNewPlan(){const T=[['home','Buy a home','--c1'],['debt','Pay off debt','--c4'],['shield','Emergency fund','--c3'],['baby','Baby & family','--c5'],['sun','Retirement','--c2'],['target','Custom goal','--c6']];
   $('#modalBody').innerHTML=`<h3>Start a new plan</h3><p>Pick a goal — Juniper builds the plan and funds it from your linked accounts.</p>
-    <div class="tmpl-grid">${T.map(([ab,label,k])=>`<button class="tmpl"><span class="tmpl-ic" style="background:var(${k})">${ab[0]}</span>${label}</button>`).join('')}</div>
+    <div class="tmpl-grid">${T.map(([icon,label,k])=>`<button class="tmpl" data-icon="${icon}" data-k="${k}" data-label="${label}"><span class="tmpl-ic" style="background:var(${k})">${pIcon(icon)}</span>${label}</button>`).join('')}</div>
     <div class="modal-actions" style="margin-top:14px"><button class="btn ghost" id="tmplClose" style="flex:1">Cancel</button></div>`;
-  modal.classList.add('on');$('#tmplClose').onclick=closeModal;$$('.tmpl',$('#modalBody')).forEach(b=>b.onclick=closeModal);}
+  modal.classList.add('on');$('#tmplClose').onclick=closeModal;
+  $$('.tmpl',$('#modalBody')).forEach(b=>b.onclick=()=>openPlanForm(b.dataset.icon,b.dataset.label,b.dataset.k));}
+function openPlanForm(icon,label,k){const isCustom=label==='Custom goal';
+  $('#modalBody').innerHTML=`<h3>${isCustom?'Custom goal':label}</h3><p>Name it and set a target — Juniper starts funding it from your linked accounts.</p>
+    <div class="field"><label>Goal name</label><input id="pf-name" value="${isCustom?'':label}" placeholder="e.g. New car fund"></div>
+    <div class="field2"><div class="field"><label>Target amount ($)</label><input id="pf-target" inputmode="numeric" placeholder="10,000"></div>
+      <div class="field"><label>Monthly</label><input id="pf-monthly" placeholder="$300/mo"></div></div>
+    <div class="field"><label>Target date</label><input id="pf-date" placeholder="Dec 2027"></div>
+    <div class="modal-actions"><button class="btn" id="pf-create">Create plan</button><button class="btn ghost" id="pf-back">Back</button></div>`;
+  $('#pf-back').onclick=openNewPlan;
+  $('#pf-create').onclick=()=>{const name=$('#pf-name').value.trim()||label;const target=+($('#pf-target').value.replace(/[^0-9.]/g,''))||0;
+    D.plans.unshift({t:name,icon,ab:name[0].toUpperCase(),k,saved:0,target,pct:0,st:'new',stl:'New',monthly:$('#pf-monthly').value.trim()||'Not set',date:$('#pf-date').value.trim()||'No date set',note:'Just created',next:'Add your first contribution'});
+    closeModal();$$('#planFilter button').forEach(x=>x.classList.toggle('on',x.dataset.filter==='active'));renderPlans('active');};}
+function openPlanEdit(i){const p=D.plans[i];
+  $('#modalBody').innerHTML=`<h3>Edit plan</h3><p>Update the goal or remove it. Progress is funded from your linked accounts.</p>
+    <div class="field"><label>Goal name</label><input id="pe-name" value="${p.t.replace(/"/g,'&quot;')}"></div>
+    <div class="field2"><div class="field"><label>Saved so far ($)</label><input id="pe-saved" value="${p.saved||0}"></div>
+      <div class="field"><label>Target ($)</label><input id="pe-target" value="${p.target||0}"></div></div>
+    <div class="field2"><div class="field"><label>Monthly</label><input id="pe-monthly" value="${(p.monthly||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Target date</label><input id="pe-date" value="${(p.date||'').replace(/"/g,'&quot;')}"></div></div>
+    <div class="modal-actions"><button class="btn" id="pe-save">Save changes</button><button class="btn ghost" id="pe-del" style="flex:0 0 auto;color:var(--bad)">Delete</button></div>`;
+  modal.classList.add('on');
+  $('#pe-save').onclick=()=>{p.t=$('#pe-name').value.trim()||p.t;p.saved=+($('#pe-saved').value.replace(/[^0-9.]/g,''))||0;p.target=+($('#pe-target').value.replace(/[^0-9.]/g,''))||0;p.monthly=$('#pe-monthly').value.trim();p.date=$('#pe-date').value.trim();if(p.target)p.pct=Math.round(p.saved/p.target*100);closeModal();renderPlans();};
+  $('#pe-del').onclick=()=>{D.plans.splice(i,1);closeModal();renderPlans();};}
 function acctPage(el){const g=D.accts,sum=a=>a.reduce((x,y)=>x+y.v,0);
   const col=(t,arr)=>`<div class="card acct-col"><div class="card-head"><h3>${t}</h3><span class="tot tnum">${money(sum(arr))}</span></div>
     <div class="rows">${arr.map(a=>`<div class="row">${tile(a.i&&a.i.length<=3?a.i:a.n[0],a.k)}
@@ -922,13 +978,13 @@ netWorth('nwHome');donut('donutHome','legendHome');budgets($('#budgetsHome'));tx
 $('#plansHome').innerHTML=D.plans.map(planRow).join('');
 donut('donutSpend','legendSpend');budgets($('#budgetsSpend'));budgets($('#budgetsSpend2'));txRows($('#txSpend'),8);
 renderPlans('active');
-mktCards($('#mktPage'));
+renderRec();renderLib();
 /* plans filter */
 $$('#planFilter button').forEach(b=>b.addEventListener('click',()=>{
   $$('#planFilter button').forEach(x=>x.classList.toggle('on',x===b));renderPlans(b.dataset.filter);}));
 /* marketplace category filter */
 $$('#mktCats button').forEach(b=>b.addEventListener('click',()=>{
-  $$('#mktCats button').forEach(x=>x.classList.toggle('on',x===b));mktCards($('#mktPage'),b.dataset.cat);}));
+  $$('#mktCats button').forEach(x=>x.classList.toggle('on',x===b));renderLib(b.dataset.cat);}));
 /* new-plan buttons open the template picker */
 $$('[data-newplan]').forEach(b=>b.addEventListener('click',openNewPlan));
 
@@ -936,8 +992,8 @@ $$('[data-newplan]').forEach(b=>b.addEventListener('click',openNewPlan));
 const NOTES={
   home:`<b>Home.</b> The perfected dashboard. Slim Juniper Score strip (links to a breakdown page — no offers here), net worth + your plans in the hero with cashflow demoted to a footer, then Mint-style spending + budgets, and transactions + accounts. No recommendations live on this page.`,
   spending:`<b>Spending.</b> The Mint deep-dive with working sub-tabs — <b>Overview</b> (category donut + budgets), <b>Transactions</b> (searchable table), <b>Budgets</b>, and <b>Subscriptions</b> (moved in from its own page: recurring charges, flags, and one-click cancel with the approval modal). Accounts now lives only on Home for now; nav is Home · Spending · Plans · Marketplace · Credit.`,
-  plans:`<b>Plans (polished).</b> Each card now shows a <b>trajectory sparkline</b>, monthly contribution + target date, funding progress, and the next step. The <b>Active / Completed / All</b> filter works (see the completed Wedding fund under Completed), and <b>New plan</b> opens a goal-template picker. A recommendation still appears inside a plan only when relevant (the SoFi offer on the loan payoff).`,
-  marketplace:`<b>Marketplace (polished).</b> Offers that fit your situation get a <b>Recommended for you</b> ribbon with a "because…" reason and sort to the top; things <b>you already use</b> are muted and sink to the bottom. Each card leads with a headline stat (APY / rate). The <b>category filter</b> works, provenance is labeled curated vs. self-listed, and supply-side listing lives behind "List your service".`,
+  plans:`<b>Plans.</b> Each plan now has a real <b>icon</b>, a trajectory sparkline, contribution + target date, and progress. <b>Click any card to open it and edit</b> — change the name, saved/target, monthly, date, or delete it. <b>New plan</b> (here and on Home) opens a goal-template picker that <b>actually creates</b> a plan, including a Custom goal. Active / Completed / All filter works; the in-plan SoFi offer still appears only on the loan payoff.`,
+  marketplace:`<b>Recommended (moved to the end of the nav, reframed).</b> Less "marketplace", more "recommended for you": a <b>Picked for you</b> row of offers matched to your situation (each with a "because…" reason), then a browsable <b>Library</b> of everything else with a working category filter. Things you already use are muted and sink to the bottom; provenance is labeled curated vs. self-listed; supply-side listing lives behind "List your service".`,
   accounts:`<b>Accounts.</b> The Plaid surface — net worth summary up top, then everything grouped into cash / investments / debts with live balances and a "Link account" entry point.`,
   score:`<b>Score breakdown.</b> The Credit-Karma-style health page behind "See breakdown": the gauge and its 8-month trend, the five factors that drive it (each with your standing, its impact weight, and what to do), and the ranked, affiliate-linked ways to improve — the one that maps to a plan links back to it. The Credit-health factor links through to the Credit page.`,
   subscriptions:`<b>Subscriptions (Stage 9).</b> Recurring charges detected from transactions, sorted by next charge, with price-hike / unused flags and a monthly-total + potential-savings summary. Click <b>Cancel</b> on any row to see the approval modal — amount, next charge, yearly savings, and "Request cancellation." Confirm one to watch it flip to "Cancellation requested." Real cancellation is an assisted/partner flow behind that button, gated on your approval.`,
