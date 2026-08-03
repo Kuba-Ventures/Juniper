@@ -54,6 +54,28 @@ async function memberNetWorth(uid: string): Promise<number> {
   return Math.round(assets - debts);
 }
 
+type PAcct = { account_id: string; name?: string; type?: string | null; subtype?: string | null; balance?: number | null };
+type PItem = { institution_name?: string | null; accounts: PAcct[] };
+type DisplayAcct = { account_id: string; n: string; inst: string; v: number; type: string };
+
+// A member's accounts flattened for display (debts shown negative).
+async function memberAccounts(uid: string): Promise<DisplayAcct[]> {
+  const items = await rows<PItem>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts`);
+  return items.flatMap((it) =>
+    (it.accounts || []).map((a) => {
+      const type = (a.type || "").toLowerCase();
+      const bal = a.balance || 0;
+      return {
+        account_id: a.account_id,
+        n: a.name || "Account",
+        inst: it.institution_name || a.subtype || a.type || "Account",
+        v: type === "credit" || type === "loan" ? -Math.abs(bal) : bal,
+        type,
+      };
+    }),
+  );
+}
+
 // The caller's active partnership (else the pending one they created).
 async function loadPartnership(uid: string): Promise<{ active?: Partnership; pending?: Partnership }> {
   const parts = await rows<Partnership>(
@@ -96,6 +118,27 @@ async function overview(uid: string): Promise<Response> {
   const youNW = await memberNetWorth(uid);
   const partnerNW = theirs.share_balances ? await memberNetWorth(partnerId) : 0;
 
+  // Per-account view, honoring each member's per-account scope (default from the
+  // coarse share_balances pref). The caller sees their own accounts in full; the
+  // partner's are included per scope, with 'private' ones hidden entirely.
+  const shareRows = await rows<{ user_id: string; account_id: string; scope: string }>(
+    `account_shares?partnership_id=eq.${active.id}&select=user_id,account_id,scope`,
+  );
+  const scopeFor = (memberId: string, acctId: string, sharesBalances: boolean): string => {
+    const row = shareRows.find((s) => s.user_id === memberId && s.account_id === acctId);
+    return row ? row.scope : sharesBalances ? "balance" : "private";
+  };
+  const accounts: { account_id: string; n: string; inst: string; v: number; owner: "you" | "partner" | "shared"; scope: string; mine: boolean }[] = [];
+  for (const a of await memberAccounts(uid)) {
+    const scope = scopeFor(uid, a.account_id, mine.share_balances);
+    accounts.push({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: scope === "shared" ? "shared" : "you", scope, mine: true });
+  }
+  for (const a of await memberAccounts(partnerId)) {
+    const scope = scopeFor(partnerId, a.account_id, theirs.share_balances);
+    if (scope === "private") continue; // hidden from the caller
+    accounts.push({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: scope === "shared" ? "shared" : "partner", scope, mine: false });
+  }
+
   return json({
     connected: true,
     partner: { name: partnerName },
@@ -104,6 +147,7 @@ async function overview(uid: string): Promise<Response> {
       partner: { share_balances: theirs.share_balances, share_transactions: theirs.share_transactions, share_score: theirs.share_score },
     },
     goals,
+    accounts,
     combined: { netWorth: youNW + partnerNW, youShare: youNW, partnerShare: partnerNW },
   });
 }
@@ -133,6 +177,7 @@ export default async function handler(req: Request): Promise<Response> {
     action?: string; token?: string; partnerName?: string;
     share_balances?: boolean; share_transactions?: boolean; share_score?: boolean;
     title?: string; icon?: string; target?: number; goalId?: string; amount?: number;
+    accountId?: string; scope?: string;
   };
 
   if (body.action === "invite") {
@@ -194,6 +239,20 @@ export default async function handler(req: Request): Promise<Response> {
       body: JSON.stringify(patch),
     });
     if (!r.ok) return json({ error: "Failed to update sharing" }, 500);
+    return json({ ok: true });
+  }
+
+  if (body.action === "set-account-share") {
+    const accountId = (body.accountId || "").trim();
+    const scope = body.scope;
+    if (!accountId || (scope !== "shared" && scope !== "balance" && scope !== "private")) {
+      return json({ error: "accountId and a valid scope are required" }, 400);
+    }
+    const r = await adminRest("account_shares?on_conflict=partnership_id,user_id,account_id", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ partnership_id: active.id, user_id: uid, account_id: accountId, scope, updated_at: new Date().toISOString() }),
+    });
+    if (!r.ok) return json({ error: "Failed to update account sharing" }, 500);
     return json({ ok: true });
   }
 

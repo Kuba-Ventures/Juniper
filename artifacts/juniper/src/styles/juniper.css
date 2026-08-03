@@ -355,6 +355,7 @@
 .jnpr .tile.sm{width:30px;height:30px;border-radius:8px;font-size:12px}
 .jnpr .amt .chip{margin-left:8px}
 .jnpr .chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.jnpr button.chip{border:0;cursor:pointer;font-family:inherit}
 .jnpr .chip.shared{color:var(--jnpr-good);background:var(--jnpr-good-soft)}
 .jnpr .chip.balance{color:var(--jnpr-c3);background:color-mix(in srgb,var(--jnpr-c3) 15%,transparent)}
 .jnpr .chip.private{color:var(--jnpr-ink-3);background:var(--jnpr-surface-3)}
