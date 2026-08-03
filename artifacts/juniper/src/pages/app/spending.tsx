@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import {
-  spending, budgets, transactions, subscriptions as seedSubs,
-  money, money2, type Subscription,
+  subscriptions as seedSubs,
+  money, money2, type Subscription, type Budget, type Txn, type SpendCat,
 } from "@/lib/mock-data";
+import { useFinances } from "@/lib/finances";
 import { BrandTile, SpendingDonut } from "@/components/juniper/primitives";
 
 type Tab = "overview" | "transactions" | "budgets" | "subs";
@@ -21,10 +22,10 @@ function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => v
   );
 }
 
-function Budgets() {
+function Budgets({ items }: { items: Budget[] }) {
   return (
     <div>
-      {budgets.map((b, i) => {
+      {items.map((b, i) => {
         const pct = Math.min(100, Math.round((b.s / b.l) * 100));
         const over = b.s > b.l;
         return (
@@ -41,9 +42,9 @@ function Budgets() {
   );
 }
 
-function TransactionsPanel() {
+function TransactionsPanel({ items }: { items: Txn[] }) {
   const [q, setQ] = useState("");
-  const rows = transactions.filter((t) => (t.m + " " + t.c).toLowerCase().includes(q.toLowerCase()));
+  const rows = items.filter((t) => (t.m + " " + t.c).toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="card">
       <div className="card-head">
@@ -138,6 +139,10 @@ function SubscriptionsPanel() {
 
 export function Spending() {
   const [tab, setTab] = useState<Tab>("overview");
+  const { data } = useFinances();
+  const spending: SpendCat[] = data.spending;
+  const budgets: Budget[] = data.budgets;
+  const transactions: Txn[] = data.transactions;
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
   return (
     <div className="frame">
@@ -161,11 +166,11 @@ export function Spending() {
       {tab === "overview" && (
         <div className="grid two">
           <div className="card"><div className="card-head"><h3>Where it went — {money(totalSpent)}</h3></div><SpendingDonut data={spending} /></div>
-          <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div><Budgets /></div>
+          <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div><Budgets items={budgets} /></div>
         </div>
       )}
-      {tab === "transactions" && <TransactionsPanel />}
-      {tab === "budgets" && <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit budgets</button></div><Budgets /></div>}
+      {tab === "transactions" && <TransactionsPanel items={transactions} />}
+      {tab === "budgets" && <div className="card"><div className="card-head"><h3>Budgets</h3><button className="link">Edit budgets</button></div><Budgets items={budgets} /></div>}
       {tab === "subs" && <SubscriptionsPanel />}
     </div>
   );

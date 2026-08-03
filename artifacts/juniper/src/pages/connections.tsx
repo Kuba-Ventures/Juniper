@@ -9,6 +9,7 @@ import {
   exchangePublicToken,
   fetchPlaidItems,
   removePlaidItem,
+  syncFinances,
   type PlaidItem,
 } from "@/lib/plaid";
 import { trackEngagement } from "@/lib/analytics";
@@ -46,11 +47,22 @@ export function ConnectionsView() {
   const [connecting, setConnecting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const refresh = useCallback(async () => {
     const next = await fetchPlaidItems();
     setItems(next);
   }, []);
+
+  // Pull fresh transactions + net worth from the server, then re-read accounts
+  // (the snapshot leg refreshes the stored balances too). Manual "Refresh".
+  const handleSync = useCallback(async () => {
+    setNotice(null);
+    setSyncing(true);
+    await syncFinances();
+    await refresh();
+    setSyncing(false);
+  }, [refresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +88,9 @@ export function ConnectionsView() {
       if (item) {
         trackEngagement("connection_linked");
         await refresh();
+        // Populate the data spine for the freshly linked item — transactions +
+        // the first net-worth snapshot — so the dashboard flips to live data.
+        void syncFinances();
       } else {
         setNotice("We couldn't finish connecting that account. Please try again.");
       }
@@ -191,6 +206,27 @@ export function ConnectionsView() {
           <Plus size={18} strokeWidth={2.4} />
           {connecting ? "Opening secure link…" : hasItems ? "Connect another account" : "Connect an account"}
         </button>
+
+        {hasItems && !loading && (
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            style={{
+              display: "block",
+              margin: "-12px auto 24px",
+              background: "transparent",
+              border: "none",
+              fontFamily: sans,
+              fontSize: 13,
+              fontWeight: 600,
+              color: sage,
+              cursor: syncing ? "default" : "pointer",
+              opacity: syncing ? 0.6 : 1,
+            }}
+          >
+            {syncing ? "Refreshing transactions & balances…" : "Refresh data now"}
+          </button>
+        )}
 
         {loading ? (
           <p style={{ textAlign: "center", color: muted, fontFamily: sans, fontSize: 14 }}>Loading…</p>
