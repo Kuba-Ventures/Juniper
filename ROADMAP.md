@@ -13,8 +13,8 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 - **Post-login home:** Mint-style dashboard — net worth + plans hero, spending-by-category, budgets, transactions, accounts.
 - **Recommendations:** live **only inside a relevant plan** and on the **Score breakdown** page — never floating on the dashboard.
 - **Visual identity:** **Juniper.com** skin — warm cream `#FAF7F2` + serif display (matches the live marketing site), warm-brown dark mode. Real bonsai logo (`artifacts/juniper/public/logo.png`).
-- **Prototype reference:** interactive design mock covering Home, Spending, Plans, Marketplace, Accounts, and the Score breakdown (kept outside the repo; not production code).
-- **Planned surfaces not yet designed:** Subscriptions manager (Stage 9), Credit-score monitoring on the Score/credit page (Stage 10), Ask Juniper advisor (Stage 11).
+- **Prototype reference:** `design/juniper-app-mock.html` — a self-contained, clickable design mock (open in any browser; ☾/☀ toggles theme). Covers Home, Spending, **Subscriptions**, Plans, Marketplace, Accounts, the **Score breakdown**, and **Credit monitoring**. This is a design reference, not production code.
+- **Planned surfaces not yet designed:** Ask Juniper advisor (Stage 11).
 
 ### Status legend
 
@@ -43,8 +43,8 @@ Shell is done; remaining screens and states:
 - [ ] Marketplace: listing detail + "List your service" merchant submission flow
 - [ ] Interaction states: edit transaction category, edit budget, add/adjust goal
 - [ ] Spending sub-tabs: Transactions table, Recurring
-- [ ] Subscriptions manager screen + one-click-cancel confirmation/approval modal *(Stage 9)*
-- [ ] Credit-score monitoring view on the Score/credit page — score trend, change alerts, factors *(Stage 10)*
+- [x] Subscriptions manager screen + one-click-cancel confirmation/approval modal *(Stage 9)* — in mock
+- [x] Credit-score monitoring view on the Score/credit page — score trend, change alerts, factors *(Stage 10)* — in mock
 - [ ] Responsive / mobile layouts for all surfaces
 - [ ] ~~"Ask Juniper" Q&A surface~~ — deferred to post-launch *(Stage 11)*
 
@@ -125,7 +125,7 @@ Shell is done; remaining screens and states:
 See and manage every active subscription, and cancel with one click + an approval step. Detection builds on Stage 3 recurring-transaction data.
 
 - [ ] **(build)** Recurring/subscription detection from transactions — group by merchant + cadence, surface amount, next charge date, and price hikes ♻️ *(uses Stage 3 data spine)*
-- [ ] **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure")
+- [x] **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure") — in `design/juniper-app-mock.html`
 - [ ] **(build)** Cancellation mechanism — realistically an **assisted/concierge or partner-API flow**, not a universal one-click across all merchants. Options: generate a pre-filled cancellation request, hand off to a cancellation partner, or a Juniper-assisted queue. User's approval gates every action.
 - [ ] **(build)** Track cancellation status (requested → confirmed) and estimated savings; feed savings into the Juniper Score / "ways to improve"
 - [ ] **(compliance)** Terms for acting on the user's behalf; audit log of approvals
@@ -137,7 +137,7 @@ See and manage every active subscription, and cancel with one click + an approva
 Ongoing credit-score tracking and alerts on the Score/credit page (distinct from the proprietary Juniper Score, which uses credit as one factor).
 
 - [ ] **(build)** Integrate a credit-data provider (e.g. Array / bureau soft-pull / Credit Karma-style partner) — pull score + factors on a schedule
-- [ ] **(design)** Credit page: current score, trend over time, score factors, and change alerts (score moved, new inquiry, utilization up)
+- [x] **(design)** Credit page: current score, trend over time, score factors, and change alerts (score moved, new inquiry, utilization up) — in `design/juniper-app-mock.html`
 - [ ] **(build)** Alerting — notify on meaningful changes; store history
 - [ ] **(build)** Feed the live credit score into the Juniper Score's "credit health" factor (replaces the static 726 placeholder)
 - [ ] **(compliance)** FCRA / credit-data handling, provider contract, consent + disclosures for soft pulls

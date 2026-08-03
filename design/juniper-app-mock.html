@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>*{margin:0;padding:0;box-sizing:border-box}img{max-width:100%}</style>
+</head>
+<body>
+<title>Juniper — App shell</title>
+<style>
+  :root{
+    --ground:#F4F0E8; --surface:#FFFFFF; --surface-2:#FBF9F4; --surface-3:#F1ECE1;
+    --ink:#1B2418; --ink-2:#4C5749; --ink-3:#828C7C;
+    --line:#E6E0D3; --line-2:#EFEAE0;
+    --accent:#2F6D46; --accent-deep:#234E33; --accent-soft:#E3EDE4; --on-accent:#FFFFFF;
+    --good:#2F8558; --good-soft:#E1EFE6; --warn:#B07A18; --warn-soft:#F6EDD8; --bad:#BB513A; --bad-soft:#F6E3DD;
+    --c1:#2F8558; --c2:#A8781E; --c3:#3E6FB0; --c4:#B0563F; --c5:#9455A8; --c6:#5E7D2E; --c7:#9AA090;
+    --shadow:0 1px 2px rgba(27,36,24,.05), 0 8px 24px -14px rgba(27,36,24,.13);
+    --shadow-lg:0 2px 6px rgba(27,36,24,.06), 0 20px 44px -20px rgba(27,36,24,.22);
+    --r:16px; --r-sm:11px; --r-xs:8px;
+    --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --ground:#10140D; --surface:#191E14; --surface-2:#20261A; --surface-3:#262D1E;
+    --ink:#ECEFE5; --ink-2:#A7AF9E; --ink-3:#727A69; --line:#2C3326; --line-2:#242B1E;
+    --accent:#5FB07C; --accent-deep:#7FC698; --accent-soft:#233020; --on-accent:#0E1409;
+    --good:#5FB07C; --good-soft:#1F2C1E; --warn:#D3A24A; --warn-soft:#2E2716; --bad:#D97E64; --bad-soft:#31201B;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.35), 0 24px 50px -22px rgba(0,0,0,.7);}}
+  :root[data-theme="light"]{
+    --ground:#F4F0E8; --surface:#FFFFFF; --surface-2:#FBF9F4; --surface-3:#F1ECE1;
+    --ink:#1B2418; --ink-2:#4C5749; --ink-3:#828C7C; --line:#E6E0D3; --line-2:#EFEAE0;
+    --accent:#2F6D46; --accent-deep:#234E33; --accent-soft:#E3EDE4; --on-accent:#FFFFFF;
+    --good:#2F8558; --good-soft:#E1EFE6; --warn:#B07A18; --warn-soft:#F6EDD8; --bad:#BB513A; --bad-soft:#F6E3DD;
+    --c1:#2F8558; --c2:#A8781E; --c3:#3E6FB0; --c4:#B0563F; --c5:#9455A8; --c6:#5E7D2E; --c7:#9AA090;
+    --shadow:0 1px 2px rgba(27,36,24,.05), 0 8px 24px -14px rgba(27,36,24,.13);
+    --shadow-lg:0 2px 6px rgba(27,36,24,.06), 0 20px 44px -20px rgba(27,36,24,.22);}
+  :root[data-theme="dark"]{
+    --ground:#10140D; --surface:#191E14; --surface-2:#20261A; --surface-3:#262D1E;
+    --ink:#ECEFE5; --ink-2:#A7AF9E; --ink-3:#727A69; --line:#2C3326; --line-2:#242B1E;
+    --accent:#5FB07C; --accent-deep:#7FC698; --accent-soft:#233020; --on-accent:#0E1409;
+    --good:#5FB07C; --good-soft:#1F2C1E; --warn:#D3A24A; --warn-soft:#2E2716; --bad:#D97E64; --bad-soft:#31201B;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.35), 0 24px 50px -22px rgba(0,0,0,.7);}
+
+  /* ================= PALETTE SKINS (theme-aware, high specificity) =================
+     Selectors use html[data-skin=x]:root so they beat the base :root[data-theme] rules. */
+
+  /* ---- Juniper.com : warm cream + serif (matches the live site) ---- */
+  html[data-skin="junipercom"]:root,
+  html[data-skin="junipercom"][data-theme="light"]:root{
+    --ground:#FAF7F2; --surface:#FFFFFF; --surface-2:#FBF8F1; --surface-3:#F1E9DB;
+    --ink:#26301F; --ink-2:#55604B; --ink-3:#8B9380; --line:#ECE3D4; --line-2:#F4EDE1;
+    --accent:#40684B; --accent-deep:#2C4A34; --accent-soft:#E6EEE4; --on-accent:#FFFFFF;
+    --good:#3B7A4E; --good-soft:#E4EFE5; --warn:#A97A1E; --warn-soft:#F5ECD6; --bad:#B4523B; --bad-soft:#F4E2DC;
+    --c1:#2F8558; --c2:#A8781E; --c3:#3E6FB0; --c4:#B0563F; --c5:#9455A8; --c6:#5E7D2E; --c7:#9AA090;
+    --fdisplay:Georgia,"Iowan Old Style","Times New Roman",serif; --r:18px;
+    --shadow:0 1px 2px rgba(38,48,31,.05), 0 10px 30px -16px rgba(38,48,31,.15);}
+  @media(prefers-color-scheme:dark){html[data-skin="junipercom"]:root:not([data-theme="light"]){
+    --ground:#171410; --surface:#211D16; --surface-2:#2A251B; --surface-3:#332C20;
+    --ink:#EDE6D8; --ink-2:#B3AB98; --ink-3:#807969; --line:#352E20; --line-2:#2A251B;
+    --accent:#82AE84; --accent-deep:#9BC29C; --accent-soft:#2A3325; --on-accent:#15140E;
+    --good:#82AE84; --good-soft:#26301F; --warn:#D2A85A; --warn-soft:#332912; --bad:#D68B6F; --bad-soft:#33231C;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -16px rgba(0,0,0,.6);}}
+  html[data-skin="junipercom"][data-theme="dark"]:root{
+    --ground:#171410; --surface:#211D16; --surface-2:#2A251B; --surface-3:#332C20;
+    --ink:#EDE6D8; --ink-2:#B3AB98; --ink-3:#807969; --line:#352E20; --line-2:#2A251B;
+    --accent:#82AE84; --accent-deep:#9BC29C; --accent-soft:#2A3325; --on-accent:#15140E;
+    --good:#82AE84; --good-soft:#26301F; --warn:#D2A85A; --warn-soft:#332912; --bad:#D68B6F; --bad-soft:#33231C;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -16px rgba(0,0,0,.6);}
+  html[data-skin="junipercom"] h1{font-weight:600;letter-spacing:-.012em;line-height:1.12}
+  html[data-skin="junipercom"] .card h3{font-weight:600}
+
+  /* ---- Fresh : cool + vivid + rounded ---- */
+  html[data-skin="fresh"]:root,
+  html[data-skin="fresh"][data-theme="light"]:root{
+    --ground:#EAF2E8; --surface:#FFFFFF; --surface-2:#F4FAF3; --surface-3:#E0EEE1;
+    --ink:#16241B; --ink-2:#47564C; --ink-3:#7C8B7F; --line:#DDE9DB; --line-2:#EBF3EA;
+    --accent:#159C55; --accent-deep:#0E7A41; --accent-soft:#D6F0DF; --on-accent:#FFFFFF;
+    --good:#159C55; --good-soft:#D6F0DF; --warn:#C08A2E; --warn-soft:#F6EDD8; --bad:#C85A40; --bad-soft:#F6E3DD;
+    --c1:#2F8558; --c2:#A8781E; --c3:#3E6FB0; --c4:#B0563F; --c5:#9455A8; --c6:#5E7D2E; --c7:#9AA090;
+    --r:20px; --shadow:0 1px 2px rgba(22,36,27,.05), 0 14px 34px -16px rgba(22,60,35,.18);}
+  @media(prefers-color-scheme:dark){html[data-skin="fresh"]:root:not([data-theme="light"]){
+    --ground:#0D1411; --surface:#16201B; --surface-2:#1C2721; --surface-3:#243029;
+    --ink:#E7F0E9; --ink-2:#A2B0A6; --ink-3:#6F7D73; --line:#28332C; --line-2:#202A24;
+    --accent:#33C27E; --accent-deep:#57D194; --accent-soft:#153026; --on-accent:#07130C;
+    --good:#33C27E; --good-soft:#153026; --warn:#D3A24A; --warn-soft:#2E2716; --bad:#DD7E62; --bad-soft:#301F1A;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 16px 36px -16px rgba(0,0,0,.65);}}
+  html[data-skin="fresh"][data-theme="dark"]:root{
+    --ground:#0D1411; --surface:#16201B; --surface-2:#1C2721; --surface-3:#243029;
+    --ink:#E7F0E9; --ink-2:#A2B0A6; --ink-3:#6F7D73; --line:#28332C; --line-2:#202A24;
+    --accent:#33C27E; --accent-deep:#57D194; --accent-soft:#153026; --on-accent:#07130C;
+    --good:#33C27E; --good-soft:#153026; --warn:#D3A24A; --warn-soft:#2E2716; --bad:#DD7E62; --bad-soft:#301F1A;
+    --c1:#3E9E6B; --c2:#B5822F; --c3:#5A88C8; --c4:#C86B52; --c5:#AE6EC0; --c6:#6E9138; --c7:#8B927E;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 16px 36px -16px rgba(0,0,0,.65);}
+  html[data-skin="fresh"] h1{font-weight:750;letter-spacing:-.026em}
+  html[data-skin="fresh"] .nav button.on,html[data-skin="fresh"] .btn{border-radius:11px}
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ff);
+    -webkit-font-smoothing:antialiased;line-height:1.5;font-size:15px}
+  .tnum{font-variant-numeric:tabular-nums}
+  h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em;text-wrap:balance;font-family:var(--fdisplay,var(--ff))}
+  button{font-family:inherit}
+
+  /* ---- skin switcher (design-review layer) ---- */
+  .skinbar{border-bottom:1px solid var(--line);background:var(--surface-2)}
+  .skinbar-in{max-width:1160px;margin:0 auto;padding:10px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .skinbar .lede{font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:.02em}
+  .skins{display:flex;gap:6px;background:var(--surface-3);padding:5px;border-radius:11px;border:1px solid var(--line)}
+  .skins button{appearance:none;border:0;background:transparent;color:var(--ink-2);font-family:inherit;font-size:12.5px;
+    font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;transition:background .15s,color .15s}
+  .skins button:hover{color:var(--ink)}
+  .skins button[aria-pressed="true"]{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+  .skins button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .theme-toggle{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+    font-family:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer}
+  .theme-toggle:hover{background:var(--surface-3);color:var(--ink)}
+  .skinbar .hint{font-size:11.5px;color:var(--ink-3);margin-left:auto}
+  @media(max-width:640px){.skinbar .hint{display:none}}
+
+  /* top app bar */
+  .appbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--ground) 90%,transparent);
+    backdrop-filter:saturate(1.3) blur(12px);border-bottom:1px solid var(--line)}
+  .appbar-in{max-width:1160px;margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:18px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;font-size:18px}
+  .brand .mark{width:auto;height:32px;flex:0 0 auto;object-fit:contain;display:block}
+  .nav{display:flex;gap:2px;margin-left:6px}
+  .nav button{appearance:none;border:0;background:transparent;font-size:13.5px;font-weight:550;color:var(--ink-3);
+    padding:7px 13px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:color .15s,background .15s}
+  .nav button:hover{color:var(--ink);background:var(--surface-3)}
+  .nav button.on{color:var(--accent);background:var(--accent-soft);font-weight:650}
+  .nav .count{font-size:11px;font-weight:700;background:var(--surface);color:var(--ink-3);padding:0 6px;border-radius:20px;line-height:18px}
+  .nav button.on .count{background:var(--surface);color:var(--accent)}
+  .nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .spacer{flex:1}
+  .icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);
+    display:grid;place-items:center;color:var(--ink-2);cursor:pointer}
+  .icon-btn:hover{background:var(--surface-3)}.icon-btn svg{width:17px;height:17px}
+  .plaid-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);
+    background:var(--surface);border:1px solid var(--line);padding:6px 11px;border-radius:20px}
+  .plaid-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .avatar{width:33px;height:33px;border-radius:50%;background:var(--accent);color:var(--on-accent);
+    display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer}
+  @media(max-width:900px){.nav .lbl{display:none}.nav button{padding:8px}.plaid-pill{display:none}}
+
+  .frame{max-width:1160px;margin:24px auto 40px;padding:0 22px}
+  .page{display:none}.page.on{display:block;animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.page.on{animation:none}}
+
+  /* greeting + page headers */
+  .greet{margin:2px 2px 18px}
+  .greet h1{font-size:25px}
+  .greet .meta{color:var(--ink-3);font-size:13.5px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .greet .meta .up{color:var(--good);font-weight:600}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:2px 2px 18px}
+  .page-head h1{font-size:25px}
+  .page-head .sub{color:var(--ink-3);font-size:13.5px;margin-top:4px;max-width:52ch}
+  .page-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+
+  .grid{display:grid;gap:16px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+  .card.pad-lg{padding:22px}
+  .card h3{font-size:14px}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .link{font-size:12.5px;font-weight:600;color:var(--accent);text-decoration:none;cursor:pointer;background:none;border:0;padding:0}
+  .link:hover{text-decoration:underline}
+
+  .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
+    background:var(--accent);color:var(--on-accent);display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{filter:brightness(1.06)}.btn svg{width:14px;height:14px}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--surface-3);filter:none}
+  .btn.sm{padding:7px 12px;font-size:12.5px}
+
+  .pills{display:inline-flex;background:var(--surface-3);border:1px solid var(--line);border-radius:10px;padding:4px;gap:3px}
+  .pills button{border:0;background:transparent;color:var(--ink-2);font-size:12.5px;font-weight:600;
+    padding:6px 12px;border-radius:7px;cursor:pointer}
+  .pills button.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:8px 12px;min-width:230px;color:var(--ink-3)}
+  .search svg{width:15px;height:15px;flex:0 0 auto}
+  .search input{border:0;background:transparent;outline:0;font-family:inherit;font-size:13px;color:var(--ink);width:100%}
+
+  .big-num{font-size:38px;font-weight:700;letter-spacing:-.025em;line-height:1}
+  .delta{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:3px 8px;border-radius:20px}
+  .delta.up{color:var(--good);background:var(--good-soft)}.delta.down{color:var(--bad);background:var(--bad-soft)}
+  .delta svg{width:12px;height:12px}
+
+  .cf-foot{display:flex;gap:1px;margin-top:14px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .cf-foot > div{flex:1;background:var(--surface);padding:10px 13px}
+  .cf-foot .l{font-size:11px;color:var(--ink-3);font-weight:600}
+  .cf-foot .v{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:-.01em}
+  .cf-foot .v.pos{color:var(--good)}.cf-foot .v.acc{color:var(--accent)}
+
+  .rows{display:flex;flex-direction:column}
+  .row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid var(--line-2)}
+  .row:first-child{border-top:0}
+  .tile{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;letter-spacing:-.02em}
+  .row .nm{font-weight:600;font-size:13.5px}.row .mt{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .row .amt{margin-left:auto;font-weight:650;font-size:13.5px;text-align:right}.row .amt.inc{color:var(--good)}
+  .apr-chip{font-size:10.5px;font-weight:700;color:var(--bad);background:var(--bad-soft);padding:2px 6px;border-radius:6px}
+  .subhead{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--line-2)}
+  .subhead:first-child{border-top:0;padding-top:0;margin-top:0}
+
+  .bud{padding:11px 0;border-top:1px solid var(--line-2)}.bud:first-child{border-top:0}
+  .bud .t{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:7px}
+  .bud .t .r{color:var(--ink-3);font-weight:550}
+  .bar{height:8px;border-radius:6px;background:var(--surface-3);overflow:hidden}.bar > i{display:block;height:100%;border-radius:6px}
+  .bud.ok .bar > i{background:var(--accent)}.bud.over .bar > i{background:var(--warn)}.bud .flag{color:var(--warn);font-weight:650}
+
+  .plans-col{display:flex;flex-direction:column;gap:10px}
+  .plan-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface-2);cursor:pointer;transition:border-color .15s,transform .15s}
+  .plan-row:hover{border-color:var(--accent);transform:translateX(2px)}
+  .plan-row .track{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;flex:0 0 auto}
+  .pr-body{flex:1;min-width:0}
+  .pr-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .pr-top .pt{font-weight:650;font-size:13.5px}
+  .pr-top .amt{font-weight:700;font-size:13px;white-space:nowrap}.pr-top .amt small{color:var(--ink-3);font-weight:550}
+  .plan-row .bar{margin:8px 0 6px}
+  .pr-bot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3)}
+  .status{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .status.ok{color:var(--good);background:var(--good-soft)}.status.new{color:var(--accent);background:var(--accent-soft)}.status.setup{color:var(--warn);background:var(--warn-soft)}
+
+  /* score strip (home) */
+  .score-strip{display:flex;align-items:center;gap:15px;padding:14px 18px;border:1px solid var(--line);
+    border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+  .mini-ring{position:relative;width:46px;height:46px;flex:0 0 auto}
+  .mini-ring .rv{position:absolute;inset:0;display:grid;place-items:center;font-weight:750;font-size:15px}
+  .score-strip .st-t{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .score-strip .band{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--good);background:var(--good-soft);padding:2px 8px;border-radius:20px}
+  .score-strip .st-s{font-size:12.5px;color:var(--ink-3);margin-top:2px}.score-strip .st-s b{color:var(--ink-2)}
+  .score-strip .link{margin-left:auto;white-space:nowrap}
+
+  /* charts */
+  .chart{position:relative}
+  .nw-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .nw-area{fill:var(--accent);opacity:.10}
+  .nw-grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+  .nw-dot{fill:var(--accent);stroke:var(--surface);stroke-width:2.5}
+  .nw-hair{stroke:var(--ink-3);stroke-width:1;opacity:.5}
+  .nw-hit{fill:transparent;cursor:crosshair}
+  .ax{fill:var(--ink-3);font-size:10px;font-family:var(--ff)}
+  .slice{stroke:var(--surface);stroke-width:2;transition:opacity .12s}
+  .chart.dim .slice{opacity:.4}.chart .slice.hot{opacity:1}
+  .legend{display:flex;flex-direction:column;gap:1px}
+  .lg{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line-2)}.lg:first-child{border-top:0}
+  .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+  .lg .ln{font-size:12.5px;font-weight:600}.lg .lv{margin-left:auto;font-size:12.5px;font-weight:650}.lg .lp{font-size:11px;color:var(--ink-3);width:34px;text-align:right}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--ground);font-size:11.5px;font-weight:600;
+    padding:6px 9px;border-radius:8px;opacity:0;transform:translate(-50%,-8px);transition:opacity .1s;white-space:nowrap;z-index:5;box-shadow:var(--shadow)}
+  .tip .tv{font-weight:750;font-size:13px}
+  .donut-wrap{display:grid;grid-template-columns:170px 1fr;gap:20px;align-items:center}
+  @media(max-width:520px){.donut-wrap{grid-template-columns:1fr}}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut-center .dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .donut-center .dv{font-size:24px;font-weight:750;letter-spacing:-.02em}
+
+  .hero{grid-template-columns:1.5fr 1fr}.two{grid-template-columns:1fr 1fr}
+  @media(max-width:860px){.hero,.two{grid-template-columns:1fr}}
+
+  /* plans page — big cards + embedded rec */
+  .plan-grid{grid-template-columns:1fr 1fr}
+  @media(max-width:760px){.plan-grid{grid-template-columns:1fr}}
+  .plan-lg{padding:0;overflow:hidden;display:flex;flex-direction:column}
+  .plan-lg .ph{display:flex;align-items:center;gap:12px;padding:18px 18px 0}
+  .plan-lg .track{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;flex:0 0 auto}
+  .plan-lg .pt{font-weight:700;font-size:16px}.plan-lg .pn{font-size:12px;color:var(--ink-3);margin-top:1px}
+  .plan-lg .body{padding:16px 18px}
+  .plan-lg .nums{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+  .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em}.plan-lg .nums .big small{font-size:12px;color:var(--ink-3);font-weight:550}
+  .plan-lg .next{font-size:12.5px;color:var(--ink-2);margin-top:12px;display:flex;gap:8px;align-items:baseline}
+  .plan-lg .next b{color:var(--ink)}
+  .embed-rec{margin:0 18px 18px;display:flex;gap:12px;align-items:center;padding:13px;border-radius:var(--r-sm);
+    background:linear-gradient(180deg,var(--accent-soft),var(--surface-2));border:1px solid var(--line)}
+  .embed-rec .save{font-weight:750;font-size:15px;color:var(--accent-deep);white-space:nowrap;text-align:center}
+  .embed-rec .save small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--ink-3)}
+  .embed-rec .eb h4{font-size:12.5px;margin-bottom:2px}.embed-rec .eb p{margin:0;font-size:11.5px;color:var(--ink-2);line-height:1.4}
+  .embed-rec .eb .cta{margin-top:8px;display:flex;gap:8px;align-items:center}.embed-rec .partner{font-size:10.5px;color:var(--ink-3)}.embed-rec .partner b{color:var(--ink-2)}
+
+  /* marketplace */
+  .mkt-grid{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.mkt-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.mkt-grid{grid-template-columns:1fr}}
+  .mkt-card{display:flex;flex-direction:column;gap:10px;padding:16px}
+  .mkt-top{display:flex;align-items:center;gap:11px}
+  .mkt-logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:0 0 auto}
+  .mkt-card .mn{font-weight:650;font-size:14px}.mkt-card .mc{font-size:11.5px;color:var(--ink-3)}
+  .mkt-card p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.45;flex:1}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:10.5px;font-weight:600;color:var(--ink-2);background:var(--surface-3);padding:2px 8px;border-radius:20px}
+  .mkt-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:11px;border-top:1px solid var(--line-2)}
+  .src{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+  .src.curated{color:var(--accent);background:var(--accent-soft)}.src.self{color:var(--c3);background:color-mix(in srgb,var(--c3) 16%,transparent)}
+  .use-badge{font-size:10.5px;font-weight:700;color:var(--good);background:var(--good-soft);padding:2px 8px;border-radius:20px}
+
+  /* accounts page */
+  .acct-grid{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.acct-grid{grid-template-columns:1fr}}
+  .acct-col .card-head h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .acct-col .tot{font-size:20px;font-weight:750;letter-spacing:-.02em}
+  .nw-summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .nw-summary .b{font-size:32px;font-weight:750;letter-spacing:-.025em}
+  .nw-summary .split{display:flex;gap:22px}.nw-summary .split .l{font-size:11.5px;color:var(--ink-3);font-weight:600}
+  .nw-summary .split .v{font-size:16px;font-weight:700}.nw-summary .split .v.neg{color:var(--bad)}
+
+  /* score breakdown page */
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-3);
+    background:none;border:0;cursor:pointer;margin:0 2px 10px;padding:0}
+  .back-link:hover{color:var(--accent)}
+  .score-hero{display:grid;grid-template-columns:250px 1fr;gap:30px;align-items:center}
+  @media(max-width:720px){.score-hero{grid-template-columns:1fr}}
+  .gauge-wrap{position:relative;width:100%;max-width:250px;margin:0 auto}
+  .gauge-wrap .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:18px}
+  .gauge-wrap .center .n{font-size:56px;font-weight:750;letter-spacing:-.03em;line-height:1;font-family:var(--ff)}
+  .gauge-wrap .center .band{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--good);margin-top:4px}
+  .gauge-wrap .center .of{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .score-side .hl{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+  .chip-hh{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:650;padding:4px 11px;border-radius:20px}
+  .chip-hh.help{color:var(--good);background:var(--good-soft)}.chip-hh.hurt{color:var(--warn);background:var(--warn-soft)}
+  .spark{margin-top:16px}
+  .factor-item{padding:16px 0;border-top:1px solid var(--line-2)}.factor-item:first-child{border-top:0;padding-top:2px}
+  .fi-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap}
+  .fi-top .fn{font-weight:650;font-size:14px}.fi-top .fv{color:var(--ink-3);font-size:12.5px;font-weight:600}
+  .fi-top .sp{flex:1}
+  .rate{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .rate.g{color:var(--good);background:var(--good-soft)}.rate.w{color:var(--warn);background:var(--warn-soft)}
+  .impact{font-size:10.5px;font-weight:700;color:var(--ink-3);background:var(--surface-3);padding:2px 8px;border-radius:6px}
+  .lever{font-size:10.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:6px}
+  .stand{height:8px;border-radius:6px;background:var(--surface-3);overflow:hidden;margin-bottom:9px}
+  .stand > i{display:block;height:100%;border-radius:6px}.stand.g > i{background:var(--accent)}.stand.w > i{background:var(--warn)}
+  .factor-item p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+  .rec-row{display:flex;gap:14px;padding:16px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);align-items:flex-start}
+  .rec-row + .rec-row{margin-top:12px}
+  .rec-row .rank{font-size:12px;font-weight:750;color:var(--ink-3);min-width:14px;padding-top:14px}
+  .rec-row .save{flex:0 0 auto;text-align:center;background:var(--accent-soft);color:var(--accent-deep);border-radius:11px;padding:12px 14px;min-width:86px}
+  .rec-row .save b{display:block;font-size:20px;font-weight:750;letter-spacing:-.02em}.rec-row .save span{font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--ink-3)}
+  .rec-row .rb{flex:1;min-width:0}.rec-row .rb h4{font-size:14px;margin-bottom:3px}.rec-row .rb p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+  .rec-row .plan-link{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--accent);margin-top:9px;cursor:pointer}
+  .rec-row .cta{margin-top:11px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .partner{font-size:11px;color:var(--ink-3)}.partner b{color:var(--ink-2)}
+  .disc{font-size:10.5px;color:var(--ink-3);margin-top:14px;line-height:1.45}
+  /* subscriptions */
+  .sum-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+  @media(max-width:640px){.sum-strip{grid-template-columns:1fr}}
+  .sum-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+  .sum-card .l{font-size:11.5px;color:var(--ink-3);font-weight:600}
+  .sum-card .v{font-size:24px;font-weight:750;letter-spacing:-.02em;margin-top:4px}.sum-card .v.acc{color:var(--accent)}
+  .sum-card .s{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+  .sub-row{display:flex;align-items:center;gap:14px;padding:13px 2px;border-top:1px solid var(--line-2)}.sub-row:first-child{border-top:0}
+  .sub-row .nm{font-weight:650;font-size:14px}
+  .sub-row .mt{font-size:11.5px;color:var(--ink-3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .sub-flag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .sub-flag.warn{color:var(--warn);background:var(--warn-soft)}
+  .sub-amt{margin-left:auto;text-align:right}.sub-amt .a{font-weight:700;font-size:14px}.sub-amt .c{font-size:11px;color:var(--ink-3)}
+  .sub-row .btn{flex:0 0 auto}.sub-row.canceled{opacity:.55}
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,24,16,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:80;padding:20px}
+  .modal-bg.on{display:flex;animation:fade .18s ease}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);max-width:440px;width:100%;padding:24px;box-shadow:var(--shadow-lg)}
+  .modal h3{font-size:19px;margin-bottom:9px}.modal p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:0 0 15px}
+  .modal .facts{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:9px}
+  .modal .fr{display:flex;justify-content:space-between;font-size:13px}.modal .fr .k{color:var(--ink-3)}.modal .fr .v{font-weight:650}
+  .modal .save-hl{color:var(--accent);font-weight:750}
+  .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;justify-content:center}
+  .modal .fine{font-size:11px;color:var(--ink-3);margin-top:13px;text-align:center;line-height:1.4}
+  /* credit */
+  .credit-hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+  @media(max-width:720px){.credit-hero{grid-template-columns:1fr}}
+  .credit-num{display:flex;align-items:baseline;gap:12px;margin-top:6px}
+  .credit-num .big{font-size:56px;font-weight:750;letter-spacing:-.03em;line-height:1;font-family:var(--ff)}
+  .credit-band-lg{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--good);margin-top:4px}
+  .credit-scale{margin-top:18px}
+  .scale-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px}.scale-bar > span{flex:1;border-radius:2px}
+  .scale-marker{position:relative;height:16px;margin-top:5px}.scale-marker i{position:absolute;top:0;width:3px;height:16px;background:var(--ink);border-radius:2px;transform:translateX(-50%)}
+  .scale-marker i::after{content:attr(data-v);position:absolute;top:-2px;left:50%;transform:translate(-50%,-100%);font-size:11px;font-weight:750;white-space:nowrap}
+  .scale-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3);margin-top:6px}
+  .alert{display:flex;gap:12px;align-items:flex-start;padding:12px 2px;border-top:1px solid var(--line-2)}.alert:first-child{border-top:0}
+  .alert .adot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto}.alert .adot.up{background:var(--good)}.alert .adot.down{background:var(--bad)}
+  .alert .at{font-weight:600;font-size:13px}.alert .ad{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .alert .imp{margin-left:auto;font-size:12px;font-weight:750}.alert .imp.up{color:var(--good)}.alert .imp.down{color:var(--bad)}
+  .cfactor{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--line-2)}.cfactor:first-child{border-top:0}
+  .cfactor .cn{font-weight:600;font-size:13px}.cfactor .cv{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .cfactor .cr{margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .cr.exc{color:var(--good);background:var(--good-soft)}.cr.good{color:var(--accent);background:var(--accent-soft)}.cr.fair{color:var(--warn);background:var(--warn-soft)}
+  .note{max-width:1160px;margin:0 auto;padding:8px 22px 44px;color:var(--ink-3);font-size:12px;line-height:1.6}
+  .note b{color:var(--ink-2)}
+</style>
+
+<div class="appbar">
+  <div class="appbar-in">
+    <div class="brand">
+      <img class="mark" src="data:image/png;base64,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" alt="Juniper" aria-hidden="true">Juniper</div>
+    <nav class="nav" aria-label="Primary">
+      <button data-page="home" class="on"><span class="lbl">Home</span></button>
+      <button data-page="spending"><span class="lbl">Spending</span></button>
+      <button data-page="subscriptions"><span class="lbl">Subscriptions</span></button>
+      <button data-page="plans"><span class="lbl">Plans</span><span class="count">4</span></button>
+      <button data-page="marketplace"><span class="lbl">Marketplace</span></button>
+      <button data-page="accounts"><span class="lbl">Accounts</span></button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="plaid-pill"><span class="dot"></span>7 linked</span>
+    <button id="themeToggle" class="icon-btn" aria-label="Toggle dark mode" style="font-size:15px;line-height:1">☾</button>
+    <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/></svg></button>
+    <div class="avatar">M</div>
+  </div>
+</div>
+
+<div class="frame">
+  <!-- ============ HOME ============ -->
+  <section class="page on" data-page="home">
+    <div class="greet">
+      <h1>Good morning, Maya</h1>
+      <div class="meta"><span>Sunday, August 2</span><span>·</span><span class="up">Net worth up $1,940 this month</span></div>
+    </div>
+
+    <div class="score-strip" id="homeScore" style="margin-bottom:16px"></div>
+
+    <div class="grid hero" style="margin-bottom:16px">
+      <div class="card pad-lg">
+        <div class="card-head"><div><div class="eyebrow">Net worth</div>
+          <div style="display:flex;align-items:flex-end;gap:12px;margin-top:6px">
+            <span class="big-num tnum">$67,330</span>
+            <span class="delta up" style="margin-bottom:5px"><svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>2.9%</span>
+          </div></div>
+          <div class="pills" role="group" aria-label="Range"><button>1M</button><button>3M</button><button>6M</button><button class="on">1Y</button><button>All</button></div>
+        </div>
+        <div class="chart" id="nwHome"></div>
+        <div class="cf-foot">
+          <div><div class="l">Income · Aug</div><div class="v pos tnum">+$8,240</div></div>
+          <div><div class="l">Spent</div><div class="v tnum">$5,940</div></div>
+          <div><div class="l">Saved</div><div class="v acc tnum">$2,300</div></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-head"><h3>Your plans</h3><button class="link">+ New</button></div>
+        <div class="plans-col" id="plansHome"></div></div>
+    </div>
+
+    <div class="grid two" style="margin-bottom:16px">
+      <div class="card"><div class="card-head"><h3>Spending by category</h3><button class="link">July ▾</button></div>
+        <div class="donut-wrap"><div class="chart" id="donutHome"></div><div class="legend" id="legendHome"></div></div></div>
+      <div class="card"><div class="card-head"><h3>Budgets</h3><button class="link">Edit</button></div><div id="budgetsHome"></div></div>
+    </div>
+
+    <div class="grid two">
+      <div class="card"><div class="card-head"><h3>Recent transactions</h3><button class="link">See all</button></div><div class="rows" id="txHome"></div></div>
+      <div class="card"><div class="card-head"><h3>Accounts</h3><button class="link">Manage</button></div><div class="rows" id="acctHome"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ SPENDING ============ -->
+  <section class="page" data-page="spending">
+    <div class="page-head">
+      <div><h1>Spending</h1><p class="sub">Every transaction, categorized. Set budgets and catch what's creeping up.</p></div>
+      <div class="page-actions">
+        <div class="pills"><button>June</button><button class="on">July</button><button>Aug</button></div>
+        <button class="btn ghost sm">Export</button>
+      </div>
+    </div>
+    <div class="pills" style="margin:0 2px 16px" role="tablist">
+      <button class="on">Overview</button><button>Transactions</button><button>Budgets</button><button>Recurring</button>
+    </div>
+    <div class="grid two" style="margin-bottom:16px">
+      <div class="card"><div class="card-head"><h3>Where it went — $5,940</h3></div>
+        <div class="donut-wrap"><div class="chart" id="donutSpend"></div><div class="legend" id="legendSpend"></div></div></div>
+      <div class="card"><div class="card-head"><h3>Budgets</h3><button class="link">Edit</button></div><div id="budgetsSpend"></div></div>
+    </div>
+    <div class="card"><div class="card-head"><h3>Transactions</h3><span class="search" style="max-width:220px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search transactions"></span></div>
+      <div class="rows" id="txSpend"></div></div>
+  </section>
+
+  <!-- ============ PLANS ============ -->
+  <section class="page" data-page="plans">
+    <div class="page-head">
+      <div><h1>Plans</h1><p class="sub">Your money goals — funded from real balances, with the next step always in view.</p></div>
+      <div class="page-actions">
+        <div class="pills"><button class="on">Active</button><button>Completed</button><button>All</button></div>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>New plan</button>
+      </div>
+    </div>
+    <div class="grid plan-grid" id="plansPage"></div>
+    <p class="disc">Recommendations appear inside a plan only when a specific offer would move that plan forward — like a lower-rate balance transfer on your debt payoff. Juniper may earn a commission on offers you open; they're ranked by benefit to you, not payout.</p>
+  </section>
+
+  <!-- ============ MARKETPLACE ============ -->
+  <section class="page" data-page="marketplace">
+    <div class="page-head">
+      <div><h1>Marketplace</h1><p class="sub">Banking, saving, and money services — vetted and matched to where you actually are.</p></div>
+      <div class="page-actions">
+        <span class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><input placeholder="Search services"></span>
+        <button class="btn ghost sm">List your service</button>
+      </div>
+    </div>
+    <div class="pills" style="margin:0 2px 16px">
+      <button class="on">All</button><button>Banking</button><button>Saving</button><button>Debt</button><button>Investing</button><button>Insurance</button>
+    </div>
+    <div class="grid mkt-grid" id="mktPage"></div>
+    <p class="disc">Juniper may earn a commission when you open an account through the marketplace. Listings marked <b>curated</b> are reviewed by Juniper; <b>self-listed</b> are submitted by the provider. Ranking reflects fit to your finances, never payment.</p>
+  </section>
+
+  <!-- ============ ACCOUNTS ============ -->
+  <section class="page" data-page="accounts">
+    <div class="page-head">
+      <div><h1>Accounts</h1><p class="sub">Everything you've linked, in one place. Balances refresh automatically through Plaid.</p></div>
+      <div class="page-actions">
+        <span class="plaid-pill"><span class="dot"></span>7 linked · updated 2h ago</span>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Link account</button>
+      </div>
+    </div>
+    <div class="card pad-lg" style="margin-bottom:16px">
+      <div class="nw-summary">
+        <div><div class="eyebrow">Total net worth</div><div class="b tnum">$67,330</div></div>
+        <div class="split">
+          <div><div class="l">Assets</div><div class="v tnum">$101,370</div></div>
+          <div><div class="l">Debts</div><div class="v neg tnum">−$34,040</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid acct-grid" id="acctPage"></div>
+  </section>
+
+  <!-- ============ SCORE BREAKDOWN ============ -->
+  <section class="page" data-page="score">
+    <button class="back-link" data-page="home">← Back to Home</button>
+    <div class="page-head">
+      <div><h1>Financial health</h1><p class="sub">Your Juniper Score is a single read on how your money is doing — and the fastest ways to lift it.</p></div>
+    </div>
+
+    <div class="card pad-lg" style="margin-bottom:16px">
+      <div class="score-hero">
+        <div class="gauge-wrap" id="gaugeScore"><div class="center"><span class="n tnum">78</span><span class="band">Healthy</span><span class="of">out of 100</span></div></div>
+        <div class="score-side">
+          <div class="hl"><div class="eyebrow">Juniper Score</div><span class="delta up"><svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>+4 pts this month</span></div>
+          <p style="margin:0;color:var(--ink-2);font-size:14px;line-height:1.55">You're ahead on saving and retirement. Two levers are holding you back: a thin emergency fund and one high-APR card. Clear those and you'd be in the mid-80s.</p>
+          <div class="chips"><span class="chip-hh help">3 factors helping</span><span class="chip-hh hurt">1 lever to work on</span></div>
+          <div class="spark"><div class="eyebrow" style="margin-bottom:7px">Score · last 8 months</div><div class="chart" id="sparkScore"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad-lg" style="margin-bottom:16px">
+      <div class="card-head"><h3>What goes into your score</h3><span style="font-size:11.5px;color:var(--ink-3);font-weight:600">5 factors</span></div>
+      <div id="factorsList"></div>
+    </div>
+
+    <div class="card pad-lg">
+      <div class="card-head"><h3>Ways to improve — worth about <span style="color:var(--accent)">$1,057/yr</span></h3></div>
+      <div id="recsScore"></div>
+      <div class="disc">Juniper may earn a commission when you open an account through these links. Offers are ranked by estimated benefit to you, not by payout. Rates are illustrative until you link the account.</div>
+    </div>
+  </section>
+
+  <!-- ============ SUBSCRIPTIONS ============ -->
+  <section class="page" data-page="subscriptions">
+    <div class="page-head">
+      <div><h1>Subscriptions</h1><p class="sub">Every recurring charge Juniper found in your transactions — cancel the ones you don't want in a tap, with your OK.</p></div>
+      <div class="page-actions"><div class="pills"><button class="on">Active</button><button>Flagged</button><button>Canceled</button></div></div>
+    </div>
+    <div class="sum-strip">
+      <div class="sum-card"><div class="l">Monthly total</div><div class="v tnum">$182</div><div class="s">8 subscriptions · $2,183/yr</div></div>
+      <div class="sum-card"><div class="l">Flagged to review</div><div class="v tnum">3</div><div class="s">price hikes + unused</div></div>
+      <div class="sum-card"><div class="l">You could save</div><div class="v acc tnum">$85/mo</div><div class="s">~$1,020/yr on 2 unused</div></div>
+    </div>
+    <div class="card"><div class="card-head"><h3>Active subscriptions</h3><span style="font-size:11.5px;color:var(--ink-3);font-weight:600">Sorted by next charge</span></div>
+      <div class="rows" id="subsList"></div></div>
+    <p class="disc">Juniper submits cancellations on your behalf and confirms once done — often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
+  </section>
+
+  <!-- ============ CREDIT MONITORING ============ -->
+  <section class="page" data-page="credit">
+    <button class="back-link" data-page="score">← Back to Score</button>
+    <div class="page-head">
+      <div><h1>Credit score</h1><p class="sub">Monitored monthly with a soft pull that never affects your score — with an alert whenever something changes.</p></div>
+      <div class="page-actions"><span class="plaid-pill"><span class="dot"></span>Updated Jul 28</span></div>
+    </div>
+    <div class="card pad-lg" style="margin-bottom:16px">
+      <div class="credit-hero">
+        <div>
+          <div class="eyebrow">Your credit score</div>
+          <div class="credit-num"><span class="big tnum">726</span><span class="delta up"><svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>+8 pts since June</span></div>
+          <div class="credit-band-lg">Good</div>
+          <div class="credit-scale">
+            <div class="scale-bar">
+              <span style="background:var(--bad)"></span><span style="background:var(--warn)"></span>
+              <span style="background:var(--c6)"></span><span style="background:var(--good)"></span><span style="background:var(--accent-deep)"></span>
+            </div>
+            <div class="scale-marker"><i data-v="726" style="left:77.5%"></i></div>
+            <div class="scale-labels"><span>300 · Poor</span><span>Fair</span><span>Good</span><span>Very good</span><span>Excellent · 850</span></div>
+          </div>
+          <p class="disc" style="margin-top:16px">VantageScore 3.0 · refreshed monthly through a credit-data provider · soft pull, no impact to your score.</p>
+        </div>
+        <div><div class="eyebrow" style="margin-bottom:8px">Score · last 8 months</div><div class="chart" id="creditSpark"></div></div>
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="card"><div class="card-head"><h3>Recent alerts</h3><button class="link">All alerts</button></div><div id="creditAlerts"></div></div>
+      <div class="card"><div class="card-head"><h3>What affects your score</h3></div><div id="creditFactors"></div></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="cancelModal"><div class="modal" role="dialog" aria-modal="true" aria-label="Cancel subscription"><div id="modalBody"></div></div></div>
+
+<div class="note" id="note"></div>
+
+<script type="module">
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const money=n=>{const s=n<0?'−':'';return s+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0});};
+const moneyK=n=>'$'+(Math.abs(n)/1000).toLocaleString('en-US',{maximumFractionDigits:0})+'k';
+const money2=n=>{const s=n<0?'−':'+';return s+'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
+
+const D={
+  nw:{series:[52100,53400,54800,55200,57600,58900,60100,61800,62400,64500,65390,67330],
+      labels:['Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug']},
+  spend:[{c:'Housing',v:2150,k:'--c1'},{c:'Groceries & dining',v:1180,k:'--c2'},{c:'Transportation',v:640,k:'--c3'},
+    {c:'Shopping',v:520,k:'--c4'},{c:'Utilities & bills',v:410,k:'--c5'},{c:'Kids & health',v:340,k:'--c6'},{c:'Everything else',v:700,k:'--c7'}],
+  budgets:[{c:'Groceries & dining',s:1180,l:1100},{c:'Transportation',s:640,l:700},{c:'Shopping',s:520,l:450},{c:'Utilities & bills',s:410,l:450}],
+  tx:[{m:'Trader Joe\'s',c:'Groceries & dining',v:-96.40,d:'Aug 1',k:'--c2'},
+    {m:'Payroll — Devin',c:'Income',v:3120,d:'Aug 1',k:'--good',inc:true},
+    {m:'Shell',c:'Transportation',v:-52.10,d:'Jul 31',k:'--c3'},
+    {m:'Target',c:'Shopping',v:-134.20,d:'Jul 30',k:'--c4'},
+    {m:'Rent — Oakwood',c:'Housing',v:-2150,d:'Jul 28',k:'--c1'},
+    {m:'Spotify',c:'Utilities & bills',v:-11.99,d:'Jul 28',k:'--c5'},
+    {m:'Whole Foods',c:'Groceries & dining',v:-72.15,d:'Jul 27',k:'--c2'},
+    {m:'Chevron',c:'Transportation',v:-48.30,d:'Jul 26',k:'--c3'}],
+  accts:{
+    cash:[{n:'Chase Checking',i:'Chase',v:4820,k:'--c3'},{n:'Ally HYSA',i:'4.20% APY',v:18400,k:'--c1'}],
+    invest:[{n:'Fidelity Brokerage',i:'Fidelity',v:14250,k:'--c5'},{n:'Vanguard 401(k)',i:'Vanguard',v:63900,k:'--c1'}],
+    debt:[{n:'Chase Sapphire',i:'Credit card',v:-2180,apr:'24.9%',k:'--c4'},{n:'Student loans',i:'Earnest',v:-22400,apr:'5.8%',k:'--c2'},{n:'Toyota auto loan',i:'auto',v:-9460,apr:'6.4%',k:'--c6'}]},
+  plans:[
+    {t:'Buy a home',ab:'H',saved:28000,target:60000,pct:47,note:'Down payment · Mar 2027',st:'ok',stl:'On track',k:'--c1',next:'Auto-transfer $850/mo to the Ally HYSA'},
+    {t:'Pay off student loans',ab:'S',saved:0,target:0,pct:38,note:'$22,400 left · 5.8%',st:'ok',stl:'On track',k:'--c2',next:'Keep paying $520/mo — debt-free by 2029',rec:{save:540,h:'Speed up this plan',p:'Move your Sapphire balance off 24.9% APR — frees ~$45/mo toward the payoff.',partner:'SoFi'}},
+    {t:'Baby fund',ab:'B',saved:4200,target:12000,pct:35,note:'Started 3 weeks ago',st:'new',stl:'New',k:'--c5',next:'Set a monthly amount to stay on pace'},
+    {t:'Combine finances',ab:'C',saved:0,target:0,pct:0,note:'2 steps left in setup',st:'setup',stl:'Setup',k:'--c3',next:'Invite Devin to finish linking accounts'}],
+  mkt:[
+    {n:'SoFi',cat:'Debt',logo:'S',k:'--c2',blurb:'0% APR balance transfers for up to 21 months, no annual fee.',tags:['Balance transfer','No fee'],src:'curated'},
+    {n:'Marcus',cat:'Saving',logo:'M',k:'--c1',blurb:'4.30% APY high-yield savings with no minimums or fees.',tags:['4.30% APY'],src:'curated'},
+    {n:'Earnest',cat:'Debt',logo:'E',k:'--c4',blurb:'Refinance student loans from 4.9% APR with flexible terms.',tags:['Student refi'],src:'curated'},
+    {n:'Ally',cat:'Banking',logo:'A',k:'--c3',blurb:'Online checking + savings that play nicely with everything.',tags:['Checking','HYSA'],src:'curated',use:true},
+    {n:'Fidelity',cat:'Investing',logo:'F',k:'--c5',blurb:'Roth IRA and brokerage with $0 commissions on stocks & ETFs.',tags:['Roth IRA','$0 trades'],src:'curated',use:true},
+    {n:'Policygenius',cat:'Insurance',logo:'P',k:'--c6',blurb:'Compare term life quotes from top carriers in a few minutes.',tags:['Term life'],src:'curated'},
+    {n:'Betterment',cat:'Investing',logo:'B',k:'--c3',blurb:'Automated, low-fee portfolios that rebalance for you.',tags:['Robo-advisor'],src:'self'},
+    {n:'Trust & Will',cat:'Estate',logo:'T',k:'--c1',blurb:'Set up a legal will or trust online — useful once the baby arrives.',tags:['Wills','Trusts'],src:'curated'},
+    {n:'Wealthfront',cat:'Saving',logo:'W',k:'--c5',blurb:'Cash account at 4.25% APY with automated saving buckets.',tags:['4.25% APY'],src:'self'}],
+  score:78
+};
+
+const tile=(ab,k)=>`<div class="tile" style="background:var(${k})">${ab}</div>`;
+function acctRows(el){const g=D.accts,sec=(t,arr)=>`<div class="subhead">${t}</div>`+arr.map(a=>`
+  <div class="row">${tile(a.i&&a.i.length<=3?a.i:a.n[0],a.k)}<div><div class="nm">${a.n}</div><div class="mt">${a.i}</div></div>
+    <div class="amt">${money(a.v)} ${a.apr?`<span class="apr-chip">${a.apr}</span>`:''}</div></div>`).join('');
+  el.innerHTML=sec('Cash',g.cash)+sec('Investments',g.invest)+sec('Debts',g.debt);}
+function txRows(el,n=6){el.innerHTML=D.tx.slice(0,n).map(t=>`
+  <div class="row">${tile(t.m[0],t.k)}<div><div class="nm">${t.m}</div><div class="mt">${t.c} · ${t.d}</div></div>
+    <div class="amt ${t.inc?'inc':''}">${money2(t.v)}</div></div>`).join('');}
+function budgets(el){el.innerHTML=D.budgets.map(b=>{const pct=Math.min(100,Math.round(b.s/b.l*100)),over=b.s>b.l;
+  return `<div class="bud ${over?'over':'ok'}"><div class="t"><span>${b.c}</span>
+    <span class="r"><b class="tnum">${money(b.s)}</b> of ${money(b.l)} ${over?`· <span class="flag">${money(b.s-b.l)} over</span>`:''}</span></div>
+    <div class="bar"><i style="width:${pct}%"></i></div></div>`;}).join('');}
+function planRow(p){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
+  return `<div class="plan-row"><div class="track" style="background:var(${p.k})">${p.ab}</div>
+    <div class="pr-body"><div class="pr-top"><span class="pt">${p.t}</span>
+      ${p.target?`<span class="amt tnum">${moneyK(p.saved)} <small>/ ${moneyK(p.target)}</small></span>`:''}</div>
+      <div class="bar"><i style="width:${prog}%;background:var(${p.k})"></i></div>
+      <div class="pr-bot"><span>${p.note}</span><span class="status ${p.st}">${p.stl}</span></div></div></div>`;}
+function planLg(p){const prog=p.target?Math.round(p.saved/p.target*100):p.pct;
+  return `<div class="card plan-lg"><div class="ph"><div class="track" style="background:var(${p.k})">${p.ab}</div>
+    <div style="flex:1"><div class="pt">${p.t}</div><div class="pn">${p.note}</div></div><span class="status ${p.st}">${p.stl}</span></div>
+    <div class="body"><div class="nums">
+      <div class="big tnum">${p.target?money(p.saved):prog+'%'}${p.target?`<small> / ${money(p.target)}</small>`:''}</div>
+      <div style="font-size:12px;color:var(--ink-3);font-weight:600">${prog}% funded</div></div>
+      <div class="bar"><i style="width:${prog}%;background:var(${p.k})"></i></div>
+      <div class="next"><b>Next:</b> ${p.next}</div></div>
+    ${p.rec?`<div class="embed-rec"><div class="save tnum">$${p.rec.save}<small>/yr</small></div>
+      <div class="eb"><h4>${p.rec.h}</h4><p>${p.rec.p}</p>
+        <div class="cta"><button class="btn sm">See offer</button><span class="partner">via <b>${p.rec.partner}</b></span></div></div></div>`:''}</div>`;}
+function mktCards(el){el.innerHTML=D.mkt.map(m=>`<div class="card mkt-card">
+  <div class="mkt-top"><div class="mkt-logo" style="background:var(${m.k})">${m.logo}</div>
+    <div style="flex:1"><div class="mn">${m.n}</div><div class="mc">${m.cat}</div></div>
+    ${m.use?`<span class="use-badge">You use this</span>`:''}</div>
+  <p>${m.blurb}</p><div class="tags">${m.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+  <div class="mkt-foot"><span class="src ${m.src}">${m.src==='self'?'Self-listed':'Curated'}</span><button class="btn sm">View</button></div></div>`).join('');}
+function acctPage(el){const g=D.accts,sum=a=>a.reduce((x,y)=>x+y.v,0);
+  const col=(t,arr)=>`<div class="card acct-col"><div class="card-head"><h3>${t}</h3><span class="tot tnum">${money(sum(arr))}</span></div>
+    <div class="rows">${arr.map(a=>`<div class="row">${tile(a.i&&a.i.length<=3?a.i:a.n[0],a.k)}
+      <div><div class="nm">${a.n}</div><div class="mt">${a.i}</div></div>
+      <div class="amt">${money(a.v)} ${a.apr?`<span class="apr-chip">${a.apr}</span>`:''}</div></div>`).join('')}</div></div>`;
+  el.innerHTML=col('Cash',g.cash)+col('Investments',g.invest)+col('Debts',g.debt);}
+
+function netWorth(id){const host=$('#'+id),data=D.nw.series,labs=D.nw.labels,W=560,H=150,padL=6,padR=6,padT=12,padB=18;
+  const min=Math.min(...data)*.985,max=Math.max(...data)*1.01,x=i=>padL+i*(W-padL-padR)/(data.length-1),y=v=>padT+(1-(v-min)/(max-min))*(H-padT-padB);
+  let line='';data.forEach((v,i)=>line+=(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)+' ');
+  const area=`M${x(0)} ${y(data[0])} `+data.map((v,i)=>`L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')+` L${x(data.length-1)} ${H-padB} L${x(0)} ${H-padB} Z`;
+  const grid=[0,.5,1].map(f=>{const gy=padT+f*(H-padT-padB);return `<line class="nw-grid" x1="${padL}" x2="${W-padR}" y1="${gy}" y2="${gy}"/>`;}).join('');
+  const axis=[0,3,6,9,11].map(i=>`<text class="ax" x="${x(i)}" y="${H-5}" text-anchor="${i===0?'start':i===11?'end':'middle'}">${labs[i]}</text>`).join('');
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="display:block;overflow:visible">
+    ${grid}<path class="nw-area" d="${area}"/><path class="nw-line" d="${line}"/>
+    <line class="nw-hair" x1="0" x2="0" y1="${padT}" y2="${H-padB}" style="opacity:0"/><circle class="nw-dot nw-hd" r="4" style="opacity:0"/>
+    <circle class="nw-dot" cx="${x(data.length-1)}" cy="${y(data.at(-1))}" r="4"/>${axis}<rect class="nw-hit" x="0" y="0" width="${W}" height="${H}"/></svg><div class="tip"></div>`;
+  const svg=host.querySelector('svg'),hit=host.querySelector('.nw-hit'),hair=host.querySelector('.nw-hair'),hd=host.querySelector('.nw-hd'),tip=host.querySelector('.tip');
+  hit.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect();
+    let i=Math.round(((e.clientX-r.left)/r.width*W-padL)/((W-padL-padR)/(data.length-1)));i=Math.max(0,Math.min(data.length-1,i));
+    hair.setAttribute('x1',x(i));hair.setAttribute('x2',x(i));hair.style.opacity=.5;hd.setAttribute('cx',x(i));hd.setAttribute('cy',y(data[i]));hd.style.opacity=1;
+    tip.style.left=(x(i)/W*r.width)+'px';tip.style.top=(y(data[i])/H*r.height-6)+'px';tip.style.opacity=1;tip.innerHTML=`${labs[i]} · <span class="tv tnum">${money(data[i])}</span>`;});
+  hit.addEventListener('pointerleave',()=>{hair.style.opacity=0;hd.style.opacity=0;tip.style.opacity=0;});}
+
+function donut(id,legId){const host=$('#'+id),data=D.spend,total=data.reduce((a,b)=>a+b.v,0),S=170,cx=S/2,cy=S/2,rO=78,rI=50;let ang=-90;
+  const pol=(r,a)=>[cx+r*Math.cos(a*Math.PI/180),cy+r*Math.sin(a*Math.PI/180)];
+  const slices=data.map((d,idx)=>{const sweep=d.v/total*360,a0=ang,a1=ang+sweep;ang=a1;
+    const[x1,y1]=pol(rO,a0),[x2,y2]=pol(rO,a1),[x3,y3]=pol(rI,a1),[x4,y4]=pol(rI,a0),lg=sweep>180?1:0;
+    return `<path class="slice" data-i="${idx}" fill="var(${d.k})" d="M${x1} ${y1} A${rO} ${rO} 0 ${lg} 1 ${x2} ${y2} L${x3} ${y3} A${rI} ${rI} 0 ${lg} 0 ${x4} ${y4} Z"/>`;}).join('');
+  host.innerHTML=`<svg viewBox="0 0 ${S} ${S}" width="170" height="170" style="display:block">${slices}</svg>
+    <div class="donut-center"><span class="dt">Spent</span><span class="dv tnum">${money(total)}</span></div><div class="tip"></div>`;
+  const tip=host.querySelector('.tip'),leg=$('#'+legId);
+  leg.innerHTML=data.map((d,i)=>`<div class="lg" data-i="${i}"><span class="sw" style="background:var(${d.k})"></span>
+    <span class="ln">${d.c}</span><span class="lv tnum">${money(d.v)}</span><span class="lp tnum">${Math.round(d.v/total*100)}%</span></div>`).join('');
+  const hot=i=>{host.classList.add('dim');$$('.slice',host).forEach(s=>s.classList.toggle('hot',+s.dataset.i===i));};
+  const cool=()=>{host.classList.remove('dim');$$('.slice',host).forEach(s=>s.classList.remove('hot'));tip.style.opacity=0;};
+  $$('.slice',host).forEach(s=>{s.addEventListener('pointermove',e=>{const i=+s.dataset.i;hot(i);const r=host.getBoundingClientRect();
+    tip.style.left=(e.clientX-r.left)+'px';tip.style.top=(e.clientY-r.top-10)+'px';tip.style.opacity=1;tip.innerHTML=`${data[i].c} · <span class="tv tnum">${money(data[i].v)}</span>`;});
+    s.addEventListener('pointerleave',cool);});
+  $$('.lg',leg).forEach(l=>{l.addEventListener('pointerenter',()=>hot(+l.dataset.i));l.addEventListener('pointerleave',cool);});}
+
+function ring(host,score,d=46){const r=(d-6)/2,c=2*Math.PI*r,off=c*(1-score/100),cx=d/2;
+  host.innerHTML=`<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}"><circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="5"/>
+    <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="var(--good)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${cx} ${cx})"/></svg><span class="rv tnum">${score}</span>`;}
+function gauge(host,score,{r=96,sw=15}={}){const S=r*2+34,cx=S/2,cy=S/2+6,start=-215,end=35,sweep=end-start;
+  const pol=(rad,a)=>[cx+rad*Math.cos(a*Math.PI/180),cy+rad*Math.sin(a*Math.PI/180)];
+  const arc=(a0,a1,rr)=>{const[x1,y1]=pol(rr,a0),[x2,y2]=pol(rr,a1),lg=(a1-a0)>180?1:0;return `M${x1} ${y1} A${rr} ${rr} 0 ${lg} 1 ${x2} ${y2}`;};
+  const valEnd=start+sweep*score/100,tick=pol(r,valEnd);
+  host.insertAdjacentHTML('afterbegin',`<svg viewBox="0 0 ${S} ${S}" width="100%" style="display:block">
+    <path d="${arc(start,end,r)}" fill="none" stroke="var(--surface-3)" stroke-width="${sw}" stroke-linecap="round"/>
+    <path d="${arc(start,valEnd,r)}" fill="none" stroke="var(--good)" stroke-width="${sw}" stroke-linecap="round"/>
+    <circle cx="${tick[0]}" cy="${tick[1]}" r="${sw*.6}" fill="var(--surface)" stroke="var(--good)" stroke-width="4"/></svg>`);}
+function sparkline(host,data){const W=520,H=54,pad=4,min=Math.min(...data)-2,max=Math.max(...data)+2;
+  const x=i=>pad+i*(W-2*pad)/(data.length-1),y=v=>pad+(1-(v-min)/(max-min))*(H-2*pad);
+  let line='';data.forEach((v,i)=>line+=(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)+' ');
+  const area=`M${x(0)} ${y(data[0])} `+data.map((v,i)=>`L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')+` L${x(data.length-1)} ${H-pad} L${x(0)} ${H-pad} Z`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="display:block;height:54px;overflow:visible"><path class="nw-area" d="${area}"/><path class="nw-line" d="${line}"/><circle class="nw-dot" cx="${x(data.length-1)}" cy="${y(data.at(-1))}" r="3.5"/></svg>`;}
+function factorsList(el){el.innerHTML=D.factorsFull.map(f=>`
+  <div class="factor-item"><div class="fi-top"><span class="fn">${f.n}</span><span class="fv">${f.v}</span><span class="sp"></span>
+    <span class="rate ${f.s}">${f.rate}</span>${f.lever?`<span class="lever">Biggest lever</span>`:''}<span class="impact">${f.impact} impact</span></div>
+    <div class="stand ${f.s}"><i style="width:${f.stand}%"></i></div><p>${f.blurb}</p>
+    ${f.link?`<button class="link" data-page="${f.link}" style="margin-top:9px">View credit details →</button>`:''}</div>`).join('');}
+function renderSubs(){$('#subsList').innerHTML=D.subs.map((s,i)=>`
+  <div class="sub-row ${s.canceled?'canceled':''}">${tile(s.logo,s.k)}
+    <div style="min-width:0"><div class="nm">${s.n}</div><div class="mt">${s.cat} · next ${s.next}${s.flag?` <span class="sub-flag warn">${s.flag}</span>`:''}</div></div>
+    <div class="sub-amt"><div class="a tnum">$${s.amt.toFixed(2)}</div><div class="c">/mo</div></div>
+    ${s.canceled?`<button class="btn ghost sm" disabled>Cancellation requested</button>`:`<button class="btn ghost sm" data-cancel="${i}">Cancel</button>`}
+  </div>`).join('');
+  $$('#subsList [data-cancel]').forEach(b=>b.addEventListener('click',()=>openCancel(+b.dataset.cancel)));}
+const modal=$('#cancelModal'),closeModal=()=>modal.classList.remove('on');
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+function openCancel(i){const s=D.subs[i];
+  $('#modalBody').innerHTML=`<h3>Cancel ${s.n}?</h3>
+    <p>Juniper will submit the cancellation on your behalf and confirm within 2 business days. Nothing is canceled until you approve here.</p>
+    <div class="facts"><div class="fr"><span class="k">Plan</span><span class="v">${s.cat}</span></div>
+      <div class="fr"><span class="k">Cost</span><span class="v tnum">$${s.amt.toFixed(2)}/mo</span></div>
+      <div class="fr"><span class="k">Next charge</span><span class="v">${s.next}</span></div>
+      <div class="fr"><span class="k">You'll save</span><span class="v save-hl tnum">~$${Math.round(s.amt*12).toLocaleString()}/yr</span></div></div>
+    <div class="modal-actions"><button class="btn" id="confirmCancel">Request cancellation</button><button class="btn ghost" id="keepIt">Keep it</button></div>
+    <div class="fine">We'll email you when it's confirmed. You can undo within 24 hours.</div>`;
+  modal.classList.add('on');
+  $('#keepIt').onclick=closeModal;
+  $('#confirmCancel').onclick=()=>{s.canceled=true;renderSubs();
+    $('#modalBody').innerHTML=`<h3>Cancellation requested</h3>
+      <p><b>${s.n}</b> is being canceled. We'll confirm by ${s.next} and you won't be charged after this cycle. Estimated savings: <span class="save-hl">$${Math.round(s.amt*12).toLocaleString()}/yr</span>.</p>
+      <div class="modal-actions"><button class="btn" id="doneBtn">Done</button></div>`;
+    $('#doneBtn').onclick=closeModal;};}
+function creditAlerts(el){el.innerHTML=D.credit.alerts.map(a=>`
+  <div class="alert"><span class="adot ${a.dir}"></span><div><div class="at">${a.t}</div><div class="ad">${a.d}</div></div>
+    <span class="imp ${a.dir}">${a.imp}</span></div>`).join('');}
+function creditFactors(el){el.innerHTML=D.credit.factors.map(f=>`
+  <div class="cfactor"><div><div class="cn">${f.n}</div><div class="cv">${f.v}</div></div><span class="cr ${f.cls}">${f.r}</span></div>`).join('');}
+function recsScore(el){el.innerHTML=D.recs.map((r,i)=>`
+  <div class="rec-row"><div class="rank">${i+1}</div><div class="save"><b class="tnum">$${r.save}</b><span>/yr</span></div>
+    <div class="rb"><h4>${r.h}</h4><p>${r.p}</p>
+      ${r.plan?`<div class="plan-link" data-page="plans">↳ speeds up: ${r.plan}</div>`:''}
+      <div class="cta"><button class="btn sm">See offer</button><span class="partner">via <b>${r.partner}</b> · ${r.tag}</span></div></div></div>`).join('');}
+
+/* score-page data */
+D.scoreHistory=[70,71,72,72,74,74,76,78];
+D.recs[0].plan='Pay off student loans';
+D.factorsFull=[
+  {n:'Savings rate',v:'28% of income',rate:'Strong',s:'g',impact:'High',stand:85,blurb:'You save 28% of take-home — well above the 20% guideline. This is the biggest thing lifting your score.'},
+  {n:'Retirement pace',v:'On track for 65',rate:'Strong',s:'g',impact:'Medium',stand:80,blurb:'Your 401(k) and Roth contributions keep you on pace to retire comfortably at 65.'},
+  {n:'Debt load',v:'DTI 21%',rate:'Good',s:'g',impact:'High',stand:70,blurb:'Debt payments are 21% of income, under the 36% comfort line — though one card carries a high rate.'},
+  {n:'Credit health',v:'726 · monitored',rate:'Good',s:'g',impact:'Medium',stand:68,link:'credit',blurb:'A 726 score qualifies you for solid rates. Lower card utilization would push it higher.'},
+  {n:'Emergency fund',v:'3.1 of 6 months',rate:'Thin',s:'w',impact:'High',stand:45,lever:true,blurb:'You have 3.1 months of expenses saved. Building toward 6 months is the fastest way to raise your score.'}];
+D.subs=[
+  {n:'Netflix',cat:'Streaming',amt:22.99,next:'Aug 12',logo:'N',k:'--c4',flag:'Price rose $3 in June'},
+  {n:'Planet Fitness',cat:'Fitness',amt:24.99,next:'Aug 15',logo:'P',k:'--c1',flag:'Not used in 2 months'},
+  {n:'Adobe Creative Cloud',cat:'Software',amt:59.99,next:'Aug 18',logo:'A',k:'--c4',flag:'Not used in 3 months'},
+  {n:'iCloud+',cat:'Storage',amt:9.99,next:'Aug 20',logo:'i',k:'--c3'},
+  {n:'ChatGPT Plus',cat:'Software',amt:20.00,next:'Aug 22',logo:'C',k:'--c6'},
+  {n:'The New York Times',cat:'News',amt:17.00,next:'Aug 25',logo:'T',k:'--c5'},
+  {n:'Spotify',cat:'Music',amt:11.99,next:'Aug 28',logo:'S',k:'--c1'},
+  {n:'Amazon Prime',cat:'Shopping',amt:14.99,next:'Sep 3',logo:'A',k:'--c2'}];
+D.credit={trend:[690,698,705,710,712,718,718,726],
+  alerts:[
+    {t:'Score went up 8 points',d:'Jul 28',dir:'up',imp:'+8'},
+    {t:'Credit utilization rose to 34%',d:'Jul 22',dir:'down',imp:'▼'},
+    {t:'On-time payment reported — Toyota Financial',d:'Jul 15',dir:'up',imp:'▲'},
+    {t:'New hard inquiry — auto loan',d:'Jun 30',dir:'down',imp:'−5'}],
+  factors:[
+    {n:'Payment history',v:'100% on-time',r:'Excellent',cls:'exc'},
+    {n:'Credit utilization',v:'34% — aim under 30%',r:'Fair',cls:'fair'},
+    {n:'Age of credit',v:'6 yr 4 mo average',r:'Good',cls:'good'},
+    {n:'Total accounts',v:'9 accounts',r:'Good',cls:'good'},
+    {n:'Hard inquiries',v:'2 in the last 2 years',r:'Fair',cls:'fair'},
+    {n:'Derogatory marks',v:'None',r:'Excellent',cls:'exc'}]};
+
+/* render */
+$('#homeScore').innerHTML=`<div class="mini-ring"></div>
+  <div><div class="st-t">Juniper Score <span class="band">78 · Healthy</span></div>
+  <div class="st-s"><b>+4 pts</b> this month · biggest lever: build your emergency fund to 6 months</div></div>
+  <button class="link" data-page="score">See breakdown →</button>`;
+ring($('#homeScore .mini-ring'),78);
+gauge($('#gaugeScore'),78,{r:96,sw:15});sparkline($('#sparkScore'),D.scoreHistory);
+factorsList($('#factorsList'));recsScore($('#recsScore'));
+renderSubs();
+sparkline($('#creditSpark'),D.credit.trend);creditAlerts($('#creditAlerts'));creditFactors($('#creditFactors'));
+netWorth('nwHome');donut('donutHome','legendHome');budgets($('#budgetsHome'));txRows($('#txHome'));acctRows($('#acctHome'));
+$('#plansHome').innerHTML=D.plans.map(planRow).join('');
+donut('donutSpend','legendSpend');budgets($('#budgetsSpend'));txRows($('#txSpend'),8);
+$('#plansPage').innerHTML=D.plans.map(planLg).join('');
+mktCards($('#mktPage'));acctPage($('#acctPage'));
+
+/* nav */
+const NOTES={
+  home:`<b>Home.</b> The perfected dashboard. Slim Juniper Score strip (links to a breakdown page — no offers here), net worth + your plans in the hero with cashflow demoted to a footer, then Mint-style spending + budgets, and transactions + accounts. No recommendations live on this page.`,
+  spending:`<b>Spending.</b> The Mint deep-dive — month selector, Overview / Transactions / Budgets / Recurring tabs, the full category breakdown, budgets, and a searchable transaction table.`,
+  plans:`<b>Plans.</b> The value-add hub. Every plan shows funding progress and the next concrete step. A recommendation appears <b>inside a plan only when relevant</b> — see the "Pay off student loans" card, where the SoFi balance-transfer offer accelerates that specific plan. The other plans carry none.`,
+  marketplace:`<b>Marketplace.</b> Browse services by category, matched to your finances. Curated vs. self-listed provenance is labeled (supply-side self-listing lives behind "List your service"), and things you already use are badged.`,
+  accounts:`<b>Accounts.</b> The Plaid surface — net worth summary up top, then everything grouped into cash / investments / debts with live balances and a "Link account" entry point.`,
+  score:`<b>Score breakdown.</b> The Credit-Karma-style health page behind "See breakdown": the gauge and its 8-month trend, the five factors that drive it (each with your standing, its impact weight, and what to do), and the ranked, affiliate-linked ways to improve — the one that maps to a plan links back to it. The Credit-health factor links through to the Credit page.`,
+  subscriptions:`<b>Subscriptions (Stage 9).</b> Recurring charges detected from transactions, sorted by next charge, with price-hike / unused flags and a monthly-total + potential-savings summary. Click <b>Cancel</b> on any row to see the approval modal — amount, next charge, yearly savings, and "Request cancellation." Confirm one to watch it flip to "Cancellation requested." Real cancellation is an assisted/partner flow behind that button, gated on your approval.`,
+  credit:`<b>Credit monitoring (Stage 10).</b> Reached from the Score page's Credit-health factor. The 300–850 score on a banded scale, its 8-month trend, a change-alerts feed (utilization up, on-time payment, new inquiry), and the factors affecting it. Distinct from the proprietary Juniper Score; a soft pull via a credit-data provider, with FCRA/consent handled in the build.`
+};
+$('#note').innerHTML=NOTES.home;
+function setPage(k){$$('.page').forEach(p=>p.classList.toggle('on',p.dataset.page===k));
+  $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.page===k));
+  $('#note').innerHTML=NOTES[k]||'';window.scrollTo({top:0,behavior:'smooth'});}
+$$('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+$$('[data-page]').forEach(el=>{if(el.classList.contains('page')||el.closest('.nav'))return;
+  el.addEventListener('click',()=>setPage(el.dataset.page));});
+
+/* locked identity: Juniper.com (warm cream + serif) */
+document.documentElement.dataset.skin='junipercom';
+
+/* light/dark toggle in the app bar */
+const tBtn=$('#themeToggle');
+tBtn.addEventListener('click',()=>{
+  const cur=document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  const next=cur==='dark'?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  tBtn.textContent=next==='dark'?'☀':'☾';
+});
+</script>
+</body>
+</html>
