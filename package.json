@@ -10,7 +10,7 @@
   },
   "private": true,
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0"
+    "@anthropic-ai/sdk": "^0.37.0"
   },
   "devDependencies": {
     "typescript": "~5.9.2",

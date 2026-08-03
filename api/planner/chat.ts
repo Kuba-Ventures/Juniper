@@ -118,7 +118,6 @@ export default async function handler(req: Request): Promise<Response> {
           const stream = client.messages.stream({
             model: "claude-opus-5",
             max_tokens: 2048,
-            thinking: { type: "adaptive" },
             system,
             tools: TOOLS,
             messages: convo,

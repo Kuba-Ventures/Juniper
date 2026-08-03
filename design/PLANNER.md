@@ -113,8 +113,11 @@ We wrap it as a tool; no new data plumbing.
 
 - **Model:** `claude-opus-5` — this is the planner's reasoning tier; the stakes
   (real money, multi-goal trade-offs) justify Opus.
-- **Thinking:** `thinking: { type: "adaptive" }` — the planner reasons about
-  competing goals ($500k tuition vs. $1.8M home) and shows disciplined trade-off math.
+- **Thinking:** adaptive thinking (`thinking: { type: "adaptive" }`) is the target so
+  the planner reasons about competing goals ($500k tuition vs. $1.8M home) with
+  disciplined trade-off math. Deferred until the Anthropic SDK is bumped and validated
+  on Vercel Edge as its own change — the pinned `^0.37.0` predates adaptive-thinking
+  streaming, and P1 ships on opus-5 without it rather than risk the deploy.
 - **Streaming:** always. Use the SDK stream and `.finalMessage()` when we need the
   assembled turn (e.g. before a tool round or a PDF synthesis). Prevents Edge timeouts
   on long answers.
