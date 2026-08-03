@@ -1,6 +1,6 @@
 # Juniper Roadmap — Repositioning to a financial planning app
 
-*Owner: Finley · Started: 2026-08-03 · Status: design prototype approved, build not started*
+*Owner: Finley · Started: 2026-08-03 · Status: Stage 0 decisions locked (2026-08-03) · build not started*
 
 ## What this is
 
@@ -14,6 +14,7 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 - **Recommendations:** live **only inside a relevant plan** and on the **Score breakdown** page — never floating on the dashboard.
 - **Visual identity:** **Juniper.com** skin — warm cream `#FAF7F2` + serif display (matches the live marketing site), warm-brown dark mode. Real bonsai logo (`artifacts/juniper/public/logo.png`).
 - **Prototype reference:** interactive design mock covering Home, Spending, Plans, Marketplace, Accounts, and the Score breakdown (kept outside the repo; not production code).
+- **Planned surfaces not yet designed:** Subscriptions manager (Stage 9), Credit-score monitoring on the Score/credit page (Stage 10), Ask Juniper advisor (Stage 11).
 
 ### Status legend
 
@@ -23,14 +24,12 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 
 ---
 
-## Stage 0 — Lock open product decisions ⚠️ *(blocks build)*
+## Stage 0 — Product decisions ✅ *Locked 2026-08-03*
 
-Each of these changes what gets built. Resolve before Stage 2+.
-
-- [ ] **Score model** — proprietary 0–100 "Juniper Score" vs leading with the 300–850 credit number. *(Recommend: proprietary score, credit shown as a factor.)*
-- [ ] **Audience default** — individual-first with "invite partner" as a layer, vs ask at onboarding. *(Today's app is couples-first; this sets how much gets reframed — see Stage 7.)*
-- [ ] **"Ask Juniper" Q&A** — include an LLM advisor surface (Reddit ask: investing / transaction structuring) or cut for v1. *(Not yet designed.)*
-- [ ] **v1 data depth** — ship on Sandbox/mock to validate the concept, vs block launch on real Plaid transactions.
+- [x] **Score model → proprietary 0–100 "Juniper Score."** Computed from savings rate, debt load, emergency fund, retirement pace, and credit health; the 300–850 credit number is shown as one factor, not the hero. *(Drives Stage 4.)*
+- [x] **Audience → individual-first, partner as a layer.** Solo is the default experience; "invite your partner" is an optional add-on that unlocks the existing alignment features. *(Drives Stage 7.)*
+- [x] **"Ask Juniper" Q&A → deferred to post-launch fast-follow.** Not in v1; ship the dashboard-first product first, then add the LLM advisor. *(See Stage 11.)*
+- [x] **v1 data depth → build now on Sandbox, launch when Production clears.** Start the Stage 3 data engine against Plaid Sandbox in parallel so it's ready the moment Production access lands; don't block engineering on the compliance gate.
 
 ---
 
@@ -44,8 +43,10 @@ Shell is done; remaining screens and states:
 - [ ] Marketplace: listing detail + "List your service" merchant submission flow
 - [ ] Interaction states: edit transaction category, edit budget, add/adjust goal
 - [ ] Spending sub-tabs: Transactions table, Recurring
-- [ ] "Ask Juniper" Q&A surface *(only if kept in Stage 0)*
+- [ ] Subscriptions manager screen + one-click-cancel confirmation/approval modal *(Stage 9)*
+- [ ] Credit-score monitoring view on the Score/credit page — score trend, change alerts, factors *(Stage 10)*
 - [ ] Responsive / mobile layouts for all surfaces
+- [ ] ~~"Ask Juniper" Q&A surface~~ — deferred to post-launch *(Stage 11)*
 
 ---
 
@@ -73,6 +74,8 @@ Shell is done; remaining screens and states:
 ---
 
 ## Stage 4 — Juniper Score engine **(build)**
+
+*Decided: proprietary 0–100 Juniper Score; credit shown as a factor (Stage 0).*
 
 - [ ] Define factors, weights, formula — savings rate, DTI/debt load, emergency-fund months, retirement pace, credit health
 - [ ] Compute from Stage 3 data; store score history for the 8-month trend
@@ -102,7 +105,7 @@ Shell is done; remaining screens and states:
 ## Stage 7 — Reframe Plans + couples **(build)**
 
 - [ ] Reframe the 5 planning domains as goals inside the new dashboard (funded from real balances) ♻️
-- [ ] Apply the Stage 0 audience decision — solo default with "invite partner" layer, or dual-path ♻️ *(partner invites, alignment already built)*
+- [ ] Apply the audience decision — **solo default with "invite partner" layer** ♻️ *(decided Stage 0; partner invites + alignment already built)*
 - [ ] Auto-fill plan inputs (savings / debt) from linked balances *(open loop from PROJECT.md)*
 
 ---
@@ -114,6 +117,36 @@ Shell is done; remaining screens and states:
 - [ ] QA pass + performance + accessibility
 - [ ] Private beta → **20 active users** goal
 - [ ] Iterate on activation / retention from usage data
+
+---
+
+## Stage 9 — Subscriptions manager **(design + build + compliance)**
+
+See and manage every active subscription, and cancel with one click + an approval step. Detection builds on Stage 3 recurring-transaction data.
+
+- [ ] **(build)** Recurring/subscription detection from transactions — group by merchant + cadence, surface amount, next charge date, and price hikes ♻️ *(uses Stage 3 data spine)*
+- [ ] **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure")
+- [ ] **(build)** Cancellation mechanism — realistically an **assisted/concierge or partner-API flow**, not a universal one-click across all merchants. Options: generate a pre-filled cancellation request, hand off to a cancellation partner, or a Juniper-assisted queue. User's approval gates every action.
+- [ ] **(build)** Track cancellation status (requested → confirmed) and estimated savings; feed savings into the Juniper Score / "ways to improve"
+- [ ] **(compliance)** Terms for acting on the user's behalf; audit log of approvals
+
+> **Reality check:** true "one-click cancel everywhere" isn't a single API — incumbents (e.g. Rocket Money) use human concierge + partner integrations behind the button. Scope the button as *request cancellation with my approval*, with the backend flow chosen per merchant.
+
+## Stage 10 — Credit-score monitoring **(build + compliance)**
+
+Ongoing credit-score tracking and alerts on the Score/credit page (distinct from the proprietary Juniper Score, which uses credit as one factor).
+
+- [ ] **(build)** Integrate a credit-data provider (e.g. Array / bureau soft-pull / Credit Karma-style partner) — pull score + factors on a schedule
+- [ ] **(design)** Credit page: current score, trend over time, score factors, and change alerts (score moved, new inquiry, utilization up)
+- [ ] **(build)** Alerting — notify on meaningful changes; store history
+- [ ] **(build)** Feed the live credit score into the Juniper Score's "credit health" factor (replaces the static 726 placeholder)
+- [ ] **(compliance)** FCRA / credit-data handling, provider contract, consent + disclosures for soft pulls
+
+## Stage 11 — Post-launch fast-follows **(build)**
+
+- [ ] **"Ask Juniper"** LLM advisor — money Q&A (investing, transaction structuring) with dashboard context; needs prompt safety + financial-advice disclaimers *(deferred from Stage 0)*
+- [ ] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md)*
+- [ ] Cross-device sync for "accounts I use" *(open loop from PROJECT.md)*
 
 ---
 
