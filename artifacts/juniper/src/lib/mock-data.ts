@@ -127,6 +127,23 @@ export const creditCards: CreditCard[] = [
   { n: "Amex Blue Cash", bal: 640, limit: 4000, apr: "22.4%", k: "--jnpr-c3" },
 ];
 
+export interface Listing {
+  n: string; cat: string; logo: string; k: SeriesKey; stat: string; blurb: string;
+  tags: string[]; src: "curated" | "self"; match?: string; use?: boolean;
+}
+export const listings: Listing[] = [
+  { n: "SoFi", cat: "Debt", logo: "S", k: "--jnpr-c2", stat: "0% APR · 21 mo", blurb: "Balance transfers with no interest for up to 21 months and no annual fee.", tags: ["Balance transfer", "No fee"], src: "curated", match: "your Sapphire card is at 24.9% APR" },
+  { n: "Marcus", cat: "Saving", logo: "M", k: "--jnpr-c1", stat: "4.30% APY", blurb: "High-yield savings with no minimums and no fees.", tags: ["No minimums"], src: "curated", match: "$4,820 is sitting in ~0% checking" },
+  { n: "Earnest", cat: "Debt", logo: "E", k: "--jnpr-c4", stat: "from 4.9% APR", blurb: "Refinance your student loans with flexible terms and no fees.", tags: ["Student refi"], src: "curated", match: "you owe $22.4k in student loans at 5.8%" },
+  { n: "Ally", cat: "Banking", logo: "A", k: "--jnpr-c3", stat: "Checking + HYSA", blurb: "Online checking and savings that play nicely with everything.", tags: ["Checking", "HYSA"], src: "curated", use: true },
+  { n: "Fidelity", cat: "Investing", logo: "F", k: "--jnpr-c5", stat: "$0 commissions", blurb: "Roth IRA and brokerage with no commissions on stocks & ETFs.", tags: ["Roth IRA"], src: "curated", use: true },
+  { n: "Policygenius", cat: "Insurance", logo: "P", k: "--jnpr-c6", stat: "Term life", blurb: "Compare term life quotes from top carriers in a few minutes.", tags: ["Term life"], src: "curated" },
+  { n: "Betterment", cat: "Investing", logo: "B", k: "--jnpr-c3", stat: "Auto-invest", blurb: "Automated, low-fee portfolios that rebalance for you.", tags: ["Robo-advisor"], src: "self" },
+  { n: "Trust & Will", cat: "Estate", logo: "T", k: "--jnpr-c1", stat: "Wills & trusts", blurb: "Set up a legal will or trust online — worth it before the baby arrives.", tags: ["Wills", "Trusts"], src: "curated" },
+  { n: "Wealthfront", cat: "Saving", logo: "W", k: "--jnpr-c5", stat: "4.25% APY", blurb: "Cash account with automated saving buckets and no fees.", tags: ["4.25% APY"], src: "self" },
+];
+export const listingCategories = ["All", "Banking", "Saving", "Debt", "Investing", "Insurance", "Estate"];
+
 // Merchant/brand -> logo key (see mock-logos.ts). Falls back to a monogram tile.
 export const LOGO_KEY: Record<string, string> = {
   SoFi: "sofi", Marcus: "marcus", Earnest: "earnest", Ally: "ally", Fidelity: "fidelity",

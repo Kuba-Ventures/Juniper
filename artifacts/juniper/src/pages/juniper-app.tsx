@@ -2,7 +2,7 @@ import { Route, Switch } from "wouter";
 import { useSession } from "@/lib/use-session";
 import { AppBar } from "@/components/juniper/app-frame";
 import Home from "@/pages/app/home";
-import { Recommended } from "@/pages/app/stubs";
+import { Recommended } from "@/pages/app/recommended";
 import { Credit } from "@/pages/app/credit";
 import { Spending } from "@/pages/app/spending";
 import Plans from "@/pages/app/plans";

@@ -263,3 +263,25 @@
 .jnpr .card-row .util{width:150px;flex:0 0 auto}
 .jnpr .card-row .util .ut{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px;color:var(--jnpr-ink-2)}.jnpr .card-row .util .ut .hi{color:var(--jnpr-warn)}
 @media(max-width:560px){.jnpr .card-row .util{width:110px}}
+
+/* ---------- recommended (marketplace) ---------- */
+.jnpr .sec-title{font-size:13px;font-weight:700;margin:2px 2px 12px;color:var(--jnpr-ink)}
+.jnpr .lib-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 2px 14px}.jnpr .lib-head .sec-title{margin:0}
+.jnpr .mkt-grid{grid-template-columns:repeat(3,1fr)}
+@media(max-width:860px){.jnpr .mkt-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.jnpr .mkt-grid{grid-template-columns:1fr}}
+.jnpr .mkt-card{display:flex;flex-direction:column;gap:10px;padding:16px;position:relative;overflow:hidden}
+.jnpr .mkt-card.used{opacity:.7}
+.jnpr .mkt-top{display:flex;align-items:center;gap:11px}
+.jnpr .mkt-logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:0 0 auto}
+.jnpr .mkt-card .mn{font-weight:650;font-size:14px;color:var(--jnpr-ink)}.jnpr .mkt-card .mc{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .mkt-card p{margin:0;font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.45;flex:1}
+.jnpr .mkt-stat{font-size:16px;font-weight:750;letter-spacing:-.01em;color:var(--jnpr-accent-deep)}
+.jnpr .mkt-why{font-size:11.5px;color:var(--jnpr-ink-2);background:var(--jnpr-accent-soft);padding:6px 10px;border-radius:8px;line-height:1.4}
+.jnpr .tags{display:flex;gap:6px;flex-wrap:wrap}
+.jnpr .tag{font-size:10.5px;font-weight:600;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);padding:2px 8px;border-radius:20px}
+.jnpr .mkt-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .src{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.jnpr .src.curated{color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .src.self{color:var(--jnpr-c3);background:color-mix(in srgb,var(--jnpr-c3) 16%,transparent)}
+.jnpr .use-badge{font-size:10.5px;font-weight:700;color:var(--jnpr-good);background:var(--jnpr-good-soft);padding:2px 8px;border-radius:20px}

@@ -55,8 +55,8 @@ Shell is done; remaining screens and states:
 - [x] Stand up `DESIGN.md` + design tokens (offpine cool off-white + pine) — `artifacts/juniper/DESIGN.md` + scoped `src/styles/juniper.css` (`.jnpr`)
 - [x] New top nav + routing, replacing the plan-centric shell — `src/pages/juniper-app.tsx` + `components/juniper/app-frame.tsx` (Home · Spending · Plans · Credit · Recommended); routed at `/app/*` in `App.tsx` (old `app-shell.tsx` kept, unrouted)
 - [x] Embed the real logo + app icons across the app shell — `public/logo.png` in the app bar
-- [~] Port pages to React components — **Home + Plans + Spending + Credit done** (`src/pages/app/{home,plans,spending,credit}.tsx`; Credit has the 300–850 scale + marker, 8-month trend, change-alerts feed, factors, and per-card utilization — typecheck/build/SSR verified); **Recommended** is the last live pine-header stub, body porting next
-- [ ] Fold in existing surfaces ♻️ *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*
+- [x] Port pages to React components — **all five nav surfaces done**: Home, Spending, Plans, Credit, Recommended (`src/pages/app/*.tsx`), each typecheck/build/SSR verified. *(Standalone Score-breakdown page — the "ways to improve" surface behind the Home score strip — is the one design-mock screen not yet given its own route; the strip currently links to Credit. Small follow-up.)*
+- [ ] Fold in existing surfaces ♻️ — deferred into the Stage-3 data swap *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*: components already read `mock-data.ts` typed selectors, so this becomes wiring real data behind the same shapes rather than UI work.
 - Data: components read `src/lib/mock-data.ts` (typed selectors) so the Stage-3 swap to live data is data-layer only
 
 ---
