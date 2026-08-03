@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { plans as seedPlans, money, type Plan, type SeriesKey } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
+import { useThreads, previewOf, relativeTime } from "@/lib/planner";
 import { PartnerPanel } from "@/components/juniper/partner-panel";
 import { planMark, cssVar, PlanSpark, PlanIcon } from "@/components/juniper/primitives";
 
@@ -55,11 +57,28 @@ const TEMPLATES: [string, string, SeriesKey][] = [
 
 const parseNum = (s: string) => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
 
+// Per-plan FAQs — the questions people actually ask about each goal. They open
+// the AI planner (Ask Juniper) pre-seeded and scoped to this plan.
+const FAQS: Record<string, string[]> = {
+  home: ["How much home can I afford?", "How big a down payment do I need?", "Should I clear debt before I buy?"],
+  debt: ["What's the fastest way to pay this off?", "Avalanche or snowball for me?", "Should I consolidate or refinance?"],
+  shield: ["How many months should this cover?", "Where should I keep my emergency fund?", "Am I building it fast enough?"],
+  baby: ["How can I plan for my child's education?", "What's a 529 and should I open one?", "How much should a baby fund cover?"],
+  sun: ["Am I saving enough for retirement?", "Roth or traditional for me?", "How do I catch up if I'm behind?"],
+  wedding: ["How do I budget for a wedding?", "How much should I set aside monthly?"],
+  combine: ["How do we combine finances fairly?", "Should we split bills or pool them?"],
+};
+const faqsFor = (icon?: string): string[] => FAQS[icon ?? ""] ?? ["How do I reach this goal faster?", "How much should I set aside each month?", "Is this goal realistic for me?"];
+
 const PlusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
 );
 
-function PlanCard({ p, onOpen }: { p: Plan; onOpen: () => void }) {
+const ChatIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a8 8 0 01-11.5 7.2L4 20l1-4.7A8 8 0 1121 12z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+function PlanCard({ p, onOpen, onAsk, chatCount }: { p: Plan; onOpen: () => void; onAsk: () => void; chatCount: number }) {
   const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
   return (
     <div className={`card plan-lg ${p.done ? "done" : ""}`} onClick={onOpen}>
@@ -82,7 +101,12 @@ function PlanCard({ p, onOpen }: { p: Plan; onOpen: () => void }) {
           </div>
         )}
         <div className="next"><b>{p.done ? "Outcome:" : "Next:"}</b> {p.next}</div>
-        <div className="edit-hint">Click to view &amp; edit →</div>
+        <div className="plan-foot">
+          <span className="edit-hint">Click to view &amp; edit →</span>
+          <button className="plan-ask" onClick={(e) => { e.stopPropagation(); onAsk(); }}>
+            <ChatIcon />Ask Juniper{chatCount > 0 && <span className="pa-badge">{chatCount}</span>}
+          </button>
+        </div>
       </div>
       {p.rec && (
         <div className="embed-rec">
@@ -113,6 +137,9 @@ export default function Plans() {
   const [filter, setFilter] = useState<Filter>("active");
   const [modal, setModal] = useState<ModalState>(null);
   const close = () => setModal(null);
+  const [, navigate] = useLocation();
+  const { threads } = useThreads();
+  const chatCountFor = (t: string) => threads.filter((x) => x.planTitle === t).length;
 
   const { data, source } = useFinances();
   const balances: Balances = {
@@ -148,7 +175,15 @@ export default function Plans() {
 
       <div className="grid plan-grid">
         {shown.length ? (
-          shown.map((p) => <PlanCard key={list.indexOf(p)} p={p} onOpen={() => setModal({ k: "edit", i: list.indexOf(p) })} />)
+          shown.map((p) => (
+            <PlanCard
+              key={list.indexOf(p)}
+              p={p}
+              chatCount={chatCountFor(p.t)}
+              onOpen={() => setModal({ k: "edit", i: list.indexOf(p) })}
+              onAsk={() => navigate(`/app/ask?plan=${encodeURIComponent(p.t)}`)}
+            />
+          ))
         ) : (
           <div className="card" style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>No {filter} plans yet.</div>
         )}
@@ -239,8 +274,41 @@ function EditForm({ plan, onSave, onDelete, onClose }: { plan: Plan; onSave: (p:
   const [target, setTarget] = useState(String(plan.target || 0));
   const [monthly, setMonthly] = useState(plan.monthly || "");
   const [date, setDate] = useState(plan.date || "");
+  const [, navigate] = useLocation();
+  const { threads } = useThreads();
+  const chats = threads.filter((t) => t.planTitle === plan.t);
+  const ask = (q: string) => navigate(`/app/ask?q=${encodeURIComponent(q)}&plan=${encodeURIComponent(plan.t)}`);
+  const newChat = () => navigate(`/app/ask?plan=${encodeURIComponent(plan.t)}`);
+  const openChat = (id: string) => navigate(`/app/ask?thread=${encodeURIComponent(id)}`);
   return (
     <Backdrop onClose={onClose}>
+      <div className="ask-plan-cta">
+        <div className="ask-plan-head">
+          <div><b>Ask Juniper about this plan</b><small>Grounded in your real numbers</small></div>
+          <button className="btn sm" onClick={newChat}>New chat →</button>
+        </div>
+        <div className="ask-faqs">
+          {faqsFor(plan.icon).map((q) => <button key={q} className="ask-faq" onClick={() => ask(q)}>{q}</button>)}
+        </div>
+      </div>
+
+      {chats.length > 0 && (
+        <div className="plan-chats">
+          <div className="pc-lbl">Conversations about this plan</div>
+          {chats.map((t) => (
+            <button className="pc-item" key={t.id} onClick={() => openChat(t.id)}>
+              <span className="pc-berry"><PlanIcon name="target" /></span>
+              <span className="pc-main">
+                <span className="pc-t">{t.title}</span>
+                {previewOf(t) && <span className="pc-p">{previewOf(t)}</span>}
+              </span>
+              <span className="pc-w">{relativeTime(t.updatedAt)}</span>
+              <span className="pc-arr">›</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <h3>Edit plan</h3>
       <p>Update the goal or remove it. Progress is funded from your linked accounts.</p>
       <div className="field"><label>Goal name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>

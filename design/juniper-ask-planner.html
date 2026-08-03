@@ -1,0 +1,250 @@
+<title>Ask Juniper — AI Planner Preview</title>
+<style>
+  :root{
+    --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+    --ink:#232B21; --ink-2:#556052; --ink-3:#889081;
+    --line:#E3E9E1; --line-2:#EEF2EC;
+    --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3; --on-accent:#FFF;
+    --good:#2F8558; --bad:#B4523B; --c5:#9455A8;
+    --page:#EDF1EA; --panel:#FFFFFF;
+    --shadow:0 1px 2px rgba(20,32,20,.05),0 8px 24px -14px rgba(20,32,20,.16);
+    --shadow-lg:0 2px 10px rgba(20,32,20,.09),0 30px 60px -26px rgba(20,32,20,.28);
+    --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --surface:#171E17; --surface-2:#1D251D; --surface-3:#242D24;
+    --ink:#E8EFE6; --ink-2:#A6B0A2; --ink-3:#717B6E;
+    --line:#2A332A; --line-2:#212A21;
+    --accent:#6FB98C; --accent-deep:#8ACFA4; --accent-soft:#213024; --on-accent:#0C120D;
+    --good:#6FB98C; --bad:#D97E64; --c5:#AE6EC0;
+    --page:#0F150F; --panel:#171E17;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.4),0 30px 60px -24px rgba(0,0,0,.7);
+  }}
+  :root[data-theme="dark"]{
+    --surface:#171E17; --surface-2:#1D251D; --surface-3:#242D24;
+    --ink:#E8EFE6; --ink-2:#A6B0A2; --ink-3:#717B6E;
+    --line:#2A332A; --line-2:#212A21;
+    --accent:#6FB98C; --accent-deep:#8ACFA4; --accent-soft:#213024; --on-accent:#0C120D;
+    --good:#6FB98C; --bad:#D97E64; --c5:#AE6EC0;
+    --page:#0F150F; --panel:#171E17;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.4),0 30px 60px -24px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"]{
+    --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+    --ink:#232B21; --ink-2:#556052; --ink-3:#889081;
+    --line:#E3E9E1; --line-2:#EEF2EC;
+    --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3; --on-accent:#FFF;
+    --good:#2F8558; --bad:#B4523B; --c5:#9455A8;
+    --page:#EDF1EA; --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--ff);background:var(--page);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 22px 72px}
+
+  /* Studio header */
+  .lede{margin:0 0 30px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  .lede h1{font-size:clamp(24px,3.4vw,34px);margin:0 0 8px;letter-spacing:-.02em;text-wrap:balance}
+  .lede p{margin:0;color:var(--ink-2);font-size:15px;max-width:62ch}
+  .cap{display:flex;align-items:baseline;gap:10px;margin:38px 0 12px}
+  .cap .n{width:22px;height:22px;flex:0 0 auto;border-radius:6px;background:var(--accent);color:var(--on-accent);
+    font-size:12px;font-weight:700;display:grid;place-items:center}
+  .cap h2{font-size:15px;margin:0;font-weight:650}
+  .cap p{margin:0;color:var(--ink-3);font-size:13px}
+
+  /* Device frame */
+  .device{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-lg)}
+
+  /* App bar */
+  .bar{display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:-.01em}
+  .berry{width:20px;height:20px}
+  .nav{display:flex;gap:3px;margin-left:6px}
+  .nav a{font-size:13px;font-weight:550;color:var(--ink-2);padding:6px 11px;border-radius:8px;text-decoration:none;position:relative;display:flex;align-items:center;gap:6px}
+  .nav a.on{color:var(--accent-deep);background:var(--accent-soft);font-weight:650}
+  .nav a .ct{font-size:10px;font-weight:700;background:var(--surface-3);color:var(--ink-2);border-radius:20px;padding:0 6px}
+  .spacer{flex:1}
+  .pill{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-2);border:1px solid var(--line);border-radius:20px;padding:5px 11px}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:13px;display:grid;place-items:center}
+
+  /* Ask layout */
+  .ask{display:grid;grid-template-columns:240px 1fr;min-height:512px}
+  .rail{border-right:1px solid var(--line);padding:16px 13px;display:flex;flex-direction:column;gap:12px;background:var(--surface-2)}
+  .newbtn{display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:650;color:var(--on-accent);background:var(--accent);border:0;border-radius:9px;padding:10px;cursor:pointer}
+  .rail-lbl{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding:0 4px}
+  .item{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  .item.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .item .t{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .p{font-size:10.5px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:4px}
+  .item.on .p{color:var(--accent-deep)}
+  .item .m{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .conv{display:flex;flex-direction:column}
+  .scope{align-self:center;margin:16px 0 2px;font-size:11.5px;font-weight:600;color:var(--accent-deep);background:var(--accent-soft);padding:5px 13px;border-radius:20px}
+  .thread{flex:1;overflow:hidden;padding:18px 26px 8px;display:flex;flex-direction:column;gap:18px}
+  .turn{max-width:680px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:6px}
+  .turn.me{align-items:flex-end}
+  .who{font-size:11px;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;gap:6px}
+  .who .berry{width:16px;height:16px}
+  .bubble{font-size:14px;line-height:1.66}
+  .me .bubble{background:var(--accent-soft);color:var(--ink);border-radius:16px 16px 4px 16px;padding:11px 15px;max-width:82%}
+  .bubble b{font-weight:700}
+  .bubble .num{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent-deep)}
+  .callout{margin:11px 0 2px;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .callout .ch{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;background:var(--surface-2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+  .callout .cr{display:flex;justify-content:space-between;padding:9px 13px;font-size:13px;border-top:1px solid var(--line-2)}
+  .callout .cr span:last-child{font-variant-numeric:tabular-nums;font-weight:700}
+  .composer{display:flex;gap:9px;padding:14px 20px 16px;border-top:1px solid var(--line)}
+  .composer input{flex:1;font:inherit;font-size:13.5px;border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:11px 15px;color:var(--ink-3)}
+  .composer .send{font:inherit;font-size:13px;font-weight:650;color:var(--on-accent);background:var(--accent);border:0;border-radius:11px;padding:0 18px;cursor:pointer}
+  .disc{font-size:11.5px;color:var(--ink-3);text-align:center;padding:0 20px 14px;margin:0}
+
+  /* Plan modal screen */
+  .stage{position:relative;min-height:452px;background:
+      linear-gradient(color-mix(in srgb,var(--ink) 34%,transparent),color-mix(in srgb,var(--ink) 34%,transparent)),
+      var(--surface-2);
+    display:grid;place-items:center;padding:34px 20px;overflow:hidden}
+  .modal{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);padding:20px}
+  .cta{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);border-radius:12px;padding:13px 14px;margin-bottom:16px}
+  .cta-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .cta-head b{font-size:13.5px}.cta-head small{display:block;font-size:11.5px;color:var(--ink-2);margin-top:1px}
+  .cta-head .open{font:inherit;font-size:12px;font-weight:650;color:var(--on-accent);background:var(--accent);border:0;border-radius:8px;padding:7px 11px;cursor:pointer;white-space:nowrap}
+  .faqs{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .faq{font:inherit;font-size:12px;font-weight:550;color:var(--accent-deep);background:var(--surface);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
+  .faq.hot{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .modal h3{margin:2px 0 3px;font-size:18px}
+  .modal .sub{margin:0 0 14px;font-size:13px;color:var(--ink-2)}
+  .frow{display:flex;gap:11px;margin-bottom:11px}
+  .fld{flex:1}
+  .fld label{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  .fld .in{border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .macts{display:flex;gap:10px;margin-top:4px}
+  .macts .save{flex:1;font:inherit;font-size:13px;font-weight:650;color:var(--on-accent);background:var(--accent);border:0;border-radius:9px;padding:10px;cursor:pointer}
+  .macts .del{font:inherit;font-size:13px;font-weight:600;color:var(--bad);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 15px;cursor:pointer}
+
+  .foot{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px}
+  .foot b{color:var(--ink-2)}
+  .toggle{position:fixed;top:16px;right:16px;z-index:9;font:inherit;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:7px 13px;cursor:pointer;box-shadow:var(--shadow)}
+  @media (max-width:720px){.ask{grid-template-columns:1fr}.rail{display:none}}
+</style>
+
+<button class="toggle" onclick="var r=document.documentElement;r.dataset.theme=(r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches))?'light':'dark'">◐ Theme</button>
+
+<div class="wrap">
+  <div class="lede">
+    <p class="eyebrow">Juniper · Stage 11 · P1 preview</p>
+    <h1>Ask Juniper, the AI financial planner</h1>
+    <p>The dashboards are the advisor layer. This is the planner layer: its own destination, grounded in your real accounts, with many chats and plan-scoped entry points. Here's how P1 looks and behaves.</p>
+  </div>
+
+  <div class="cap">
+    <span class="n">1</span>
+    <div><h2>Ask Juniper — standalone, with multiple chats</h2><p>A top-level nav home. New chat any time; each thread keeps its own history.</p></div>
+  </div>
+
+  <div class="device">
+    <div class="bar">
+      <span class="brand"><svg class="berry" viewBox="0 0 20 22"><circle cx="10" cy="14" r="8" fill="#4A5EC8"/><ellipse cx="7" cy="11" rx="2.6" ry="1.5" fill="rgba(255,255,255,.32)" transform="rotate(-30 7 11)"/><path d="M10 4.5 10.9 7.2 13.6 6.2 11.7 8.8 14.2 10.4 11.2 10.1 11 13 10 10.8 9 13 8.8 10.1 5.8 10.4 8.3 8.8 6.4 6.2 9.1 7.2Z" fill="#D4922A"/></svg>Juniper</span>
+      <nav class="nav">
+        <a>Home</a><a>Spending</a><a>Plans <span class="ct">4</span></a>
+        <a class="on">Ask Juniper</a><a>Credit</a><a>Recommended</a>
+      </nav>
+      <span class="spacer"></span>
+      <span class="pill"><span class="dot"></span>7 linked</span>
+      <span class="avatar">F</span>
+    </div>
+
+    <div class="ask">
+      <aside class="rail">
+        <button class="newbtn">＋ New chat</button>
+        <div class="rail-lbl">Your chats</div>
+        <div class="item on">
+          <div class="p">◆ Baby fund</div>
+          <div class="t">Planning my child's education</div>
+          <div class="m">529 vs. brokerage, on your pace</div>
+        </div>
+        <div class="item">
+          <div class="t">Best state to open an LLC</div>
+          <div class="m">Home state vs. Wyoming</div>
+        </div>
+        <div class="item">
+          <div class="p">◆ Buy a home</div>
+          <div class="t">How much can I afford?</div>
+        </div>
+        <div class="item">
+          <div class="t">Setting up a HYSA</div>
+        </div>
+      </aside>
+
+      <div class="conv">
+        <div class="scope">Grounded in your <b style="margin:0 4px">Baby fund</b> plan</div>
+        <div class="thread">
+          <div class="turn me">
+            <div class="bubble">How can I plan for my child's education?</div>
+          </div>
+          <div class="turn">
+            <div class="who"><svg class="berry" viewBox="0 0 20 22"><circle cx="10" cy="14" r="8" fill="#4A5EC8"/><path d="M10 4.5 10.9 7.2 13.6 6.2 11.7 8.8 14.2 10.4 11.2 10.1 11 13 10 10.8 9 13 8.8 10.1 5.8 10.4 8.3 8.8 6.4 6.2 9.1 7.2Z" fill="#D4922A"/></svg>Juniper</div>
+            <div class="bubble">
+              Great time to start, since your little one is due in February. The workhorse for education is a <b>529 plan</b>: you contribute after-tax dollars, they grow tax-free, and withdrawals for tuition, books, and housing are tax-free too. Many states also give you a deduction on your own return.
+              <div class="callout">
+                <div class="ch"><span>From your linked accounts</span><span>Baby fund</span></div>
+                <div class="cr"><span>Saved so far</span><span>$4,200 / $12,000</span></div>
+                <div class="cr"><span>Monthly room after bills</span><span>$610</span></div>
+                <div class="cr"><span>Emergency fund</span><span>4.1 months ✓</span></div>
+              </div>
+              Here's the pace that fits your cash flow. Your emergency fund is already solid, so I'd open a 529 and start around <span class="num">$250/mo</span>. That keeps the current $12,000 baby goal on track and quietly builds an education balance in parallel. We can raise it after the birth once childcare costs settle.
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <input value="Would a Roth be better than a 529 for flexibility?" readonly>
+          <button class="send">Send</button>
+        </div>
+        <p class="disc">Juniper gives educational guidance, not licensed financial, tax, or legal advice.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">
+    <span class="n">2</span>
+    <div><h2>Plan FAQs → a plan-scoped chat</h2><p>Every plan surfaces the real questions people ask about that goal. One tap opens the planner, pre-asked and scoped.</p></div>
+  </div>
+
+  <div class="device">
+    <div class="stage">
+      <div class="modal">
+        <div class="cta">
+          <div class="cta-head">
+            <div><b>Ask Juniper about this plan</b><small>Grounded in your real numbers</small></div>
+            <button class="open">Open chat →</button>
+          </div>
+          <div class="faqs">
+            <button class="faq hot">How can I plan for my child's education?</button>
+            <button class="faq">What's a 529 and should I open one?</button>
+            <button class="faq">How much should a baby fund cover?</button>
+          </div>
+        </div>
+        <h3>Edit plan</h3>
+        <p class="sub">Update the goal or remove it. Progress is funded from your linked accounts.</p>
+        <div class="fld" style="margin-bottom:11px"><label>Goal name</label><div class="in">Baby fund</div></div>
+        <div class="frow">
+          <div class="fld"><label>Saved so far ($)</label><div class="in">4,200</div></div>
+          <div class="fld"><label>Target ($)</label><div class="in">12,000</div></div>
+        </div>
+        <div class="frow">
+          <div class="fld"><label>Monthly</label><div class="in">$250/mo</div></div>
+          <div class="fld"><label>Target date</label><div class="in">Feb 2027</div></div>
+        </div>
+        <div class="macts"><button class="save">Save changes</button><button class="del">Delete</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <p><b>What's real in P1:</b> streaming endpoint on <b>claude-opus-5</b> with adaptive thinking; a <b>get_finances</b> tool that reads your true balances server-side, scoped to your login (the model can't invent a number); the standalone Ask Juniper page with local multi-chat threads; and plan FAQs that seed a scoped chat. Knowledge retrieval and PDF export follow in P3 and P4.</p>
+  </div>
+</div>
