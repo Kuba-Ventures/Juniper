@@ -63,7 +63,7 @@ export function SharedOverview() {
 
       {/* his & hers */}
       <div className="grid two" style={{ marginBottom: 16 }}>
-        {[{ arr: mine, who: you.name, k: you.k, total: combined.youShare }, { arr: theirs, who: name, k: demoPartner.k, total: combined.partnerShare }].map((col, i) => (
+        {[{ arr: mine, who: you.name, k: you.k, total: c.youShare }, { arr: theirs, who: name, k: demoPartner.k, total: c.partnerShare }].map((col, i) => (
           <div className="card owner-col" style={{ borderTopColor: cssVar(col.k) }} key={i}>
             <div className="oc-head">
               <span className="oc-ava" style={{ background: cssVar(col.k) }}>{col.who.charAt(0).toUpperCase()}</span>

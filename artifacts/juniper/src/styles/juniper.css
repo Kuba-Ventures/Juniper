@@ -540,3 +540,8 @@
   .jnpr .rp-scroll{overflow:visible;padding:0;display:block}
   .jnpr .rp-sheet{position:absolute;left:0;top:0;max-width:none;width:100%;box-shadow:none;border-radius:0;padding:0}
 }
+
+/* Partner polish: honest demo-state pill + invite success line */
+.jnpr .plaid-pill.demo .dot{display:none}
+.jnpr .page-head .plaid-pill.demo{background:rgba(212,146,42,.20);border-color:rgba(212,146,42,.48);color:#F3E6CD;font-weight:650}
+.jnpr .share-ok{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:var(--jnpr-r-sm);padding:9px 12px;margin-bottom:10px}

@@ -53,15 +53,25 @@ export function InviteModal({ onClose }: { onClose: () => void }) {
       <div className="field"><label>Partner's first name (optional)</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Devin" /></div>
 
       {url && (
-        <div className="share-link"><input readOnly value={url} onFocus={(e) => e.currentTarget.select()} /><button className="btn sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+        <>
+          <div className="share-ok">✓ Link ready — send it to {name.trim() || "your partner"} to connect.</div>
+          <div className="share-link"><input readOnly value={url} onFocus={(e) => e.currentTarget.select()} /><button className="btn sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+        </>
       )}
       {error && <div className="form-error">{error}</div>}
 
       <div className="modal-actions">
-        {!url
-          ? <button className="btn" onClick={createLink} disabled={busy}>{busy ? "Creating link…" : "Create invite link"}</button>
-          : <button className="btn ghost" onClick={onClose}>Done</button>}
-        <button className="btn ghost" onClick={preview}>Preview shared space →</button>
+        {!url ? (
+          <>
+            <button className="btn" onClick={createLink} disabled={busy}>{busy ? "Creating link…" : "Create invite link"}</button>
+            <button className="btn ghost" onClick={preview}>Preview shared space →</button>
+          </>
+        ) : (
+          <>
+            <button className="btn" onClick={preview}>Preview shared space →</button>
+            <button className="btn ghost" onClick={onClose}>Done</button>
+          </>
+        )}
       </div>
       <div className="fine">The shared space is a live preview on demo data. Real partner data connects once they accept and link their accounts.</div>
     </Backdrop>
