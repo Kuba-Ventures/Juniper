@@ -1,15 +1,23 @@
 // Stage 3f — the frontend data-layer seam.
 //
-// `useFinances()` returns the dashboard's money data behind stable shapes. It
-// starts with the demo mock so the UI renders instantly, then fetches
-// GET /api/finances and swaps to LIVE data if the user has linked + synced.
-// Any failure (not linked, tables not yet created, offline) keeps the mock —
-// so nothing breaks before the Stage-3 ops gates clear, and it flips to real
-// data automatically once they do.
-import { useEffect, useState } from "react";
+// The dashboard's money data behind stable shapes, exposed via a context so the
+// several pages that read it (Overview, Score, Plans) share one source of truth
+// and one /api/finances fetch. There are three sources, in priority order:
+//
+//   live   — the member linked + synced Plaid; GET /api/finances returned data
+//   manual — no link yet, but they entered accounts/income in onboarding
+//            (built from the local profile by `buildManualFinances`)
+//   mock   — neither; the demo household so the UI always renders something
+//
+// `<FinancesProvider profile={…}>` wraps the app shell; `useFinances()` reads
+// the resolved value. Live overrides manual overrides mock, and the swap to
+// live happens automatically once the Stage-3 ops gates clear.
+import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getAccessToken } from "@/lib/supabase";
 import * as M from "@/lib/mock-data";
 import type { Account, SpendCat, Budget, Txn, SeriesKey } from "@/lib/mock-data";
+import type { UserProfile } from "@/lib/profile";
+import { buildManualFinances } from "@/lib/manual-finances";
 
 export interface FinanceData {
   netWorth: typeof M.netWorth;
@@ -92,16 +100,46 @@ async function fetchFinances(): Promise<FinanceData | null> {
   }
 }
 
-export function useFinances(): { data: FinanceData; source: "mock" | "live"; loading: boolean } {
-  const [data, setData] = useState<FinanceData>(MOCK);
-  const [source, setSource] = useState<"mock" | "live">("mock");
-  const [loading, setLoading] = useState(true);
+export type FinanceSource = "mock" | "manual" | "live";
+export interface FinancesValue { data: FinanceData; source: FinanceSource; loading: boolean }
+
+const FinancesContext = createContext<FinancesValue | null>(null);
+
+export function FinancesProvider({ profile, children }: { profile: UserProfile | null; children: ReactNode }) {
+  // The manual dashboard is derived synchronously from the local profile, so a
+  // hand-onboarded member sees their own numbers on first paint (no flash of
+  // demo data). It's the baseline until the live fetch resolves.
+  const manual = useMemo(() => buildManualFinances(profile), [profile]);
+  const base: FinancesValue = manual
+    ? { data: manual, source: "manual", loading: true }
+    : { data: MOCK, source: "mock", loading: true };
+
+  const [value, setValue] = useState<FinancesValue>(base);
+
+  // Re-seed the baseline when the profile changes (before/independent of live).
+  useEffect(() => {
+    setValue((prev) => (prev.source === "live" ? prev : base));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manual]);
+
   useEffect(() => {
     let alive = true;
     fetchFinances()
-      .then((live) => { if (alive && live) { setData(live); setSource("live"); } })
-      .finally(() => { if (alive) setLoading(false); });
+      .then((live) => {
+        if (!alive) return;
+        if (live) setValue({ data: live, source: "live", loading: false });
+        else setValue((prev) => ({ ...prev, loading: false }));
+      })
+      .catch(() => { if (alive) setValue((prev) => ({ ...prev, loading: false })); });
     return () => { alive = false; };
   }, []);
-  return { data, source, loading };
+
+  return createElement(FinancesContext.Provider, { value }, children);
+}
+
+export function useFinances(): FinancesValue {
+  const ctx = useContext(FinancesContext);
+  // Fallback keeps any consumer rendered outside the provider working on mock
+  // data rather than throwing.
+  return ctx ?? { data: MOCK, source: "mock", loading: false };
 }

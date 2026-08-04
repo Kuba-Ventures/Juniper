@@ -1,32 +1,11 @@
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { acceptInvite } from "@/lib/invites";
-
-const sage = "#5C7A65";
-const cream = "#FAF7F2";
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
-const border = "#E8E2D6";
-const serif = "'Fraunces', Georgia, serif";
-const sans = "'Inter', sans-serif";
+import "@/styles/juniper.css";
 
 const REQUIRED_INVITE_CODE = (import.meta.env.VITE_SIGNUP_INVITE_CODE ?? "") as string;
-
-const inputStyle = (hasError = false): CSSProperties => ({
-  height: 48,
-  padding: "0 16px",
-  border: `1px solid ${hasError ? "#b94040" : border}`,
-  borderRadius: 8,
-  background: "#fff",
-  fontFamily: sans,
-  fontSize: 16,
-  color: ink,
-  outline: "none",
-  boxSizing: "border-box",
-  width: "100%",
-});
 
 export default function SignUp() {
   const [, setLocation] = useLocation();
@@ -112,164 +91,71 @@ export default function SignUp() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: cream,
-        fontFamily: sans,
-        padding: "0 24px",
-        position: "relative",
-      }}
-    >
-      <Link
-        href="/"
-        style={{
-          position: "absolute",
-          top: 20,
-          left: 24,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          color: muted,
-          fontFamily: sans,
-          fontSize: 14,
-          textDecoration: "none",
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path
-            d="M10 3L5 8L10 13"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+    <div className="jnpr auth-shell">
+      <Link href="/" className="auth-back">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         Back
       </Link>
 
-      <img
-        src="/logo.png"
-        alt="Juniper"
-        style={{ width: 96, height: 96, objectFit: "contain", marginBottom: 18 }}
-      />
-      <h1
-        style={{
-          fontFamily: serif,
-          fontSize: 22,
-          color: sage,
-          fontWeight: 500,
-          margin: "0 0 4px",
-        }}
-      >
-        Create your account
-      </h1>
-      <p style={{ color: muted, fontSize: 14, margin: "0 0 28px" }}>Private preview.</p>
+      <div className="auth-card">
+        <div className="auth-brand">
+          <img src="/logo.png" alt="Juniper" />
+          <h1>Create your account</h1>
+          <p className="auth-sub">Start building your financial picture.</p>
+        </div>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 300 }}
-      >
-        <input
-          type="text"
-          placeholder="Preferred name (optional)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="given-name"
-          style={inputStyle()}
-        />
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          required
-          style={inputStyle()}
-        />
-        <input
-          type="password"
-          placeholder="Password (min 8 characters)"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError(null);
-          }}
-          autoComplete="new-password"
-          required
-          style={inputStyle(!!error)}
-        />
-        {needsSignupCode && (
+        <form onSubmit={handleSubmit} className="auth-form">
           <input
             type="text"
-            placeholder="Invite code"
-            value={inviteCode}
+            placeholder="Preferred name (optional)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="given-name"
+          />
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password (min 8 characters)"
+            value={password}
             onChange={(e) => {
-              setInviteCode(e.target.value);
+              setPassword(e.target.value);
               setError(null);
             }}
+            autoComplete="new-password"
             required
-            style={inputStyle(!!error)}
+            className={error ? "err" : undefined}
           />
-        )}
-        {error && (
-          <p
-            style={{
-              color: "#b94040",
-              fontSize: 12,
-              textAlign: "center",
-              margin: "-2px 0 0",
-            }}
-          >
-            {error}
-          </p>
-        )}
-        {info && (
-          <p
-            style={{
-              color: sage,
-              fontSize: 12,
-              textAlign: "center",
-              margin: "-2px 0 0",
-            }}
-          >
-            {info}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            height: 48,
-            background: sage,
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            fontFamily: sans,
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: loading ? "default" : "pointer",
-            opacity: loading ? 0.7 : 1,
-            transition: "opacity 0.15s",
-          }}
-        >
-          {loading ? "Creating account…" : "Create account"}
-        </button>
-      </form>
+          {needsSignupCode && (
+            <input
+              type="text"
+              placeholder="Invite code"
+              value={inviteCode}
+              onChange={(e) => {
+                setInviteCode(e.target.value);
+                setError(null);
+              }}
+              required
+              className={error ? "err" : undefined}
+            />
+          )}
+          {error && <p className="auth-msg bad">{error}</p>}
+          {info && <p className="auth-msg good">{info}</p>}
+          <button type="submit" className="btn" disabled={loading}>
+            {loading ? "Creating account…" : "Create account"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 22, fontSize: 13, color: muted }}>
-        Already have an account?{" "}
-        <Link
-          href="/auth/sign-in"
-          style={{ color: sage, fontWeight: 500, textDecoration: "none" }}
-        >
-          Sign in
-        </Link>
-      </p>
+        <p className="auth-alt">
+          Already have an account? <Link href="/auth/sign-in">Sign in</Link>
+        </p>
+      </div>
     </div>
   );
 }

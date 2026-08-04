@@ -578,3 +578,105 @@
 .jnpr .plaid-pill.demo .dot{display:none}
 .jnpr .page-head .plaid-pill.demo{background:rgba(212,146,42,.20);border-color:rgba(212,146,42,.48);color:#F3E6CD;font-weight:650}
 .jnpr .share-ok{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:var(--jnpr-r-sm);padding:9px 12px;margin-bottom:10px}
+
+/* ============ auth (sign in / sign up) ============ */
+.jnpr.auth-shell{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:40px 24px;position:relative}
+.jnpr .auth-back{position:absolute;top:20px;left:22px;display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--jnpr-ink-3);text-decoration:none}
+.jnpr .auth-back:hover{color:var(--jnpr-ink)}
+.jnpr .auth-back svg{width:15px;height:15px}
+.jnpr .auth-card{width:100%;max-width:360px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);box-shadow:var(--jnpr-shadow-lg);padding:30px 28px}
+.jnpr .auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px}
+.jnpr .auth-brand img{width:56px;height:56px;object-fit:contain;margin-bottom:12px}
+.jnpr .auth-card h1{font-size:21px;color:var(--jnpr-head)}
+.jnpr .auth-card .auth-sub{font-size:13px;color:var(--jnpr-ink-3);margin-top:4px}
+.jnpr .auth-form{display:flex;flex-direction:column;gap:10px}
+.jnpr .auth-form input{font:inherit;font-size:14.5px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:10px;padding:11px 13px;outline:none;width:100%}
+.jnpr .auth-form input:focus{border-color:var(--jnpr-accent)}
+.jnpr .auth-form input.err{border-color:var(--jnpr-bad)}
+.jnpr .auth-form .btn{justify-content:center;padding:12px 15px;font-size:14px;margin-top:2px}
+.jnpr .auth-msg{font-size:12px;text-align:center;margin:0}
+.jnpr .auth-msg.bad{color:var(--jnpr-bad)}.jnpr .auth-msg.good{color:var(--jnpr-good)}
+.jnpr .auth-alt{text-align:center;font-size:13px;color:var(--jnpr-ink-3);margin-top:18px}
+.jnpr .auth-alt a{color:var(--jnpr-accent);font-weight:650;text-decoration:none}
+.jnpr .auth-alt a:hover{text-decoration:underline}
+
+/* ============ first-run onboarding ============ */
+.jnpr.onboard{display:flex;flex-direction:column;min-height:100dvh}
+.jnpr .ob-top{display:flex;align-items:center;justify-content:space-between;padding:16px clamp(16px,5vw,40px)}
+.jnpr .ob-top .brand{font-size:17px}
+.jnpr .ob-skip{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:var(--jnpr-ink-3)}
+.jnpr .ob-skip:hover{color:var(--jnpr-ink)}
+.jnpr .ob-body{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%;max-width:600px;margin:0 auto;padding:8px clamp(16px,5vw,40px) 40px;box-sizing:border-box}
+.jnpr .ob-prog{margin-bottom:26px}
+.jnpr .ob-prog .pr-lbl{display:flex;justify-content:space-between;margin-bottom:8px}
+.jnpr .ob-prog .pr-lbl .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--jnpr-ink-3);font-weight:700}
+.jnpr .ob-prog .pr-lbl .r{font-size:12px;color:var(--jnpr-accent);font-weight:700}
+.jnpr .ob-prog .track{height:5px;border-radius:20px;background:var(--jnpr-surface-3);overflow:hidden}
+.jnpr .ob-prog .track > i{display:block;height:100%;background:var(--jnpr-accent);border-radius:20px;transition:width .4s ease}
+.jnpr .ob-body h2{font-size:clamp(23px,4vw,29px);color:var(--jnpr-head);line-height:1.15}
+.jnpr .ob-body .ob-help{font-size:14px;color:var(--jnpr-ink-2);margin:8px 0 22px;max-width:46ch;line-height:1.55}
+.jnpr .ob-input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1.5px solid var(--jnpr-line);border-radius:11px;padding:13px 15px;outline:none}
+.jnpr .ob-input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-seg{display:flex;gap:10px;flex-wrap:wrap}
+.jnpr .ob-seg button{flex:1;min-width:130px;font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1.5px solid var(--jnpr-line);border-radius:11px;padding:14px;cursor:pointer;text-align:left}
+.jnpr .ob-seg button small{display:block;font-weight:500;font-size:12px;color:var(--jnpr-ink-3);margin-top:2px}
+.jnpr .ob-seg button.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
+.jnpr .ob-money{display:inline-flex;align-items:baseline;border-bottom:2px solid var(--jnpr-line);padding-bottom:4px}
+.jnpr .ob-money.on{border-color:var(--jnpr-accent)}
+.jnpr .ob-money span{font-size:38px;font-weight:700;color:var(--jnpr-ink);line-height:1}
+.jnpr .ob-money input{font:inherit;font-size:38px;font-weight:700;color:var(--jnpr-ink);line-height:1;background:transparent;border:0;outline:none;width:6ch}
+.jnpr .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.jnpr .ob-chip{font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:9px 15px;cursor:pointer}
+.jnpr .ob-chip.on{color:var(--jnpr-on-accent);background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
+.jnpr .ob-fieldgroup{display:flex;flex-direction:column;gap:14px}
+/* accounts & loans builder */
+.jnpr .ob-acct{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:8px;align-items:center}
+.jnpr .ob-acct.debt{grid-template-columns:1fr 1.4fr 1fr .7fr auto}
+@media(max-width:560px){.jnpr .ob-acct,.jnpr .ob-acct.debt{grid-template-columns:1fr 1fr;gap:7px}}
+.jnpr .ob-acct select,.jnpr .ob-acct input{font:inherit;font-size:13.5px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:9px;padding:9px 10px;outline:none;width:100%;box-sizing:border-box}
+.jnpr .ob-acct select:focus,.jnpr .ob-acct input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-acct .ob-del{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);border-radius:9px;color:var(--jnpr-ink-3);cursor:pointer;padding:8px;display:grid;place-items:center}
+.jnpr .ob-acct .ob-del:hover{color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+.jnpr .ob-add{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13.5px;font-weight:650;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);border:1px dashed color-mix(in srgb,var(--jnpr-accent) 40%,transparent);border-radius:10px;padding:11px 15px;cursor:pointer;justify-content:center}
+.jnpr .ob-add svg{width:15px;height:15px}
+.jnpr .ob-tally{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:16px;padding:13px 15px;background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:11px}
+.jnpr .ob-tally .l{font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .ob-tally .v{font-size:20px;font-weight:750;color:var(--jnpr-ink);letter-spacing:-.02em}
+.jnpr .ob-tally .v.neg{color:var(--jnpr-bad)}
+.jnpr .ob-nav{display:flex;align-items:center;gap:12px;margin-top:34px}
+.jnpr .ob-nav .btn svg{width:16px;height:16px}
+.jnpr .ob-back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink-3);padding:10px 4px}
+.jnpr .ob-back:hover{color:var(--jnpr-ink)}
+.jnpr .ob-ghostskip{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:var(--jnpr-ink-3)}
+.jnpr .ob-secure{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:18px}
+.jnpr .ob-secure svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;color:var(--jnpr-accent)}
+.jnpr .ob-connected{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:650;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:11px;padding:13px 15px;margin-bottom:12px}
+.jnpr .ob-done{display:flex;flex-direction:column;align-items:flex-start}
+.jnpr .ob-done .ob-check{width:52px;height:52px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:grid;place-items:center;margin-bottom:16px}
+.jnpr .ob-done .ob-check svg{width:26px;height:26px}
+
+/* one-time welcome tip on first dashboard landing */
+.jnpr .welcome-tip{display:flex;align-items:flex-start;gap:12px;background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 26%,transparent);border-radius:var(--jnpr-r);padding:14px 16px;margin-bottom:16px}
+.jnpr .welcome-tip .wt-body{flex:1;min-width:0}
+.jnpr .welcome-tip b{font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .welcome-tip p{margin:3px 0 0;font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.5}
+.jnpr .welcome-tip .wt-x{background:none;border:0;cursor:pointer;color:var(--jnpr-ink-3);padding:2px;flex:0 0 auto}
+.jnpr .welcome-tip .wt-x:hover{color:var(--jnpr-ink)}
+
+/* dashboard connect-to-unlock nudge (reuses .connect-empty inside a card) */
+.jnpr .nudge-card{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;gap:10px;padding:30px 22px}
+.jnpr .nudge-card .nc-mark{width:46px;height:46px;border-radius:13px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center}
+.jnpr .nudge-card .nc-mark svg{width:22px;height:22px}
+.jnpr .nudge-card h3{font-size:15px;color:var(--jnpr-head)}
+.jnpr .nudge-card p{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.55;max-width:34ch;margin:0}
+
+/* connections page fitted into the routed .jnpr shell */
+.jnpr .conn-wrap{max-width:680px;margin:0 auto}
+.jnpr .conn-item{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:14px;padding:16px 18px}
+.jnpr .conn-item + .conn-item{margin-top:12px}
+.jnpr .conn-inst{display:flex;align-items:center;gap:13px}
+.jnpr .conn-inst .ci-mark{width:38px;height:38px;border-radius:10px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;flex:0 0 auto}
+.jnpr .conn-inst .ci-name{font-size:15px;font-weight:650;color:var(--jnpr-ink);flex:1;min-width:0}
+.jnpr .conn-acct{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:9px;margin-top:9px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
+.jnpr .conn-acct .ca-name{color:var(--jnpr-ink-2);min-width:0}
+.jnpr .conn-acct .ca-bal{color:var(--jnpr-ink);font-weight:650;flex:0 0 auto}

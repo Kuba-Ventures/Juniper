@@ -3,7 +3,7 @@ import {
   usePlaidLink,
   type PlaidLinkOnSuccessMetadata,
 } from "react-plaid-link";
-import { Building2, Plus, Trash2, ShieldCheck } from "lucide-react";
+import { Building2, Plus, Trash2, ShieldCheck, RefreshCw } from "lucide-react";
 import {
   createLinkToken,
   exchangePublicToken,
@@ -12,15 +12,8 @@ import {
   syncFinances,
   type PlaidItem,
 } from "@/lib/plaid";
+import { PageHeader } from "@/components/juniper/app-frame";
 import { trackEngagement } from "@/lib/analytics";
-
-const sage = "#5C7A65";
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
-const border = "#E8E2D6";
-const sageFill = "rgba(92,122,101,0.08)";
-const serif = "'Fraunces', Georgia, serif";
-const sans = "'Inter', sans-serif";
 
 function money(n: number | null, currency: string | null): string {
   if (n == null) return "";
@@ -138,207 +131,67 @@ export function ConnectionsView() {
   const hasItems = items.length > 0;
 
   return (
-    <div style={{ height: "100%", overflowY: "auto" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "52px 28px 80px" }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <img
-            src="/logo.png"
-            alt="Juniper"
-            style={{ width: 56, height: 56, objectFit: "contain", margin: "0 auto 20px", display: "block" }}
-          />
-          <h1
-            style={{
-              fontFamily: serif,
-              fontSize: "clamp(26px, 4vw, 36px)",
-              fontWeight: 400,
-              color: ink,
-              margin: "0 0 10px",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Connect your accounts.
-          </h1>
-          <p style={{ fontSize: 15, color: muted, margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>
-            Linking your accounts gives Juniper a real-time picture of your finances, so the guidance
-            you get is grounded in what's actually happening.
-          </p>
-        </div>
+    <div className="frame">
+      <PageHeader
+        title="Connections"
+        sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically."
+        actions={
+          <>
+            {hasItems && (
+              <button className="btn ghost" onClick={handleSync} disabled={syncing}>
+                <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
+              </button>
+            )}
+            <button className="btn" onClick={handleConnect} disabled={connecting}>
+              <Plus size={16} /> {connecting ? "Opening…" : hasItems ? "Connect another" : "Connect an account"}
+            </button>
+          </>
+        }
+      />
 
-        {notice && (
-          <div
-            style={{
-              background: "rgba(185,64,64,0.06)",
-              border: "1px solid rgba(185,64,64,0.2)",
-              borderRadius: 10,
-              padding: "12px 16px",
-              fontSize: 13.5,
-              color: "#b94040",
-              margin: "0 0 20px",
-              lineHeight: 1.5,
-            }}
-          >
-            {notice}
-          </div>
-        )}
-
-        <button
-          onClick={handleConnect}
-          disabled={connecting}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            width: "100%",
-            padding: "14px 20px",
-            background: sage,
-            color: "#fff",
-            border: "none",
-            borderRadius: 12,
-            fontFamily: sans,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: connecting ? "default" : "pointer",
-            opacity: connecting ? 0.6 : 1,
-            marginBottom: hasItems || loading ? 28 : 20,
-          }}
-        >
-          <Plus size={18} strokeWidth={2.4} />
-          {connecting ? "Opening secure link…" : hasItems ? "Connect another account" : "Connect an account"}
-        </button>
-
-        {hasItems && !loading && (
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            style={{
-              display: "block",
-              margin: "-12px auto 24px",
-              background: "transparent",
-              border: "none",
-              fontFamily: sans,
-              fontSize: 13,
-              fontWeight: 600,
-              color: sage,
-              cursor: syncing ? "default" : "pointer",
-              opacity: syncing ? 0.6 : 1,
-            }}
-          >
-            {syncing ? "Refreshing transactions & balances…" : "Refresh data now"}
-          </button>
-        )}
+      <div className="conn-wrap">
+        {notice && <div className="form-error" style={{ marginBottom: 16 }}>{notice}</div>}
 
         {loading ? (
-          <p style={{ textAlign: "center", color: muted, fontFamily: sans, fontSize: 14 }}>Loading…</p>
+          <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
         ) : hasItems ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <>
             {items.map((item) => (
-              <div
-                key={item.item_id}
-                style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 14, padding: "18px 20px" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: item.accounts.length ? 12 : 0 }}>
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      background: sageFill,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Building2 size={20} color={sage} strokeWidth={1.8} />
-                  </div>
-                  <span style={{ fontFamily: serif, fontSize: 17, color: ink, fontWeight: 400, flex: 1, minWidth: 0 }}>
-                    {item.institution_name || "Linked institution"}
-                  </span>
+              <div className="conn-item" key={item.item_id}>
+                <div className="conn-inst">
+                  <span className="ci-mark"><Building2 size={19} /></span>
+                  <span className="ci-name">{item.institution_name || "Linked institution"}</span>
                   <button
+                    className="btn ghost sm"
                     onClick={() => handleRemove(item.item_id)}
                     disabled={removingId === item.item_id}
                     aria-label="Disconnect institution"
-                    title="Disconnect"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      background: "transparent",
-                      border: `1px solid ${border}`,
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      fontFamily: sans,
-                      fontSize: 12.5,
-                      color: muted,
-                      cursor: removingId === item.item_id ? "default" : "pointer",
-                      flexShrink: 0,
-                    }}
                   >
                     <Trash2 size={13} /> {removingId === item.item_id ? "Removing…" : "Remove"}
                   </button>
                 </div>
-
-                {item.accounts.length > 0 && (
-                  <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {item.accounts.map((a) => (
-                      <li
-                        key={a.account_id}
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          paddingTop: 8,
-                          borderTop: `1px solid ${border}`,
-                        }}
-                      >
-                        <span style={{ fontFamily: sans, fontSize: 13.5, color: ink, minWidth: 0 }}>
-                          {accountLine(a)}
-                        </span>
-                        {a.balance != null && (
-                          <span style={{ fontFamily: sans, fontSize: 13.5, color: muted, fontWeight: 600, flexShrink: 0 }}>
-                            {money(a.balance, a.currency)}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {item.accounts.map((a) => (
+                  <div className="conn-acct" key={a.account_id}>
+                    <span className="ca-name">{accountLine(a)}</span>
+                    {a.balance != null && <span className="ca-bal tnum">{money(a.balance, a.currency)}</span>}
+                  </div>
+                ))}
               </div>
             ))}
-          </div>
+          </>
         ) : (
-          <div
-            style={{
-              textAlign: "center",
-              background: sageFill,
-              border: `1px dashed ${border}`,
-              borderRadius: 14,
-              padding: "28px 24px",
-              color: muted,
-              fontFamily: sans,
-              fontSize: 14,
-              lineHeight: 1.6,
-            }}
-          >
-            No accounts connected yet. Link a checking, savings, credit, or investment account to get
-            started.
+          <div className="card connect-empty">
+            <div className="ce-mark"><Building2 size={24} /></div>
+            <h2>No accounts connected yet</h2>
+            <p>Link a checking, savings, credit, or investment account to see live balances and unlock spending, budgets, and subscription tracking.</p>
+            <button className="btn" onClick={handleConnect} disabled={connecting}>
+              <Plus size={16} /> {connecting ? "Opening secure link…" : "Connect an account"}
+            </button>
           </div>
         )}
 
-        <p
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            fontSize: 13,
-            color: muted,
-            marginTop: 36,
-            lineHeight: 1.6,
-          }}
-        >
-          <ShieldCheck size={16} color={sage} style={{ flexShrink: 0, marginTop: 2 }} />
+        <p className="ob-secure" style={{ marginTop: 24 }}>
+          <ShieldCheck />
           Juniper connects through Plaid with bank-grade encryption and read-only access. Your bank
           credentials are entered with Plaid and never touch Juniper's servers.
         </p>
