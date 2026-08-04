@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, Link } from "wouter";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { acceptInvite } from "@/lib/invites";
@@ -12,6 +13,7 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const partnerInviteToken = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -71,18 +73,29 @@ export default function SignIn() {
             autoComplete="email"
             required
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError(null);
-            }}
-            autoComplete="current-password"
-            required
-            className={error ? "err" : undefined}
-          />
+          <div className="auth-pw">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(null);
+              }}
+              autoComplete="current-password"
+              required
+              className={error ? "err" : undefined}
+            />
+            <button
+              type="button"
+              className="pw-eye"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           {error && <p className="auth-msg bad">{error}</p>}
           <button type="submit" className="btn" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}

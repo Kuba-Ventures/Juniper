@@ -46,7 +46,18 @@ export function FirstRunOnboarding({
   const [expenses, setExpenses] = useState<number | undefined>();
   const [accounts, setAccounts] = useState<ManualAccount[]>([]);
   const [goals, setGoals] = useState<string[]>([]);
+  const [customGoals, setCustomGoals] = useState<string[]>([]);
+  const [customGoal, setCustomGoal] = useState("");
   const [linked, setLinked] = useState(false);
+
+  const addCustomGoal = () => {
+    const g = customGoal.trim();
+    if (!g) return;
+    const exists = [...GOALS, ...customGoals].some((x) => x.toLowerCase() === g.toLowerCase());
+    if (!exists) setCustomGoals((prev) => [...prev, g]);
+    setGoals((prev) => (prev.some((x) => x.toLowerCase() === g.toLowerCase()) ? prev : [...prev, g]));
+    setCustomGoal("");
+  };
 
   const step = STEPS[i];
   const total = STEPS.length;
@@ -162,9 +173,9 @@ export function FirstRunOnboarding({
             {step === "goals" && (
               <>
                 <h2>What are you working toward?</h2>
-                <p className="ob-help">Pick everything that applies. We'll shape your plans and recommendations around these.</p>
+                <p className="ob-help">Pick everything that applies, or add your own. We'll shape your plans and recommendations around these.</p>
                 <div className="ob-chips">
-                  {GOALS.map((g) => {
+                  {[...GOALS, ...customGoals].map((g) => {
                     const on = goals.includes(g);
                     return (
                       <button
@@ -176,6 +187,23 @@ export function FirstRunOnboarding({
                       </button>
                     );
                   })}
+                </div>
+                <div className="ob-other">
+                  <input
+                    value={customGoal}
+                    placeholder="Other: add your own goal"
+                    onChange={(e) => setCustomGoal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomGoal();
+                      }
+                    }}
+                    aria-label="Add a custom goal"
+                  />
+                  <button className="btn ghost" onClick={addCustomGoal} disabled={!customGoal.trim()}>
+                    <Plus /> Add
+                  </button>
                 </div>
               </>
             )}
