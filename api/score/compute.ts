@@ -2,7 +2,7 @@
 // Computes the caller's Juniper Score from their latest Stage-3 data and upserts
 // one row per (user, day) into score_history so we can draw the trend and the
 // month-over-month delta. Called alongside the sync trigger (on link / refresh)
-// and, later, a daily cron. Safe to call repeatedly — it upserts today's row.
+// and, later, a daily cron. Safe to call repeatedly, it upserts today's row.
 //
 // Requires: migrations 0008 + 0009 applied and a linked, synced item.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";

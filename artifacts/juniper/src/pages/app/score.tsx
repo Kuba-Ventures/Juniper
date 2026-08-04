@@ -43,7 +43,7 @@ function Factors({ items }: { items: ScoreFactor[] }) {
 
 function Improvements({ items }: { items: ScoreImprovement[] }) {
   if (!items.length) {
-    return <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>You're firing on all cylinders — no weak spots to shore up right now.</div>;
+    return <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>You're firing on all cylinders, no weak spots to shore up right now.</div>;
   }
   return (
     <div className="plans-col">
@@ -78,7 +78,7 @@ export function Score() {
     <div className="frame">
       <PageHeader
         title="Juniper Score"
-        sub="Your all-in financial health from 0 to 100 — savings, safety net, debt, investing, and credit in one number, with the highest-leverage moves to raise it."
+        sub="Your all-in financial health from 0 to 100, savings, safety net, debt, investing, and credit in one number, with the highest-leverage moves to raise it."
         actions={<span className="plaid-pill"><span className="dot" />Updated today</span>}
       />
 
@@ -98,7 +98,7 @@ export function Score() {
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 18 }}>
               <MiniRing score={score.value} d={54} />
               <p className="disc" style={{ margin: 0 }}>
-                Proprietary to Juniper — not a credit score. Built from your linked accounts and updated as your money moves. Biggest lever right now: <b>{score.lever}</b>.
+                Proprietary to Juniper, not a credit score. Built from your linked accounts and updated as your money moves. Biggest lever right now: <b>{score.lever}</b>.
               </p>
             </div>
           </div>

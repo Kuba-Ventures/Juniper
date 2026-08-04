@@ -23,12 +23,12 @@ function prefillFor(icon: string, b: Balances): Prefill {
     case "shield": {
       const target = Math.round(b.monthlySpend * 6);
       return b.monthlySpend > 0
-        ? { target, saved: Math.min(b.totalCash, target), hint: `6 months at ~${money(b.monthlySpend)}/mo spending — you have ${money(b.totalCash)} in cash so far.` }
+        ? { target, saved: Math.min(b.totalCash, target), hint: `6 months at ~${money(b.monthlySpend)}/mo spending, you have ${money(b.totalCash)} in cash so far.` }
         : { target: 0, saved: 0, hint: "" };
     }
     case "sun":
       return b.totalInvest > 0
-        ? { target: 0, saved: b.totalInvest, hint: `You have ${money(b.totalInvest)} invested so far — set a target to track your pace.` }
+        ? { target: 0, saved: b.totalInvest, hint: `You have ${money(b.totalInvest)} invested so far, set a target to track your pace.` }
         : { target: 0, saved: 0, hint: "" };
     case "home":
       return b.totalCash > 0
@@ -57,7 +57,7 @@ const TEMPLATES: [string, string, SeriesKey][] = [
 
 const parseNum = (s: string) => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
 
-// Per-plan FAQs — the questions people actually ask about each goal. They open
+// Per-plan FAQs, the questions people actually ask about each goal. They open
 // the AI planner (Ask Juniper) pre-seeded and scoped to this plan.
 const FAQS: Record<string, string[]> = {
   home: ["How much home can I afford?", "How big a down payment do I need?", "Should I clear debt before I buy?"],
@@ -156,7 +156,7 @@ export default function Plans() {
     <div className="frame">
       <PageHeader
         title="Plans"
-        sub={linked ? "Your money goals, funded from your linked balances — with the next step always in view." : "Your money goals — funded from real balances, with the next step always in view."}
+        sub={linked ? "Your money goals, funded from your linked balances, with the next step always in view." : "Your money goals, funded from real balances, with the next step always in view."}
         actions={
           <>
             <div className="pills">
@@ -188,12 +188,12 @@ export default function Plans() {
           <div className="card" style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>No {filter} plans yet.</div>
         )}
       </div>
-      <p className="disc">Recommendations appear inside a plan only when a specific offer would move that plan forward — like a lower-rate balance transfer on your debt payoff. Juniper may earn a commission on offers you open; they're ranked by benefit to you, not payout.</p>
+      <p className="disc">Recommendations appear inside a plan only when a specific offer would move that plan forward, like a lower-rate balance transfer on your debt payoff. Juniper may earn a commission on offers you open; they're ranked by benefit to you, not payout.</p>
 
       {modal?.k === "new" && (
         <Backdrop onClose={close}>
           <h3>Start a new plan</h3>
-          <p>Pick a goal — Juniper builds the plan and funds it from your linked accounts.</p>
+          <p>Pick a goal, Juniper builds the plan and funds it from your linked accounts.</p>
           <div className="tmpl-grid">
             {TEMPLATES.map(([icon, label, color]) => (
               <button key={label} className="tmpl" onClick={() => setModal({ k: "form", icon, label, color })}>
@@ -238,7 +238,7 @@ function CreateForm({ state, prefill, onBack, onCreate }: { state: { icon: strin
   return (
     <Backdrop onClose={onBack}>
       <h3>{isCustom ? "Custom goal" : state.label}</h3>
-      <p>Name it and set a target — Juniper starts funding it from your linked accounts.</p>
+      <p>Name it and set a target, Juniper starts funding it from your linked accounts.</p>
       {prefill.hint && (
         <div className="prefill-hint"><PlanIcon name="target" /><span>{prefill.hint}</span></div>
       )}

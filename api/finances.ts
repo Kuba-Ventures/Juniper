@@ -106,7 +106,7 @@ export default async function handler(req: Request): Promise<Response> {
   const changeAbs = series.length > 1 ? value - series[0] : 0;
   const changePct = series.length > 1 && series[0] ? Math.round((changeAbs / series[0]) * 1000) / 10 : 0;
 
-  // Juniper Score — computed from the same data, with trend + delta from the
+  // Juniper Score, computed from the same data, with trend + delta from the
   // stored history (written by /api/score/compute). Shares one engine so the
   // dashboard strip, the breakdown page, and the writer never disagree.
   const { input } = await fetchScoreInput(uid);

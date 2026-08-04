@@ -36,7 +36,7 @@ export function SharedBills() {
   const remove = async (id?: string) => { if (id) { await deleteBill(id); refresh(); } };
 
   return (
-    <SharedPage title="Bills & reminders" sub="Shared bills, who pays, and a nudge before each one's due — so nothing slips.">
+    <SharedPage title="Bills & reminders" sub="Shared bills, who pays, and a nudge before each one's due, so nothing slips.">
       <div className="sum-strip">
         <div className="sum-card"><div className="l">This month</div><div className="v tnum">{money(monthly)}</div><div className="s">{rows.length} tracked bills</div></div>
         <div className="sum-card"><div className="l">Split evenly</div><div className="v tnum">{money(Math.round(rows.filter((b) => b.split).reduce((a, b) => a + b.amount, 0)))}</div><div className="s">shared 50/50</div></div>
@@ -75,7 +75,7 @@ export function SharedBills() {
               </div>
             </div>
           ))}
-          {!rows.length && <div style={{ padding: "18px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, textAlign: "center" }}>No bills yet — add your first shared bill.</div>}
+          {!rows.length && <div style={{ padding: "18px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, textAlign: "center" }}>No bills yet, add your first shared bill.</div>}
         </div>
         <p className="disc">Both of you get a reminder before a shared bill is due.</p>
       </div>

@@ -42,7 +42,7 @@ export function SharedOverview() {
   const joint = sharedAccounts.filter((a) => a.owner === "shared");
 
   return (
-    <SharedPage title={`Shared with ${name}`} sub="Both your finances — only what you each choose to share.">
+    <SharedPage title={`Shared with ${name}`} sub="Both your finances, only what you each choose to share.">
       {/* combined net worth */}
       <div className="card pad-lg together" style={{ marginBottom: 16 }}>
         <div className="eyebrow">Together</div>

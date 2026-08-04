@@ -1,4 +1,4 @@
-// Ask Juniper — the AI financial planner, client side. Threads live in
+// Ask Juniper, the AI financial planner, client side. Threads live in
 // localStorage for v1 (no server round-trip to list chats); each message turn
 // streams from /api/planner/chat, which grounds answers in the user's real,
 // server-verified finances. Access it standalone (/app/ask) or plan-scoped
@@ -46,7 +46,7 @@ function save(threads: Thread[]) {
   try {
     localStorage.setItem(KEY, JSON.stringify(threads));
   } catch {
-    /* quota / private mode — threads stay in memory this session */
+    /* quota / private mode, threads stay in memory this session */
   }
 }
 
@@ -69,7 +69,7 @@ export function previewOf(t: Thread): string {
   return clean.length > 96 ? clean.slice(0, 94) + "…" : clean;
 }
 
-// "just now" / "2h ago" / "Yesterday" / "Mar 4" — for chat list timestamps.
+// "just now" / "2h ago" / "Yesterday" / "Mar 4", for chat list timestamps.
 export function relativeTime(ts: number): string {
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);

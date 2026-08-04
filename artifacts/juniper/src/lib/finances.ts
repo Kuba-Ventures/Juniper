@@ -1,13 +1,13 @@
-// Stage 3f — the frontend data-layer seam.
+// Stage 3f, the frontend data-layer seam.
 //
 // The dashboard's money data behind stable shapes, exposed via a context so the
 // several pages that read it (Overview, Score, Plans) share one source of truth
 // and one /api/finances fetch. There are three sources, in priority order:
 //
-//   live   — the member linked + synced Plaid; GET /api/finances returned data
-//   manual — no link yet, but they entered accounts/income in onboarding
+//   live, the member linked + synced Plaid; GET /api/finances returned data
+//   manual, no link yet, but they entered accounts/income in onboarding
 //            (built from the local profile by `buildManualFinances`)
-//   mock   — neither; the demo household so the UI always renders something
+//   mock, neither; the demo household so the UI always renders something
 //
 // `<FinancesProvider profile={…}>` wraps the app shell; `useFinances()` reads
 // the resolved value. Live overrides manual overrides mock, and the swap to

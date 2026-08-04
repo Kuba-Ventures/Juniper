@@ -3,7 +3,7 @@ import { createInvite } from "@/lib/invites";
 
 // The partner layer (Stage 7). Juniper is solo-first; this is the OPTIONAL layer
 // that lets a member invite a partner to share goals. Individual accounts, net
-// worth, and spending stay private — only shared goals become visible to both.
+// worth, and spending stay private, only shared goals become visible to both.
 //
 // Reuses the existing domain-scoped invite backend (createInvite). The couples
 // surface maps to the "combining-finances" domain. When the backend has no
@@ -38,20 +38,20 @@ function InviteModal({ onClose }: { onClose: () => void }) {
     const res = await createInvite(INVITE_DOMAIN, name.trim() || undefined);
     setBusy(false);
     if (res?.url) setUrl(res.url);
-    else setError("Partner invites aren’t ready yet — set up a shared goal first, then try again.");
+    else setError("Partner invites aren’t ready yet, set up a shared goal first, then try again.");
   };
 
   const copy = async () => {
     if (!url) return;
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-    catch { /* clipboard blocked — the link is still selectable */ }
+    catch { /* clipboard blocked, the link is still selectable */ }
   };
 
   if (url) {
     return (
       <Backdrop onClose={onClose}>
         <h3>Invite {name.trim() || "your partner"}</h3>
-        <p>Share this private link. When {name.trim() || "they"} open it, they can join your shared goals — your individual accounts stay private.</p>
+        <p>Share this private link. When {name.trim() || "they"} open it, they can join your shared goals, your individual accounts stay private.</p>
         <div className="share-link">
           <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
           <button className="btn sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
@@ -64,7 +64,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   return (
     <Backdrop onClose={onClose}>
       <h3>Invite your partner</h3>
-      <p>Plan together on shared goals. Only the goals you share become visible to both of you — your accounts, net worth, and spending stay private.</p>
+      <p>Plan together on shared goals. Only the goals you share become visible to both of you, your accounts, net worth, and spending stay private.</p>
       <div className="field"><label>Partner’s first name (optional)</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Devin" /></div>
       {error && <div className="form-error">{error}</div>}
       <div className="modal-actions">
@@ -89,7 +89,7 @@ export function PartnerPanel({ partnerName }: { partnerName?: string | null }) {
           <div className="pp-sub">
             {connected
               ? "You're sharing goals. Individual accounts stay private to each of you."
-              : "Invite them to share goals together — your accounts and net worth stay private."}
+              : "Invite them to share goals together, your accounts and net worth stay private."}
           </div>
         </div>
         <button className="btn ghost sm" onClick={() => setOpen(true)}>{connected ? "Manage" : "Invite partner"}</button>

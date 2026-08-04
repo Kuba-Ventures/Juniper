@@ -1,13 +1,13 @@
 // Client port of the Juniper Score engine.
 //
 // This mirrors the pure, I/O-free `computeScore()` in `api/_score.ts` so the
-// dashboard can score a *manually entered* snapshot client-side — before the
+// dashboard can score a *manually entered* snapshot client-side, before the
 // user links Plaid (once linked, the server computes the score in
 // /api/finances and this is unused). Keep the two in sync if the formula
 // changes; both are deliberately dependency-free.
 //
 // A proprietary 0–100 financial-health score from five weighted factors. NOT a
-// credit score — the 300–850 credit number is one factor, not the hero.
+// credit score, the 300–850 credit number is one factor, not the hero.
 
 export interface ScoreInput {
   monthlyIncome: number; // avg take-home per month
@@ -84,7 +84,7 @@ function savingsFactor(i: ScoreInput): Factor {
     key: "savings", label: "Savings rate", score: round(score), weight: WEIGHTS.savings,
     status: statusOf(score),
     detail: inc > 0
-      ? `You're saving about ${pct}% of your income${pct >= 20 ? " — great pace" : pct >= 0 ? " — aim for 20%" : " — you're spending more than you earn"}.`
+      ? `You're saving about ${pct}% of your income${pct >= 20 ? ", great pace" : pct >= 0 ? ", aim for 20%" : ", you're spending more than you earn"}.`
       : "Add your income to measure your savings rate.",
   };
 }
@@ -96,7 +96,7 @@ function emergencyFactor(i: ScoreInput): Factor {
     key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
     status: statusOf(score),
     detail: i.monthlySpending > 0
-      ? `${months.toFixed(1)} months of expenses saved${months >= 6 ? " — fully covered" : " — target is 6 months"}.`
+      ? `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`
       : "Add your expenses to size your emergency fund.",
   };
 }
@@ -104,7 +104,7 @@ function emergencyFactor(i: ScoreInput): Factor {
 function debtFactor(i: ScoreInput): Factor {
   const annualIncome = Math.max(i.monthlyIncome * 12, 0);
   if (i.totalDebt <= 0) {
-    return { key: "debt", label: "Debt load", score: 100, weight: WEIGHTS.debt, status: "strong", detail: "No tracked debt — excellent." };
+    return { key: "debt", label: "Debt load", score: 100, weight: WEIGHTS.debt, status: "strong", detail: "No tracked debt, excellent." };
   }
   const dti = annualIncome > 0 ? i.totalDebt / annualIncome : 2;
   const score = clamp(((2.0 - dti) / (2.0 - 0.3)) * 100);
@@ -112,7 +112,7 @@ function debtFactor(i: ScoreInput): Factor {
     key: "debt", label: "Debt load", score: round(score), weight: WEIGHTS.debt,
     status: statusOf(score),
     detail: annualIncome > 0
-      ? `Your debt is about ${dti.toFixed(1)}× your annual income${dti <= 0.3 ? " — very manageable" : dti >= 1.5 ? " — a heavy load" : " — moderate"}.`
+      ? `Your debt is about ${dti.toFixed(1)}× your annual income${dti <= 0.3 ? ", very manageable" : dti >= 1.5 ? ", a heavy load" : ", moderate"}.`
       : "Add your income to weigh your debt load.",
   };
 }
@@ -125,7 +125,7 @@ function investingFactor(i: ScoreInput): Factor {
     key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
     status: statusOf(score),
     detail: annualIncome > 0
-      ? `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? " — ahead of pace" : " — keep contributing"}.`
+      ? `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`
       : "Add investments to track your pace.",
   };
 }
@@ -136,7 +136,7 @@ function creditFactor(i: ScoreInput): Factor {
     return {
       key: "credit", label: "Credit health", score: round(score), weight: WEIGHTS.credit,
       status: statusOf(score),
-      detail: `Credit score ${Math.round(i.creditScore)} — ${i.creditScore >= 740 ? "excellent" : i.creditScore >= 670 ? "good" : "room to grow"}.`,
+      detail: `Credit score ${Math.round(i.creditScore)}, ${i.creditScore >= 740 ? "excellent" : i.creditScore >= 670 ? "good" : "room to grow"}.`,
     };
   }
   if (typeof i.creditUtilization === "number") {
@@ -145,7 +145,7 @@ function creditFactor(i: ScoreInput): Factor {
     return {
       key: "credit", label: "Credit health", score: round(score), weight: WEIGHTS.credit,
       status: statusOf(score),
-      detail: `Using ${Math.round(util * 100)}% of your credit limits${util > 0.3 ? " — aim under 30%" : " — nicely under 30%"}.`,
+      detail: `Using ${Math.round(util * 100)}% of your credit limits${util > 0.3 ? ", aim under 30%" : ", nicely under 30%"}.`,
     };
   }
   return { key: "credit", label: "Credit health", score: 70, weight: WEIGHTS.credit, status: "fair", detail: "Connect a credit card to track credit health." };

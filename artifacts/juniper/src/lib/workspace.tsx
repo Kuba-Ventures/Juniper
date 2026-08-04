@@ -4,7 +4,7 @@
 // connected, a second "workspace" appears and the app can switch between the
 // member's private finances and the shared view. This holds that state (which
 // workspace is active + whether a partner is connected), persisted to
-// localStorage so it survives navigation. All data behind it is mock for now —
+// localStorage so it survives navigation. All data behind it is mock for now, 
 // real cross-partner data sharing is a later backend stage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { fetchPartner } from "@/lib/partner";
@@ -56,7 +56,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [workspace, partner]);
 
   // Sync from the server: a real active partnership connects (and names) the
-  // partner. Only ever upgrades to connected — it won't undo a local demo preview.
+  // partner. Only ever upgrades to connected, it won't undo a local demo preview.
   useEffect(() => {
     let alive = true;
     fetchPartner().then((d) => {

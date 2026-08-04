@@ -1,5 +1,5 @@
 // Marketplace client helpers (Stage 5). The self-listing submission is the
-// supply side; usePartners() is the demand side — it reads the DB-backed
+// supply side; usePartners() is the demand side, it reads the DB-backed
 // catalog (GET /api/partners) so offers change without a deploy, falling back
 // to the seeded `listings` until the table is populated.
 import { useEffect, useState } from "react";
@@ -42,7 +42,7 @@ function toOffer(p: RawPartner, i: number): MarketplaceOffer {
   };
 }
 
-// The seeded catalog, mapped to the card shape — the mock/offline fallback.
+// The seeded catalog, mapped to the card shape, the mock/offline fallback.
 const SEED: MarketplaceOffer[] = listings.map((m) => ({
   n: m.n, cat: m.cat, logo: m.logo, k: m.k, stat: m.stat, blurb: m.blurb, tags: m.tags, src: m.src,
 }));
@@ -63,7 +63,7 @@ async function fetchPartners(): Promise<MarketplaceOffer[] | null> {
   }
 }
 
-// A personalized "Picked for you" card — a marketplace offer plus the reason it
+// A personalized "Picked for you" card, a marketplace offer plus the reason it
 // was matched to this member.
 export interface PickOffer extends MarketplaceOffer { match: string }
 
@@ -76,7 +76,7 @@ function pickToOffer(p: RawPick, i: number): PickOffer {
   return { ...toOffer(p, i), match: p.reason };
 }
 
-// The mock "picked" fallback — the seeded listings that carry a match reason.
+// The mock "picked" fallback, the seeded listings that carry a match reason.
 const SEED_PICKS: PickOffer[] = listings
   .filter((m) => m.match)
   .map((m) => ({ n: m.n, cat: m.cat, logo: m.logo, k: m.k, stat: m.stat, blurb: m.blurb, tags: m.tags, src: m.src, match: m.match! }));
@@ -96,7 +96,7 @@ async function fetchPicks(): Promise<PickOffer[] | null> {
 }
 
 // Starts on the demo picks; swaps to personalized picks once the member is
-// linked + synced. An empty live result (no gaps to address) is respected —
+// linked + synced. An empty live result (no gaps to address) is respected, 
 // that's a real "you're all set" state, distinct from the mock fallback.
 export function usePicks(): { picks: PickOffer[]; source: "mock" | "live"; loading: boolean } {
   const [picks, setPicks] = useState<PickOffer[]>(SEED_PICKS);
@@ -151,7 +151,7 @@ export async function submitListing(payload: ListingSubmission): Promise<SubmitR
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     });
-    if (res.status === 503) return { ok: false, error: "Listings aren't open yet — check back soon." };
+    if (res.status === 503) return { ok: false, error: "Listings aren't open yet, check back soon." };
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
     if (!res.ok || !data.ok) return { ok: false, error: data.error || "Couldn't submit your listing. Please try again." };
     return { ok: true, status: "pending" };

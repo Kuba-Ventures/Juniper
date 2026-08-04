@@ -61,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method === "POST") {
     const body = (await req.json()) as Record<string, unknown>;
-    // Strip any client-provided user_id/email — server is the source of truth.
+    // Strip any client-provided user_id/email, server is the source of truth.
     delete body.user_id;
     delete body.email;
 

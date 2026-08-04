@@ -1,6 +1,6 @@
 // GET /api/partners[?domain=home-buying]
 // Serves the marketplace catalog from the `partners` table (active rows only),
-// ranked by estimated benefit to the user (never payout — see _offers.ts). This
+// ranked by estimated benefit to the user (never payout, see _offers.ts). This
 // is what lets offers change without a deploy. Returns { partners: [] } when the
 // table is empty or storage isn't configured, so the frontend keeps its seeded
 // config until the catalog is populated.
@@ -23,7 +23,7 @@ function json(body: unknown, status = 200) {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
-  // Public catalog — no per-user data — but it still needs server storage. If
+  // Public catalog, no per-user data, but it still needs server storage. If
   // that's not set up yet, report an empty catalog so the UI shows its seed.
   if (!SUPABASE_URL || !adminConfigured()) return json({ partners: [] });
 

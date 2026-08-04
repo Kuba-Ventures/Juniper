@@ -128,5 +128,5 @@ export function formatProfileContext(p: UserProfile): string {
   if (p.totalDebt !== undefined) lines.push(`- Total debt: $${p.totalDebt.toLocaleString()}`);
   if (p.goals && p.goals.length > 0) lines.push(`- Financial goals: ${p.goals.join(", ")}`);
   if (lines.length === 0) return "";
-  return `\nThe user has provided the following financial profile. Use it as background context — don't repeat it back unless relevant, but let it inform your responses:\n${lines.join("\n")}`;
+  return `\nThe user has provided the following financial profile. Use it as background context, don't repeat it back unless relevant, but let it inform your responses:\n${lines.join("\n")}`;
 }

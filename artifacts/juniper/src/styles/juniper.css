@@ -1,4 +1,4 @@
-/* Juniper app styles — scoped under .jnpr so they never collide with shadcn globals.
+/* Juniper app styles, scoped under .jnpr so they never collide with shadcn globals.
    Tokens are the locked "cool off-white + pine" identity (see DESIGN.md). */
 
 .jnpr {
@@ -529,7 +529,7 @@
 .jnpr .pc-w{font-size:11px;color:var(--jnpr-ink-3);flex:0 0 auto;white-space:nowrap}
 .jnpr .pc-arr{color:var(--jnpr-ink-3);font-size:17px;flex:0 0 auto;line-height:1}
 
-/* Ask Juniper — thread toolbar + report action */
+/* Ask Juniper, thread toolbar + report action */
 .jnpr .ask-tools{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--jnpr-line-2);min-height:52px}
 .jnpr .ask-scope.inline{align-self:auto;margin:0}
 .jnpr .ask-tool-actions{margin-left:auto;display:flex;align-items:center;gap:8px}

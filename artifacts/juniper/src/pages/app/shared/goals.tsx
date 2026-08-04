@@ -8,7 +8,7 @@ export function SharedGoals() {
   const { partner } = useWorkspace();
   const name = partner.name || demoPartner.name;
   return (
-    <SharedPage title="Shared goals" sub="Goals you're funding together — with each person's contribution.">
+    <SharedPage title="Shared goals" sub="Goals you're funding together, with each person's contribution.">
       <div className="grid two">
         {sharedGoals.map((g, i) => {
           const funded = g.you + g.partner;
@@ -35,7 +35,7 @@ export function SharedGoals() {
           );
         })}
       </div>
-      <p className="disc">Shared goals are always visible to both of you — that's the point. Individual goals stay on your private Plans page.</p>
+      <p className="disc">Shared goals are always visible to both of you, that's the point. Individual goals stay on your private Plans page.</p>
     </SharedPage>
   );
 }

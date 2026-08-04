@@ -105,7 +105,7 @@ export function Recommended() {
     <div className="frame">
       <PageHeader
         title="Recommended for you"
-        sub="Money moves picked for your situation — plus a library of vetted options to explore."
+        sub="Money moves picked for your situation, plus a library of vetted options to explore."
         actions={
           <>
             <span className="search"><SearchIcon /><input placeholder="Search options" /></span>

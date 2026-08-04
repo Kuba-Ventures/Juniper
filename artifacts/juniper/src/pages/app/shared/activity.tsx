@@ -20,7 +20,7 @@ function LiveActivity({ messages, reactions, refresh, partnerName }: {
     <div className="card">
       <div className="card-head"><h3>Shared chat</h3><span className="muted" style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)" }}>👍 or ask, together</span></div>
       <div className="thread" style={{ borderTop: 0, background: "transparent", padding: 0, gap: 12 }}>
-        {messages.length === 0 && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, textAlign: "center" }}>No messages yet — say hi to {partnerName}.</div>}
+        {messages.length === 0 && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, textAlign: "center" }}>No messages yet, say hi to {partnerName}.</div>}
         {messages.map((m) => {
           const rx = reactions.filter((r) => r.target === m.id);
           return (
@@ -78,7 +78,7 @@ export function SharedActivity() {
   const { data, refresh } = useActivity();
   const pname = partner.name || demoPartner.name;
   return (
-    <SharedPage title="Activity" sub="Shared moments — bills, contributions, and a 👍 or a question on any transaction.">
+    <SharedPage title="Activity" sub="Shared moments, bills, contributions, and a 👍 or a question on any transaction.">
       {data
         ? <LiveActivity messages={data.messages} reactions={data.reactions} refresh={refresh} partnerName={pname} />
         : <DemoActivity pname={pname} />}

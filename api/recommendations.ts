@@ -1,5 +1,5 @@
 // GET /api/recommendations
-// "Picked for you" — personalized marketplace offers for the caller, each with a
+// "Picked for you", personalized marketplace offers for the caller, each with a
 // reason drawn from their own financial signals (Stage 5). Read-only. Returns
 // { linked: false } when there's nothing synced to personalize from, so the
 // frontend keeps its demo picks until real data exists.

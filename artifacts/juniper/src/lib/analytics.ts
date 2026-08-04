@@ -1,8 +1,8 @@
 // Google Analytics 4 (gtag.js).
 // ------------------------------------------------------------------
 // Loaded only in production builds (import.meta.env.PROD) so local dev
-// traffic never hits the property. Page views — including SPA route
-// changes — are captured by GA4 Enhanced Measurement (enabled on the
+// traffic never hits the property. Page views, including SPA route
+// changes, are captured by GA4 Enhanced Measurement (enabled on the
 // data stream), so we only send *custom* events (e.g. sign_up) here.
 //
 // Measurement ID lives in the "Juniper Web" property (account: Juniper).
@@ -39,7 +39,7 @@ export function initAnalytics(): void {
 
 // Custom events that also count as a *meaningful* engaged action (WAU signal).
 // When one of these fires, it's routed through the engaged-session guard so we
-// don't have to sprinkle trackEngagement() at every click site — the existing
+// don't have to sprinkle trackEngagement() at every click site, the existing
 // click handlers keep calling trackEvent() unchanged. `sign_up` is NOT here:
 // it happens on the anonymous marketing page, not signed-in product usage.
 const ENGAGING_EVENTS = new Set(["affiliate_click", "resource_click"]);

@@ -1,4 +1,4 @@
-// /api/budgets — CRUD for the caller's category budgets (Stage 3d).
+// /api/budgets, CRUD for the caller's category budgets (Stage 3d).
 //   GET                      -> list own budgets
 //   POST { category, limit } -> upsert a monthly budget for that category
 //   DELETE ?category=NAME     -> remove that budget

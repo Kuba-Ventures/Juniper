@@ -3,8 +3,8 @@ import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile } from "@/lib/profile";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
-// Wipe this account back to a brand-new state — server profile + plans and all
-// local caches (profile, onboarded flag, welcome tip) — then hard-reload into
+// Wipe this account back to a brand-new state, server profile + plans and all
+// local caches (profile, onboarded flag, welcome tip), then hard-reload into
 // /app so the first-run onboarding gate re-triggers. Testing convenience only;
 // does NOT unlink Plaid items.
 async function resetForTesting(email: string) {
@@ -36,15 +36,15 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
       <h3>Settings</h3>
 
         <div className="facts" style={{ marginBottom: 20 }}>
-          <div className="fr"><span className="k">Name</span><span className="v">{name || "—"}</span></div>
-          <div className="fr"><span className="k">Email</span><span className="v">{email || "—"}</span></div>
+          <div className="fr"><span className="k">Name</span><span className="v">{name || "-"}</span></div>
+          <div className="fr"><span className="k">Email</span><span className="v">{email || "-"}</span></div>
         </div>
 
         <div className="pop-lbl" style={{ padding: "0 0 6px" }}>Testing</div>
         {!confirming ? (
           <>
             <p style={{ margin: "0 0 12px" }}>
-              Reset this account to a brand-new state — clears your profile, plans, and onboarding so the
+              Reset this account to a brand-new state, clears your profile, plans, and onboarding so the
               first-run flow runs again. Linked bank accounts are not disconnected.
             </p>
             <div className="modal-actions">

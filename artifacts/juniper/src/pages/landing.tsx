@@ -65,7 +65,7 @@ function WaitlistForm({ id }: { id: string }) {
         body: JSON.stringify({ email, journey_stage: stage }),
       });
     } catch {
-      // Endpoint not yet wired — show success state anyway
+      // Endpoint not yet wired, show success state anyway
     }
     setLoading(false);
     setSubmitted(true);

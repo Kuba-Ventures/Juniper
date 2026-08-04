@@ -50,7 +50,7 @@ export function SharedAccounts() {
   ];
 
   return (
-    <SharedPage title="Accounts" sub="Every linked account across both of you — each shown only as far as its owner allows.">
+    <SharedPage title="Accounts" sub="Every linked account across both of you, each shown only as far as its owner allows.">
       <div className="card">
         {sections.filter((s) => s.arr.length).map((s, i) => (
           <div key={i}>

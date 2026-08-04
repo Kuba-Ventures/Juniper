@@ -1,4 +1,4 @@
-// /api/partner/bills — shared bills for the caller's active partnership.
+// /api/partner/bills, shared bills for the caller's active partnership.
 //   GET                       -> list bills
 //   POST { name, amount, dueDay, payer: "you"|"partner"|"shared", split }
 //   DELETE ?id=UUID
