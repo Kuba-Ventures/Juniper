@@ -4,6 +4,7 @@ import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link"
 import type { ManualAccount, ManualAccountKind, UserProfile } from "@/lib/profile";
 import { createLinkToken, exchangePublicToken, syncFinances, type LinkInstitution } from "@/lib/plaid";
 import { trackEngagement } from "@/lib/analytics";
+import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import "@/styles/juniper.css";
 
 const GOALS = [
@@ -400,7 +401,9 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
     if (linkToken && ready) open();
   }, [linkToken, ready, open]);
 
-  const connect = useCallback(async () => {
+  // Any tile (or "Other") opens Plaid Link; Plaid handles the actual selection
+  // and search, so the tapped name is only used for the "opening…" label.
+  const connect = useCallback(async (_institution?: string) => {
     setNotice(null);
     setConnecting(true);
     const token = await createLinkToken();
@@ -413,26 +416,26 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
 
   return (
     <>
-      <h2>Connect an account for live balances.</h2>
+      <h2>Connect your accounts for live balances.</h2>
       <p className="ob-help">
-        Optional, but it's the magic: link a bank, card, or investment account and Juniper keeps your net
-        worth, spending, and score up to date automatically. You can always do this later.
+        Optional, but it's the magic: pick your bank, card, or investment provider below and Juniper keeps
+        your net worth, spending, and score up to date automatically. Don't see yours? Tap <b>Other</b> in any
+        group to search every institution. You can always do this later.
       </p>
 
-      {linked ? (
+      {linked && (
         <div className="ob-connected">
-          <Check size={18} strokeWidth={2.5} /> Account connected — your dashboard will show live data.
+          <Check size={18} strokeWidth={2.5} /> Account connected — pick another below, or continue.
         </div>
-      ) : (
-        <>
-          {notice && (
-            <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>
-          )}
-          <button className="btn" onClick={connect} disabled={connecting} style={{ width: "100%", justifyContent: "center", padding: "13px 15px", fontSize: 14 }}>
-            <Building2 size={16} /> {connecting ? "Opening secure link…" : "Connect an account"}
-          </button>
-        </>
       )}
+      {notice && <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>}
+      {connecting && (
+        <div className="ob-connected" style={{ color: "var(--jnpr-accent)", background: "var(--jnpr-accent-soft)" }}>
+          <Building2 size={16} /> Opening secure link…
+        </div>
+      )}
+
+      <InstitutionPicker onPick={connect} busy={connecting} />
 
       <p className="ob-secure">
         <ShieldCheck />

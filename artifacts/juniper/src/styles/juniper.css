@@ -660,6 +660,20 @@
 .jnpr .ob-secure{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:18px}
 .jnpr .ob-secure svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;color:var(--jnpr-accent)}
 .jnpr .ob-connected{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:650;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:11px;padding:13px 15px;margin-bottom:12px}
+/* categorized institution picker (connect flow) */
+.jnpr .inst-cats{display:flex;flex-direction:column;gap:18px;max-height:44vh;overflow-y:auto;padding-right:6px}
+.jnpr .inst-cat-h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:9px}
+.jnpr .inst-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:560px){.jnpr .inst-grid{grid-template-columns:repeat(2,1fr)}}
+.jnpr .inst-tile{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);cursor:pointer;font:inherit;text-align:left;min-width:0}
+.jnpr .inst-tile:hover{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .inst-tile:disabled{opacity:.55;cursor:default}
+.jnpr .inst-logo{width:26px;height:26px;border-radius:7px;object-fit:cover;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto}
+.jnpr .inst-mono{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:0 0 auto}
+.jnpr .inst-name{font-size:13px;font-weight:600;color:var(--jnpr-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.jnpr .inst-tile.other{border-style:dashed}
+.jnpr .inst-tile.other .inst-other-ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);flex:0 0 auto}
+.jnpr .inst-tile.other .inst-other-ic svg{width:15px;height:15px}
 .jnpr .ob-done{display:flex;flex-direction:column;align-items:flex-start}
 .jnpr .ob-done .ob-check{width:52px;height:52px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:grid;place-items:center;margin-bottom:16px}
 .jnpr .ob-done .ob-check svg{width:26px;height:26px}
