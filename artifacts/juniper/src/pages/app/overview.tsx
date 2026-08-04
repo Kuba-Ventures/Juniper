@@ -18,6 +18,28 @@ const SearchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" strokeLinecap="round" /></svg>
 );
 
+const LinkIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}><path d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07L11 5" strokeLinecap="round" strokeLinejoin="round" /><path d="M14 11a5 5 0 00-7.07 0L4.1 13.83a5 5 0 007.07 7.07L13 19" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width={16} height={16}><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
+);
+
+// Shown in place of the spending/budgets/subscriptions cards when there's no
+// transaction feed yet (manual or demo data). Nothing fake is presented as the
+// member's — just an honest path to unlock the real thing.
+function ConnectNudge() {
+  return (
+    <div className="card nudge-card">
+      <div className="nc-mark"><LinkIcon /></div>
+      <h3>Unlock spending, budgets & subscriptions</h3>
+      <p>Connect an account and Juniper categorizes your transactions automatically — spending breakdowns, budgets, and subscription tracking appear here.</p>
+      <Link href="/app/connections" className="btn" style={{ marginTop: 4 }}>Connect an account</Link>
+    </div>
+  );
+}
+
 function Budgets({ items }: { items: Budget[] }) {
   return (
     <div>
@@ -156,24 +178,57 @@ function SubscriptionsPanel() {
   );
 }
 
-export default function Overview({ name }: { name: string }) {
-  const { data } = useFinances();
+export default function Overview({
+  name,
+  showWelcome,
+  onDismissWelcome,
+}: {
+  name: string;
+  showWelcome?: boolean;
+  onDismissWelcome?: () => void;
+}) {
+  const { data, source } = useFinances();
   const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
+  // With no transaction feed (manual entry or demo), spending/budgets/subs have
+  // nothing real to show — swap them for an honest connect nudge.
+  const hasTxns = source === "live" && (transactions.length > 0 || spending.length > 0);
   return (
     <div className="frame">
       <div className="greet">
         <h1>Good morning, {first}</h1>
-        <div className="meta"><span>{today}</span><span>·</span><span className="up">Net worth up {money(netWorth.changeAbs)} this month</span></div>
+        <div className="meta">
+          <span>{today}</span>
+          <span>·</span>
+          {netWorth.changeAbs > 0
+            ? <span className="up">Net worth up {money(netWorth.changeAbs)} this month</span>
+            : <span>Here's your financial picture</span>}
+        </div>
       </div>
+
+      {showWelcome && (
+        <div className="welcome-tip">
+          <div className="wt-body">
+            <b>Welcome to Juniper, {first} 🌿</b>
+            <p>This is your dashboard. Your net worth, accounts, and Juniper Score are built from what you shared. Connect an account anytime to unlock live spending, budgets, and subscriptions.</p>
+          </div>
+          <button className="wt-x" onClick={onDismissWelcome} aria-label="Dismiss">
+            <CloseIcon />
+          </button>
+        </div>
+      )}
 
       <div className="score-strip" style={{ marginBottom: 16 }}>
         <MiniRing score={score.value} />
         <div>
           <div className="st-t">Juniper Score <span className="band">{score.value} · {score.band}</span></div>
-          <div className="st-s"><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</div>
+          <div className="st-s">
+            {score.delta !== 0
+              ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
+              : <>Your starting score · biggest lever: {score.lever}</>}
+          </div>
         </div>
         <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
       </div>
@@ -202,51 +257,66 @@ export default function Overview({ name }: { name: string }) {
 
         <div className="card">
           <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
-          <div className="plans-col">
-            {plans.filter((p) => !p.done).map((p, i) => {
-              const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
-              return (
-                <Link href="/app/plans" className="plan-row" key={i}>
-                  <div className="track" style={{ background: cssVar(p.k) }}>{planMark(p)}</div>
-                  <div className="pr-body">
-                    <div className="pr-top">
-                      <span className="pt">{p.t}</span>
-                      {p.target ? <span className="amt tnum">{moneyK(p.saved)} <small>/ {moneyK(p.target)}</small></span> : null}
+          {hasTxns ? (
+            <div className="plans-col">
+              {plans.filter((p) => !p.done).map((p, i) => {
+                const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
+                return (
+                  <Link href="/app/plans" className="plan-row" key={i}>
+                    <div className="track" style={{ background: cssVar(p.k) }}>{planMark(p)}</div>
+                    <div className="pr-body">
+                      <div className="pr-top">
+                        <span className="pt">{p.t}</span>
+                        {p.target ? <span className="amt tnum">{moneyK(p.saved)} <small>/ {moneyK(p.target)}</small></span> : null}
+                      </div>
+                      <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(p.k) }} /></div>
+                      <div className="pr-bot"><span>{p.note}</span><span className={`status ${p.st}`}>{p.stl}</span></div>
                     </div>
-                    <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(p.k) }} /></div>
-                    <div className="pr-bot"><span>{p.note}</span><span className={`status ${p.st}`}>{p.stl}</span></div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
+              No plans yet. Turn a goal into a plan — save for a home, pay off debt, build an emergency fund — and track it here.
+              <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {hasTxns && (
+        <div className="grid two" style={{ marginBottom: 16 }}>
+          <div className="card">
+            <div className="card-head"><h3>Where it went — {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
+            <SpendingDonut data={spending} />
+          </div>
+          <div className="card">
+            <div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div>
+            <Budgets items={budgets} />
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid two" style={{ marginBottom: 16 }}>
+        {hasTxns ? <TransactionsPanel items={transactions} /> : <ConnectNudge />}
         <div className="card">
-          <div className="card-head"><h3>Where it went — {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
-          <SpendingDonut data={spending} />
-        </div>
-        <div className="card">
-          <div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div>
-          <Budgets items={budgets} />
-        </div>
-      </div>
-
-      <div className="grid two" style={{ marginBottom: 16 }}>
-        <TransactionsPanel items={transactions} />
-        <div className="card">
-          <div className="card-head"><h3>Accounts</h3><span className="link">Manage</span></div>
-          <div className="rows">
-            <AccountGroup title="Cash" arr={accounts.cash} />
-            <AccountGroup title="Investments" arr={accounts.invest} />
-            <AccountGroup title="Debts" arr={accounts.debt} />
-          </div>
+          <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+          {accounts.cash.length + accounts.invest.length + accounts.debt.length === 0 ? (
+            <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>
+              No accounts yet. <Link href="/app/connections" className="link">Connect one</Link> to see balances here.
+            </div>
+          ) : (
+            <div className="rows">
+              {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} />}
+              {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} />}
+              {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} />}
+            </div>
+          )}
         </div>
       </div>
 
-      <SubscriptionsPanel />
+      {hasTxns && <SubscriptionsPanel />}
     </div>
   );
 }

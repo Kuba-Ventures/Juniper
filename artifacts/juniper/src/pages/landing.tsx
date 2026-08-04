@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, MessageSquare, Clock } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
@@ -256,9 +257,26 @@ export default function Landing() {
             Juniper
           </span>
         </div>
-        <a href="/app" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
-          Log in
-        </a>
+        <div className="flex items-center gap-4 md:gap-5">
+          <Link href="/auth/sign-in" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
+            Log in
+          </Link>
+          <Link
+            href="/auth/sign-up"
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#fff",
+              background: sage,
+              padding: "9px 18px",
+              borderRadius: 8,
+              textDecoration: "none",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Get started
+          </Link>
+        </div>
       </header>
 
       {/* ── 2. HERO ────────────────────────────────────────────────────── */}
@@ -320,6 +338,12 @@ export default function Landing() {
             <motion.div variants={fadeUp}>
               <WaitlistForm id="hero" />
             </motion.div>
+            <motion.p variants={fadeUp} style={{ fontSize: 14, color: muted, margin: "16px 0 0" }}>
+              Already have access?{" "}
+              <Link href="/auth/sign-up" style={{ color: sage, fontWeight: 500, textDecoration: "none" }}>
+                Create your account →
+              </Link>
+            </motion.p>
           </motion.div>
         </div>
       </section>

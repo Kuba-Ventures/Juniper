@@ -2,13 +2,14 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useWorkspace } from "@/lib/workspace";
+import { useFinances } from "@/lib/finances";
 import { InviteModal } from "@/components/juniper/invite-modal";
 
 type NavItem = { path: string; label: string; count?: number };
 
 const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Overview" },
-  { path: "/app/plans", label: "Plans", count: 4 },
+  { path: "/app/plans", label: "Plans" },
   { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
   { path: "/app/recommended", label: "Recommended" },
@@ -34,13 +35,20 @@ const Caret = () => <svg className="caret" viewBox="0 0 10 6" fill="none" stroke
 export function AppBar({ name, email }: { name: string; email?: string }) {
   const [loc, setLocation] = useLocation();
   const { workspace, setWorkspace, partner, disconnect } = useWorkspace();
+  const { data: finances, source } = useFinances();
   const [open, setOpen] = useState<null | "switcher" | "account">(null);
   const [invite, setInvite] = useState(false);
   const initial = (name || "You").trim().charAt(0).toUpperCase();
   const shared = workspace === "shared";
   const nav = shared ? SHARED_NAV : PERSONAL_NAV;
+  // Only show a "linked" count when the member actually linked + synced Plaid;
+  // manual/demo dashboards have no linked institutions.
+  const linkedCount = source === "live"
+    ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
+    : 0;
 
   const go = (w: "personal" | "shared") => { setWorkspace(w); setOpen(null); setLocation(w === "shared" ? "/app/shared" : "/app"); };
+  const navTo = (path: string) => { setOpen(null); setLocation(path); };
   const openInvite = () => { setOpen(null); setInvite(true); };
   const signOut = async () => { setOpen(null); try { await supabase.auth.signOut(); } catch { /* ignore */ } setLocation("/"); };
 
@@ -102,7 +110,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
           </div>
 
           <div className="appbar-acct">
-            {!shared && <span className="plaid-pill"><span className="dot" />7 linked</span>}
+            {!shared && linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
             <button className="icon-btn" aria-label="Notifications">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" strokeLinecap="round" strokeLinejoin="round" />
@@ -117,8 +125,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
                   <div className="pop-scrim" onClick={() => setOpen(null)} />
                   <div className="pop acct-menu">
                     <div className="pop-head"><div className="avatar sm">{initial}</div><div><b>{name || "You"}</b><small>{email || "you@email.com"}</small></div></div>
-                    <button className="pop-i flat">Profile</button>
-                    <button className="pop-i flat">Connections</button>
+                    <button className="pop-i flat" onClick={() => navTo("/app/connections")}>Connections</button>
                     <button className="pop-i flat hl" onClick={openInvite}>{partner.connected ? "Manage partner" : "Invite partner"}</button>
                     {partner.connected && <button className="pop-i flat" onClick={() => { setOpen(null); disconnect(); }}>Disconnect partner</button>}
                     <button className="pop-i flat">Settings</button>
