@@ -1,4 +1,4 @@
-// /api/partner/activity — the shared chat/activity for the caller's partnership.
+// /api/partner/activity, the shared chat/activity for the caller's partnership.
 //   GET                                   -> { messages, reactions }
 //   POST { action: "message", body, txnRef?, txnMerchant? }
 //   POST { action: "react", target, emoji }   (toggles the caller's reaction)

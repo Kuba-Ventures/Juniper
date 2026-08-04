@@ -1,5 +1,5 @@
 // Server-only Supabase access via the service-role key. This BYPASSES RLS, so
-// it may only ever be used from server-side Edge functions — never exposed to
+// it may only ever be used from server-side Edge functions, never exposed to
 // the client. Used for the plaid_items table, which has no client grants (see
 // migration 0007). Always scope queries by user_id yourself: because the
 // service role bypasses RLS, the per-user filtering is your responsibility here.

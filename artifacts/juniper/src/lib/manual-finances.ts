@@ -1,8 +1,8 @@
 // Build dashboard finance data from a *manually entered* profile.
 //
 // When a member finishes onboarding by hand (accounts, loans, income) but
-// hasn't linked Plaid, the dashboard should still show THEIR numbers — real net
-// worth, their accounts, and a computed Juniper Score — not the demo household.
+// hasn't linked Plaid, the dashboard should still show THEIR numbers, real net
+// worth, their accounts, and a computed Juniper Score, not the demo household.
 // This turns the local `UserProfile` into the same `FinanceData` shape the live
 // path produces. Transaction-derived fields (spending, budgets, transactions)
 // stay empty on purpose: with no bank feed there is nothing honest to show, so
@@ -37,7 +37,7 @@ export function hasManualFinances(p: UserProfile | null): boolean {
 }
 
 // Any non-null profile means the member has been through onboarding, so we show
-// THEIR dashboard — even if sparse/zeroed — never the demo household. The demo
+// THEIR dashboard, even if sparse/zeroed, never the demo household. The demo
 // (mock) is reserved for pre-onboarding sessions with no saved profile at all.
 export function buildManualFinances(p: UserProfile | null): FinanceData | null {
   if (!p) return null;

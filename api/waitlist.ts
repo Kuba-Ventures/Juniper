@@ -2,7 +2,7 @@ import { readEnv } from "./_env";
 
 // Public, unauthenticated endpoint: the landing page form POSTs
 // { email, journey_stage } here. We insert into public.waitlist using the anon
-// key — RLS allows anon INSERT (and nothing else) on that table. A Supabase
+// key, RLS allows anon INSERT (and nothing else) on that table. A Supabase
 // Database Webhook on INSERT mirrors each new row into the admin sheet.
 
 export const config = { runtime: "edge" };

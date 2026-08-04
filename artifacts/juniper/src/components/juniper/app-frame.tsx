@@ -57,7 +57,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
   return (
     <div className="appbar">
       <div className="appbar-in">
-        {/* Row 1 — brand · workspace switcher · account controls, all inline.
+        {/* Row 1, brand · workspace switcher · account controls, all inline.
            A 3-column grid keeps the switcher centered regardless of how wide
            the brand and account clusters are. */}
         <div className="appbar-top">
@@ -140,7 +140,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
           </div>
         </div>
 
-        {/* Row 2 — primary nav */}
+        {/* Row 2, primary nav */}
         <nav className="nav" aria-label="Primary">
           {nav.map((n) => (
             <Link key={n.path} href={n.path} className={isActive(loc, n.path) ? "on" : undefined}>

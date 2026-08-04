@@ -1,7 +1,7 @@
 // Shared assembly of the Juniper Score inputs from a user's Stage-3 data, so the
 // read endpoint (/api/finances) and the history writer (/api/score/compute)
 // score off exactly the same numbers. Fetches with the service-role key and
-// scopes by user_id itself (RLS is bypassed here — see _supabase-admin).
+// scopes by user_id itself (RLS is bypassed here, see _supabase-admin).
 import { adminRest } from "./_supabase-admin";
 import type { ScoreInput } from "./_score";
 
@@ -14,11 +14,11 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
   catch { return []; }
 }
 
-// Days back to average income/spending over — a trailing window keeps the score
+// Days back to average income/spending over, a trailing window keeps the score
 // stable across a partial current month.
 const WINDOW_DAYS = 90;
 
-// Richer breakdown for personalized marketplace picks — separates the debt kinds
+// Richer breakdown for personalized marketplace picks, separates the debt kinds
 // and precomputes the ratios the pick rules read.
 export interface PickSignals {
   monthlySpending: number;
@@ -49,7 +49,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
     `transactions?user_id=eq.${uid}&date=gte.${since}&select=amount,date,category&limit=2000`,
   );
 
-  // Not enough to score off yet — caller keeps the demo mock.
+  // Not enough to score off yet, caller keeps the demo mock.
   if (!items.length || !txns.length) {
     return { linked: false, input: emptyInput(), signals: emptySignals() };
   }

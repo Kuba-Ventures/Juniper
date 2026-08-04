@@ -19,7 +19,7 @@ const TrashIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M4 7h16M9 7V5h6v2m-8 0l1 13h8l1-13" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
-// Very light **bold** + paragraph rendering — enough for planner replies.
+// Very light **bold** + paragraph rendering, enough for planner replies.
 function Rich({ text }: { text: string }) {
   return (
     <>

@@ -1,6 +1,6 @@
 // Marketplace offer ranking (Stage 5).
 //
-// PRINCIPLE: offers are ranked by estimated benefit to the USER — never by what
+// PRINCIPLE: offers are ranked by estimated benefit to the USER, never by what
 // the offer pays Juniper. That ordering is the product promise on the
 // Recommended surface ("Ranking reflects fit to your finances, never payment"),
 // so it lives in one pure, testable place both the API and any tests share.
@@ -23,7 +23,7 @@ export interface Offer {
 }
 
 // Higher estimated user benefit first. Ties broken by curator trust (curated >
-// scraped > self-listed), then an explicit sort_order, then name — all
+// scraped > self-listed), then an explicit sort_order, then name, all
 // user/quality signals, never payout. Offers with no benefit estimate sort
 // after those that have one, preserving their relative sort_order/name.
 const SOURCE_RANK: Record<Offer["source"], number> = { curated: 0, scraped: 1, "self-listed": 2 };

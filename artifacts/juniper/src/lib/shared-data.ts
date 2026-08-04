@@ -1,4 +1,4 @@
-// Mock data for the shared (couples) workspace — Stage 7 front-end. Real
+// Mock data for the shared (couples) workspace, Stage 7 front-end. Real
 // cross-partner data is a later backend stage; these shapes let the UI be built
 // and reviewed now. "You" = the signed-in member (Maya in the demo); "partner"
 // = the connected partner (Devin).
@@ -33,7 +33,7 @@ export const sharedAccounts: SharedAccount[] = [
   { n: "Chase Joint Checking", inst: "Bills", v: 5840, owner: "shared", privacy: "shared", k: "--jnpr-c6" },
   { n: "Fidelity Brokerage", inst: "Maya", v: 62300, owner: "you", privacy: "balance", k: "--jnpr-c3" },
   { n: "Chase Checking", inst: "Maya", v: 8200, owner: "you", privacy: "balance", k: "--jnpr-c3" },
-  { n: "Amex — personal", inst: "Maya", v: 0, owner: "you", privacy: "private", k: "--jnpr-c3" },
+  { n: "Amex, personal", inst: "Maya", v: 0, owner: "you", privacy: "private", k: "--jnpr-c3" },
   { n: "Vanguard 401(k)", inst: "Devin", v: 54100, owner: "partner", privacy: "balance", k: "--jnpr-c5" },
   { n: "Ally HYSA", inst: "Devin", v: 46600, owner: "partner", privacy: "balance", k: "--jnpr-c5" },
   { n: "Student loan", inst: "Devin", v: -18900, owner: "partner", privacy: "shared", k: "--jnpr-c5" },
@@ -63,7 +63,7 @@ export const activity: ActivityItem[] = [
 export const privacyToggles: PrivacyToggle[] = [
   { key: "goals", title: "Shared goals & contributions", sub: "Always on for goals you both join", on: true, locked: true },
   { key: "joint", title: "Joint & shared account balances", sub: "Ally Joint, Chase Bills, split bills", on: true },
-  { key: "balances", title: "My account balances (totals only)", sub: "Fidelity, 401(k) — the number, not the transactions", on: true },
+  { key: "balances", title: "My account balances (totals only)", sub: "Fidelity, 401(k), the number, not the transactions", on: true },
   { key: "txns", title: "My individual transactions", sub: "Personal spending stays private", on: false },
   { key: "score", title: "My Juniper Score", sub: "Share your 0–100 financial-health number", on: false },
 ];

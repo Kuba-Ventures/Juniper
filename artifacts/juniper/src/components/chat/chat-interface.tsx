@@ -57,13 +57,13 @@ const CHIPS: Array<{ heading: string; sub: string; firstMessage: string }> = [
 function JuniperBerry({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Berry body — vivid indigo-blue */}
+      {/* Berry body, vivid indigo-blue */}
       <circle cx="10" cy="14" r="8" fill="#4A5EC8"/>
       {/* Deep shadow at bottom */}
       <circle cx="10" cy="14" r="8" fill="url(#berryShade)"/>
       {/* Waxy bloom highlight */}
       <ellipse cx="7" cy="11" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.32)" transform="rotate(-30 7 11)"/>
-      {/* Calyx — 4-pointed star cap */}
+      {/* Calyx, 4-pointed star cap */}
       <path d="M10 4.5 L10.9 7.2 L13.6 6.2 L11.7 8.8 L14.2 10.4 L11.2 10.1 L11 13 L10 10.8 L9 13 L8.8 10.1 L5.8 10.4 L8.3 8.8 L6.4 6.2 L9.1 7.2 Z" fill="#D4922A"/>
       <defs>
         <radialGradient id="berryShade" cx="60%" cy="65%" r="55%">

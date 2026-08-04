@@ -38,7 +38,7 @@ export function SharedPage({ title, sub, children }: { title: string; sub?: stri
         <div className="card connect-empty">
           <div className="ce-mark">♡</div>
           <h2>Plan together</h2>
-          <p>Invite your partner to open a shared space — combined net worth, shared goals, bills, and a private what-you-share panel. Your own accounts stay private.</p>
+          <p>Invite your partner to open a shared space, combined net worth, shared goals, bills, and a private what-you-share panel. Your own accounts stay private.</p>
           <button className="btn" onClick={() => setInvite(true)}>Invite your partner</button>
         </div>
         {invite && <InviteModal onClose={() => setInvite(false)} />}

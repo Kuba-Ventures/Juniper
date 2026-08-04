@@ -45,7 +45,7 @@ export function SharedSharing() {
   };
 
   return (
-    <SharedPage title="Sharing" sub={`Collaborate on your own terms — choose exactly what ${name} can see from you.`}>
+    <SharedPage title="Sharing" sub={`Collaborate on your own terms, choose exactly what ${name} can see from you.`}>
       <div className="card">
         <div className="card-head"><h3>What {name} can see from you</h3><span className="chip shared">Your controls</span></div>
         <div>

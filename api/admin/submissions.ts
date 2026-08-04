@@ -1,10 +1,10 @@
-// /api/admin/submissions — the merchant self-listing moderation queue (Stage 5).
+// /api/admin/submissions, the merchant self-listing moderation queue (Stage 5).
 //   GET                                   -> list submissions (default: pending)
 //   POST { id, action: "approve"|"reject", notes? }
 //        approve -> upsert the offer into `partners` (active) + mark approved
 //        reject  -> mark rejected
 // Admin-only (ADMIN_EMAILS allowlist). Reads/writes with the service-role key,
-// which bypasses RLS — fine here because access is gated on admin identity.
+// which bypasses RLS, fine here because access is gated on admin identity.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { adminConfigured, adminRest } from "../_supabase-admin";

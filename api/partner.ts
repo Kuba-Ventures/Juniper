@@ -1,4 +1,4 @@
-// /api/partner — the shared-workspace data layer (Stage 7 partner data model).
+// /api/partner, the shared-workspace data layer (Stage 7 partner data model).
 //   GET                              -> the caller's shared overview (or { connected:false })
 //   POST { action: "invite" }        -> create/return a partnership invite link
 //   POST { action: "accept", token } -> accept an invite, activating the partnership

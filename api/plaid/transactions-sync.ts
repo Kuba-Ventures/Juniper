@@ -4,7 +4,7 @@
 // access_token is read server-side only (service-role) and never leaves here.
 //
 // Requires: migration 0008 applied, `transactions` in PLAID_PRODUCTS, and at
-// least one linked item. Safe to call repeatedly — it resumes from the stored
+// least one linked item. Safe to call repeatedly, it resumes from the stored
 // cursor and dedups on plaid_transaction_id.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
@@ -105,7 +105,7 @@ export default async function handler(req: Request): Promise<Response> {
         count: 250,
       });
       if (!sync.ok) {
-        // Product not ready / not enabled etc. — skip this item, report it.
+        // Product not ready / not enabled etc., skip this item, report it.
         return json({ error: sync.data.error_message || "Plaid sync failed", error_code: sync.data.error_code, item_id: item.item_id }, 502);
       }
       const d = sync.data;

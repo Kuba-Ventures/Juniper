@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { acceptInvite } from "@/lib/partner";
 import "@/styles/juniper.css";
 
-// Landing for /invite/partner/:token — the invited partner accepts here, which
+// Landing for /invite/partner/:token, the invited partner accepts here, which
 // activates the partnership, then lands them in the shared workspace.
 export default function JoinPartner({ token }: { token: string }) {
   const [, setLocation] = useLocation();

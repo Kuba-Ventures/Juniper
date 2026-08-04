@@ -26,7 +26,7 @@ const PRIMARY_MAP: Record<string, string> = {
   TRANSFER_OUT: "Everything else",
 };
 
-// A few detailed-category overrides where the primary bucket is too coarse —
+// A few detailed-category overrides where the primary bucket is too coarse, 
 // e.g. RENT_AND_UTILITIES covers both rent (Housing) and the utility bill.
 export function categorize(primary?: string, detailed?: string): string {
   const d = (detailed || "").toUpperCase();

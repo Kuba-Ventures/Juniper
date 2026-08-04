@@ -4,10 +4,10 @@
 // stored KPIs, or the plan write shape.
 //
 // Two modes:
-//   savings  — grow current savings to a target by a date. Interest HELPS, so
+//   savings, grow current savings to a target by a date. Interest HELPS, so
 //              the required monthly contribution is lower than gap / months
 //              (Home Buying down payment, Baby Planning fund).
-//   debt     — pay a balance down to zero. Interest HURTS, so we contrast a
+//   debt, pay a balance down to zero. Interest HURTS, so we contrast a
 //              0% balance transfer (the recommended offer) against a typical
 //              card APR to show what interest would otherwise cost.
 
@@ -27,7 +27,7 @@ export type ProjectionView = {
   targetValue: number; // reference value: savings target, or 0 for debt-free
   showTargetLine: boolean;
   startValue: number;
-  primary: SeriesPoint[]; // filled line — the recommended path
+  primary: SeriesPoint[]; // filled line, the recommended path
   compare: SeriesPoint[] | null; // dashed contrast line
   primaryLabel: string;
   compareLabel: string | null;

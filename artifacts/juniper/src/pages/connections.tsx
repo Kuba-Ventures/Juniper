@@ -82,8 +82,8 @@ export function ConnectionsView() {
       if (item) {
         trackEngagement("connection_linked");
         await refresh();
-        // Populate the data spine for the freshly linked item — transactions +
-        // the first net-worth snapshot — so the dashboard flips to live data.
+        // Populate the data spine for the freshly linked item, transactions +
+        // the first net-worth snapshot, so the dashboard flips to live data.
         void syncFinances();
       } else {
         setNotice("We couldn't finish connecting that account. Please try again.");
@@ -183,7 +183,7 @@ export function ConnectionsView() {
             <div className="card" style={{ marginTop: hasItems ? 16 : 0 }}>
               <h3 style={{ fontSize: 15, marginBottom: 4 }}>{hasItems ? "Add another account" : "Connect your accounts"}</h3>
               <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
-                Pick your bank, card, or investment provider — or tap <b>Other</b> in any group to search every
+                Pick your bank, card, or investment provider, or tap <b>Other</b> in any group to search every
                 institution, including small and regional banks.
               </p>
               <InstitutionPicker onPick={handleConnect} busy={connecting} />

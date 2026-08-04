@@ -47,10 +47,10 @@ export const budgets: Budget[] = [
 
 export const transactions: Txn[] = [
   { m: "Trader Joe's", c: "Groceries & dining", v: -96.4, d: "Aug 1", k: "--jnpr-c2" },
-  { m: "Payroll — Devin", c: "Income", v: 3120, d: "Aug 1", k: "--jnpr-good", inc: true },
+  { m: "Payroll, Devin", c: "Income", v: 3120, d: "Aug 1", k: "--jnpr-good", inc: true },
   { m: "Shell", c: "Transportation", v: -52.1, d: "Jul 31", k: "--jnpr-c3" },
   { m: "Target", c: "Shopping", v: -134.2, d: "Jul 30", k: "--jnpr-c4" },
-  { m: "Rent — Oakwood", c: "Housing", v: -2150, d: "Jul 28", k: "--jnpr-c1" },
+  { m: "Rent, Oakwood", c: "Housing", v: -2150, d: "Jul 28", k: "--jnpr-c1" },
   { m: "Spotify", c: "Utilities & bills", v: -11.99, d: "Jul 28", k: "--jnpr-c5" },
   { m: "Whole Foods", c: "Groceries & dining", v: -72.15, d: "Jul 27", k: "--jnpr-c2" },
   { m: "Chevron", c: "Transportation", v: -48.3, d: "Jul 26", k: "--jnpr-c3" },
@@ -74,10 +74,10 @@ export const accounts: { cash: Account[]; invest: Account[]; debt: Account[] } =
 
 export const plans: Plan[] = [
   { t: "Buy a home", ab: "H", icon: "home", saved: 28000, target: 60000, pct: 47, note: "Down payment · Mar 2027", st: "ok", stl: "On track", k: "--jnpr-c1", monthly: "$850/mo", date: "Ready Mar 2027", traj: [12, 15, 18, 20, 23, 25, 27, 28], next: "Auto-transfer $850/mo to the Ally HYSA" },
-  { t: "Pay off student loans", ab: "S", icon: "debt", saved: 0, target: 0, pct: 38, note: "$22,400 left · 5.8%", st: "ok", stl: "On track", k: "--jnpr-c2", monthly: "$520/mo", date: "Debt-free 2029", traj: [30, 28.6, 27.2, 26, 24.9, 23.8, 22.9, 22.4], down: true, next: "Keep paying $520/mo — debt-free by 2029", rec: { save: 540, h: "Speed up this plan", p: "Move your Sapphire balance off 24.9% APR — frees ~$45/mo toward the payoff.", partner: "SoFi" } },
+  { t: "Pay off student loans", ab: "S", icon: "debt", saved: 0, target: 0, pct: 38, note: "$22,400 left · 5.8%", st: "ok", stl: "On track", k: "--jnpr-c2", monthly: "$520/mo", date: "Debt-free 2029", traj: [30, 28.6, 27.2, 26, 24.9, 23.8, 22.9, 22.4], down: true, next: "Keep paying $520/mo, debt-free by 2029", rec: { save: 540, h: "Speed up this plan", p: "Move your Sapphire balance off 24.9% APR, frees ~$45/mo toward the payoff.", partner: "SoFi" } },
   { t: "Baby fund", ab: "B", icon: "baby", saved: 4200, target: 12000, pct: 35, note: "Started 3 weeks ago", st: "new", stl: "New", k: "--jnpr-c5", monthly: "Not set", date: "Due Feb 2027", traj: [0.5, 1, 1.6, 2.4, 3, 3.4, 3.9, 4.2], next: "Set a monthly amount to stay on pace" },
   { t: "Combine finances", ab: "C", icon: "combine", saved: 0, target: 0, pct: 0, note: "2 steps left in setup", st: "setup", stl: "Setup", k: "--jnpr-c3", next: "Invite Devin to finish linking accounts" },
-  { t: "Wedding fund", ab: "W", icon: "wedding", saved: 18000, target: 18000, pct: 100, note: "Completed Jun 2025", st: "done", stl: "Completed", k: "--jnpr-c6", done: true, monthly: "—", date: "Reached Jun 2025", traj: [3, 6, 9, 12, 14, 16, 17.5, 18], next: "Goal reached — rolled the surplus into the home down payment" },
+  { t: "Wedding fund", ab: "W", icon: "wedding", saved: 18000, target: 18000, pct: 100, note: "Completed Jun 2025", st: "done", stl: "Completed", k: "--jnpr-c6", done: true, monthly: "-", date: "Reached Jun 2025", traj: [3, 6, 9, 12, 14, 16, 17.5, 18], next: "Goal reached, rolled the surplus into the home down payment" },
 ];
 
 export interface Subscription { n: string; cat: string; amt: number; next: string; k: SeriesKey; flag?: string; canceled?: boolean }
@@ -112,11 +112,11 @@ export const score: Score = {
   lever: "build your emergency fund",
   trend: [68, 70, 71, 73, 74, 75, 74, 78],
   factors: [
-    { key: "savings", label: "Savings rate", score: 82, weight: 0.25, status: "strong", detail: "You're saving about 22% of your income — great pace." },
-    { key: "emergency", label: "Emergency fund", score: 58, weight: 0.25, status: "fair", detail: "3.5 months of expenses saved — target is 6 months." },
-    { key: "debt", label: "Debt load", score: 71, weight: 0.20, status: "fair", detail: "Your debt is about 0.9× your annual income — moderate." },
-    { key: "investing", label: "Investing pace", score: 74, weight: 0.15, status: "fair", detail: "You've invested about 0.7× your annual income — keep contributing." },
-    { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726 — good." },
+    { key: "savings", label: "Savings rate", score: 82, weight: 0.25, status: "strong", detail: "You're saving about 22% of your income, great pace." },
+    { key: "emergency", label: "Emergency fund", score: 58, weight: 0.25, status: "fair", detail: "3.5 months of expenses saved, target is 6 months." },
+    { key: "debt", label: "Debt load", score: 71, weight: 0.20, status: "fair", detail: "Your debt is about 0.9× your annual income, moderate." },
+    { key: "investing", label: "Investing pace", score: 74, weight: 0.15, status: "fair", detail: "You've invested about 0.7× your annual income, keep contributing." },
+    { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726, good." },
   ],
   improvements: [
     { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11, planIcon: null },
@@ -133,12 +133,12 @@ export const credit = {
   alerts: [
     { t: "Score went up 8 points", d: "Jul 28", dir: "up", imp: "+8" },
     { t: "Credit utilization rose to 34%", d: "Jul 22", dir: "down", imp: "▼" },
-    { t: "On-time payment reported — Toyota Financial", d: "Jul 15", dir: "up", imp: "▲" },
-    { t: "New hard inquiry — auto loan", d: "Jun 30", dir: "down", imp: "−5" },
+    { t: "On-time payment reported, Toyota Financial", d: "Jul 15", dir: "up", imp: "▲" },
+    { t: "New hard inquiry, auto loan", d: "Jun 30", dir: "down", imp: "−5" },
   ] as CreditAlert[],
   factors: [
     { n: "Payment history", v: "100% on-time", r: "Excellent", cls: "exc" },
-    { n: "Credit utilization", v: "34% — aim under 30%", r: "Fair", cls: "fair" },
+    { n: "Credit utilization", v: "34%, aim under 30%", r: "Fair", cls: "fair" },
     { n: "Age of credit", v: "6 yr 4 mo average", r: "Good", cls: "good" },
     { n: "Total accounts", v: "9 accounts", r: "Good", cls: "good" },
     { n: "Hard inquiries", v: "2 in the last 2 years", r: "Fair", cls: "fair" },
@@ -165,7 +165,7 @@ export const listings: Listing[] = [
   { n: "Fidelity", cat: "Investing", logo: "F", k: "--jnpr-c5", stat: "$0 commissions", blurb: "Roth IRA and brokerage with no commissions on stocks & ETFs.", tags: ["Roth IRA"], src: "curated", use: true },
   { n: "Policygenius", cat: "Insurance", logo: "P", k: "--jnpr-c6", stat: "Term life", blurb: "Compare term life quotes from top carriers in a few minutes.", tags: ["Term life"], src: "curated" },
   { n: "Betterment", cat: "Investing", logo: "B", k: "--jnpr-c3", stat: "Auto-invest", blurb: "Automated, low-fee portfolios that rebalance for you.", tags: ["Robo-advisor"], src: "self" },
-  { n: "Trust & Will", cat: "Estate", logo: "T", k: "--jnpr-c1", stat: "Wills & trusts", blurb: "Set up a legal will or trust online — worth it before the baby arrives.", tags: ["Wills", "Trusts"], src: "curated" },
+  { n: "Trust & Will", cat: "Estate", logo: "T", k: "--jnpr-c1", stat: "Wills & trusts", blurb: "Set up a legal will or trust online, worth it before the baby arrives.", tags: ["Wills", "Trusts"], src: "curated" },
   { n: "Wealthfront", cat: "Saving", logo: "W", k: "--jnpr-c5", stat: "4.25% APY", blurb: "Cash account with automated saving buckets and no fees.", tags: ["4.25% APY"], src: "self" },
 ];
 export const listingCategories = ["All", "Banking", "Saving", "Debt", "Investing", "Insurance", "Estate"];

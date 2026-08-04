@@ -27,7 +27,7 @@ export function InviteModal({ onClose }: { onClose: () => void }) {
     const res = await invitePartner();
     setBusy(false);
     if (res.ok && res.url) setUrl(res.url);
-    else setError(res.error || "We couldn't generate a live link yet — you can still preview the shared space below.");
+    else setError(res.error || "We couldn't generate a live link yet, you can still preview the shared space below.");
   };
 
   const copy = async () => {
@@ -46,12 +46,12 @@ export function InviteModal({ onClose }: { onClose: () => void }) {
   return (
     <Backdrop onClose={onClose}>
       <h3>Invite your partner</h3>
-      <p>Plan together on shared goals. Only the goals you share become visible to both of you — your accounts, net worth, and spending stay private.</p>
+      <p>Plan together on shared goals. Only the goals you share become visible to both of you, your accounts, net worth, and spending stay private.</p>
       <div className="field"><label>Partner's first name (optional)</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Devin" /></div>
 
       {url && (
         <>
-          <div className="share-ok">✓ Link ready — send it to {name.trim() || "your partner"} to connect.</div>
+          <div className="share-ok">✓ Link ready, send it to {name.trim() || "your partner"} to connect.</div>
           <div className="share-link"><input readOnly value={url} onFocus={(e) => e.currentTarget.select()} /><button className="btn sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
         </>
       )}

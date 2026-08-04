@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 // Modals opened from the app bar were rendering pinned to the top-left of the
 // bar instead of centered on screen: the `.appbar` sets `backdrop-filter`, and
 // any ancestor with a filter/backdrop-filter becomes the containing block for
-// `position: fixed` descendants — so the full-screen `.modal-bg` (inset:0)
+// `position: fixed` descendants, so the full-screen `.modal-bg` (inset:0)
 // resolved to the thin app-bar box, not the viewport.
 //
 // Rendering the backdrop through a portal to <body> escapes that containing

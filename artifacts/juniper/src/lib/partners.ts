@@ -15,7 +15,7 @@
 // The first entry per domain is the featured hero (the affiliate-card at the
 // top of a completed plan). The full list powers the marketplace surface.
 //
-// Recommendation mapping is deterministic by domain — no LLM/synthesis change.
+// Recommendation mapping is deterministic by domain, no LLM/synthesis change.
 
 import {
   PiggyBank,

@@ -1,4 +1,4 @@
-// Profile hydration hook — the local + remote source of truth for the member's
+// Profile hydration hook, the local + remote source of truth for the member's
 // name and financial snapshot. Extracted from the retired `app-shell.tsx` so
 // the live shell (`juniper-app.tsx`), the onboarding-complete handler, and the
 // finances provider all read/write the profile the same way.

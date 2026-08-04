@@ -1,6 +1,6 @@
 // POST /api/plaid/networth-snapshot
 // Plaid returns only *current* balances, so we can't ask it for a net-worth
-// trend — we have to build one by snapshotting daily. This endpoint fetches the
+// trend, we have to build one by snapshotting daily. This endpoint fetches the
 // caller's fresh balances from Plaid (/accounts/balance/get, per item), classifies
 // each account as an asset or a debt, and upserts ONE row per (user, day) into
 // net_worth_snapshots. Call it on link, on manual refresh, and on a daily cron.

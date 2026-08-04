@@ -66,7 +66,7 @@ export async function exchangePublicToken(
 }
 
 // Kick the server-side data pipeline for the caller's linked items: pull new
-// transactions (/transactions/sync) and snapshot net worth. Fire-and-report —
+// transactions (/transactions/sync) and snapshot net worth. Fire-and-report, 
 // both run server-side, are user-scoped by JWT, and are safe to call repeatedly
 // (the sync resumes from its cursor; the snapshot upserts one row per day).
 // Returns whether at least one leg succeeded; degrades quietly when Plaid /
@@ -113,7 +113,7 @@ export async function removePlaidItem(itemId: string): Promise<boolean> {
   }
 }
 
-// Institution names of linked accounts — used to power the marketplace
+// Institution names of linked accounts, used to power the marketplace
 // "You use this" badges from real connections. Degrades to [] when unlinked
 // or unconfigured.
 export async function fetchConnectionNames(): Promise<string[]> {

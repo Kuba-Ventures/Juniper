@@ -21,7 +21,7 @@ function CardsBreakdown() {
         <div className="ub">
           <div className="bar" style={{ height: 10 }}><i style={{ width: `${tu}%`, background: tu > 30 ? "var(--jnpr-warn)" : "var(--jnpr-accent)" }} /></div>
           <div style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", marginTop: 7 }}>
-            Under 30% is best for your score — you're {tu > 30 ? "a bit above" : "under"} the line, driven mostly by the Quicksilver card.
+            Under 30% is best for your score, you're {tu > 30 ? "a bit above" : "under"} the line, driven mostly by the Quicksilver card.
           </div>
         </div>
       </div>
@@ -51,7 +51,7 @@ export function Credit() {
     <div className="frame">
       <PageHeader
         title="Credit"
-        sub="Your credit score, monitored monthly with a soft pull that never affects it — plus every card and how much of your limit you're using."
+        sub="Your credit score, monitored monthly with a soft pull that never affects it, plus every card and how much of your limit you're using."
         actions={<span className="plaid-pill"><span className="dot" />Updated {credit.updated}</span>}
       />
 

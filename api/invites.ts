@@ -66,7 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return unauthorized();
   const userId = payload.sub;
 
-  // GET /api/invites?token=xxx — lookup invite via SECURITY DEFINER RPC
+  // GET /api/invites?token=xxx, lookup invite via SECURITY DEFINER RPC
   if (req.method === "GET") {
     const inviteToken = new URL(req.url).searchParams.get("token");
     if (!inviteToken) return json({ error: "token required" }, 400);

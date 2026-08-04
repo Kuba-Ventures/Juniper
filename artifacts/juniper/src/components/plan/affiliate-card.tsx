@@ -246,7 +246,7 @@ export function PlanAffiliatePicks({
     <section style={{ marginBottom: 32 }}>
       <h2 style={sectionHeading}>Recommended for this step</h2>
 
-      {/* Required FTC-style disclosure — MUST appear ABOVE the link (before
+      {/* Required FTC-style disclosure, MUST appear ABOVE the link (before
           the user can click out), not below. Kept visible, not behind a tooltip. */}
       <div
         style={{
