@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { invitePartner } from "@/lib/partner";
 import { useWorkspace } from "@/lib/workspace";
+import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
 // The invite flow reachable from the account menu (and Plans). Creates a real
 // partnership invite link via /api/partner; and, because full data sharing needs
@@ -9,11 +10,7 @@ import { useWorkspace } from "@/lib/workspace";
 // shortcut that connects the demo partner so you can walk through it.
 
 function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
-    </div>
-  );
+  return <ModalBackdrop onClose={onClose}>{children}</ModalBackdrop>;
 }
 
 export function InviteModal({ onClose }: { onClose: () => void }) {

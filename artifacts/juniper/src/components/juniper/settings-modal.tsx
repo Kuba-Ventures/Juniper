@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile } from "@/lib/profile";
+import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
 // Wipe this account back to a brand-new state — server profile + plans and all
 // local caches (profile, onboarded flag, welcome tip) — then hard-reload into
@@ -31,9 +32,8 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
   };
 
   return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <h3>Settings</h3>
+    <ModalBackdrop onClose={onClose}>
+      <h3>Settings</h3>
 
         <div className="facts" style={{ marginBottom: 20 }}>
           <div className="fr"><span className="k">Name</span><span className="v">{name || "—"}</span></div>
@@ -65,7 +65,6 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
             </div>
           </>
         )}
-      </div>
-    </div>
+    </ModalBackdrop>
   );
 }
