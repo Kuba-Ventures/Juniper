@@ -2,7 +2,7 @@ import { Plus } from "lucide-react";
 import { LOGOS } from "@/lib/mock-logos";
 
 // A categorized institution picker for the "connect an account" flow. Each tile
-// launches Plaid Link — Plaid handles the actual institution selection/search,
+// launches Plaid Link; Plaid handles the actual institution selection/search,
 // so the popular tiles are quick entry points and the per-category "Other" tile
 // opens Plaid's full search (covering small/regional banks like Carter Bank &
 // Trust or Atlantic Union Bank). onPick receives the tapped institution name

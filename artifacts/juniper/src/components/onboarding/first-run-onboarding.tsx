@@ -117,7 +117,7 @@ export function FirstRunOnboarding({
             {step === "welcome" && (
               <>
                 <h2>Welcome to Juniper. What should we call you?</h2>
-                <p className="ob-help">Your first name or a nickname — we'll use it around the app.</p>
+                <p className="ob-help">Your first name or a nickname, we'll use it around the app.</p>
                 <input
                   className="ob-input"
                   autoFocus
@@ -130,7 +130,7 @@ export function FirstRunOnboarding({
                   <p className="ob-help" style={{ margin: "0 0 10px" }}>Who are you planning for?</p>
                   <div className="ob-seg">
                     <button className={household === "solo" ? "on" : undefined} onClick={() => setHousehold("solo")}>
-                      Just me<small>Solo — you can invite a partner later</small>
+                      Just me<small>Solo, you can invite a partner later</small>
                     </button>
                     <button className={household === "partner" ? "on" : undefined} onClick={() => setHousehold("partner")}>
                       Me & my partner<small>Plan and align together</small>
@@ -143,7 +143,7 @@ export function FirstRunOnboarding({
             {step === "income" && (
               <>
                 <h2>Let's get a quick money snapshot.</h2>
-                <p className="ob-help">Rough numbers are fine — you can refine them anytime, and they power your Juniper Score.</p>
+                <p className="ob-help">Rough numbers are fine, you can refine them anytime, and they power your Juniper Score.</p>
                 <div className="ob-fieldgroup">
                   <MoneyField label="Monthly take-home pay" hint="After taxes and deductions" value={income} chips={[4000, 7000, 12000]} onChange={setIncome} autoFocus />
                   <MoneyField label="Monthly essential expenses" hint="Rent, utilities, groceries, minimum payments" value={expenses} chips={[2500, 4000, 6000]} onChange={setExpenses} />
@@ -315,7 +315,7 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
     if (token) setLinkToken(token);
     else {
       setConnecting(false);
-      setNotice("Account linking isn't enabled yet — you can add it later from Connections.");
+      setNotice("Account linking isn't enabled yet. You can add it later from Connections.");
     }
   }, []);
 
@@ -330,7 +330,7 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
 
       {linked && (
         <div className="ob-connected">
-          <Check size={18} strokeWidth={2.5} /> Account connected — pick another below, or continue.
+          <Check size={18} strokeWidth={2.5} /> Account connected. Pick another below, or continue.
         </div>
       )}
       {notice && <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>}
