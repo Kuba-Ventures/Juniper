@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, ArrowLeft, Check, Plus, Trash2, ShieldCheck, Building2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
-import type { ManualAccount, ManualAccountKind, UserProfile } from "@/lib/profile";
+import type { UserProfile } from "@/lib/profile";
 import { createLinkToken, exchangePublicToken, syncFinances, type LinkInstitution } from "@/lib/plaid";
 import { trackEngagement } from "@/lib/analytics";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
@@ -17,14 +17,8 @@ const GOALS = [
   "Plan a big purchase",
 ];
 
-const KIND_OPTIONS: { value: ManualAccountKind; label: string }[] = [
-  { value: "cash", label: "Cash & savings" },
-  { value: "invest", label: "Investments" },
-  { value: "debt", label: "Loan / credit card" },
-];
-
-type StepKind = "welcome" | "income" | "accounts" | "goals" | "connect";
-const STEPS: StepKind[] = ["welcome", "income", "accounts", "goals", "connect"];
+type StepKind = "welcome" | "income" | "connect" | "goals";
+const STEPS: StepKind[] = ["welcome", "income", "connect", "goals"];
 
 const fmtMoney = (n: number) =>
   (n < 0 ? "−" : "") + "$" + Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -45,7 +39,6 @@ export function FirstRunOnboarding({
   const [household, setHousehold] = useState<"solo" | "partner" | undefined>();
   const [income, setIncome] = useState<number | undefined>();
   const [expenses, setExpenses] = useState<number | undefined>();
-  const [accounts, setAccounts] = useState<ManualAccount[]>([]);
   const [goals, setGoals] = useState<string[]>([]);
   const [customGoals, setCustomGoals] = useState<string[]>([]);
   const [customGoal, setCustomGoal] = useState("");
@@ -63,24 +56,15 @@ export function FirstRunOnboarding({
   const step = STEPS[i];
   const total = STEPS.length;
 
-  const cashInvest = accounts
-    .filter((a) => a.kind !== "debt")
-    .reduce((s, a) => s + (a.balance || 0), 0);
-  const debtTotal = accounts.filter((a) => a.kind === "debt").reduce((s, a) => s + (a.balance || 0), 0);
-  const netWorth = cashInvest - debtTotal;
-
-  const buildProfile = useCallback((): UserProfile => {
-    const cleaned = accounts.filter((a) => a.name.trim() && a.balance > 0);
-    return {
-      monthlyIncome: income,
-      monthlyExpenses: expenses,
-      totalSavings: cleaned.filter((a) => a.kind !== "debt").reduce((s, a) => s + a.balance, 0) || undefined,
-      totalDebt: cleaned.filter((a) => a.kind === "debt").reduce((s, a) => s + a.balance, 0) || undefined,
-      accounts: cleaned.length ? cleaned : undefined,
-      goals: goals.length ? goals : undefined,
-      household,
-    };
-  }, [accounts, income, expenses, goals, household]);
+  // Accounts + balances now come from linking a bank (Plaid), so onboarding only
+  // captures the snapshot (income/expenses), goals, and household. Net worth and
+  // the score fill in from live data once an account is connected.
+  const buildProfile = useCallback((): UserProfile => ({
+    monthlyIncome: income,
+    monthlyExpenses: expenses,
+    goals: goals.length ? goals : undefined,
+    household,
+  }), [income, expenses, goals, household]);
 
   const finish = useCallback(() => {
     setDone(true);
@@ -167,10 +151,6 @@ export function FirstRunOnboarding({
               </>
             )}
 
-            {step === "accounts" && (
-              <AccountsStep accounts={accounts} setAccounts={setAccounts} netWorth={netWorth} />
-            )}
-
             {step === "goals" && (
               <>
                 <h2>What are you working toward?</h2>
@@ -220,9 +200,9 @@ export function FirstRunOnboarding({
                 </button>
               )}
               <button className="btn" onClick={next}>
-                {i + 1 >= total ? (linked ? "Go to my dashboard" : "Finish") : "Continue"} <ArrowRight />
+                {i + 1 >= total ? "Finish" : "Continue"} <ArrowRight />
               </button>
-              {step !== "welcome" && step !== "connect" && (
+              {(step === "income" || step === "goals") && (
                 <button className="ob-ghostskip" onClick={next}>
                   Skip
                 </button>
@@ -286,81 +266,6 @@ function MoneyField({
         ))}
       </div>
     </div>
-  );
-}
-
-function AccountsStep({
-  accounts,
-  setAccounts,
-  netWorth,
-}: {
-  accounts: ManualAccount[];
-  setAccounts: React.Dispatch<React.SetStateAction<ManualAccount[]>>;
-  netWorth: number;
-}) {
-  const idRef = useRef(0);
-  const add = () =>
-    setAccounts((prev) => [...prev, { id: `a${idRef.current++}`, name: "", kind: "cash", balance: 0 }]);
-  const update = (id: string, patch: Partial<ManualAccount>) =>
-    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  const remove = (id: string) => setAccounts((prev) => prev.filter((a) => a.id !== id));
-
-  return (
-    <>
-      <h2>What accounts and loans do you have?</h2>
-      <p className="ob-help">
-        Add the ones you know — checking, savings, investments, credit cards, loans. This builds your net
-        worth and dashboard. You can connect them automatically later for live balances.
-      </p>
-      <div className="ob-fieldgroup">
-        {accounts.map((a) => (
-          <div key={a.id} className={`ob-acct ${a.kind === "debt" ? "debt" : ""}`}>
-            <select value={a.kind} onChange={(e) => update(a.id, { kind: e.target.value as ManualAccountKind })} aria-label="Account type">
-              {KIND_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <input
-              value={a.name}
-              placeholder={a.kind === "debt" ? "e.g. Visa card" : "e.g. Chase checking"}
-              onChange={(e) => update(a.id, { name: e.target.value })}
-              aria-label="Account name"
-            />
-            <input
-              inputMode="numeric"
-              value={a.balance ? String(a.balance) : ""}
-              placeholder="Balance"
-              onChange={(e) => update(a.id, { balance: parseInt(e.target.value.replace(/[^\d]/g, ""), 10) || 0 })}
-              aria-label="Balance"
-            />
-            {a.kind === "debt" && (
-              <input
-                inputMode="decimal"
-                value={a.apr != null ? String(a.apr) : ""}
-                placeholder="APR %"
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^\d.]/g, "");
-                  update(a.id, { apr: v === "" ? undefined : parseFloat(v) });
-                }}
-                aria-label="APR"
-              />
-            )}
-            <button className="ob-del" onClick={() => remove(a.id)} aria-label="Remove account">
-              <Trash2 size={15} />
-            </button>
-          </div>
-        ))}
-        <button className="ob-add" onClick={add}>
-          <Plus /> Add {accounts.length ? "another" : "an account"}
-        </button>
-      </div>
-      {accounts.length > 0 && (
-        <div className="ob-tally">
-          <span className="l">Estimated net worth</span>
-          <span className={`v ${netWorth < 0 ? "neg" : ""}`}>{fmtMoney(netWorth)}</span>
-        </div>
-      )}
-    </>
   );
 }
 
