@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
-import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
 import type { UserProfile } from "@/lib/profile";
-import { createLinkToken, exchangePublicToken, syncFinances, type LinkInstitution } from "@/lib/plaid";
-import { trackEngagement } from "@/lib/analytics";
+import { syncFinances, layerEnabled } from "@/lib/plaid";
+import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
+import { ManualAccountForm } from "@/components/juniper/manual-account-form";
+import { LayerDiscovery } from "@/components/juniper/layer-discovery";
 import "@/styles/juniper.css";
 
 const GOALS = [
@@ -270,77 +271,61 @@ function MoneyField({
 }
 
 function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => void }) {
-  const [linkToken, setLinkToken] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
 
-  const onSuccess = useCallback(
-    async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
-      const institution: LinkInstitution | undefined = metadata.institution
-        ? { institution_id: metadata.institution.institution_id, name: metadata.institution.name }
-        : undefined;
-      const item = await exchangePublicToken(publicToken, institution);
-      setLinkToken(null);
-      setConnecting(false);
-      if (item) {
-        trackEngagement("connection_linked");
-        onLinked();
-        void syncFinances();
-      } else {
-        setNotice("We couldn't finish connecting that account. You can try again from Connections.");
-      }
-    },
-    [onLinked],
-  );
-
-  const { open, ready } = usePlaidLink({
-    token: linkToken ?? "",
-    onSuccess,
-    onExit: () => {
-      setLinkToken(null);
-      setConnecting(false);
+  const { start, busy, progress, notice, setNotice } = useLinkQueue({
+    onItemLinked: onLinked,
+    onDone: ({ linked: count }) => {
+      if (count > 0) void syncFinances();
     },
   });
 
-  useEffect(() => {
-    if (linkToken && ready) open();
-  }, [linkToken, ready, open]);
-
-  // Any tile (or "Other") opens Plaid Link; Plaid handles the actual selection
-  // and search, so the tapped name is only used for the "opening…" label.
-  const connect = useCallback(async (_institution?: string) => {
-    setNotice(null);
-    setConnecting(true);
-    const token = await createLinkToken();
-    if (token) setLinkToken(token);
-    else {
-      setConnecting(false);
-      setNotice("Account linking isn't enabled yet. You can add it later from Connections.");
-    }
-  }, []);
+  const connect = useCallback(
+    (institutions: Parameters<typeof start>[0]) => {
+      setNotice(null);
+      void start(institutions);
+    },
+    [start, setNotice],
+  );
 
   return (
     <>
       <h2>Connect your accounts for live balances.</h2>
       <p className="ob-help">
-        Optional, but it's the magic: pick your bank, card, or investment provider below and Juniper keeps
-        your net worth, spending, and score up to date automatically. Don't see yours? Tap <b>Other</b> in any
-        group to search every institution. You can always do this later.
+        Optional, but it's the magic: pick every bank, card, or investment provider you use, then connect them
+        in one pass and Juniper keeps your net worth, spending, and score up to date automatically. Don't see
+        yours? Use <b>Search all institutions</b>, or <b>Add manually</b> for anything Plaid can't reach. You can
+        always do this later.
       </p>
 
       {linked && (
         <div className="ob-connected">
-          <Check size={18} strokeWidth={2.5} /> Account connected. Pick another below, or continue.
+          <Check size={18} strokeWidth={2.5} /> Account added. Pick more below, or continue.
         </div>
       )}
       {notice && <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>}
-      {connecting && (
+      {busy && (
         <div className="ob-connected" style={{ color: "var(--jnpr-accent)", background: "var(--jnpr-accent-soft)" }}>
-          <Building2 size={16} /> Opening secure link…
+          <Building2 size={16} />{" "}
+          {progress.total > 1
+            ? `Connecting account ${progress.index + 1} of ${progress.total}…`
+            : "Opening secure link…"}
         </div>
       )}
 
-      <InstitutionPicker onPick={connect} busy={connecting} />
+      {layerEnabled() && !manual && <LayerDiscovery onLinked={onLinked} />}
+
+      {manual ? (
+        <ManualAccountForm
+          onSaved={() => {
+            setManual(false);
+            onLinked();
+          }}
+          onCancel={() => setManual(false)}
+        />
+      ) : (
+        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} />
+      )}
 
       <p className="ob-secure">
         <ShieldCheck />

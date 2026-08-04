@@ -37,7 +37,7 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 
 Shell is done; remaining screens and states:
 
-- [ ] First-run onboarding — "Connect your accounts", reskinned to Juniper.com ♻️ *(exists: `first-run-onboarding.tsx`)*
+- [~] First-run onboarding — "Connect your accounts", reskinned to Juniper.com ♻️ *(exists: `first-run-onboarding.tsx`; connect step reworked into the **Stage 13** three-tier account-discovery flow, gallery multi-select + manual add live, Layer gated)*
 - [ ] Empty / loading / error states — no accounts, no transactions, no plans; skeleton loaders
 - [ ] Plan detail screen (full)
 - [ ] Marketplace: listing detail + "List your service" merchant submission flow
@@ -177,6 +177,62 @@ The front door: a branded **log-in / sign-up** experience and the first-run path
 
 ---
 
+## Stage 13 — Account discovery & connect **(build)** — *in progress*
+
+The "connect your accounts" experience, reworked so a new user reaches a
+populated dashboard with the least possible friction. Inspired by the Credit
+Karma "enter a little info and everything appears" moment, but built honestly on
+what the underlying rails can actually do. **Three tiers, most-magic first, each
+degrading cleanly into the next** so both Plaid-network veterans and
+never-used-Plaid users get a good path:
+
+- **Tier 1 — Instant (Plaid Layer)** ⚠️ *gated on Plaid Production.* Enter a
+  phone number, Plaid recognizes the returning network user and surfaces the
+  accounts they've already connected elsewhere, categorized, with a "select all",
+  no per-institution login. This is the headline flow.
+  - [x] **Seam built:** `api/plaid/layer-session.ts` (`/session/token/create`
+    with a Layer template) + `createLayerSession()` + `layerEnabled()` flag
+    (`src/lib/plaid.ts`) + a gated `LayerDiscovery` phone-entry component wired
+    into onboarding **and** Connections. Inert until turned on.
+  - [ ] **Activate (ops):** get Plaid **Production** (Stage 6), create a **Layer
+    template** in the Plaid dashboard, set `PLAID_LAYER_TEMPLATE_ID` + flip
+    `VITE_PLAID_LAYER=1`. Then **verify Layer's multi-item return + exchange
+    end-to-end** (the one path that can't be exercised on Sandbox; the scaffold
+    reuses the standard public-token exchange and is marked to re-verify).
+  - **Known limit:** Layer only knows accounts *already in the Plaid network for
+    that person*. It is not an omniscient "every account you own" lookup, hence
+    tiers 2 + 3 are permanent, not stopgaps.
+
+- **Tier 2 — Browse (indexed/sorted gallery)** ✅ *works today on Sandbox.* A
+  searchable, alphabetized, categorized institution gallery with **multi-select +
+  Select all** and a **sequential Plaid Link queue**, pick everything you use,
+  connect it in one pass (Plaid opens each institution's login in turn), plus
+  **Search all institutions** for small/regional banks.
+  - [x] `institution-picker.tsx` rewritten to the multi-select gallery (search,
+    per-category + global select-all, expanded catalog, dedupe by name).
+  - [x] `src/lib/use-link-queue.ts` — the sequential Link hook (ref-driven,
+    per-item token, skip-on-exit, progress "Connecting 2 of 4…"), shared by
+    onboarding + Connections.
+
+- **Tier 3 — Manual add** ✅ *works today, no gates.* For institutions Plaid
+  can't link (small/regional banks, many employer 401(k) providers) or anything
+  the user prefers to enter by hand, so their account list + net worth can be
+  complete without a live connection. Balances are user-maintained.
+  - [x] Migration `0014_manual_accounts.sql` (owner RLS + Data API grants,
+    `0002`/`0008` pattern), `api/manual-accounts.ts` (CRUD), client
+    `src/lib/manual-accounts.ts`, `ManualAccountForm` component, surfaced in
+    onboarding + the Connections list (with a "Manual" tag + remove).
+  - [ ] **Fold manual balances into net worth + the account rollup** in
+    `api/_finance-snapshot.ts` / `GET /api/finances` (assets vs liabilities by
+    `kind`), so manual accounts count toward the dashboard, not just the
+    Connections list. *(Next sub-stage.)*
+
+- Ops to activate (like the rest of Stage 3): apply migration `0014`; manual add
+  works as soon as it's applied. Tiers 1/2 need Plaid configured; tier 1
+  additionally needs Production + a Layer template.
+
+---
+
 ## Critical path (read this first)
 
 **Stages 3 → 4 are the real product.** Everything Mint-like ("I miss the budgeting / expense reports") lives in **Stage 3**, which is gated on **Plaid transactions + Production access (Stage 6)**. Design and shell (Stages 1–2) are fast; the **data engine (Stage 3) is where the real weeks go.**
@@ -185,4 +241,4 @@ The front door: a branded **log-in / sign-up** experience and the first-run path
 
 ## Reuse inventory (already built — see PROJECT.md)
 
-Plaid account linking (Sandbox), marketplace listings (`partners.ts`, 22 seeded), cross-plan portfolio summary, 5 planning domains, partner invites + alignment, projection charts, affiliate click-out plumbing (`affiliate_click` + FTC disclosure), GA4 `engaged_session` instrumentation, Supabase auth + RLS patterns, Growth Sheets pipeline.
+Plaid account linking (Sandbox), three-tier account discovery (Layer seam + multi-select gallery + manual add, Stage 13), marketplace listings (`partners.ts`, 22 seeded), cross-plan portfolio summary, 5 planning domains, partner invites + alignment, projection charts, affiliate click-out plumbing (`affiliate_click` + FTC disclosure), GA4 `engaged_session` instrumentation, Supabase auth + RLS patterns, Growth Sheets pipeline.

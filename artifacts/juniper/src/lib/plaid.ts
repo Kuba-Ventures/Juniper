@@ -49,6 +49,33 @@ export async function createLinkToken(): Promise<string | null> {
   }
 }
 
+// Account discovery, tier 1 (Plaid Layer): request a Layer session token so
+// Plaid Link can open in returning-user mode, recognizing the person by phone
+// and surfacing accounts they've already connected across the Plaid network for
+// one-tap selection. Returns null when Layer isn't enabled yet (503), so callers
+// fall back to the tier-2 gallery. Gated on Plaid Production + a Layer template
+// (PLAID_LAYER_TEMPLATE_ID); see api/plaid/layer-session.ts.
+export async function createLayerSession(phone?: string): Promise<string | null> {
+  try {
+    const res = await authedFetch("/api/plaid/layer-session", {
+      method: "POST",
+      body: JSON.stringify(phone ? { phone } : {}),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { link_token?: string };
+    return data.link_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Whether the Layer (phone-first discovery) entry point should be offered. Off
+// by default; flip VITE_PLAID_LAYER=1 once Production + a Layer template are
+// configured so the phone step goes live without a code change.
+export function layerEnabled(): boolean {
+  return import.meta.env.VITE_PLAID_LAYER === "1";
+}
+
 export async function exchangePublicToken(
   publicToken: string,
   institution?: LinkInstitution,
