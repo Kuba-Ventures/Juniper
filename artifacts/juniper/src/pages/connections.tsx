@@ -3,7 +3,8 @@ import {
   usePlaidLink,
   type PlaidLinkOnSuccessMetadata,
 } from "react-plaid-link";
-import { Building2, Plus, Trash2, ShieldCheck, RefreshCw } from "lucide-react";
+import { Building2, Trash2, ShieldCheck, RefreshCw } from "lucide-react";
+import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import {
   createLinkToken,
   exchangePublicToken,
@@ -136,25 +137,25 @@ export function ConnectionsView() {
         title="Connections"
         sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically."
         actions={
-          <>
-            {hasItems && (
-              <button className="btn ghost" onClick={handleSync} disabled={syncing}>
-                <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
-              </button>
-            )}
-            <button className="btn" onClick={handleConnect} disabled={connecting}>
-              <Plus size={16} /> {connecting ? "Opening…" : hasItems ? "Connect another" : "Connect an account"}
+          hasItems ? (
+            <button className="btn ghost" onClick={handleSync} disabled={syncing}>
+              <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
             </button>
-          </>
+          ) : undefined
         }
       />
 
       <div className="conn-wrap">
         {notice && <div className="form-error" style={{ marginBottom: 16 }}>{notice}</div>}
+        {connecting && (
+          <div className="ob-connected" style={{ color: "var(--jnpr-accent)", background: "var(--jnpr-accent-soft)" }}>
+            <Building2 size={16} /> Opening secure link…
+          </div>
+        )}
 
         {loading ? (
           <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
-        ) : hasItems ? (
+        ) : (
           <>
             {items.map((item) => (
               <div className="conn-item" key={item.item_id}>
@@ -178,16 +179,16 @@ export function ConnectionsView() {
                 ))}
               </div>
             ))}
+
+            <div className="card" style={{ marginTop: hasItems ? 16 : 0 }}>
+              <h3 style={{ fontSize: 15, marginBottom: 4 }}>{hasItems ? "Add another account" : "Connect your accounts"}</h3>
+              <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
+                Pick your bank, card, or investment provider — or tap <b>Other</b> in any group to search every
+                institution, including small and regional banks.
+              </p>
+              <InstitutionPicker onPick={handleConnect} busy={connecting} />
+            </div>
           </>
-        ) : (
-          <div className="card connect-empty">
-            <div className="ce-mark"><Building2 size={24} /></div>
-            <h2>No accounts connected yet</h2>
-            <p>Link a checking, savings, credit, or investment account to see live balances and unlock spending, budgets, and subscription tracking.</p>
-            <button className="btn" onClick={handleConnect} disabled={connecting}>
-              <Plus size={16} /> {connecting ? "Opening secure link…" : "Connect an account"}
-            </button>
-          </div>
         )}
 
         <p className="ob-secure" style={{ marginTop: 24 }}>
