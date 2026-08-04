@@ -3,6 +3,7 @@
 // score off exactly the same numbers. Fetches with the service-role key and
 // scopes by user_id itself (RLS is bypassed here, see _supabase-admin).
 import { adminRest } from "./_supabase-admin";
+import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null };
@@ -72,6 +73,16 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       else if (type === "loan") loanDebt += Math.abs(bal);
     }
   }
+
+  // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
+  // a regional bank Plaid can't reach, count toward the score just like linked
+  // ones. They carry no transactions, so income/spending above are unaffected.
+  const manual = sumManualAccounts(await fetchManualAccounts(uid));
+  cashReserves += manual.cash;
+  investmentBalance += manual.invest;
+  cardDebt += manual.cardDebt;
+  loanDebt += manual.loanDebt;
+
   const totalDebt = cardDebt + loanDebt;
   const totalAssets = cashReserves + investmentBalance;
   const emergencyMonths = monthlySpending > 0 ? cashReserves / monthlySpending : 0;

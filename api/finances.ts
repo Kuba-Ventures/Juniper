@@ -8,6 +8,7 @@ import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { fetchScoreInput } from "./_finance-snapshot";
+import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
 
 export const config = { runtime: "edge" };
@@ -90,10 +91,24 @@ export default async function handler(req: Request): Promise<Response> {
         v: debt ? -Math.abs(a.balance || 0) : (a.balance || 0),
       })),
     );
+  // Manually-added accounts (tier 3) join the same groups, so they show in the
+  // Accounts rollup and count toward net worth below. Skip balance-less entries
+  // (they still appear in Connections, just nothing to add here). Debts render
+  // negative, matching the linked-debt convention in group().
+  const manualAccts = (await fetchManualAccounts(uid)).filter((m) => m.balance != null);
+  const manualIn = (bucket: "cash" | "invest" | "debt") =>
+    manualAccts
+      .filter((m) => manualBucket(m) === bucket)
+      .map((m) => ({
+        n: m.name,
+        i: m.institution || "Manual",
+        v: bucket === "debt" ? -Math.abs(m.balance || 0) : Math.abs(m.balance || 0),
+      }));
+
   const accounts = {
-    cash: group((a) => a.type === "depository"),
-    invest: group((a) => a.type === "investment" || a.type === "brokerage"),
-    debt: group((a) => a.type === "credit" || a.type === "loan", true),
+    cash: [...group((a) => a.type === "depository"), ...manualIn("cash")],
+    invest: [...group((a) => a.type === "investment" || a.type === "brokerage"), ...manualIn("invest")],
+    debt: [...group((a) => a.type === "credit" || a.type === "loan", true), ...manualIn("debt")],
   };
 
   // Net worth: from snapshots, else a single point from current balances
