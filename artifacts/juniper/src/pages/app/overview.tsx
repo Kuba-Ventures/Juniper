@@ -28,13 +28,13 @@ const CloseIcon = () => (
 
 // Shown in place of the spending/budgets/subscriptions cards when there's no
 // transaction feed yet (manual or demo data). Nothing fake is presented as the
-// member's — just an honest path to unlock the real thing.
+// member's, just an honest path to unlock the real thing.
 function ConnectNudge() {
   return (
     <div className="card nudge-card">
       <div className="nc-mark"><LinkIcon /></div>
       <h3>Unlock spending, budgets & subscriptions</h3>
-      <p>Connect an account and Juniper categorizes your transactions automatically — spending breakdowns, budgets, and subscription tracking appear here.</p>
+      <p>Connect an account and Juniper categorizes your transactions automatically: spending breakdowns, budgets, and subscription tracking appear here.</p>
       <Link href="/app/connections" className="btn" style={{ marginTop: 4 }}>Connect an account</Link>
     </div>
   );
@@ -148,7 +148,7 @@ function SubscriptionsPanel() {
           ))}
         </div>
       </div>
-      <p className="disc">Juniper submits cancellations on your behalf and confirms once done — often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
+      <p className="disc">Juniper submits cancellations on your behalf and confirms once done, often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
 
       {sub && !confirmed && (
         <Backdrop onClose={close}>
@@ -193,7 +193,7 @@ export default function Overview({
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
   // With no transaction feed (manual entry or demo), spending/budgets/subs have
-  // nothing real to show — swap them for an honest connect nudge.
+  // nothing real to show, so swap them for an honest connect nudge.
   const hasTxns = source === "live" && (transactions.length > 0 || spending.length > 0);
   return (
     <div className="frame">
@@ -278,7 +278,7 @@ export default function Overview({
             </div>
           ) : (
             <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
-              No plans yet. Turn a goal into a plan — save for a home, pay off debt, build an emergency fund — and track it here.
+              No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
               <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
             </div>
           )}
@@ -288,7 +288,7 @@ export default function Overview({
       {hasTxns && (
         <div className="grid two" style={{ marginBottom: 16 }}>
           <div className="card">
-            <div className="card-head"><h3>Where it went — {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
+            <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
             <SpendingDonut data={spending} />
           </div>
           <div className="card">
