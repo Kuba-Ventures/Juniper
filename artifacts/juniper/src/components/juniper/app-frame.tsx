@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useWorkspace } from "@/lib/workspace";
 import { useFinances } from "@/lib/finances";
 import { InviteModal } from "@/components/juniper/invite-modal";
+import { SettingsModal } from "@/components/juniper/settings-modal";
 
 type NavItem = { path: string; label: string; count?: number };
 
@@ -38,6 +39,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
   const { data: finances, source } = useFinances();
   const [open, setOpen] = useState<null | "switcher" | "account">(null);
   const [invite, setInvite] = useState(false);
+  const [settings, setSettings] = useState(false);
   const initial = (name || "You").trim().charAt(0).toUpperCase();
   const shared = workspace === "shared";
   const nav = shared ? SHARED_NAV : PERSONAL_NAV;
@@ -128,7 +130,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
                     <button className="pop-i flat" onClick={() => navTo("/app/connections")}>Connections</button>
                     <button className="pop-i flat hl" onClick={openInvite}>{partner.connected ? "Manage partner" : "Invite partner"}</button>
                     {partner.connected && <button className="pop-i flat" onClick={() => { setOpen(null); disconnect(); }}>Disconnect partner</button>}
-                    <button className="pop-i flat">Settings</button>
+                    <button className="pop-i flat" onClick={() => { setOpen(null); setSettings(true); }}>Settings</button>
                     <div className="pop-sep" />
                     <button className="pop-i flat" onClick={signOut}>Sign out</button>
                   </div>
@@ -149,6 +151,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
         </nav>
       </div>
       {invite && <InviteModal onClose={() => setInvite(false)} />}
+      {settings && <SettingsModal name={name} email={email ?? ""} onClose={() => setSettings(false)} />}
     </div>
   );
 }

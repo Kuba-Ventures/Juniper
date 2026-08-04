@@ -593,6 +593,11 @@
 .jnpr .auth-form input{font:inherit;font-size:14.5px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:10px;padding:11px 13px;outline:none;width:100%}
 .jnpr .auth-form input:focus{border-color:var(--jnpr-accent)}
 .jnpr .auth-form input.err{border-color:var(--jnpr-bad)}
+.jnpr .auth-pw{position:relative}
+.jnpr .auth-pw input{padding-right:64px}
+.jnpr .auth-pw .pw-eye{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:inline-flex;align-items:center;gap:5px;background:none;border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:600;color:var(--jnpr-ink-3);padding:6px 8px;border-radius:8px}
+.jnpr .auth-pw .pw-eye:hover{color:var(--jnpr-accent);background:var(--jnpr-surface-3)}
+.jnpr .auth-pw .pw-eye svg{width:15px;height:15px}
 .jnpr .auth-form .btn{justify-content:center;padding:12px 15px;font-size:14px;margin-top:2px}
 .jnpr .auth-msg{font-size:12px;text-align:center;margin:0}
 .jnpr .auth-msg.bad{color:var(--jnpr-bad)}.jnpr .auth-msg.good{color:var(--jnpr-good)}
@@ -628,6 +633,10 @@
 .jnpr .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .jnpr .ob-chip{font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:9px 15px;cursor:pointer}
 .jnpr .ob-chip.on{color:var(--jnpr-on-accent);background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
+.jnpr .ob-other{display:flex;gap:8px;margin-top:14px;max-width:440px}
+.jnpr .ob-other input{flex:1;min-width:0;font:inherit;font-size:14px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:10px 16px;outline:none}
+.jnpr .ob-other input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-other .btn{flex:0 0 auto}
 .jnpr .ob-fieldgroup{display:flex;flex-direction:column;gap:14px}
 /* accounts & loans builder */
 .jnpr .ob-acct{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:8px;align-items:center}
