@@ -150,6 +150,30 @@ export async function fetchCashflowEstimate(): Promise<{ income: number; spent: 
   }
 }
 
+// Poll fetchCashflowEstimate a few times, giving server-side transaction
+// ingestion a moment to land right after a fresh link (the sync fired by
+// ConnectStep is async, so the first read often comes back empty). Resolves as
+// soon as an estimate with a nonzero value is available, or null once the
+// attempts are exhausted. `signal` lets the caller bail if the member navigates
+// away mid-poll.
+export async function pollCashflowEstimate(opts?: {
+  attempts?: number;
+  intervalMs?: number;
+  signal?: { aborted: boolean };
+}): Promise<{ income: number; spent: number } | null> {
+  const attempts = opts?.attempts ?? 6;
+  const intervalMs = opts?.intervalMs ?? 1500;
+  for (let a = 0; a < attempts; a++) {
+    if (opts?.signal?.aborted) return null;
+    const est = await fetchCashflowEstimate();
+    if (est && (est.income > 0 || est.spent > 0)) return est;
+    if (a < attempts - 1) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
+  return null;
+}
+
 export async function fetchPlaidItems(): Promise<PlaidItem[]> {
   try {
     const res = await authedFetch("/api/plaid/accounts");
