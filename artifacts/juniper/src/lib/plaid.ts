@@ -69,11 +69,23 @@ export async function createLayerSession(phone?: string): Promise<string | null>
   }
 }
 
-// Whether the Layer (phone-first discovery) entry point should be offered. Off
-// by default; flip VITE_PLAID_LAYER=1 once Production + a Layer template are
-// configured so the phone step goes live without a code change.
+// Layer (phone-first discovery) entry mode, controlled by VITE_PLAID_LAYER:
+//   "1" | "live" | "true" -> real Plaid Layer (needs Production + a template)
+//   "demo"                -> simulated discovery, testable on Sandbox; recognized
+//                            accounts are mocked and imported as manual accounts
+//   anything else / unset -> off (the card isn't shown)
+export type LayerMode = "off" | "live" | "demo";
+export function layerMode(): LayerMode {
+  const v = String(import.meta.env.VITE_PLAID_LAYER ?? "").toLowerCase();
+  if (v === "demo") return "demo";
+  if (v === "1" || v === "live" || v === "true") return "live";
+  return "off";
+}
 export function layerEnabled(): boolean {
-  return import.meta.env.VITE_PLAID_LAYER === "1";
+  return layerMode() !== "off";
+}
+export function layerDemo(): boolean {
+  return layerMode() === "demo";
 }
 
 export async function exchangePublicToken(
