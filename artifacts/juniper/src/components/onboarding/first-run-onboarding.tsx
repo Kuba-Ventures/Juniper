@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
-import { syncFinances, layerEnabled, pollCashflowEstimate } from "@/lib/plaid";
+import { syncFinances, layerEnabled, pollCashflowEstimate, normInstitutionName } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -375,9 +375,29 @@ function IncomeStep({
 
 function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => void }) {
   const [manual, setManual] = useState(false);
+  // Institutions connected this session (via instant discovery, the gallery link
+  // queue, or manual add), normalized for matching. Passed to the gallery so
+  // those tiles read as already-connected instead of still-to-do — otherwise a
+  // member who imported, say, Marcus via the phone-first flow sees Marcus sitting
+  // unchecked below and assumes it didn't take.
+  const [connected, setConnected] = useState<Set<string>>(new Set());
+
+  const markConnected = useCallback(
+    (institutions?: string[]) => {
+      if (institutions?.length) {
+        setConnected((prev) => {
+          const next = new Set(prev);
+          for (const n of institutions) if (n) next.add(normInstitutionName(n));
+          return next;
+        });
+      }
+      onLinked();
+    },
+    [onLinked],
+  );
 
   const { start, busy, progress, notice, setNotice } = useLinkQueue({
-    onItemLinked: onLinked,
+    onItemLinked: (institution) => markConnected(institution ? [institution] : undefined),
     onDone: ({ linked: count }) => {
       if (count > 0) void syncFinances();
     },
@@ -416,7 +436,7 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
         </div>
       )}
 
-      {layerEnabled() && !manual && <LayerDiscovery onLinked={onLinked} />}
+      {layerEnabled() && !manual && <LayerDiscovery onLinked={markConnected} />}
 
       {manual ? (
         <ManualAccountForm
@@ -427,7 +447,7 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
           onCancel={() => setManual(false)}
         />
       ) : (
-        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} />
+        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} connected={connected} />
       )}
 
       <p className="ob-secure">

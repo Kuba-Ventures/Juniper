@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, Plus, Search, PencilLine } from "lucide-react";
 import { LOGOS } from "@/lib/mock-logos";
-import type { LinkInstitution } from "@/lib/plaid";
+import { normInstitutionName, type LinkInstitution } from "@/lib/plaid";
 
 // A searchable, sorted, multi-select institution gallery for the "connect an
 // account" flow (account discovery, tier 2). Users can browse by category, type
@@ -108,10 +108,14 @@ export function InstitutionPicker({
   onConnect,
   onManual,
   busy,
+  connected,
 }: {
   onConnect: (institutions: LinkInstitution[]) => void;
   onManual?: () => void;
   busy?: boolean;
+  // Normalized names of institutions already connected this session — rendered as
+  // locked-in "Connected" tiles, and kept out of the selectable set.
+  connected?: Set<string>;
 }) {
   const [query, setQuery] = useState("");
   // Selection keyed by "category:name" so the same brand in two categories stays
@@ -119,6 +123,8 @@ export function InstitutionPicker({
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const q = query.trim().toLowerCase();
+
+  const isConnected = (name: string) => !!connected && connected.has(normInstitutionName(name));
 
   const filtered = useMemo(
     () =>
@@ -132,6 +138,7 @@ export function InstitutionPicker({
   const keyOf = (category: string, name: string) => `${category}:${name}`;
 
   const toggle = (category: string, name: string) => {
+    if (isConnected(name)) return; // already connected — not selectable
     setSelected((prev) => {
       const next = new Set(prev);
       const k = keyOf(category, name);
@@ -141,9 +148,15 @@ export function InstitutionPicker({
     });
   };
 
+  // "Select all" / per-category "All" operate on selectable (not-yet-connected)
+  // tiles only, so an already-connected institution is never re-queued.
   const allVisibleKeys = useMemo(
-    () => filtered.flatMap((cat) => cat.items.map((i) => keyOf(cat.category, i.name))),
-    [filtered],
+    () =>
+      filtered.flatMap((cat) =>
+        cat.items.filter((i) => !isConnected(i.name)).map((i) => keyOf(cat.category, i.name)),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, connected],
   );
   const allVisibleSelected = allVisibleKeys.length > 0 && allVisibleKeys.every((k) => selected.has(k));
 
@@ -196,30 +209,44 @@ export function InstitutionPicker({
 
       <div className="inst-cats">
         {filtered.map((cat) => {
-          const keys = cat.items.map((i) => keyOf(cat.category, i.name));
-          const catAllOn = keys.every((k) => selected.has(k));
+          // Connected tiles are excluded from the category's select-all target.
+          const keys = cat.items.filter((i) => !isConnected(i.name)).map((i) => keyOf(cat.category, i.name));
+          const catAllOn = keys.length > 0 && keys.every((k) => selected.has(k));
           return (
             <div className="inst-cat" key={cat.category}>
               <div className="inst-cat-row">
                 <div className="inst-cat-h">{cat.category}</div>
-                <button className="inst-cat-all" onClick={() => toggleCategory(cat.category, keys)} disabled={busy}>
+                <button
+                  className="inst-cat-all"
+                  onClick={() => toggleCategory(cat.category, keys)}
+                  disabled={busy || keys.length === 0}
+                >
                   {catAllOn ? "Clear" : "All"}
                 </button>
               </div>
               <div className="inst-grid">
                 {cat.items.map((inst) => {
-                  const on = selected.has(keyOf(cat.category, inst.name));
+                  const conn = isConnected(inst.name);
+                  const on = !conn && selected.has(keyOf(cat.category, inst.name));
                   return (
                     <button
                       key={`${cat.category}-${inst.name}`}
-                      className={`inst-tile ${on ? "on" : ""}`}
+                      className={`inst-tile ${on ? "on" : ""} ${conn ? "connected" : ""}`}
                       onClick={() => toggle(cat.category, inst.name)}
-                      disabled={busy}
+                      disabled={busy || conn}
                       aria-pressed={on}
+                      aria-label={conn ? `${inst.name}, already connected` : inst.name}
+                      title={conn ? "Already connected" : undefined}
                     >
                       <Mark inst={inst} color={cat.color} />
                       <span className="inst-name">{inst.name}</span>
-                      <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
+                      {conn ? (
+                        <span className="inst-connected-tag">
+                          <Check size={11} strokeWidth={3} /> Connected
+                        </span>
+                      ) : (
+                        <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
+                      )}
                     </button>
                   );
                 })}
