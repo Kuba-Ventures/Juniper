@@ -759,6 +759,24 @@
 .jnpr .layer-card.hero .layer-acct{background:var(--jnpr-surface)}
 .jnpr .layer-card.hero .layer-done{color:#EAF3EC}
 .jnpr .layer-card.hero .layer-done-ic{background:#F4F7F3;color:#123320}
+/* results header: let the "we found N accounts for …" line share space with the
+   Clear-all button and wrap instead of colliding on narrow phones */
+.jnpr .layer-card.hero .layer-results-head span{flex:1;min-width:0}
+/* ── connect step: mobile polish ─────────────────────────────────────────── */
+/* Primary CTA input at 16px so iOS Safari doesn't zoom-jump on focus. */
+.jnpr .layer-card.hero .layer-phone input{font-size:16px}
+@media(max-width:560px){
+  /* keep the rest of the connect-step inputs >=16px too (same iOS zoom guard) */
+  .jnpr .inst-search,.jnpr .man-field input,.jnpr .man-field select,.jnpr .man-money input{font-size:16px}
+  /* action bar: full-width Connect on top, secondary actions split 50/50 below,
+     instead of the three buttons wrapping unevenly with space-between */
+  .jnpr .inst-bar{flex-direction:column;align-items:stretch;gap:10px}
+  .jnpr .inst-bar>.btn{order:-1;width:100%;justify-content:center}
+  .jnpr .inst-bar-left{width:100%}
+  .jnpr .inst-bar-left .inst-otherbtn{flex:1;justify-content:center}
+  /* the stacked bar frees vertical room, so give the gallery a taller scroll */
+  .jnpr .inst-cats{max-height:52vh}
+}
 .jnpr .ob-done{display:flex;flex-direction:column;align-items:flex-start}
 .jnpr .ob-done .ob-check{width:52px;height:52px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:grid;place-items:center;margin-bottom:16px}
 .jnpr .ob-done .ob-check svg{width:26px;height:26px}
