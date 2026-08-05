@@ -12,6 +12,7 @@ import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch, sanitizeAccounts } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
+import { fetchManualAccounts, sumManualAccounts } from "../_manual-accounts";
 
 export const config = { runtime: "edge" };
 
@@ -62,9 +63,18 @@ export default async function handler(req: Request): Promise<Response> {
   const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token`);
   if (!itemsRes.ok) return json({ error: "Failed to read items" }, 500);
   const items = (await itemsRes.json().catch(() => [])) as { item_id: string; access_token: string }[];
-  if (!items.length) return json({ linked: false, message: "No linked accounts" });
 
-  let assets = 0, debts = 0;
+  // Manually-added accounts (tier 3) count toward the snapshotted net worth too,
+  // so a hand-entered 401(k) or regional bank shows up on the trend line.
+  const manual = sumManualAccounts(await fetchManualAccounts(userId));
+  const manualAssets = manual.cash + manual.invest;
+  const manualDebts = manual.cardDebt + manual.loanDebt;
+
+  if (!items.length && manualAssets === 0 && manualDebts === 0) {
+    return json({ linked: false, message: "No accounts" });
+  }
+
+  let assets = manualAssets, debts = manualDebts;
 
   for (const item of items) {
     const bal = await plaidFetch<BalanceResp>("/accounts/balance/get", { access_token: item.access_token });

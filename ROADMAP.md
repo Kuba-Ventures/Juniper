@@ -222,10 +222,14 @@ never-used-Plaid users get a good path:
     `0002`/`0008` pattern), `api/manual-accounts.ts` (CRUD), client
     `src/lib/manual-accounts.ts`, `ManualAccountForm` component, surfaced in
     onboarding + the Connections list (with a "Manual" tag + remove).
-  - [ ] **Fold manual balances into net worth + the account rollup** in
-    `api/_finance-snapshot.ts` / `GET /api/finances` (assets vs liabilities by
-    `kind`), so manual accounts count toward the dashboard, not just the
-    Connections list. *(Next sub-stage.)*
+  - [x] **Manual balances fold into net worth + the account rollup** via a
+    shared `api/_manual-accounts.ts` (fetch + bucket + sum): `GET /api/finances`
+    appends them to the cash/invest/debt groups (so net worth picks them up),
+    the net-worth **snapshot writer** adds them to the trend, and
+    `_finance-snapshot.ts` folds them into the **Juniper Score** inputs (cash /
+    investing / card / loan by category + `kind`). Counted on the linked path
+    today (a Plaid-linked user who also hand-adds a 401(k)/regional bank); a
+    net-worth-only live view for *manual-only* users is a further follow-up.
 
 - Ops to activate (like the rest of Stage 3): apply migration `0014`; manual add
   works as soon as it's applied. Tiers 1/2 need Plaid configured; tier 1
