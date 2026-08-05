@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
-import { syncFinances, layerEnabled } from "@/lib/plaid";
+import { syncFinances, layerEnabled, fetchCashflowEstimate } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -18,8 +18,13 @@ const GOALS = [
   "Plan a big purchase",
 ];
 
-type StepKind = "welcome" | "income" | "connect" | "goals";
-const STEPS: StepKind[] = ["welcome", "income", "connect", "goals"];
+// Order matters. We lead with goals (low-friction, sets motivation), then ask to
+// connect accounts, then capture the money snapshot last — so once a member has
+// linked, income/spending can be pre-filled from their live data and the snapshot
+// becomes a quick confirm instead of typing from scratch. No SSN is collected
+// here: KYC-grade identity is gathered just-in-time when a flow actually needs it.
+type StepKind = "welcome" | "goals" | "connect" | "income";
+const STEPS: StepKind[] = ["welcome", "goals", "connect", "income"];
 
 const fmtMoney = (n: number) =>
   (n < 0 ? "−" : "") + "$" + Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -142,14 +147,13 @@ export function FirstRunOnboarding({
             )}
 
             {step === "income" && (
-              <>
-                <h2>Let's get a quick money snapshot.</h2>
-                <p className="ob-help">Rough numbers are fine, you can refine them anytime, and they power your Juniper Score.</p>
-                <div className="ob-fieldgroup">
-                  <MoneyField label="Monthly take-home pay" hint="After taxes and deductions" value={income} chips={[4000, 7000, 12000]} onChange={setIncome} autoFocus />
-                  <MoneyField label="Monthly essential expenses" hint="Rent, utilities, groceries, minimum payments" value={expenses} chips={[2500, 4000, 6000]} onChange={setExpenses} />
-                </div>
-              </>
+              <IncomeStep
+                linked={linked}
+                income={income}
+                expenses={expenses}
+                setIncome={setIncome}
+                setExpenses={setExpenses}
+              />
             )}
 
             {step === "goals" && (
@@ -203,7 +207,7 @@ export function FirstRunOnboarding({
               <button className="btn" onClick={next}>
                 {i + 1 >= total ? "Finish" : "Continue"} <ArrowRight />
               </button>
-              {(step === "income" || step === "goals") && (
+              {step === "goals" && (
                 <button className="ob-ghostskip" onClick={next}>
                   Skip
                 </button>
@@ -267,6 +271,101 @@ function MoneyField({
         ))}
       </div>
     </div>
+  );
+}
+
+// The money snapshot, shown last so it can lean on a live connection. When the
+// member linked an account, we try to pull their real monthly income/spending
+// and pre-fill the fields, turning "type it in" into "confirm what we found".
+// Falls back to plain manual entry when nothing is linked (or the sync hasn't
+// landed yet). Only empty, un-edited fields are pre-filled, so a member who
+// starts typing is never overwritten by a late-arriving estimate.
+function IncomeStep({
+  linked,
+  income,
+  expenses,
+  setIncome,
+  setExpenses,
+}: {
+  linked: boolean;
+  income: number | undefined;
+  expenses: number | undefined;
+  setIncome: (v: number | undefined) => void;
+  setExpenses: (v: number | undefined) => void;
+}) {
+  const [status, setStatus] = useState<"idle" | "loading" | "estimated" | "none">(
+    linked ? "loading" : "idle",
+  );
+  const touched = useRef(false);
+
+  useEffect(() => {
+    if (!linked) return;
+    let alive = true;
+    fetchCashflowEstimate()
+      .then((est) => {
+        if (!alive) return;
+        if (est && (est.income > 0 || est.spent > 0)) {
+          if (!touched.current) {
+            if (income == null && est.income > 0) setIncome(est.income);
+            if (expenses == null && est.spent > 0) setExpenses(est.spent);
+          }
+          setStatus("estimated");
+        } else {
+          setStatus("none");
+        }
+      })
+      .catch(() => alive && setStatus("none"));
+    return () => {
+      alive = false;
+    };
+    // Runs once when the step mounts; `linked` is stable by the time we're here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked]);
+
+  const onIncome = (v: number | undefined) => {
+    touched.current = true;
+    setIncome(v);
+  };
+  const onExpenses = (v: number | undefined) => {
+    touched.current = true;
+    setExpenses(v);
+  };
+
+  const estimated = status === "estimated";
+
+  return (
+    <>
+      <h2>{estimated ? "Here's your monthly snapshot." : "Let's get a quick money snapshot."}</h2>
+      <p className="ob-help">
+        {estimated
+          ? "We estimated these from your connected accounts. Adjust anything that looks off, they power your Juniper Score."
+          : linked
+            ? "Rough numbers are fine, you can refine them anytime, and they power your Juniper Score."
+            : "Rough numbers are fine, you can refine them anytime. You skipped connecting, so these are what power your Juniper Score for now."}
+      </p>
+      {status === "loading" && (
+        <div className="ob-connected" style={{ color: "var(--jnpr-accent)", background: "var(--jnpr-accent-soft)" }}>
+          <Building2 size={16} /> Estimating from your connected accounts…
+        </div>
+      )}
+      <div className="ob-fieldgroup">
+        <MoneyField
+          label="Monthly take-home pay"
+          hint={estimated ? "Estimated from recent deposits" : "After taxes and deductions"}
+          value={income}
+          chips={[4000, 7000, 12000]}
+          onChange={onIncome}
+          autoFocus
+        />
+        <MoneyField
+          label="Monthly essential expenses"
+          hint={estimated ? "Estimated from recent spending" : "Rent, utilities, groceries, minimum payments"}
+          value={expenses}
+          chips={[2500, 4000, 6000]}
+          onChange={onExpenses}
+        />
+      </div>
+    </>
   );
 }
 

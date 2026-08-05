@@ -129,6 +129,27 @@ export async function syncFinances(): Promise<{ transactions: boolean; netWorth:
   return { transactions, netWorth, score };
 }
 
+// Best-effort monthly income/spending estimate from live data, used to pre-fill
+// the onboarding snapshot after a member links an account. Reads the same
+// cashflow the dashboard shows (GET /api/finances). Returns null when nothing is
+// linked/synced yet ({ linked: false }), so the caller falls back to manual
+// entry. Note: right after linking, transactions may not have finished syncing
+// server-side, so this can legitimately return null even for a linked member.
+export async function fetchCashflowEstimate(): Promise<{ income: number; spent: number } | null> {
+  try {
+    const res = await authedFetch("/api/finances");
+    if (!res.ok) return null;
+    const data = (await res.json()) as { linked?: boolean; cashflow?: { income?: number; spent?: number } };
+    if (!data?.linked || !data.cashflow) return null;
+    return {
+      income: Math.max(0, Math.round(data.cashflow.income || 0)),
+      spent: Math.max(0, Math.round(data.cashflow.spent || 0)),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPlaidItems(): Promise<PlaidItem[]> {
   try {
     const res = await authedFetch("/api/plaid/accounts");
