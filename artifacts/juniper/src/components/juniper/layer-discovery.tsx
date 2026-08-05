@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Smartphone, Sparkles, Check } from "lucide-react";
+import { Smartphone, Sparkles, Check, Lock } from "lucide-react";
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
 import {
   createLayerSession,
@@ -84,7 +84,7 @@ function LayerLive({ onLinked }: { onLinked: () => void }) {
 
   return (
     <LayerShell>
-      <PhoneRow phone={phone} setPhone={setPhone} onGo={go} busy={busy} label={busy ? "Looking…" : "Find accounts"} />
+      <PhoneRow phone={phone} setPhone={setPhone} onGo={go} busy={busy} label={busy ? "Looking…" : "Find my accounts"} />
       {notice && <div className="form-error" style={{ marginTop: 8 }}>{notice}</div>}
     </LayerShell>
   );
@@ -191,7 +191,7 @@ function LayerDemo({ onLinked }: { onLinked: () => void }) {
           setPhone={setPhone}
           onGo={go}
           busy={phase === "loading"}
-          label={phase === "loading" ? "Recognizing you…" : "Find accounts"}
+          label={phase === "loading" ? "Recognizing you…" : "Find my accounts"}
         />
       </LayerShell>
     );
@@ -205,58 +205,84 @@ function LayerDemo({ onLinked }: { onLinked: () => void }) {
   })).filter((g) => g.items.length > 0);
 
   return (
-    <LayerShell demo>
+    <LayerShell
+      demo
+      sub="Tap the ones you want, we'll keep them in sync."
+      body={
+        <div className="layer-body">
+          <div className="layer-results">
+            {groups.map((g) => (
+              <div className="layer-cat" key={g.key}>
+                <div className="inst-cat-h">{catLabel(g.key)}</div>
+                {g.items.map((a) => {
+                  const on = selected.has(a.id);
+                  return (
+                    <button key={a.id} className={`layer-acct ${on ? "on" : ""}`} onClick={() => toggle(a.id)} aria-pressed={on}>
+                      <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
+                      <span className="layer-acct-main">
+                        <span className="layer-acct-name">{a.institution}</span>
+                        <span className="layer-acct-sub">{a.name}</span>
+                      </span>
+                      <span className="layer-acct-bal" style={a.kind === "liability" ? { color: "var(--jnpr-bad)" } : undefined}>
+                        {a.kind === "liability" ? "−" : ""}{money(a.balance)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          {notice && <div className="form-error" style={{ marginTop: 8 }}>{notice}</div>}
+          <div className="layer-results-bar">
+            <button className="btn" onClick={connect} disabled={saving || selected.size === 0}>
+              {saving ? "Connecting…" : `Connect ${selected.size} ${selected.size === 1 ? "account" : "accounts"}`}
+            </button>
+          </div>
+        </div>
+      }
+    >
       <div className="layer-results-head">
         <span>We found {DEMO_ACCOUNTS.length} accounts for {phone.trim() || "your number"}</span>
         <button className="inst-selall" onClick={toggleAll}>{allOn ? "Clear all" : "Select all"}</button>
-      </div>
-      <div className="layer-results">
-        {groups.map((g) => (
-          <div className="layer-cat" key={g.key}>
-            <div className="inst-cat-h">{catLabel(g.key)}</div>
-            {g.items.map((a) => {
-              const on = selected.has(a.id);
-              return (
-                <button key={a.id} className={`layer-acct ${on ? "on" : ""}`} onClick={() => toggle(a.id)} aria-pressed={on}>
-                  <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
-                  <span className="layer-acct-main">
-                    <span className="layer-acct-name">{a.institution}</span>
-                    <span className="layer-acct-sub">{a.name}</span>
-                  </span>
-                  <span className="layer-acct-bal" style={a.kind === "liability" ? { color: "var(--jnpr-bad)" } : undefined}>
-                    {a.kind === "liability" ? "−" : ""}{money(a.balance)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      {notice && <div className="form-error" style={{ marginTop: 8 }}>{notice}</div>}
-      <div className="layer-results-bar">
-        <button className="btn" onClick={connect} disabled={saving || selected.size === 0}>
-          {saving ? "Connecting…" : `Connect ${selected.size} ${selected.size === 1 ? "account" : "accounts"}`}
-        </button>
       </div>
     </LayerShell>
   );
 }
 
 // ── shared presentation ──────────────────────────────────────────────────────
-function LayerShell({ children, demo }: { children: ReactNode; demo?: boolean }) {
+// The card leads the connect step as a pine "hero": a deep-pine band carries the
+// branding + whatever the current phase puts in it (phone entry, results header,
+// or the done confirmation), and `body` — when present — drops into a light panel
+// below the band (the account results list).
+function LayerShell({
+  children,
+  body,
+  demo,
+  sub,
+}: {
+  children: ReactNode;
+  body?: ReactNode;
+  demo?: boolean;
+  sub?: ReactNode;
+}) {
   return (
-    <div className="layer-card">
-      <div className="layer-head">
-        <span className="layer-ic"><Sparkles size={16} /></span>
-        <div>
-          <div className="layer-title">
-            Find your accounts instantly
-            {demo && <span className="layer-demo-badge">Demo</span>}
+    <div className="layer-card hero">
+      <div className="layer-band">
+        <div className="layer-head">
+          <span className="layer-ic"><Sparkles size={16} /></span>
+          <div>
+            <div className="layer-title">
+              Find your accounts instantly
+              {demo && <span className="layer-demo-badge">Demo</span>}
+            </div>
+            <div className="layer-sub">
+              {sub ?? "Enter your phone number and we'll surface accounts you've already connected, ready to pick."}
+            </div>
           </div>
-          <div className="layer-sub">Enter your phone number and we'll surface accounts you've already connected, ready to pick.</div>
         </div>
+        {children}
       </div>
-      {children}
+      {body}
     </div>
   );
 }
@@ -275,21 +301,26 @@ function PhoneRow({
   label: string;
 }) {
   return (
-    <div className="layer-row">
-      <div className="layer-phone">
-        <Smartphone size={15} />
-        <input
-          inputMode="tel"
-          value={phone}
-          placeholder="(555) 123-4567"
-          onChange={(e) => setPhone(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !busy && onGo()}
-          aria-label="Phone number"
-        />
+    <>
+      <div className="layer-row">
+        <div className="layer-phone">
+          <Smartphone size={15} />
+          <input
+            inputMode="tel"
+            value={phone}
+            placeholder="(555) 123-4567"
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !busy && onGo()}
+            aria-label="Phone number"
+          />
+        </div>
+        <button className="btn" onClick={onGo} disabled={busy}>
+          {label}
+        </button>
       </div>
-      <button className="btn" onClick={onGo} disabled={busy}>
-        {label}
-      </button>
-    </div>
+      <div className="layer-trust">
+        <Lock size={13} /> Secured by Plaid · we never see your login
+      </div>
+    </>
   );
 }
