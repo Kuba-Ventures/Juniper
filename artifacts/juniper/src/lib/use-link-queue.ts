@@ -24,7 +24,7 @@ export type LinkQueueControls = {
 };
 
 export function useLinkQueue(opts?: {
-  onItemLinked?: () => void;
+  onItemLinked?: (institution?: string) => void;
   onDone?: (result: LinkResult) => void;
 }): LinkQueueControls {
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export function useLinkQueue(opts?: {
       if (item) {
         resultRef.current.linked += 1;
         trackEngagement("connection_linked");
-        onItemLinkedRef.current?.();
+        onItemLinkedRef.current?.(institution?.name);
       } else {
         resultRef.current.failed += 1;
       }

@@ -23,6 +23,13 @@ export type PlaidItem = {
 
 export type LinkInstitution = { institution_id?: string; name?: string };
 
+// Normalized key for matching an institution across the connect flow (Layer
+// import, gallery link, manual add) against the gallery tiles, so a name that
+// came back capitalized or padded still lines up. Case- and whitespace-
+// insensitive; shared by ConnectStep (building the set) and InstitutionPicker
+// (checking it) so both sides agree.
+export const normInstitutionName = (s: string): string => s.trim().toLowerCase();
+
 async function authedFetch(input: string, init?: RequestInit): Promise<Response> {
   const token = await getAccessToken();
   return fetch(input, {

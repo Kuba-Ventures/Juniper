@@ -28,12 +28,16 @@ import { trackEngagement } from "@/lib/analytics";
 //  - "demo": simulated discovery so the whole flow is testable on Sandbox. The
 //    recognized accounts are mocked and, on connect, saved as manual accounts
 //    (tier 3) so they actually land on the dashboard + net worth.
-export function LayerDiscovery({ onLinked }: { onLinked: () => void }) {
+// `onLinked` optionally carries the institution names that were imported, so the
+// caller can reflect them as already-connected in the gallery below.
+type OnLinked = (institutions?: string[]) => void;
+
+export function LayerDiscovery({ onLinked }: { onLinked: OnLinked }) {
   return layerDemo() ? <LayerDemo onLinked={onLinked} /> : <LayerLive onLinked={onLinked} />;
 }
 
 // ── live (real Plaid Layer) ──────────────────────────────────────────────────
-function LayerLive({ onLinked }: { onLinked: () => void }) {
+function LayerLive({ onLinked }: { onLinked: OnLinked }) {
   const [phone, setPhone] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,7 +53,7 @@ function LayerLive({ onLinked }: { onLinked: () => void }) {
       const item = await exchangePublicToken(publicToken, institution);
       if (item) {
         trackEngagement("connection_linked");
-        onLinked();
+        onLinked(institution?.name ? [institution.name] : undefined);
         void syncFinances();
       } else {
         setNotice("We couldn't finish importing those accounts. You can pick them below instead.");
@@ -114,7 +118,7 @@ const DEMO_ACCOUNTS: DemoAcct[] = [
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const catLabel = (key: ManualCategory) => MANUAL_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 
-function LayerDemo({ onLinked }: { onLinked: () => void }) {
+function LayerDemo({ onLinked }: { onLinked: OnLinked }) {
   const [phase, setPhase] = useState<"phone" | "loading" | "results" | "done">("phone");
   const [phone, setPhone] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set(DEMO_ACCOUNTS.map((a) => a.id)));
@@ -164,7 +168,8 @@ function LayerDemo({ onLinked }: { onLinked: () => void }) {
     if (ok > 0) {
       setImportedCount(ok);
       trackEngagement("connection_linked");
-      onLinked();
+      // Report the imported institutions so the gallery below can check them off.
+      onLinked([...new Set(picked.map((a) => a.institution))]);
       void syncFinances();
       setPhase("done");
     } else {
