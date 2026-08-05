@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
-import { syncFinances, layerEnabled, fetchCashflowEstimate } from "@/lib/plaid";
+import { syncFinances, layerEnabled, pollCashflowEstimate } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -296,38 +296,42 @@ function IncomeStep({
   const [status, setStatus] = useState<"idle" | "loading" | "estimated" | "none">(
     linked ? "loading" : "idle",
   );
-  const touched = useRef(false);
+  // Per-field so editing one field doesn't block a late estimate for the other.
+  const touchedIncome = useRef(false);
+  const touchedExpenses = useRef(false);
 
   useEffect(() => {
     if (!linked) return;
-    let alive = true;
-    fetchCashflowEstimate()
+    const cancel = { aborted: false };
+    // Poll for a few seconds: the sync fired at link time is async, so the
+    // estimate usually isn't ready on the first read.
+    pollCashflowEstimate({ signal: cancel })
       .then((est) => {
-        if (!alive) return;
-        if (est && (est.income > 0 || est.spent > 0)) {
-          if (!touched.current) {
-            if (income == null && est.income > 0) setIncome(est.income);
-            if (expenses == null && est.spent > 0) setExpenses(est.spent);
-          }
+        if (cancel.aborted) return;
+        if (est) {
+          if (!touchedIncome.current && income == null && est.income > 0) setIncome(est.income);
+          if (!touchedExpenses.current && expenses == null && est.spent > 0) setExpenses(est.spent);
           setStatus("estimated");
         } else {
           setStatus("none");
         }
       })
-      .catch(() => alive && setStatus("none"));
+      .catch(() => {
+        if (!cancel.aborted) setStatus("none");
+      });
     return () => {
-      alive = false;
+      cancel.aborted = true;
     };
     // Runs once when the step mounts; `linked` is stable by the time we're here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linked]);
 
   const onIncome = (v: number | undefined) => {
-    touched.current = true;
+    touchedIncome.current = true;
     setIncome(v);
   };
   const onExpenses = (v: number | undefined) => {
-    touched.current = true;
+    touchedExpenses.current = true;
     setExpenses(v);
   };
 
