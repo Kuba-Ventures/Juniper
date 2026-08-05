@@ -199,6 +199,12 @@ never-used-Plaid users get a good path:
     `VITE_PLAID_LAYER=1`. Then **verify Layer's multi-item return + exchange
     end-to-end** (the one path that can't be exercised on Sandbox; the scaffold
     reuses the standard public-token exchange and is marked to re-verify).
+  - [x] **Demo mode for Sandbox testing:** `VITE_PLAID_LAYER=demo` runs the full
+    tier-1 UX without Production, phone entry, a "recognizing you…" beat, then a
+    **Juniper-rendered categorized account list with Select all** (the experience
+    the real Plaid-hosted Layer screen provides). Recognized accounts are mocked
+    and, on connect, saved as manual accounts so they actually land on the
+    dashboard + net worth. `LayerDiscovery` branches live vs demo.
   - **Known limit:** Layer only knows accounts *already in the Plaid network for
     that person*. It is not an omniscient "every account you own" lookup, hence
     tiers 2 + 3 are permanent, not stopgaps.
