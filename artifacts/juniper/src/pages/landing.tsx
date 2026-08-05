@@ -307,7 +307,7 @@ export default function Landing() {
           }}
         />
         {/* Content */}
-        <div className="relative px-6 md:px-16 py-24 md:py-40" style={{ width: "100%", zIndex: 1 }}>
+        <div className="relative px-6 md:px-16 py-14 md:py-40" style={{ width: "100%", zIndex: 1 }}>
           <motion.div
             initial="hidden"
             animate="visible"
@@ -319,7 +319,7 @@ export default function Landing() {
               variants={fadeUp}
               style={{
                 fontFamily: serif,
-                fontSize: "clamp(40px, 5vw, 66px)",
+                fontSize: "clamp(30px, 8vw, 66px)",
                 fontWeight: 400,
                 lineHeight: 1.05,
                 letterSpacing: "-0.025em",
@@ -512,7 +512,7 @@ export default function Landing() {
                 <span
                   style={{
                     fontFamily: serif,
-                    fontSize: "clamp(64px, 7vw, 96px)",
+                    fontSize: "clamp(44px, 12vw, 96px)",
                     fontWeight: 300,
                     color: sage,
                     lineHeight: 1,
