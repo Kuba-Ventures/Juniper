@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine } from "lucide-react";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -8,6 +8,7 @@ import {
   removePlaidItem,
   syncFinances,
   layerEnabled,
+  normInstitutionName,
   type PlaidItem,
 } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
@@ -122,6 +123,17 @@ export function ConnectionsView() {
   const hasItems = items.length > 0 || manualAccts.length > 0;
   const shownNotice = notice || queueNotice;
 
+  // Institutions already on file (linked via Plaid or added by hand) so the
+  // gallery below shows them as "Connected" instead of pickable — a returning
+  // member shouldn't be invited to re-link a bank they already have. Refreshes
+  // with `items`/`manualAccts` as connections are added or removed.
+  const connected = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of items) if (it.institution_name) set.add(normInstitutionName(it.institution_name));
+    for (const m of manualAccts) if (m.institution) set.add(normInstitutionName(m.institution));
+    return set;
+  }, [items, manualAccts]);
+
   return (
     <div className="frame">
       <PageHeader
@@ -227,7 +239,7 @@ export function ConnectionsView() {
                   onCancel={() => setShowManual(false)}
                 />
               ) : (
-                <InstitutionPicker onConnect={handleConnect} onManual={() => setShowManual(true)} busy={connecting} />
+                <InstitutionPicker onConnect={handleConnect} onManual={() => setShowManual(true)} busy={connecting} connected={connected} />
               )}
             </div>
           </>
