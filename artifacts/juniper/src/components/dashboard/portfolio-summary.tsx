@@ -11,16 +11,16 @@ import { DOMAINS } from "@/components/dashboard/domain-tile-grid";
 // together. Aggregates only what's comparable across heterogeneous plan shapes;
 // everything else falls back to a per-plan chip that links into the plan.
 
-const sage = "#5C7A65";
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
-const border = "#E8E2D6";
-const sageFill = "rgba(92,122,101,0.08)";
+const sage = "hsl(var(--primary))";
+const ink = "hsl(var(--foreground))";
+const muted = "hsl(var(--muted-foreground))";
+const border = "hsl(var(--border))";
+const sageFill = "hsl(var(--primary) / 0.10)";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 // Slightly warmer than pure white so the summary reads as a distinct band above
 // the domain tiles, without introducing a new palette token elsewhere.
-const summaryBg = "#F4EFE7";
+const summaryBg = "hsl(var(--card))";
 
 // Backstop the em-dash convention on any plan-generated text we surface.
 function displayContent(text: string): string {
@@ -177,7 +177,7 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div style={{ background: "#fff", border: `1px solid ${border}`, borderRadius: 12, padding: "14px 16px" }}>
+    <div style={{ background: "hsl(var(--card))", border: `1px solid ${border}`, borderRadius: 12, padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: sage }}>
         {icon}
         <span style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", color: muted }}>
@@ -208,7 +208,7 @@ function FocusRow({
         display: "flex",
         alignItems: "center",
         gap: 12,
-        background: "#fff",
+        background: "hsl(var(--card))",
         border: `1px solid ${border}`,
         borderRadius: 10,
         padding: "12px 14px",

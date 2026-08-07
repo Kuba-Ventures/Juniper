@@ -4,8 +4,8 @@ import { DomainTileGrid } from "@/components/dashboard/domain-tile-grid";
 import { PortfolioSummary } from "@/components/dashboard/portfolio-summary";
 import { fetchPlans, type Plan } from "@/lib/plans";
 
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
+const ink = "hsl(var(--foreground))";
+const muted = "hsl(var(--muted-foreground))";
 const serif = "'Fraunces', Georgia, serif";
 
 type Props = {

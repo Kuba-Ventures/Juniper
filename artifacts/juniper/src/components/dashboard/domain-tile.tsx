@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
 import type { PlanKpi, PlanNextAction } from "@/lib/plans";
 
-const sage = "#5C7A65";
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
-const border = "#E8E2D6";
+const sage = "hsl(var(--primary))";
+const ink = "hsl(var(--foreground))";
+const muted = "hsl(var(--muted-foreground))";
+const border = "hsl(var(--border))";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
@@ -50,7 +50,7 @@ export function DomainTile({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: "#fff",
+        background: "hsl(var(--card))",
         border: `1px solid ${border}`,
         borderRadius: 16,
         padding: "28px 26px",
@@ -59,7 +59,7 @@ export function DomainTile({
         gap: isActive ? 16 : 18,
         transition: "box-shadow 0.15s, border-color 0.15s",
         boxShadow: hovered ? "0 4px 24px rgba(0,0,0,0.06)" : "none",
-        borderColor: hovered ? "rgba(92,122,101,0.35)" : border,
+        borderColor: hovered ? "hsl(var(--primary) / 0.45)" : border,
         position: "relative",
       }}
     >
@@ -86,7 +86,7 @@ export function DomainTile({
           width: 44,
           height: 44,
           borderRadius: "50%",
-          background: "rgba(92,122,101,0.10)",
+          background: "hsl(var(--primary) / 0.12)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -171,7 +171,7 @@ export function DomainTile({
           cursor: "pointer",
           transition: "background 0.15s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(92,122,101,0.08)")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "hsl(var(--primary) / 0.10)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         {buttonLabel}
@@ -203,7 +203,7 @@ function MiniKpi({ kpi }: { kpi: PlanKpi }) {
         style={{
           height: 3,
           borderRadius: 2,
-          background: "rgba(92,122,101,0.10)",
+          background: "hsl(var(--primary) / 0.12)",
           overflow: "hidden",
         }}
       >

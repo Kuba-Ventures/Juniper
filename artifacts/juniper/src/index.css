@@ -178,68 +178,70 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: red; /*replace with H S L */
+  /* Warm juniper-dark palette — a deep green-charcoal ground with warm
+     off-white text, keeping the brand's juniper green as the accent. */
+  --background: 156 16% 10%; /* deep green-charcoal #15201b */
 
-  --foreground: red; /*replace with H S L */
+  --foreground: 40 20% 92%; /* warm off-white */
 
-  --border: red; /*replace with H S L */
+  --border: 153 10% 24%;
 
-  --card: red; /*replace with H S L */
+  --card: 156 14% 14%; /* raised surface above --background */
 
-  --card-foreground: red; /*replace with H S L */
+  --card-foreground: 40 20% 92%;
 
-  --card-border: red; /*replace with H S L */
+  --card-border: 153 10% 27%;
 
-  --sidebar: red; /*replace with H S L */
+  --sidebar: 156 18% 12%;
 
-  --sidebar-foreground: red; /*replace with H S L */
+  --sidebar-foreground: 40 18% 90%;
 
-  --sidebar-border: red; /*replace with H S L */
+  --sidebar-border: 153 10% 22%;
 
-  --sidebar-primary: red; /*replace with H S L */
+  --sidebar-primary: 153 34% 56%;
 
-  --sidebar-primary-foreground: red; /*replace with H S L */
+  --sidebar-primary-foreground: 156 25% 9%;
 
-  --sidebar-accent: red; /*replace with H S L */
+  --sidebar-accent: 153 14% 20%;
 
-  --sidebar-accent-foreground: red; /*replace with H S L */
+  --sidebar-accent-foreground: 40 20% 92%;
 
-  --sidebar-ring: red; /*replace with H S L */
+  --sidebar-ring: 153 34% 56%;
 
-  --popover: red; /*replace with H S L */
+  --popover: 156 14% 14%;
 
-  --popover-foreground: red; /*replace with H S L */
+  --popover-foreground: 40 20% 92%;
 
-  --popover-border: red; /*replace with H S L */
+  --popover-border: 153 10% 27%;
 
-  --primary: red; /*replace with H S L */
+  --primary: 153 34% 54%; /* juniper green, brightened for dark ground */
 
-  --primary-foreground: red; /*replace with H S L */
+  --primary-foreground: 156 25% 9%;
 
-  --secondary: red; /*replace with H S L */
+  --secondary: 153 12% 20%;
 
-  --secondary-foreground: red; /*replace with H S L */
+  --secondary-foreground: 40 20% 90%;
 
-  --muted: red; /*replace with H S L */
+  --muted: 153 10% 20%;
 
-  --muted-foreground: red; /*replace with H S L */
+  --muted-foreground: 153 12% 64%;
 
-  --accent: red; /*replace with H S L */
+  --accent: 153 14% 22%;
 
-  --accent-foreground: red; /*replace with H S L */
+  --accent-foreground: 40 20% 92%;
 
-  --destructive: red; /*replace with H S L */
+  --destructive: 0 62% 56%;
 
-  --destructive-foreground: red; /*replace with H S L */
+  --destructive-foreground: 0 0% 100%;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: red; /*replace with H S L */
-  --ring: red; /*replace with H S L */
-  --chart-1: red; /*replace with H S L */
-  --chart-2: red; /*replace with H S L */
-  --chart-3: red; /*replace with H S L */
-  --chart-4: red; /*replace with H S L */
-  --chart-5: red; /*replace with H S L */
+  --input: 153 12% 32%;
+  --ring: 153 34% 54%;
+  --chart-1: 153 34% 54%;
+  --chart-2: 40 45% 62%;
+  --chart-3: 200 25% 58%;
+  --chart-4: 30 35% 58%;
+  --chart-5: 10 30% 58%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
