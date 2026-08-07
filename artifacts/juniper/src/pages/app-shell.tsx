@@ -25,13 +25,11 @@ import { PlanDetail } from "@/pages/plan-detail";
 import { ConnectionsView } from "@/pages/connections";
 import type { Domain } from "@/components/dashboard/domain-tile-grid";
 
-// Theme-aware surface palette — resolves against the CSS variables in
-// index.css so the app chrome follows the light/dark toggle.
-const sage = "hsl(var(--primary))";
-const cream = "hsl(var(--background))";
-const ink = "hsl(var(--foreground))";
-const muted = "hsl(var(--muted-foreground))";
-const border = "hsl(var(--border))";
+const sage = "#5C7A65";
+const cream = "#FAF7F2";
+const ink = "#2A2A2A";
+const muted = "#6B6B6B";
+const border = "#E8E2D6";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
