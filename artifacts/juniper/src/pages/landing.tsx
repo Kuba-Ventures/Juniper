@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, MessageSquare, Clock } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
@@ -64,7 +65,7 @@ function WaitlistForm({ id }: { id: string }) {
         body: JSON.stringify({ email, journey_stage: stage }),
       });
     } catch {
-      // Endpoint not yet wired — show success state anyway
+      // Endpoint not yet wired, show success state anyway
     }
     setLoading(false);
     setSubmitted(true);
@@ -256,9 +257,26 @@ export default function Landing() {
             Juniper
           </span>
         </div>
-        <a href="/app" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
-          Log in
-        </a>
+        <div className="flex items-center gap-4 md:gap-5">
+          <Link href="/auth/sign-in" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
+            Log in
+          </Link>
+          <Link
+            href="/auth/sign-up"
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#fff",
+              background: sage,
+              padding: "9px 18px",
+              borderRadius: 8,
+              textDecoration: "none",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Get started
+          </Link>
+        </div>
       </header>
 
       {/* ── 2. HERO ────────────────────────────────────────────────────── */}
@@ -289,7 +307,7 @@ export default function Landing() {
           }}
         />
         {/* Content */}
-        <div className="relative px-6 md:px-16 py-24 md:py-40" style={{ width: "100%", zIndex: 1 }}>
+        <div className="relative px-6 md:px-16 py-14 md:py-40" style={{ width: "100%", zIndex: 1 }}>
           <motion.div
             initial="hidden"
             animate="visible"
@@ -301,7 +319,7 @@ export default function Landing() {
               variants={fadeUp}
               style={{
                 fontFamily: serif,
-                fontSize: "clamp(40px, 5vw, 66px)",
+                fontSize: "clamp(30px, 8vw, 66px)",
                 fontWeight: 400,
                 lineHeight: 1.05,
                 letterSpacing: "-0.025em",
@@ -320,6 +338,12 @@ export default function Landing() {
             <motion.div variants={fadeUp}>
               <WaitlistForm id="hero" />
             </motion.div>
+            <motion.p variants={fadeUp} style={{ fontSize: 14, color: muted, margin: "16px 0 0" }}>
+              Already have access?{" "}
+              <Link href="/auth/sign-up" style={{ color: sage, fontWeight: 500, textDecoration: "none" }}>
+                Create your account →
+              </Link>
+            </motion.p>
           </motion.div>
         </div>
       </section>
@@ -488,7 +512,7 @@ export default function Landing() {
                 <span
                   style={{
                     fontFamily: serif,
-                    fontSize: "clamp(64px, 7vw, 96px)",
+                    fontSize: "clamp(44px, 12vw, 96px)",
                     fontWeight: 300,
                     color: sage,
                     lineHeight: 1,

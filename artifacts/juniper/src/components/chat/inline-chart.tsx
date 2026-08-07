@@ -190,7 +190,7 @@ export function parseSegments(content: string): Segment[] {
   while (i < content.length) {
     const start = content.indexOf(marker, i);
     if (start === -1) {
-      // No more chart tokens — remainder is plain text
+      // No more chart tokens, remainder is plain text
       if (i < content.length) segments.push({ kind: "text", content: content.slice(i) });
       break;
     }
@@ -214,7 +214,7 @@ export function parseSegments(content: string): Segment[] {
     }
 
     if (closed === -1) {
-      // Still streaming — incomplete token
+      // Still streaming, incomplete token
       segments.push({ kind: "chart-pending" });
       break;
     }
@@ -225,7 +225,7 @@ export function parseSegments(content: string): Segment[] {
       const spec = JSON.parse(jsonStr) as ChartSpec;
       segments.push({ kind: "chart", spec });
     } catch {
-      // Malformed — emit raw text so nothing is silently swallowed
+      // Malformed, emit raw text so nothing is silently swallowed
       segments.push({ kind: "text", content: content.slice(start, closed + 1) });
     }
     i = closed + 1;

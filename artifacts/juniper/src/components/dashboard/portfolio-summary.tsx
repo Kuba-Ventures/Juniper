@@ -318,7 +318,7 @@ export function PortfolioSummary({ plans }: { plans: Plan[] }) {
         </div>
       )}
 
-      {/* Per-plan chips — the catch-all for heterogeneous shapes (e.g. prenup,
+      {/* Per-plan chips, the catch-all for heterogeneous shapes (e.g. prenup,
           combining finances) that don't map to a numeric rollup. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {plans.map((p) => (

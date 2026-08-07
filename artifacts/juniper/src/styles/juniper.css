@@ -1,0 +1,844 @@
+/* Juniper app styles, scoped under .jnpr so they never collide with shadcn globals.
+   Tokens are the locked "cool off-white + pine" identity (see DESIGN.md). */
+
+.jnpr {
+  --jnpr-ground:#F4F7F3; --jnpr-surface:#FFFFFF; --jnpr-surface-2:#FAFBF9; --jnpr-surface-3:#EAF0E9;
+  --jnpr-ink:#232B21; --jnpr-ink-2:#556052; --jnpr-ink-3:#889081; --jnpr-line:#E3E9E1; --jnpr-line-2:#EEF2EC;
+  --jnpr-accent:#1C4A31; --jnpr-accent-deep:#123320; --jnpr-accent-soft:#E1EBE3; --jnpr-on-accent:#FFFFFF;
+  --jnpr-head:#173D28; --jnpr-pine:#234E37;
+  --jnpr-good:#2F8558; --jnpr-good-soft:#E1EFE6; --jnpr-warn:#A9781E; --jnpr-warn-soft:#F4ECD6; --jnpr-bad:#B4523B; --jnpr-bad-soft:#F3E2DC;
+  --jnpr-c1:#2F8558; --jnpr-c2:#A8781E; --jnpr-c3:#3E6FB0; --jnpr-c4:#B0563F; --jnpr-c5:#9455A8; --jnpr-c6:#5E7D2E; --jnpr-c7:#9AA090;
+  --jnpr-r:16px; --jnpr-r-sm:11px;
+  --jnpr-shadow:0 1px 2px rgba(20,32,20,.05), 0 8px 24px -14px rgba(20,32,20,.13);
+  --jnpr-shadow-lg:0 2px 8px rgba(20,32,20,.08), 0 24px 50px -22px rgba(20,32,20,.22);
+  --jnpr-ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+
+  background:var(--jnpr-ground); color:var(--jnpr-ink); font-family:var(--jnpr-ff);
+  min-height:100dvh; -webkit-font-smoothing:antialiased; line-height:1.5; font-size:15px;
+}
+.dark .jnpr {
+  --jnpr-ground:#0F140F; --jnpr-surface:#171E17; --jnpr-surface-2:#1D251D; --jnpr-surface-3:#242D24;
+  --jnpr-ink:#E8EFE6; --jnpr-ink-2:#A6B0A2; --jnpr-ink-3:#717B6E; --jnpr-line:#2A332A; --jnpr-line-2:#212A21;
+  --jnpr-accent:#6FB98C; --jnpr-accent-deep:#8ACFA4; --jnpr-accent-soft:#213024; --jnpr-on-accent:#0C120D;
+  --jnpr-head:#BFE0C8; --jnpr-pine:#1F3B2B;
+  --jnpr-good:#6FB98C; --jnpr-good-soft:#1E2A20; --jnpr-warn:#D3A24A; --jnpr-warn-soft:#2E2716; --jnpr-bad:#D97E64; --jnpr-bad-soft:#31201B;
+  --jnpr-c1:#3E9E6B; --jnpr-c2:#B5822F; --jnpr-c3:#5A88C8; --jnpr-c4:#C86B52; --jnpr-c5:#AE6EC0; --jnpr-c6:#6E9138; --jnpr-c7:#8B927E;
+  --jnpr-shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.6);
+  --jnpr-shadow-lg:0 2px 8px rgba(0,0,0,.35), 0 24px 50px -22px rgba(0,0,0,.7);
+}
+
+.jnpr *{box-sizing:border-box}
+.jnpr .tnum{font-variant-numeric:tabular-nums}
+.jnpr h1,.jnpr h2,.jnpr h3,.jnpr h4{margin:0;font-weight:650;letter-spacing:-.01em;text-wrap:balance;color:var(--jnpr-head)}
+
+/* ---------- app bar ---------- */
+.jnpr .appbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--jnpr-ground) 90%,transparent);
+  backdrop-filter:saturate(1.3) blur(12px);border-bottom:1px solid var(--jnpr-line)}
+/* The bar stacks two rows: brand · workspace switcher · account controls all
+   inline on top, then the primary nav below. A 3-column grid (1fr auto 1fr)
+   keeps the switcher optically centered no matter how wide the side clusters. */
+.jnpr .appbar-in{max-width:1160px;margin:0 auto;padding:10px 22px 11px;display:flex;flex-direction:column;gap:9px}
+.jnpr .appbar-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+.jnpr .appbar-top > .brand{justify-self:start}
+.jnpr .appbar-ws{display:flex;justify-content:center;min-width:0}
+.jnpr .appbar-acct{display:flex;align-items:center;gap:12px;justify-self:end}
+.jnpr .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;font-size:18px;color:var(--jnpr-head)}
+.jnpr .brand img{width:auto;height:32px;flex:0 0 auto;object-fit:contain;display:block}
+.jnpr .nav{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}
+.jnpr .nav a{font-size:13px;font-weight:550;color:var(--jnpr-ink-3);text-decoration:none;padding:7px 10px;border-radius:9px;
+  cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,background .15s;white-space:nowrap;border:0;background:transparent;font-family:inherit}
+.jnpr .nav a:hover{color:var(--jnpr-ink);background:var(--jnpr-surface-3)}
+.jnpr .nav a.on{color:var(--jnpr-accent);background:var(--jnpr-accent-soft);font-weight:650}
+.jnpr .nav .count{font-size:11px;font-weight:700;background:var(--jnpr-surface);color:var(--jnpr-ink-3);padding:0 6px;border-radius:20px;line-height:18px}
+.jnpr .nav a.on .count{background:var(--jnpr-surface);color:var(--jnpr-accent)}
+.jnpr .spacer{flex:1}
+.jnpr .icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--jnpr-line);background:var(--jnpr-surface);
+  display:grid;place-items:center;color:var(--jnpr-accent);cursor:pointer}
+.jnpr .icon-btn:hover{background:var(--jnpr-surface-3)}.jnpr .icon-btn svg{width:17px;height:17px}
+.jnpr .plaid-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--jnpr-ink-3);
+  background:var(--jnpr-surface);border:1px solid var(--jnpr-line);padding:6px 11px;border-radius:20px}
+.jnpr .plaid-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--jnpr-good)}
+.jnpr .avatar{width:33px;height:33px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);
+  display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer}
+/* The primary nav is text-only (no icons). On mobile it keeps its own row
+   (below the brand/account row and the centered switcher) and scrolls
+   horizontally rather than wrapping, so every label keeps a real tap target. */
+@media(max-width:900px){
+  .jnpr .appbar-in{padding:9px 16px 10px;gap:8px}
+  .jnpr .plaid-pill{display:none}
+  .jnpr .nav{flex-wrap:nowrap;justify-content:flex-start;min-width:0;overflow-x:auto;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .jnpr .nav::-webkit-scrollbar{display:none}
+}
+/* Phones can't fit brand · switcher · account on one line, so the switcher
+   drops to its own centered row just below the brand + account row. */
+@media(max-width:600px){
+  .jnpr .appbar-top{display:flex;flex-wrap:wrap;align-items:center;row-gap:8px}
+  .jnpr .appbar-top > .brand{margin-right:auto}
+  .jnpr .appbar-acct{margin-left:auto}
+  .jnpr .appbar-ws{order:2;flex-basis:100%;justify-content:center}
+}
+
+.jnpr .frame{max-width:1160px;margin:24px auto 40px;padding:0 22px}
+
+/* ---------- greeting + pine page headers ---------- */
+.jnpr .greet,.jnpr .page-head{background:var(--jnpr-pine);border-radius:var(--jnpr-r);padding:22px 24px;margin:2px 0 18px;box-shadow:var(--jnpr-shadow)}
+.jnpr .greet h1,.jnpr .page-head h1{font-size:25px;color:#FBFDFB}
+.jnpr .greet .meta{color:#B9D3BE;font-size:13.5px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jnpr .greet .meta .up{color:#8FE0A8;font-weight:600}
+.jnpr .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.jnpr .page-head .sub{color:#B9D3BE;font-size:13.5px;margin-top:4px;max-width:52ch}
+.jnpr .page-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.jnpr .page-head .btn{background:#FBFDFB;color:var(--jnpr-accent-deep)}
+.jnpr .page-head .btn.ghost{background:transparent;color:#EAF3EA;border-color:rgba(255,255,255,.35)}
+.jnpr .page-head .pills{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.2)}
+.jnpr .page-head .pills button{color:#CFE3D2}
+.jnpr .page-head .pills button.on{background:#FBFDFB;color:var(--jnpr-accent-deep);box-shadow:none}
+.jnpr .page-head .search,.jnpr .page-head .plaid-pill{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#DDEBDE}
+.jnpr .page-head .search input{color:#fff}.jnpr .page-head .search input::placeholder{color:#9FBBA4}
+
+/* ---------- cards & grid ---------- */
+.jnpr .grid{display:grid;gap:16px}
+/* Grid children default to min-width:auto and refuse to shrink below their
+   content, which pushed the whole app wider than the viewport on phones.
+   Letting them shrink to their track keeps everything inside the screen. */
+.jnpr .grid > *{min-width:0}
+.jnpr .card{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);padding:18px;box-shadow:var(--jnpr-shadow)}
+.jnpr .card.pad-lg{padding:22px}
+.jnpr .card h3{font-size:14px}
+.jnpr .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;margin-bottom:14px;flex-wrap:wrap}
+.jnpr .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .link{font-size:12.5px;font-weight:600;color:var(--jnpr-accent);text-decoration:none;cursor:pointer;background:none;border:0;padding:0;font-family:inherit}
+.jnpr .link:hover{text-decoration:underline}
+.jnpr .hero{grid-template-columns:1.5fr 1fr}.jnpr .two{grid-template-columns:1fr 1fr}
+@media(max-width:860px){.jnpr .hero,.jnpr .two{grid-template-columns:1fr}}
+
+.jnpr .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
+  background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+.jnpr .btn:hover{filter:brightness(1.08)}.jnpr .btn svg{width:14px;height:14px}
+.jnpr .btn.ghost{background:var(--jnpr-surface);color:var(--jnpr-ink);border:1px solid var(--jnpr-line)}
+.jnpr .btn.sm{padding:7px 12px;font-size:12.5px}
+.jnpr .pills{display:inline-flex;background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:10px;padding:4px;gap:3px}
+.jnpr .pills button{border:0;background:transparent;color:var(--jnpr-ink-2);font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;font-family:inherit}
+.jnpr .pills button.on{background:var(--jnpr-surface);color:var(--jnpr-accent);box-shadow:var(--jnpr-shadow)}
+.jnpr .search{display:flex;align-items:center;gap:8px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:10px;padding:8px 12px;min-width:220px;color:var(--jnpr-ink-3)}
+.jnpr .search svg{width:15px;height:15px;flex:0 0 auto}
+.jnpr .search input{border:0;background:transparent;outline:0;font-family:inherit;font-size:13px;color:var(--jnpr-ink);width:100%}
+
+.jnpr .big-num{font-size:38px;font-weight:700;letter-spacing:-.025em;line-height:1;color:var(--jnpr-ink)}
+.jnpr .delta{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:3px 8px;border-radius:20px}
+.jnpr .delta.up{color:var(--jnpr-good);background:var(--jnpr-good-soft)}.jnpr .delta.down{color:var(--jnpr-bad);background:var(--jnpr-bad-soft)}
+.jnpr .delta svg{width:12px;height:12px}
+
+.jnpr .cf-foot{display:flex;gap:1px;margin-top:14px;background:var(--jnpr-line);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);overflow:hidden}
+.jnpr .cf-foot > div{flex:1;min-width:0;background:var(--jnpr-surface);padding:10px 13px}
+.jnpr .cf-foot .l{font-size:11px;color:var(--jnpr-ink-3);font-weight:600}
+.jnpr .cf-foot .v{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:-.01em}
+.jnpr .cf-foot .v.pos{color:var(--jnpr-good)}.jnpr .cf-foot .v.acc{color:var(--jnpr-accent)}
+
+/* ---------- rows (accounts / transactions) ---------- */
+.jnpr .rows{display:flex;flex-direction:column}
+.jnpr .row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .row:first-child{border-top:0}
+.jnpr .tile{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;letter-spacing:-.02em}
+.jnpr .blogo{width:34px;height:34px;border-radius:9px;object-fit:cover;background:#fff;flex:0 0 auto;display:block;border:1px solid var(--jnpr-line)}
+.jnpr .blogo-lg{width:40px;height:40px;border-radius:10px;object-fit:cover;background:#fff;flex:0 0 auto;display:block;border:1px solid var(--jnpr-line)}
+.jnpr .jnpr-tip{position:absolute;pointer-events:none;background:var(--jnpr-ink);color:var(--jnpr-ground);font-size:11.5px;font-weight:600;padding:6px 9px;border-radius:8px;transform:translate(-50%,-8px);white-space:nowrap;z-index:5;box-shadow:var(--jnpr-shadow)}
+.jnpr .jnpr-tip .tv{font-weight:750;font-size:13px}
+.jnpr .row .nm{font-weight:600;font-size:13.5px}.jnpr .row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .row .amt{margin-left:auto;font-weight:650;font-size:13.5px;text-align:right}.jnpr .row .amt.inc{color:var(--jnpr-good)}
+.jnpr .apr-chip{font-size:10.5px;font-weight:700;color:var(--jnpr-bad);background:var(--jnpr-bad-soft);padding:2px 6px;border-radius:6px}
+.jnpr .subhead{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3);margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .subhead:first-child{border-top:0;padding-top:0;margin-top:0}
+
+/* ---------- budgets ---------- */
+.jnpr .bud{padding:11px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .bud:first-child{border-top:0}
+.jnpr .bud .t{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:7px}
+.jnpr .bud .t .r{color:var(--jnpr-ink-3);font-weight:550}
+.jnpr .bar{height:8px;border-radius:6px;background:var(--jnpr-surface-3);overflow:hidden}.jnpr .bar > i{display:block;height:100%;border-radius:6px}
+.jnpr .bud.ok .bar > i{background:var(--jnpr-accent)}.jnpr .bud.over .bar > i{background:var(--jnpr-warn)}.jnpr .bud .flag{color:var(--jnpr-warn);font-weight:650}
+
+/* ---------- plans (compact rows on Home) ---------- */
+.jnpr .plans-col{display:flex;flex-direction:column;gap:10px}
+.jnpr .plan-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);cursor:pointer;transition:border-color .15s,transform .15s}
+.jnpr .plan-row:hover{border-color:var(--jnpr-accent);transform:translateX(2px)}
+.jnpr .track{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;flex:0 0 auto}
+.jnpr .track svg{width:58%;height:58%;display:block;color:#fff}
+.jnpr .pr-body{flex:1;min-width:0}
+.jnpr .pr-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.jnpr .pr-top .pt{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .pr-top .amt{font-weight:700;font-size:13px;white-space:nowrap;color:var(--jnpr-ink)}.jnpr .pr-top .amt small{color:var(--jnpr-ink-3);font-weight:550}
+.jnpr .plan-row .bar{margin:8px 0 6px}
+.jnpr .pr-bot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--jnpr-ink-3)}
+.jnpr .status{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px}
+.jnpr .status.ok{color:var(--jnpr-good);background:var(--jnpr-good-soft)}.jnpr .status.new{color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .status.setup{color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}.jnpr .status.done{color:var(--jnpr-good);background:var(--jnpr-good-soft)}
+
+/* ---------- score strip ---------- */
+.jnpr .score-strip{display:flex;align-items:center;gap:15px;padding:14px 18px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);background:var(--jnpr-surface);box-shadow:var(--jnpr-shadow)}
+.jnpr .mini-ring{position:relative;width:46px;height:46px;flex:0 0 auto}
+.jnpr .mini-ring .rv{position:absolute;inset:0;display:grid;place-items:center;font-weight:750;font-size:15px;color:var(--jnpr-ink)}
+.jnpr .score-strip .st-t{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--jnpr-ink)}
+.jnpr .score-strip .band{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-good);background:var(--jnpr-good-soft);padding:2px 8px;border-radius:20px}
+.jnpr .score-strip .st-s{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:2px}.jnpr .score-strip .st-s b{color:var(--jnpr-ink-2)}
+.jnpr .score-strip .link{margin-left:auto;white-space:nowrap}
+
+/* ---------- charts ---------- */
+.jnpr .chart{position:relative}
+.jnpr .nw-line{fill:none;stroke:var(--jnpr-accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.jnpr .nw-area{fill:var(--jnpr-accent);opacity:.10}
+.jnpr .nw-grid{stroke:var(--jnpr-line);stroke-width:1;stroke-dasharray:2 4}
+.jnpr .nw-dot{fill:var(--jnpr-accent);stroke:var(--jnpr-surface);stroke-width:2.5}
+.jnpr .ax{fill:var(--jnpr-ink-3);font-size:10px}
+.jnpr .slice{stroke:var(--jnpr-surface);stroke-width:2;transition:opacity .12s}
+.jnpr .legend{display:flex;flex-direction:column;gap:1px}
+.jnpr .lg{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .lg:first-child{border-top:0}
+.jnpr .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.jnpr .lg .ln{font-size:12.5px;font-weight:600}.jnpr .lg .lv{margin-left:auto;font-size:12.5px;font-weight:650}.jnpr .lg .lp{font-size:11px;color:var(--jnpr-ink-3);width:34px;text-align:right}
+.jnpr .donut-wrap{display:grid;grid-template-columns:170px 1fr;gap:20px;align-items:center}
+@media(max-width:520px){.jnpr .donut-wrap{grid-template-columns:1fr}}
+.jnpr .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.jnpr .donut-center .dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .donut-center .dv{font-size:24px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+
+/* ---------- plans page (big cards) ---------- */
+.jnpr .plan-grid{grid-template-columns:1fr 1fr}
+@media(max-width:760px){.jnpr .plan-grid{grid-template-columns:1fr}}
+.jnpr .plan-lg{padding:0;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s}
+.jnpr .plan-lg:hover{border-color:var(--jnpr-accent)}
+.jnpr .plan-lg.done{opacity:.9}
+.jnpr .plan-lg .ph{display:flex;align-items:center;gap:12px;padding:18px 18px 0}
+.jnpr .plan-lg .ph .track{width:38px;height:38px;border-radius:10px;font-size:15px}
+.jnpr .plan-lg .pt{font-weight:700;font-size:16px;color:var(--jnpr-ink)}
+.jnpr .plan-lg .pn{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .plan-lg .body{padding:16px 18px}
+.jnpr .plan-lg .nums{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+.jnpr .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .plan-lg .nums .big small{font-size:12px;color:var(--jnpr-ink-3);font-weight:550}
+.jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
+.jnpr .plan-spark{margin:12px 0 2px}
+.jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
+.jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
+.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;opacity:0;transition:opacity .15s}
+.jnpr .plan-lg:hover .edit-hint{opacity:1}
+.jnpr .plan-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .plan-ask{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent-deep);background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
+.jnpr .plan-ask:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}
+.jnpr .plan-ask svg{width:14px;height:14px}
+.jnpr .plan-ask .pa-badge{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-radius:20px;font-size:10px;font-weight:700;padding:0 6px;min-width:16px;text-align:center}
+.jnpr .embed-rec{margin:0 18px 18px;display:flex;gap:12px;align-items:center;padding:13px;border-radius:var(--jnpr-r-sm);background:linear-gradient(180deg,var(--jnpr-accent-soft),var(--jnpr-surface-2));border:1px solid var(--jnpr-line)}
+.jnpr .embed-rec .save{font-weight:750;font-size:15px;color:var(--jnpr-accent-deep);white-space:nowrap;text-align:center}
+.jnpr .embed-rec .save small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .embed-rec .eb h4{font-size:12.5px;margin-bottom:2px;color:var(--jnpr-ink)}
+.jnpr .embed-rec .eb p{margin:0;font-size:11.5px;color:var(--jnpr-ink-2);line-height:1.4}
+.jnpr .embed-rec .eb .cta{margin-top:8px;display:flex;gap:8px;align-items:center}
+.jnpr .partner{font-size:11px;color:var(--jnpr-ink-3)}.jnpr .partner b{color:var(--jnpr-ink-2)}
+
+/* ---------- modal + forms ---------- */
+.jnpr .modal-bg{position:fixed;inset:0;background:rgba(15,20,15,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.jnpr .modal{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);max-width:440px;width:100%;padding:24px;box-shadow:var(--jnpr-shadow-lg);max-height:calc(100vh - 40px);overflow-y:auto}
+.jnpr .modal h3{font-size:19px;margin-bottom:9px;color:var(--jnpr-ink)}
+.jnpr .modal p{font-size:13.5px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 0 15px}
+.jnpr .modal-actions{display:flex;gap:10px}.jnpr .modal-actions .btn{flex:1;justify-content:center}
+.jnpr .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.jnpr .field label{font-size:11.5px;font-weight:600;color:var(--jnpr-ink-3)}
+.jnpr .field input{font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--jnpr-line);border-radius:9px;background:var(--jnpr-surface-2);color:var(--jnpr-ink);outline:none;width:100%}
+.jnpr .field input:focus{border-color:var(--jnpr-accent)}
+.jnpr .field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.jnpr .tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jnpr .tmpl{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface-2);font-family:inherit;font-size:13px;font-weight:600;color:var(--jnpr-ink);cursor:pointer;text-align:left}
+.jnpr .tmpl:hover{border-color:var(--jnpr-accent)}
+.jnpr .tmpl-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+.jnpr .tmpl-ic svg{width:58%;height:58%;display:block;color:#fff}
+.jnpr .disc{font-size:10.5px;color:var(--jnpr-ink-3);margin-top:14px;line-height:1.45}
+
+/* ---------- subscriptions ---------- */
+.jnpr .sum-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+@media(max-width:640px){.jnpr .sum-strip{grid-template-columns:1fr}}
+.jnpr .sum-card{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);padding:16px 18px;box-shadow:var(--jnpr-shadow)}
+.jnpr .sum-card .l{font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600}
+.jnpr .sum-card .v{font-size:24px;font-weight:750;letter-spacing:-.02em;margin-top:4px;color:var(--jnpr-ink)}.jnpr .sum-card .v.acc{color:var(--jnpr-accent)}
+.jnpr .sum-card .s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
+.jnpr .sub-row{display:flex;align-items:center;gap:14px;padding:13px 2px;border-top:1px solid var(--jnpr-line-2)}.jnpr .sub-row:first-child{border-top:0}
+.jnpr .sub-row .nm{font-weight:650;font-size:14px;color:var(--jnpr-ink)}
+.jnpr .sub-row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jnpr .sub-flag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}
+.jnpr .sub-amt{margin-left:auto;text-align:right}.jnpr .sub-amt .a{font-weight:700;font-size:14px;color:var(--jnpr-ink)}.jnpr .sub-amt .c{font-size:11px;color:var(--jnpr-ink-3)}
+.jnpr .sub-row .btn{flex:0 0 auto}.jnpr .sub-row.canceled{opacity:.55}
+.jnpr .modal .facts{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:9px}
+.jnpr .modal .fr{display:flex;justify-content:space-between;font-size:13px}.jnpr .modal .fr .k{color:var(--jnpr-ink-3)}.jnpr .modal .fr .v{font-weight:650;color:var(--jnpr-ink)}
+.jnpr .modal .save-hl{color:var(--jnpr-accent);font-weight:750}
+.jnpr .modal .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
+.jnpr .form-col{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.jnpr .form-col label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .form-col input,.jnpr .form-col select,.jnpr .form-col textarea{font:inherit;font-size:13.5px;font-weight:450;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px;outline:none;width:100%}
+.jnpr .form-col input:focus,.jnpr .form-col select:focus,.jnpr .form-col textarea:focus{border-color:var(--jnpr-accent)}
+.jnpr .form-col textarea{resize:vertical;min-height:64px}
+.jnpr .form-error{background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:9px 12px;font-size:12.5px;margin-bottom:12px}
+.jnpr .prefill-hint{display:flex;align-items:flex-start;gap:8px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep);border-radius:var(--jnpr-r-sm);padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:14px}
+.jnpr .prefill-hint svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;stroke:var(--jnpr-accent);fill:none}
+.jnpr .share-link{display:flex;gap:8px;margin-bottom:16px}
+.jnpr .share-link input{flex:1;min-width:0;font:inherit;font-size:12.5px;color:var(--jnpr-ink-2);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px}
+.jnpr .share-link .btn{flex:0 0 auto}
+/* ---------- partner panel (Stage 7 couples layer) ---------- */
+.jnpr .partner-panel{display:flex;align-items:center;gap:13px;padding:13px 16px;margin-bottom:16px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);box-shadow:var(--jnpr-shadow)}
+.jnpr .partner-panel .pp-mark{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent)}
+.jnpr .partner-panel .pp-mark svg{width:18px;height:18px}
+.jnpr .partner-panel .pp-body{flex:1;min-width:0}
+.jnpr .partner-panel .pp-title{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .partner-panel .pp-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .partner-panel .btn{flex:0 0 auto}
+
+/* ---------- score trend mini-chart ---------- */
+.jnpr .score-trend{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px 16px 12px}
+.jnpr .score-trend .st-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.jnpr .score-trend .st-head .delta{font-size:12px}
+.jnpr .score-trend .st-foot{display:flex;align-items:baseline;justify-content:space-between;margin-top:9px;font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .score-trend .st-foot b{color:var(--jnpr-ink);font-weight:700;font-size:13px}
+/* ── dashboard (overview): mobile polish ─────────────────────────────────── */
+@media(max-width:560px){
+  /* subscription rows: drop the action button to its own full-width line so it
+     stops colliding with the price and crushing the merchant name */
+  .jnpr .sub-row{flex-wrap:wrap}
+  .jnpr .sub-row .btn{flex:1 0 100%;order:5;justify-content:center;margin-top:6px}
+  /* Juniper Score strip: let "See breakdown" drop below instead of pinning
+     right and squeezing the score text into a narrow wrapping column */
+  .jnpr .score-strip{flex-wrap:wrap}
+  .jnpr .score-strip .link{margin-left:0;flex-basis:100%;margin-top:6px}
+}
+@media(max-width:520px){
+  /* income / spent / saved trio: keep three across but tighten so long tabular
+     values ("+$12,500") don't clip in the narrow cells */
+  .jnpr .cf-foot .v{font-size:14px}
+  .jnpr .cf-foot>div{padding:9px 9px}
+}
+
+/* ---------- credit page ---------- */
+.jnpr .credit-hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+@media(max-width:720px){.jnpr .credit-hero{grid-template-columns:1fr}}
+.jnpr .credit-num{display:flex;align-items:baseline;gap:12px;margin-top:6px}
+.jnpr .credit-num .big{font-size:56px;font-weight:750;letter-spacing:-.03em;line-height:1;color:var(--jnpr-ink)}
+.jnpr .credit-band-lg{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--jnpr-good);margin-top:4px}
+.jnpr .credit-scale{margin-top:18px}
+.jnpr .scale-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px}.jnpr .scale-bar > span{flex:1;border-radius:2px}
+.jnpr .scale-marker{position:relative;height:16px;margin-top:5px}.jnpr .scale-marker i{position:absolute;top:0;width:3px;height:16px;background:var(--jnpr-ink);border-radius:2px;transform:translateX(-50%)}
+.jnpr .scale-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--jnpr-ink-3);margin-top:6px}
+.jnpr .alert{display:flex;gap:12px;align-items:flex-start;padding:12px 2px;border-top:1px solid var(--jnpr-line-2)}.jnpr .alert:first-child{border-top:0}
+.jnpr .alert .adot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto}.jnpr .alert .adot.up{background:var(--jnpr-good)}.jnpr .alert .adot.down{background:var(--jnpr-bad)}
+.jnpr .alert .at{font-weight:600;font-size:13px;color:var(--jnpr-ink)}.jnpr .alert .ad{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .alert .imp{margin-left:auto;font-size:12px;font-weight:750}.jnpr .alert .imp.up{color:var(--jnpr-good)}.jnpr .alert .imp.down{color:var(--jnpr-bad)}
+.jnpr .cfactor{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .cfactor:first-child{border-top:0}
+.jnpr .cfactor .cn{font-weight:600;font-size:13px;color:var(--jnpr-ink)}.jnpr .cfactor .cv{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .cfactor .cr{margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+.jnpr .cr.exc{color:var(--jnpr-good);background:var(--jnpr-good-soft)}.jnpr .cr.good{color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}.jnpr .cr.fair{color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}
+.jnpr .util-hero{display:flex;align-items:center;gap:22px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--jnpr-line-2);flex-wrap:wrap}
+.jnpr .util-hero .big{font-size:32px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .util-hero .ub{flex:1;min-width:220px}
+.jnpr .card-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .card-row:first-child{border-top:0}
+.jnpr .card-row .ci{flex:1;min-width:0}.jnpr .card-row .cn{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}.jnpr .card-row .csub{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
+.jnpr .card-row .util{width:150px;flex:0 0 auto}
+.jnpr .card-row .util .ut{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px;color:var(--jnpr-ink-2)}.jnpr .card-row .util .ut .hi{color:var(--jnpr-warn)}
+@media(max-width:560px){.jnpr .card-row .util{width:110px}}
+
+/* ---------- recommended (marketplace) ---------- */
+.jnpr .sec-title{font-size:13px;font-weight:700;margin:2px 2px 12px;color:var(--jnpr-ink)}
+.jnpr .lib-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 2px 14px}.jnpr .lib-head .sec-title{margin:0}
+.jnpr .mkt-grid{grid-template-columns:repeat(3,1fr)}
+@media(max-width:860px){.jnpr .mkt-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.jnpr .mkt-grid{grid-template-columns:1fr}}
+.jnpr .mkt-card{display:flex;flex-direction:column;gap:10px;padding:16px;position:relative;overflow:hidden}
+.jnpr .mkt-card.used{opacity:.7}
+.jnpr .mkt-top{display:flex;align-items:center;gap:11px}
+.jnpr .mkt-logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:0 0 auto}
+.jnpr .mkt-card .mn{font-weight:650;font-size:14px;color:var(--jnpr-ink)}.jnpr .mkt-card .mc{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .mkt-card p{margin:0;font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.45;flex:1}
+.jnpr .mkt-stat{font-size:16px;font-weight:750;letter-spacing:-.01em;color:var(--jnpr-accent-deep)}
+.jnpr .mkt-why{font-size:11.5px;color:var(--jnpr-ink-2);background:var(--jnpr-accent-soft);padding:6px 10px;border-radius:8px;line-height:1.4}
+.jnpr .tags{display:flex;gap:6px;flex-wrap:wrap}
+.jnpr .tag{font-size:10.5px;font-weight:600;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);padding:2px 8px;border-radius:20px}
+.jnpr .mkt-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .src{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.jnpr .src.curated{color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .src.self{color:var(--jnpr-c3);background:color-mix(in srgb,var(--jnpr-c3) 16%,transparent)}
+.jnpr .use-badge{font-size:10.5px;font-weight:700;color:var(--jnpr-good);background:var(--jnpr-good-soft);padding:2px 8px;border-radius:20px}
+
+/* ============ partner / shared workspace (Stage 7) ============ */
+/* workspace switcher */
+.jnpr .ws-wrap{position:relative}
+.jnpr .ws-pill{display:inline-flex;align-items:center;gap:7px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:5px 10px 5px 6px;font-size:12.5px;font-weight:650;color:var(--jnpr-ink);cursor:pointer;font-family:inherit;box-shadow:var(--jnpr-shadow);white-space:nowrap}
+.jnpr .ws-pill.on{background:var(--jnpr-accent-soft);border-color:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
+.jnpr .ws-pill .caret{width:9px;height:6px;color:var(--jnpr-ink-3)}
+.jnpr .ws-solo{width:20px;height:20px;border-radius:50%;background:var(--jnpr-accent);color:#fff;display:grid;place-items:center;font-size:9px;font-weight:700;flex:0 0 auto}
+.jnpr .ws-duo{display:flex;flex:0 0 auto}
+.jnpr .ws-duo .d1,.jnpr .ws-duo .d2{width:18px;height:18px;border-radius:50%;border:2px solid var(--jnpr-surface)}
+.jnpr .ws-duo .d1{background:var(--jnpr-c3)}.jnpr .ws-duo .d2{background:var(--jnpr-c5);margin-left:-8px}
+.jnpr .ws-pill.on .ws-duo .d1,.jnpr .ws-pill.on .ws-duo .d2{border-color:var(--jnpr-accent-soft)}
+@media(max-width:900px){.jnpr .ws-pill{padding:5px 8px}}
+
+/* dropdown popovers */
+.jnpr .pop-scrim{position:fixed;inset:0;z-index:45}
+.jnpr .pop{position:absolute;top:44px;z-index:46;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:12px;box-shadow:var(--jnpr-shadow-lg);padding:6px;min-width:210px}
+.jnpr .ws-menu{left:50%;transform:translateX(-50%)}
+/* Quiet invite: a soft accent line inside the Shared Overview row, shown
+   until a partner is connected. */
+.jnpr .ws-cta{display:inline-flex;align-items:center;gap:4px;margin-top:2px;font-size:10.5px;font-weight:650;color:var(--jnpr-accent)}
+.jnpr .ws-cta svg{width:11px;height:11px}
+.jnpr .pop-i:hover .ws-cta{text-decoration:underline}
+.jnpr .acct-wrap{position:relative}
+.jnpr .acct-menu{right:0;width:218px}
+.jnpr .pop-lbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3);padding:7px 10px 4px}
+.jnpr .pop-i{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--jnpr-ink-2);background:none;border:0;cursor:pointer;font-family:inherit}
+.jnpr .pop-i:hover{background:var(--jnpr-surface-3)}
+.jnpr .pop-i.on{background:var(--jnpr-accent-soft)}
+.jnpr .pop-i.hl{color:var(--jnpr-accent);font-weight:650}
+.jnpr .pop-i.flat{color:var(--jnpr-ink-2)}
+.jnpr .pop-i b{font-size:12.5px;color:var(--jnpr-ink);display:block;line-height:1.3}
+.jnpr .pop-i small{font-size:10.5px;color:var(--jnpr-ink-3)}
+.jnpr .pop-i .ck{margin-left:auto;color:var(--jnpr-accent);font-weight:700}
+.jnpr .pop-sep{height:1px;background:var(--jnpr-line-2);margin:5px 2px}
+.jnpr .pop-head{display:flex;align-items:center;gap:9px;padding:8px 10px 9px;border-bottom:1px solid var(--jnpr-line-2);margin-bottom:5px}
+.jnpr .pop-head b{font-size:12.5px;color:var(--jnpr-ink);display:block}.jnpr .pop-head small{font-size:10.5px;color:var(--jnpr-ink-3)}
+.jnpr .avatar{border:0;padding:0;font-family:inherit}
+.jnpr .avatar.sm{width:30px;height:30px;font-size:12px}
+
+/* shared page header duo avatar */
+.jnpr .shared-head .duo-ava{display:flex}
+.jnpr .duo-ava span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;border:2px solid #FBFDFB}
+.jnpr .duo-ava .d1{background:var(--jnpr-c3)}.jnpr .duo-ava .d2{background:var(--jnpr-c5);margin-left:-9px}
+
+/* tiles, chips, negatives */
+.jnpr .tile.sm{width:30px;height:30px;border-radius:8px;font-size:12px}
+.jnpr .amt .chip{margin-left:8px}
+.jnpr .chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.jnpr button.chip{border:0;cursor:pointer;font-family:inherit}
+.jnpr .chip.shared{color:var(--jnpr-good);background:var(--jnpr-good-soft)}
+.jnpr .chip.balance{color:var(--jnpr-c3);background:color-mix(in srgb,var(--jnpr-c3) 15%,transparent)}
+.jnpr .chip.private{color:var(--jnpr-ink-3);background:var(--jnpr-surface-3)}
+.jnpr .amt .neg{color:var(--jnpr-bad)}
+
+/* combined net worth split */
+.jnpr .together .split-bar{height:11px;border-radius:20px;overflow:hidden;display:flex;margin:14px 0 9px;background:var(--jnpr-line-2)}
+.jnpr .split-bar i{height:100%}
+.jnpr .split-legend{display:flex;gap:20px;font-size:12.5px;color:var(--jnpr-ink-2);flex-wrap:wrap}
+.jnpr .split-legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
+.jnpr .shared-accts{background:var(--jnpr-good-soft);border-color:color-mix(in srgb,var(--jnpr-good) 25%,var(--jnpr-line))}
+.jnpr .shared-accts h3 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+
+/* owner columns */
+.jnpr .owner-col{border-top:3px solid var(--jnpr-line)}
+.jnpr .oc-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.jnpr .oc-ava{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+.jnpr .oc-head b{font-size:13.5px}.jnpr .oc-tot{margin-left:auto;font-weight:700;font-size:13.5px}
+
+/* shared goals */
+.jnpr .goal{padding:13px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);margin-top:12px}
+.jnpr .goal:first-of-type{margin-top:0}
+.jnpr .goal .g-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.jnpr .goal .g-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
+.jnpr .goal .g-ic svg{width:56%;height:56%;color:#fff}
+.jnpr .goal .bar{height:8px}
+.jnpr .contrib{display:flex;justify-content:space-between;font-size:11.5px;color:var(--jnpr-ink-2);margin-top:7px;flex-wrap:wrap;gap:6px}
+.jnpr .contrib .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+
+/* bills */
+.jnpr .bill{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .bill:first-child{border-top:0}
+.jnpr .bill .due{width:46px;height:46px;border-radius:10px;background:var(--jnpr-surface-3);display:grid;place-items:center;text-align:center;flex:0 0 auto;line-height:1.05}
+.jnpr .bill .due .d{font-weight:750;font-size:16px;color:var(--jnpr-ink)}.jnpr .bill .due .mo{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .bill.soon .due{background:var(--jnpr-warn-soft)}.jnpr .bill.soon .due .d{color:var(--jnpr-warn)}
+.jnpr .bill .b-amt{font-weight:700;font-size:14px}
+
+/* activity + chat */
+.jnpr .txchat{border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);overflow:hidden;margin-bottom:14px}
+.jnpr .txchat:last-child{margin-bottom:0}
+.jnpr .txchat .tx{display:flex;align-items:center;gap:11px;padding:12px;background:var(--jnpr-surface-2)}
+.jnpr .reactions{display:flex;gap:6px;padding:10px 12px;background:var(--jnpr-surface)}
+.jnpr .react{font-size:11.5px;border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:20px;padding:3px 9px;cursor:pointer;color:var(--jnpr-ink-2);font-family:inherit}
+.jnpr .react.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft);color:var(--jnpr-accent)}
+.jnpr .thread{padding:11px 12px;display:flex;flex-direction:column;gap:8px;background:var(--jnpr-surface);border-top:1px solid var(--jnpr-line-2)}
+.jnpr .msg{display:flex}.jnpr .msg.me{justify-content:flex-end}
+.jnpr .bubble{max-width:78%;font-size:12.5px;padding:8px 11px;border-radius:13px;line-height:1.4}
+.jnpr .msg.them .bubble{background:var(--jnpr-surface-3);color:var(--jnpr-ink);border-bottom-left-radius:4px}
+.jnpr .msg.me .bubble{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-bottom-right-radius:4px}
+.jnpr .chatbar{display:flex;gap:8px;padding:10px 12px;background:var(--jnpr-surface);border-top:1px solid var(--jnpr-line-2)}
+.jnpr .chatbar input{flex:1;font:inherit;font-size:12.5px;border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:20px;padding:8px 13px;color:var(--jnpr-ink)}
+.jnpr .feed-item{display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .feed-item:first-child{border-top:0}
+.jnpr .feed-ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;font-size:15px}
+
+/* privacy toggles */
+.jnpr .priv-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .priv-row:first-child{border-top:0}
+.jnpr .priv-row .p-t{font-weight:600;font-size:13px;color:var(--jnpr-ink)}.jnpr .priv-row .p-s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .toggle{margin-left:auto;width:42px;height:24px;border-radius:20px;background:var(--jnpr-surface-3);position:relative;cursor:pointer;flex:0 0 auto;border:0;padding:0}
+.jnpr .toggle i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .15s}
+.jnpr .toggle.on{background:var(--jnpr-accent)}.jnpr .toggle.on i{left:21px}
+.jnpr .toggle.lock{opacity:.55;cursor:default}
+
+/* connect empty state */
+.jnpr .connect-empty{text-align:center;padding:44px 26px;max-width:460px;margin:8px auto}
+.jnpr .connect-empty .ce-mark{width:52px;height:52px;border-radius:14px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;font-size:24px;margin:0 auto 16px}
+.jnpr .connect-empty h2{font-size:20px}.jnpr .connect-empty p{font-size:13.5px;color:var(--jnpr-ink-2);margin:8px auto 18px;max-width:38ch;line-height:1.6}
+
+/* ── Ask Juniper (AI planner) ─────────────────────────────────────────────── */
+.jnpr .ask-shell{display:grid;grid-template-columns:250px 1fr;gap:18px;min-height:560px}
+@media (max-width:820px){.jnpr .ask-shell{grid-template-columns:1fr}.jnpr .ask-rail{display:none}}
+.jnpr .ask-rail{display:flex;flex-direction:column;gap:12px}
+.jnpr .ask-new{justify-content:center;width:100%}
+.jnpr .ask-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.jnpr .ask-empty{color:var(--jnpr-ink-3);font-size:12.5px;padding:10px 6px;text-align:center}
+.jnpr .ask-item{display:flex;align-items:center;gap:6px;padding:9px 10px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+.jnpr .ask-item:hover{background:var(--jnpr-surface-2)}
+.jnpr .ask-item.on{background:var(--jnpr-accent-soft);border-color:color-mix(in srgb,var(--jnpr-accent) 30%,transparent)}
+.jnpr .ask-item-main{flex:1;min-width:0}
+.jnpr .ask-item-t{font-size:12.5px;font-weight:600;color:var(--jnpr-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .ask-item-p{font-size:10.5px;color:var(--jnpr-accent);font-weight:600;margin-top:2px}
+.jnpr .ask-del{border:0;background:transparent;color:var(--jnpr-ink-3);cursor:pointer;padding:2px;opacity:0;display:flex}
+.jnpr .ask-item:hover .ask-del{opacity:1}.jnpr .ask-del svg{width:15px;height:15px}
+.jnpr .ask-main{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+
+.jnpr .ask-welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 28px;max-width:640px;margin:0 auto}
+.jnpr .ask-logo{width:56px;height:56px;object-fit:contain}
+.jnpr .ask-welcome h1{font-size:26px;margin:16px 0 8px}
+.jnpr .ask-sub{font-size:14px;color:var(--jnpr-ink-2);line-height:1.6;max-width:44ch;margin:0 0 26px}
+.jnpr .ask-starters{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-bottom:22px}
+@media (max-width:560px){.jnpr .ask-starters{grid-template-columns:1fr}}
+.jnpr .ask-starter{text-align:left;font:inherit;font-size:13px;font-weight:550;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:11px;padding:14px 15px;cursor:pointer;line-height:1.4}
+.jnpr .ask-starter:hover{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+
+.jnpr .ask-thread{flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:20px}
+.jnpr .ask-scope{align-self:center;font-size:11.5px;font-weight:600;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);padding:5px 12px;border-radius:20px}
+.jnpr .ask-turn{display:flex;flex-direction:column;gap:6px;max-width:760px;width:100%;margin:0 auto}
+.jnpr .ask-turn.user{align-items:flex-end}
+.jnpr .ask-who{font-size:11px;font-weight:700;color:var(--jnpr-ink);letter-spacing:.02em}
+.jnpr .ask-turn.user .ask-bubble{background:var(--jnpr-accent-soft);border-radius:16px 16px 4px 16px;padding:11px 15px;max-width:80%}
+.jnpr .ask-turn.assistant .ask-bubble{max-width:100%}
+.jnpr .ask-bubble{font-size:14.5px;line-height:1.68;color:var(--jnpr-ink)}
+.jnpr .ask-bubble strong{font-weight:700}
+.jnpr .ask-dots{display:inline-flex;gap:5px}.jnpr .ask-dots i{width:6px;height:6px;border-radius:50%;background:var(--jnpr-accent);animation:askb 1.2s ease-in-out infinite}
+.jnpr .ask-dots i:nth-child(2){animation-delay:.2s}.jnpr .ask-dots i:nth-child(3){animation-delay:.4s}
+@keyframes askb{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-5px);opacity:1}}
+
+.jnpr .ask-composer{display:flex;gap:9px;padding:16px 20px;border-top:1px solid var(--jnpr-line)}
+.jnpr .ask-composer.lg{width:100%;border-top:0;padding:0}
+.jnpr .ask-composer input{flex:1;font:inherit;font-size:14px;border:1.5px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:12px;padding:12px 15px;color:var(--jnpr-ink)}
+.jnpr .ask-composer input:focus{outline:none;border-color:var(--jnpr-accent)}
+
+/* Plan modal → planner call-to-action */
+.jnpr .ask-plan-cta{background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 26%,transparent);border-radius:12px;padding:13px 14px;margin-bottom:16px}
+.jnpr .ask-plan-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.jnpr .ask-plan-head b{font-size:13.5px;color:var(--jnpr-ink)}.jnpr .ask-plan-head small{display:block;font-size:11.5px;color:var(--jnpr-ink-2);margin-top:1px}
+.jnpr .ask-faqs{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.jnpr .ask-faq{font:inherit;font-size:12px;font-weight:550;color:var(--jnpr-accent-deep);background:var(--jnpr-surface);border:1px solid color-mix(in srgb,var(--jnpr-accent) 30%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
+.jnpr .ask-faq:hover{background:var(--jnpr-surface-2);border-color:var(--jnpr-accent)}
+
+/* Conversations list inside a plan modal */
+.jnpr .plan-chats{margin:2px 0 18px}
+.jnpr .plan-chats .pc-lbl{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:9px}
+.jnpr .pc-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 11px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);cursor:pointer;font-family:inherit}
+.jnpr .pc-item+.pc-item{margin-top:7px}
+.jnpr .pc-item:hover{background:var(--jnpr-surface-2);border-color:color-mix(in srgb,var(--jnpr-accent) 38%,transparent)}
+.jnpr .pc-berry{width:26px;height:26px;flex:0 0 auto;border-radius:7px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center}
+.jnpr .pc-berry svg{width:14px;height:14px}
+.jnpr .pc-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.jnpr .pc-t{font-size:13px;font-weight:650;color:var(--jnpr-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .pc-p{font-size:11.5px;color:var(--jnpr-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .pc-w{font-size:11px;color:var(--jnpr-ink-3);flex:0 0 auto;white-space:nowrap}
+.jnpr .pc-arr{color:var(--jnpr-ink-3);font-size:17px;flex:0 0 auto;line-height:1}
+
+/* Ask Juniper, thread toolbar + report action */
+.jnpr .ask-tools{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--jnpr-line-2);min-height:52px}
+.jnpr .ask-scope.inline{align-self:auto;margin:0}
+.jnpr .ask-tool-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.jnpr .ask-tool-err{font-size:11.5px;color:var(--jnpr-bad);font-weight:600}
+
+/* Plan report (printable to PDF) */
+.jnpr .rp-overlay{position:fixed;inset:0;z-index:120;background:rgba(15,20,15,.55);backdrop-filter:blur(3px);display:flex;flex-direction:column}
+.jnpr .rp-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:var(--jnpr-surface);border-bottom:1px solid var(--jnpr-line)}
+.jnpr .rp-bar-t{font-size:12.5px;font-weight:700;color:var(--jnpr-ink-3);letter-spacing:.04em;text-transform:uppercase}
+.jnpr .rp-scroll{flex:1;overflow-y:auto;padding:28px 20px 60px;display:flex;justify-content:center}
+/* the sheet is always "paper" so the on-screen preview matches the PDF */
+.jnpr .rp-sheet{width:100%;max-width:720px;background:#fff;color:#232B21;border-radius:6px;box-shadow:0 30px 60px -24px rgba(0,0,0,.5);padding:52px 56px 40px;height:max-content}
+.jnpr .rp-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E3E9E1;padding-bottom:16px;margin-bottom:26px}
+.jnpr .rp-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#1C4A31}
+.jnpr .rp-brand img{width:22px;height:22px;object-fit:contain}
+.jnpr .rp-meta{font-size:11.5px;color:#889081;font-weight:600}
+.jnpr .rp-title{font-size:27px;line-height:1.15;letter-spacing:-.02em;margin:0 0 10px;color:#171E17;text-wrap:balance}
+.jnpr .rp-headline{font-size:15.5px;line-height:1.5;color:#1C4A31;font-weight:600;margin:0 0 8px}
+.jnpr .rp-sec{margin-top:26px}
+.jnpr .rp-sec h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5C7A65;margin:0 0 9px}
+.jnpr .rp-sec p{font-size:14.5px;line-height:1.7;color:#2A3327;margin:0}
+.jnpr .rp-steps{list-style:none;counter-reset:rp;margin:0;padding:0}
+.jnpr .rp-steps li{counter-increment:rp;position:relative;padding:0 0 16px 40px;margin:0}
+.jnpr .rp-steps li:before{content:counter(rp);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#E1EBE3;color:#1C4A31;font-size:13px;font-weight:700;display:grid;place-items:center}
+.jnpr .rp-steps li:not(:last-child):after{content:"";position:absolute;left:13px;top:30px;bottom:6px;width:1.5px;background:#E3E9E1}
+.jnpr .rp-step-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.jnpr .rp-step-t{font-size:14.5px;font-weight:700;color:#171E17}
+.jnpr .rp-step-tags{display:flex;gap:6px;flex:0 0 auto}
+.jnpr .rp-tag{font-size:11px;font-weight:700;color:#556052;background:#EEF2EC;border-radius:20px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.jnpr .rp-tag.amt{color:#1C4A31;background:#E1EBE3}
+.jnpr .rp-step-d{font-size:13.5px;line-height:1.6;color:#3A4436;margin:4px 0 0}
+.jnpr .rp-assume{margin:0;padding-left:18px}
+.jnpr .rp-assume li{font-size:13px;line-height:1.6;color:#556052;margin-bottom:4px}
+.jnpr .rp-foot{margin-top:30px;padding-top:16px;border-top:1px solid #E3E9E1;font-size:11.5px;line-height:1.6;color:#889081}
+
+@media print{
+  body *{visibility:hidden !important}
+  .jnpr .rp-sheet,.jnpr .rp-sheet *{visibility:visible !important}
+  .jnpr .rp-overlay{position:static;background:none;backdrop-filter:none}
+  .jnpr .rp-bar{display:none !important}
+  .jnpr .rp-scroll{overflow:visible;padding:0;display:block}
+  .jnpr .rp-sheet{position:absolute;left:0;top:0;max-width:none;width:100%;box-shadow:none;border-radius:0;padding:0}
+}
+
+/* Partner polish: honest demo-state pill + invite success line */
+.jnpr .plaid-pill.demo .dot{display:none}
+.jnpr .page-head .plaid-pill.demo{background:rgba(212,146,42,.20);border-color:rgba(212,146,42,.48);color:#F3E6CD;font-weight:650}
+.jnpr .share-ok{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:var(--jnpr-r-sm);padding:9px 12px;margin-bottom:10px}
+
+/* ============ auth (sign in / sign up) ============ */
+.jnpr.auth-shell{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:40px 24px;position:relative}
+.jnpr .auth-back{position:absolute;top:20px;left:22px;display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--jnpr-ink-3);text-decoration:none}
+.jnpr .auth-back:hover{color:var(--jnpr-ink)}
+.jnpr .auth-back svg{width:15px;height:15px}
+.jnpr .auth-card{width:100%;max-width:360px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);box-shadow:var(--jnpr-shadow-lg);padding:30px 28px}
+.jnpr .auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px}
+.jnpr .auth-brand img{width:56px;height:56px;object-fit:contain;margin-bottom:12px}
+.jnpr .auth-card h1{font-size:21px;color:var(--jnpr-head)}
+.jnpr .auth-card .auth-sub{font-size:13px;color:var(--jnpr-ink-3);margin-top:4px}
+.jnpr .auth-form{display:flex;flex-direction:column;gap:10px}
+.jnpr .auth-form input{font:inherit;font-size:14.5px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:10px;padding:11px 13px;outline:none;width:100%}
+.jnpr .auth-form input:focus{border-color:var(--jnpr-accent)}
+.jnpr .auth-form input.err{border-color:var(--jnpr-bad)}
+.jnpr .auth-pw{position:relative}
+.jnpr .auth-pw input{padding-right:64px}
+.jnpr .auth-pw .pw-eye{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:inline-flex;align-items:center;gap:5px;background:none;border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:600;color:var(--jnpr-ink-3);padding:6px 8px;border-radius:8px}
+.jnpr .auth-pw .pw-eye:hover{color:var(--jnpr-accent);background:var(--jnpr-surface-3)}
+.jnpr .auth-pw .pw-eye svg{width:15px;height:15px}
+.jnpr .auth-form .btn{justify-content:center;padding:12px 15px;font-size:14px;margin-top:2px}
+.jnpr .auth-msg{font-size:12px;text-align:center;margin:0}
+.jnpr .auth-msg.bad{color:var(--jnpr-bad)}.jnpr .auth-msg.good{color:var(--jnpr-good)}
+.jnpr .auth-alt{text-align:center;font-size:13px;color:var(--jnpr-ink-3);margin-top:18px}
+.jnpr .auth-alt a{color:var(--jnpr-accent);font-weight:650;text-decoration:none}
+.jnpr .auth-alt a:hover{text-decoration:underline}
+
+/* ============ first-run onboarding ============ */
+.jnpr.onboard{display:flex;flex-direction:column;min-height:100dvh}
+.jnpr .ob-top{display:flex;align-items:center;justify-content:space-between;padding:16px clamp(16px,5vw,40px)}
+.jnpr .ob-top .brand{font-size:17px}
+.jnpr .ob-skip{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:var(--jnpr-ink-3)}
+.jnpr .ob-skip:hover{color:var(--jnpr-ink)}
+.jnpr .ob-body{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%;max-width:600px;margin:0 auto;padding:8px clamp(16px,5vw,40px) 40px;box-sizing:border-box}
+.jnpr .ob-prog{margin-bottom:26px}
+.jnpr .ob-prog .pr-lbl{display:flex;justify-content:space-between;margin-bottom:8px}
+.jnpr .ob-prog .pr-lbl .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--jnpr-ink-3);font-weight:700}
+.jnpr .ob-prog .pr-lbl .r{font-size:12px;color:var(--jnpr-accent);font-weight:700}
+.jnpr .ob-prog .track{height:5px;border-radius:20px;background:var(--jnpr-surface-3);overflow:hidden}
+.jnpr .ob-prog .track > i{display:block;height:100%;background:var(--jnpr-accent);border-radius:20px;transition:width .4s ease}
+.jnpr .ob-body h2{font-size:clamp(23px,4vw,29px);color:var(--jnpr-head);line-height:1.15}
+.jnpr .ob-body .ob-help{font-size:14px;color:var(--jnpr-ink-2);margin:8px 0 22px;max-width:46ch;line-height:1.55}
+.jnpr .ob-input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1.5px solid var(--jnpr-line);border-radius:11px;padding:13px 15px;outline:none}
+.jnpr .ob-input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-seg{display:flex;gap:10px;flex-wrap:wrap}
+.jnpr .ob-seg button{flex:1;min-width:130px;font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1.5px solid var(--jnpr-line);border-radius:11px;padding:14px;cursor:pointer;text-align:left}
+.jnpr .ob-seg button small{display:block;font-weight:500;font-size:12px;color:var(--jnpr-ink-3);margin-top:2px}
+.jnpr .ob-seg button.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
+.jnpr .ob-money{display:inline-flex;align-items:baseline;border-bottom:2px solid var(--jnpr-line);padding-bottom:4px}
+.jnpr .ob-money.on{border-color:var(--jnpr-accent)}
+.jnpr .ob-money span{font-size:38px;font-weight:700;color:var(--jnpr-ink);line-height:1}
+.jnpr .ob-money input{font:inherit;font-size:38px;font-weight:700;color:var(--jnpr-ink);line-height:1;background:transparent;border:0;outline:none;width:6ch}
+.jnpr .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.jnpr .ob-chip{font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:9px 15px;cursor:pointer}
+.jnpr .ob-chip.on{color:var(--jnpr-on-accent);background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
+.jnpr .ob-other{display:flex;gap:8px;margin-top:14px;max-width:440px}
+.jnpr .ob-other input{flex:1;min-width:0;font:inherit;font-size:14px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:10px 16px;outline:none}
+.jnpr .ob-other input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-other .btn{flex:0 0 auto}
+.jnpr .ob-fieldgroup{display:flex;flex-direction:column;gap:14px}
+/* accounts & loans builder */
+.jnpr .ob-acct{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:8px;align-items:center}
+.jnpr .ob-acct.debt{grid-template-columns:1fr 1.4fr 1fr .7fr auto}
+@media(max-width:560px){.jnpr .ob-acct,.jnpr .ob-acct.debt{grid-template-columns:1fr 1fr;gap:7px}}
+.jnpr .ob-acct select,.jnpr .ob-acct input{font:inherit;font-size:13.5px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:9px;padding:9px 10px;outline:none;width:100%;box-sizing:border-box}
+.jnpr .ob-acct select:focus,.jnpr .ob-acct input:focus{border-color:var(--jnpr-accent)}
+.jnpr .ob-acct .ob-del{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);border-radius:9px;color:var(--jnpr-ink-3);cursor:pointer;padding:8px;display:grid;place-items:center}
+.jnpr .ob-acct .ob-del:hover{color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+.jnpr .ob-add{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13.5px;font-weight:650;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);border:1px dashed color-mix(in srgb,var(--jnpr-accent) 40%,transparent);border-radius:10px;padding:11px 15px;cursor:pointer;justify-content:center}
+.jnpr .ob-add svg{width:15px;height:15px}
+.jnpr .ob-tally{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:16px;padding:13px 15px;background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:11px}
+.jnpr .ob-tally .l{font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .ob-tally .v{font-size:20px;font-weight:750;color:var(--jnpr-ink);letter-spacing:-.02em}
+.jnpr .ob-tally .v.neg{color:var(--jnpr-bad)}
+.jnpr .ob-nav{display:flex;align-items:center;gap:12px;margin-top:34px}
+.jnpr .ob-nav .btn svg{width:16px;height:16px}
+.jnpr .ob-back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:600;color:var(--jnpr-ink-3);padding:10px 4px}
+.jnpr .ob-back:hover{color:var(--jnpr-ink)}
+.jnpr .ob-ghostskip{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:var(--jnpr-ink-3)}
+.jnpr .ob-secure{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:18px}
+.jnpr .ob-secure svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;color:var(--jnpr-accent)}
+.jnpr .ob-connected{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:650;color:var(--jnpr-good);background:var(--jnpr-good-soft);border-radius:11px;padding:13px 15px;margin-bottom:12px}
+/* categorized institution picker (connect flow) */
+.jnpr .inst-cats{display:flex;flex-direction:column;gap:18px;max-height:44vh;overflow-y:auto;padding-right:6px}
+.jnpr .inst-cat-h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:9px}
+.jnpr .inst-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+/* Institution tiles adapt across three tiers so the name always stays readable:
+   phones get one full-width tile per row, tablets get two (the onboarding column
+   caps at 600px, where three tiles are too narrow and truncate the name), and
+   desktop keeps the original three-up grid. */
+@media(min-width:561px) and (max-width:1024px){.jnpr .inst-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.jnpr .inst-grid{grid-template-columns:1fr}}
+.jnpr .inst-tile{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);cursor:pointer;font:inherit;text-align:left;min-width:0}
+.jnpr .inst-tile:hover{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .inst-tile:disabled{opacity:.55;cursor:default}
+.jnpr .inst-logo{width:26px;height:26px;border-radius:7px;object-fit:cover;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto}
+.jnpr .inst-mono{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:0 0 auto}
+.jnpr .inst-name{flex:1 1 auto;font-size:13px;font-weight:600;color:var(--jnpr-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.jnpr .inst-tile.other{border-style:dashed}
+.jnpr .inst-tile.other .inst-other-ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);flex:0 0 auto}
+.jnpr .inst-tile.other .inst-other-ic svg{width:15px;height:15px}
+/* multi-select gallery: search, select-all, tile check, action bar */
+.jnpr .inst-searchbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);margin-bottom:14px}
+.jnpr .inst-searchbar svg{color:var(--jnpr-ink-3);flex:0 0 auto}
+.jnpr .inst-search{flex:1;border:none;background:transparent;font:inherit;font-size:13px;color:var(--jnpr-ink);outline:none;min-width:0}
+.jnpr .inst-selall{flex:0 0 auto;font:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);border:none;border-radius:8px;padding:5px 10px;cursor:pointer}
+.jnpr .inst-selall:disabled{opacity:.5;cursor:default}
+.jnpr .inst-cat-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+.jnpr .inst-cat-row .inst-cat-h{margin-bottom:0}
+.jnpr .inst-cat-all{font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--jnpr-ink-3);background:none;border:none;cursor:pointer;padding:2px 4px}
+.jnpr .inst-cat-all:hover{color:var(--jnpr-accent)}
+.jnpr .inst-tile.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .inst-check{margin-left:auto;width:18px;height:18px;border-radius:6px;border:1.5px solid var(--jnpr-line);display:grid;place-items:center;flex:0 0 auto;color:var(--jnpr-on-accent)}
+.jnpr .inst-check.on{background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
+/* already-connected tile: locked-in "done" state (green), distinct from the accent
+   "selected to connect" state, and full-opacity despite being disabled */
+.jnpr .inst-tile.connected{border-color:var(--jnpr-good);background:var(--jnpr-good-soft)}
+.jnpr .inst-tile.connected:disabled{opacity:1;cursor:default}
+.jnpr .inst-connected-tag{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--jnpr-good)}
+.jnpr .inst-connected-tag svg{flex:0 0 auto}
+.jnpr .inst-empty{font-size:13px;color:var(--jnpr-ink-2);line-height:1.55;padding:8px 2px}
+.jnpr .inst-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--jnpr-line)}
+.jnpr .inst-bar-left{display:flex;gap:8px;flex-wrap:wrap}
+.jnpr .inst-otherbtn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--jnpr-ink-2);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:9px;padding:7px 11px;cursor:pointer}
+.jnpr .inst-otherbtn:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.jnpr .inst-otherbtn:disabled{opacity:.55;cursor:default}
+/* manual-account form */
+.jnpr .man-form{display:flex;flex-direction:column;gap:12px}
+.jnpr .man-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.jnpr .man-row{grid-template-columns:1fr}}
+.jnpr .man-field{display:flex;flex-direction:column;gap:5px}
+.jnpr .man-field>span{font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .man-field input,.jnpr .man-field select{font:inherit;font-size:13.5px;color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:9px;padding:9px 11px;outline:none}
+.jnpr .man-field input:focus,.jnpr .man-field select:focus{border-color:var(--jnpr-accent)}
+.jnpr .man-money{display:flex;align-items:center;gap:2px;border:1px solid var(--jnpr-line);border-radius:9px;padding:0 11px;background:var(--jnpr-surface)}
+.jnpr .man-money:focus-within{border-color:var(--jnpr-accent)}
+.jnpr .man-money>span{color:var(--jnpr-ink-3);font-size:13.5px}
+.jnpr .man-money input{border:none;background:transparent;font:inherit;font-size:13.5px;color:var(--jnpr-ink);outline:none;padding:9px 2px;width:100%}
+.jnpr .man-actions{display:flex;justify-content:flex-end;gap:8px}
+.jnpr .conn-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--jnpr-ink-3);background:var(--jnpr-surface-3);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+/* Layer (tier-1) phone-first discovery card */
+.jnpr .layer-card{border:1px solid var(--jnpr-accent-soft);background:var(--jnpr-accent-soft);border-radius:13px;padding:14px;margin-bottom:16px}
+.jnpr .layer-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+.jnpr .layer-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--jnpr-accent);color:var(--jnpr-on-accent);flex:0 0 auto}
+.jnpr .layer-title{font-size:14px;font-weight:700;color:var(--jnpr-ink)}
+.jnpr .layer-sub{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.5;margin-top:2px}
+.jnpr .layer-row{display:flex;gap:8px;flex-wrap:wrap}
+.jnpr .layer-phone{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:10px;padding:0 11px}
+.jnpr .layer-phone:focus-within{border-color:var(--jnpr-accent)}
+.jnpr .layer-phone svg{color:var(--jnpr-ink-3);flex:0 0 auto}
+.jnpr .layer-phone input{flex:1;border:none;background:transparent;font:inherit;font-size:13.5px;color:var(--jnpr-ink);outline:none;padding:10px 2px;min-width:0}
+.jnpr .layer-demo-badge{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-on-accent);background:var(--jnpr-accent);border-radius:5px;padding:1px 6px;margin-left:8px;vertical-align:middle}
+.jnpr .layer-results-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:12.5px;font-weight:600;color:var(--jnpr-ink-2)}
+.jnpr .layer-results{display:flex;flex-direction:column;gap:12px;max-height:40vh;overflow-y:auto;padding-right:4px}
+.jnpr .layer-cat{display:flex;flex-direction:column;gap:6px}
+.jnpr .layer-cat .inst-cat-h{margin-bottom:3px}
+.jnpr .layer-acct{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--jnpr-line);border-radius:10px;background:var(--jnpr-surface);cursor:pointer;font:inherit;text-align:left;width:100%}
+.jnpr .layer-acct:hover{border-color:var(--jnpr-accent)}
+.jnpr .layer-acct.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .layer-acct-main{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.jnpr .layer-acct-name{font-size:13px;font-weight:650;color:var(--jnpr-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .layer-acct-sub{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .layer-acct-bal{font-size:13px;font-weight:650;color:var(--jnpr-ink);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.jnpr .layer-results-bar{display:flex;justify-content:flex-end;margin-top:12px}
+.jnpr .layer-done{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--jnpr-ink)}
+.jnpr .layer-done-ic{width:24px;height:24px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:grid;place-items:center;flex:0 0 auto}
+/* pine hero: the Layer card leads the connect step. A deep-pine band carries the
+   branding + phone entry; results drop into a light body below. The pine is a
+   fixed deep green (not the accent token) so it stays deep in dark mode too. */
+.jnpr .layer-card.hero{background:linear-gradient(155deg,#1C4A31,#0F2A1B);border:none;padding:0;overflow:hidden;color:#EAF3EC;box-shadow:0 16px 36px -20px rgba(8,26,16,.75)}
+.jnpr .layer-card.hero .layer-band{padding:19px 19px 20px}
+.jnpr .layer-card.hero .layer-head{display:flex;gap:11px;align-items:flex-start;margin-bottom:15px}
+.jnpr .layer-card.hero .layer-ic{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.14);color:#fff;flex:0 0 auto}
+.jnpr .layer-card.hero .layer-ic svg{width:19px;height:19px}
+.jnpr .layer-card.hero .layer-title{font-size:18px;font-weight:730;color:#fff;letter-spacing:-.01em;line-height:1.15}
+.jnpr .layer-card.hero .layer-demo-badge{background:rgba(255,255,255,.22);color:#fff}
+.jnpr .layer-card.hero .layer-sub{font-size:12.5px;color:rgba(234,243,236,.82);margin-top:3px;line-height:1.45}
+.jnpr .layer-card.hero .layer-phone{background:#fff;border:none;border-radius:11px;padding:0 13px}
+.jnpr .layer-card.hero .layer-phone input{color:#16261c;font-size:15px;padding:14px 2px}
+.jnpr .layer-card.hero .layer-phone svg{color:#4c6b57}
+.jnpr .layer-card.hero .layer-row{flex-direction:column;gap:10px}
+.jnpr .layer-card.hero .layer-row .btn{width:100%;background:#F4F7F3;color:#123320;font-size:14.5px;padding:13px;justify-content:center}
+.jnpr .layer-card.hero .layer-row .btn:hover:not(:disabled){filter:brightness(1.03)}
+.jnpr .layer-card.hero .layer-trust{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(234,243,236,.72);margin-top:12px}
+.jnpr .layer-card.hero .layer-trust svg{width:13px;height:13px;flex:0 0 auto}
+.jnpr .layer-card.hero .layer-results-head{color:rgba(234,243,236,.92);margin:14px 0 0;font-weight:600}
+.jnpr .layer-card.hero .layer-results-head .inst-selall{background:rgba(255,255,255,.18);color:#fff}
+.jnpr .layer-card.hero .layer-body{background:var(--jnpr-surface-2);padding:13px}
+.jnpr .layer-card.hero .layer-results{max-height:none}
+.jnpr .layer-card.hero .layer-acct{background:var(--jnpr-surface)}
+.jnpr .layer-card.hero .layer-done{color:#EAF3EC}
+.jnpr .layer-card.hero .layer-done-ic{background:#F4F7F3;color:#123320}
+/* results header: let the "we found N accounts for …" line share space with the
+   Clear-all button and wrap instead of colliding on narrow phones */
+.jnpr .layer-card.hero .layer-results-head span{flex:1;min-width:0}
+/* ── connect step + onboarding: mobile polish ────────────────────────────── */
+/* Primary CTA input at 16px so iOS Safari doesn't zoom-jump on focus. */
+.jnpr .layer-card.hero .layer-phone input{font-size:16px}
+/* the income step's big-number field must never push the page wider than the
+   viewport, no matter how many digits are typed */
+.jnpr .ob-money{max-width:100%}
+.jnpr .ob-money input{max-width:100%}
+@media(max-width:560px){
+  /* keep every connect-step + onboarding text input >=16px (same iOS zoom guard) */
+  .jnpr .inst-search,.jnpr .man-field input,.jnpr .man-field select,.jnpr .man-money input,.jnpr .ob-other input{font-size:16px}
+  /* action bar: full-width Connect on top, secondary actions split 50/50 below,
+     instead of the three buttons wrapping unevenly with space-between */
+  .jnpr .inst-bar{flex-direction:column;align-items:stretch;gap:10px}
+  .jnpr .inst-bar>.btn{order:-1;width:100%;justify-content:center}
+  .jnpr .inst-bar-left{width:100%}
+  .jnpr .inst-bar-left .inst-otherbtn{flex:1;justify-content:center}
+  /* the stacked bar frees vertical room, so give the gallery a taller scroll */
+  .jnpr .inst-cats{max-height:52vh}
+  /* step down the big income number so long values don't overflow the phone */
+  .jnpr .ob-money span,.jnpr .ob-money input{font-size:30px}
+  /* let Back / Continue / skip wrap on the narrowest phones instead of overflowing */
+  .jnpr .ob-nav{flex-wrap:wrap;row-gap:10px}
+}
+.jnpr .ob-done{display:flex;flex-direction:column;align-items:flex-start}
+.jnpr .ob-done .ob-check{width:52px;height:52px;border-radius:50%;background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:grid;place-items:center;margin-bottom:16px}
+.jnpr .ob-done .ob-check svg{width:26px;height:26px}
+
+/* one-time welcome tip on first dashboard landing */
+.jnpr .welcome-tip{display:flex;align-items:flex-start;gap:12px;background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 26%,transparent);border-radius:var(--jnpr-r);padding:14px 16px;margin-bottom:16px}
+.jnpr .welcome-tip .wt-body{flex:1;min-width:0}
+.jnpr .welcome-tip b{font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .welcome-tip p{margin:3px 0 0;font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.5}
+.jnpr .welcome-tip .wt-x{background:none;border:0;cursor:pointer;color:var(--jnpr-ink-3);padding:2px;flex:0 0 auto}
+.jnpr .welcome-tip .wt-x:hover{color:var(--jnpr-ink)}
+
+/* dashboard connect-to-unlock nudge (reuses .connect-empty inside a card) */
+.jnpr .nudge-card{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;gap:10px;padding:30px 22px}
+.jnpr .nudge-card .nc-mark{width:46px;height:46px;border-radius:13px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center}
+.jnpr .nudge-card .nc-mark svg{width:22px;height:22px}
+.jnpr .nudge-card h3{font-size:15px;color:var(--jnpr-head)}
+.jnpr .nudge-card p{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.55;max-width:34ch;margin:0}
+
+/* connections page fitted into the routed .jnpr shell */
+.jnpr .conn-wrap{max-width:680px;margin:0 auto}
+.jnpr .conn-item{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:14px;padding:16px 18px}
+.jnpr .conn-item + .conn-item{margin-top:12px}
+.jnpr .conn-inst{display:flex;align-items:center;gap:13px}
+.jnpr .conn-inst .ci-mark{width:38px;height:38px;border-radius:10px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;flex:0 0 auto}
+.jnpr .conn-inst .ci-name{font-size:15px;font-weight:650;color:var(--jnpr-ink);flex:1;min-width:0}
+.jnpr .conn-acct{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:9px;margin-top:9px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
+.jnpr .conn-acct .ca-name{color:var(--jnpr-ink-2);min-width:0}
+.jnpr .conn-acct .ca-bal{color:var(--jnpr-ink);font-weight:650;flex:0 0 auto}

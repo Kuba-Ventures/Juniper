@@ -1,7 +1,7 @@
 // Frontend mirror of the dialogue script metadata.
 // The backend (api/_dialogue-scripts.ts) holds the full system prompts;
-// the frontend needs the step names + skip rules to render progress, and —
-// for structured (tap-first) steps — the full input spec to render the
+// the frontend needs the step names + skip rules to render progress, and, 
+// for structured (tap-first) steps, the full input spec to render the
 // control locally without an LLM round-trip.
 
 import type { UserProfile } from "./profile";
@@ -24,7 +24,7 @@ export type ChoiceOption = {
 
 // Structured input descriptors. When a step carries one of these, the client
 // renders the matching tap-first control and records the answer directly into
-// `collected` — no call to /api/dialogue. `text` (and any step with no input)
+// `collected`, no call to /api/dialogue. `text` (and any step with no input)
 // keeps the legacy open-ended chat + <STEP_COMPLETE> path.
 export type ChoiceInput = {
   type: "choice";

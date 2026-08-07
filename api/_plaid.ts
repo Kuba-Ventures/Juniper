@@ -58,7 +58,7 @@ export async function plaidFetch<T = Record<string, unknown>>(
 }
 
 // Shape we persist + return to the client. Deliberately excludes account/routing
-// numbers and access tokens — only what's needed to display the connection.
+// numbers and access tokens, only what's needed to display the connection.
 export type SanitizedAccount = {
   account_id: string;
   name: string;

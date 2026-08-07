@@ -30,7 +30,7 @@ export type PlanNextAction = {
 };
 
 // A single debt the user lists on a Debt Paydown plan. Stored (as an array)
-// in current_state.debts — no table/migration. `apr` is a percentage (e.g. 22).
+// in current_state.debts, no table/migration. `apr` is a percentage (e.g. 22).
 export type DebtItem = {
   name: string;
   balance: number;
@@ -156,7 +156,7 @@ export async function savePlan(body: PlanWriteBody): Promise<Plan | null> {
       /* ignore */
     }
     // eslint-disable-next-line no-console
-    console.error(`[Juniper] savePlan failed: ${res.status} ${res.statusText} — body:`, text);
+    console.error(`[Juniper] savePlan failed: ${res.status} ${res.statusText}, body:`, text);
     return null;
   }
   return (await res.json()) as Plan | null;

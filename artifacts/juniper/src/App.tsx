@@ -9,8 +9,9 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import SignIn from "@/pages/auth/sign-in";
 import SignUp from "@/pages/auth/sign-up";
-import AppShell from "@/pages/app-shell";
+import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
+import JoinPartner from "@/pages/join-partner";
 import { RequireAuth } from "@/components/auth/require-auth";
 
 const queryClient = new QueryClient();
@@ -21,13 +22,16 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/auth/sign-in" component={SignIn} />
       <Route path="/auth/sign-up" component={SignUp} />
+      <Route path="/invite/partner/:token">
+        {(params) => <RequireAuth><JoinPartner token={params.token} /></RequireAuth>}
+      </Route>
       <Route path="/invite/:token">
         {(params) => <InviteLanding token={params.token} />}
       </Route>
       <Route path="/app/*?">
         {() => (
           <RequireAuth>
-            <AppShell />
+            <JuniperApp />
           </RequireAuth>
         )}
       </Route>

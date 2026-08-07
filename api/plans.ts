@@ -106,7 +106,7 @@ export default async function handler(req: Request): Promise<Response> {
     const partnerRows = (await partnerRes.json()) as Array<{ id: string }>;
     // Partner rows first: if a user has both an owned plan and a partnered
     // plan in the same domain (e.g. they clicked Start before accepting an
-    // invite), the partnered plan is the shared one — that's what they
+    // invite), the partnered plan is the shared one, that's what they
     // should land on. Owner rows that aren't already seen come after.
     const seen = new Set<string>();
     const rows: unknown[] = [];
@@ -166,7 +166,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     let writeRes: Response;
     if (existing.length > 0) {
-      // PATCH the existing plan. Strip user_id from the body — ownership
+      // PATCH the existing plan. Strip user_id from the body, ownership
       // is server-controlled and cannot be re-assigned via this endpoint.
       const patchBody = { ...body };
       delete (patchBody as Record<string, unknown>).user_id;

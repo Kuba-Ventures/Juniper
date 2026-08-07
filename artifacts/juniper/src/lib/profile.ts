@@ -1,12 +1,33 @@
+// A single account or loan the member entered by hand during onboarding (no
+// Plaid link). These drive the dashboard's net worth, accounts list, and
+// Juniper Score before/instead of a live connection. Balances are stored as
+// positive magnitudes; the sign is applied by kind (debt is subtracted).
+export type ManualAccountKind = "cash" | "invest" | "debt";
+export type ManualAccount = {
+  id: string;
+  name: string;
+  kind: ManualAccountKind;
+  balance: number; // positive magnitude
+  apr?: number; // annual %, debt only
+};
+
 export type UserProfile = {
   monthlyIncome?: number;
   monthlyExpenses?: number;
   totalSavings?: number;
   totalDebt?: number;
   goals?: string[];
+  // Accounts & loans entered by hand in onboarding. Local-only for now (same as
+  // `connections`); the remote user_profiles table has no column for them yet.
+  accounts?: ManualAccount[];
   // Lightweight "accounts I use" list (partner names). Local-only for now; the
   // remote user_profiles table has no column for it yet.
   connections?: string[];
+  // Optional personal info captured in onboarding, stored locally only. `dob`
+  // feeds the future age-aware retirement factor (ROADMAP Stage 4); no SSN or
+  // credit-bureau pull is performed.
+  dob?: string;
+  household?: "solo" | "partner";
   completedAt?: string;
 };
 
@@ -50,7 +71,8 @@ export function hasProfileData(p: UserProfile | null): boolean {
     typeof p.monthlyIncome === "number" ||
     typeof p.monthlyExpenses === "number" ||
     typeof p.totalSavings === "number" ||
-    typeof p.totalDebt === "number"
+    typeof p.totalDebt === "number" ||
+    (Array.isArray(p.accounts) && p.accounts.length > 0)
   );
 }
 
@@ -106,5 +128,5 @@ export function formatProfileContext(p: UserProfile): string {
   if (p.totalDebt !== undefined) lines.push(`- Total debt: $${p.totalDebt.toLocaleString()}`);
   if (p.goals && p.goals.length > 0) lines.push(`- Financial goals: ${p.goals.join(", ")}`);
   if (lines.length === 0) return "";
-  return `\nThe user has provided the following financial profile. Use it as background context — don't repeat it back unless relevant, but let it inform your responses:\n${lines.join("\n")}`;
+  return `\nThe user has provided the following financial profile. Use it as background context, don't repeat it back unless relevant, but let it inform your responses:\n${lines.join("\n")}`;
 }

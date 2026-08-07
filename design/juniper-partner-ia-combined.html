@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Juniper — Combined: workspace switcher + account menu</title>
+<style>
+:root{
+  --ground:#F4F7F3; --surface:#FFFFFF; --surface-2:#FAFBF9; --surface-3:#EAF0E9;
+  --ink:#232B21; --ink-2:#556052; --ink-3:#889081; --line:#E3E9E1; --line-2:#EEF2EC;
+  --accent:#1C4A31; --accent-deep:#123320; --accent-soft:#E1EBE3;
+  --head:#173D28; --pine:#234E37;
+  --good:#2F8558; --good-soft:#E1EFE6; --warn:#A9781E;
+  --maya:#3E6FB0; --devin:#9455A8;
+  --r:16px; --r-sm:11px;
+  --shadow:0 1px 2px rgba(20,32,20,.05), 0 8px 24px -14px rgba(20,32,20,.13);
+  --shadow-lg:0 2px 8px rgba(20,32,20,.08), 0 24px 50px -22px rgba(20,32,20,.22);
+  --ff:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#EEF2EC;color:var(--ink);font-family:var(--ff);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px;padding-bottom:70px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+h1,h2,h3{letter-spacing:-.01em;color:var(--head);font-weight:650}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.hero-title{padding:32px 22px 6px;max-width:1040px;margin:0 auto}
+.hero-title h1{font-size:25px}.hero-title p{color:var(--ink-2);font-size:14px;margin-top:6px;max-width:78ch}
+.rail{font-size:13px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:34px 2px 4px;padding-top:20px;border-top:2px solid var(--line);display:flex;align-items:center;gap:9px}
+.rail .step{width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+.rail-sub{font-size:13px;color:var(--ink-2);margin:0 2px 14px}
+
+/* frame */
+.frame{border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:visible;position:relative;background:var(--ground)}
+.tagbar{display:flex;align-items:center;gap:8px;padding:8px 13px;background:var(--surface-3);border-bottom:1px solid var(--line);border-radius:12px 12px 0 0;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.tagbar .badge{margin-left:auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+
+/* appbar */
+.appbar-in{padding:11px 16px;display:flex;align-items:center;gap:12px;position:relative}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--head)}
+.brand .mark{width:27px;height:27px;border-radius:7px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px}
+.divider{width:1px;height:22px;background:var(--line)}
+.nav{display:flex;gap:2px}
+.nav a{font-size:12.5px;font-weight:550;color:var(--ink-3);padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}
+.nav a.on{color:var(--accent);background:var(--accent-soft);font-weight:650}
+.spacer{flex:1}
+.icon-btn{width:31px;height:31px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--accent);font-size:14px}
+.avatar{width:31px;height:31px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;cursor:pointer}
+.avatar.ring{box-shadow:0 0 0 3px var(--accent-soft)}
+.caret{font-size:9px;color:var(--ink-3);margin-left:1px}
+
+/* workspace switcher pill */
+.ws-pill{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:5px 11px 5px 6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;box-shadow:var(--shadow)}
+.ws-pill.shared{border-color:var(--accent-soft);background:var(--accent-soft);color:var(--accent-deep)}
+.ava{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:0 0 auto}
+.ava.m{background:var(--maya)}.ava.d{background:var(--devin)}.ava.you{background:var(--accent)}
+.ava-stack{display:flex}.ava-stack .ava+.ava{margin-left:-8px;border:2px solid #fff}
+
+/* dropdowns */
+.pop{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;z-index:30}
+.menu{top:50px;right:14px;width:210px}
+.switcher{top:50px;left:118px;width:236px}
+.mh{padding:9px 10px 8px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--line-2);margin-bottom:5px}
+.mh b{font-size:12.5px}.mh .e{font-size:10.5px;color:var(--ink-3)}
+.mi{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.mi:hover{background:var(--surface-3)}
+.mi.hl{background:var(--accent-soft);color:var(--accent);font-weight:650}
+.mi .ic{width:15px;text-align:center}
+.sep{height:1px;background:var(--line-2);margin:5px 2px}
+.si{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.si:hover{background:var(--surface-3)}
+.si.on{background:var(--accent-soft)}
+.si .ck{margin-left:auto;color:var(--accent);font-weight:700}
+.si-lab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);padding:6px 10px 3px}
+.si .inv{margin-left:auto;font-size:11px;font-weight:650;color:var(--accent)}
+
+/* body preview */
+.body{padding:14px 16px 16px}
+.band{background:var(--pine);border-radius:11px;padding:13px 15px;color:#fff;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between;gap:11px}
+.band b{color:#fff;font-size:14px}.band .s{color:#B9D3BE;font-size:11.5px;margin-top:2px}
+.pill-light{font-size:10.5px;color:#DDEBDE;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:4px 9px;border-radius:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow)}
+.skl{height:8px;border-radius:5px;background:var(--line-2);margin:6px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.col-card{border-top:3px solid var(--line)}
+.col-head{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px;font-weight:650}
+.note{font-size:12.5px;color:var(--ink-2);margin:10px 2px 0;line-height:1.55}
+.legend{display:flex;gap:8px;margin:12px 2px 0;flex-wrap:wrap}
+.tagpill{font-size:11px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 10px}
+.tagpill b{color:var(--accent)}
+.recbox{background:var(--surface);border:1px solid var(--accent-soft);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-top:6px}
+.recbox p{font-size:13px;color:var(--ink-2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="hero-title">
+  <div class="eyebrow">Combined direction</div>
+  <h1>Workspace switcher + account menu, together</h1>
+  <p>The two controls do different jobs, so they coexist cleanly. <b>Left of the nav:</b> the workspace switcher flips context between <b>My finances</b> and <b>Shared with Devin</b> (each with its own tabs). <b>Right, on your avatar:</b> the account menu — Profile, Connections, <b>Invite partner</b>, Settings, Sign out. Invite lives here <i>and</i> on Plans.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- STATE 1: MY FINANCES + account menu -->
+  <div class="rail"><span class="step">1</span> My finances — account menu open</div>
+  <div class="rail-sub">Your private app. Switcher reads "My finances"; the avatar menu holds Invite partner.</div>
+  <div class="frame">
+    <div class="tagbar">Individual workspace <span class="badge">account menu → invite</span></div>
+    <div class="appbar-in">
+      <div class="brand"><span class="mark">✦</span> Juniper</div>
+      <div class="ws-pill"><div class="ava you" style="width:19px;height:19px;font-size:9px">M</div> My finances <span class="caret">▾</span></div>
+      <div class="divider"></div>
+      <div class="nav"><a class="on">Home</a><a>Spending</a><a>Plans</a><a>Credit</a><a>Recommended</a></div>
+      <div class="spacer"></div>
+      <div class="icon-btn">◔</div>
+      <div class="avatar ring">M<span class="caret" style="position:absolute;right:-9px">▾</span></div>
+      <div class="pop menu">
+        <div class="mh"><div class="avatar" style="box-shadow:none">M</div><div><b>Maya</b><div class="e">maya@email.com</div></div></div>
+        <div class="mi"><span class="ic">◔</span> Profile</div>
+        <div class="mi"><span class="ic">⚯</span> Connections</div>
+        <div class="mi hl"><span class="ic">♡</span> Invite partner</div>
+        <div class="mi"><span class="ic">⚙</span> Settings</div>
+        <div class="sep"></div>
+        <div class="mi"><span class="ic">→</span> Sign out</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="band"><div><b>Good morning, Maya</b><div class="s">Your individual dashboard — unchanged</div></div></div>
+      <div class="grid2"><div class="card"><div class="skl" style="width:40%"></div><div class="skl"></div><div class="skl" style="width:70%"></div></div><div class="card"><div class="skl" style="width:50%"></div><div class="skl"></div><div class="skl" style="width:60%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- STATE 2: SHARED + switcher open -->
+  <div class="rail"><span class="step">2</span> Shared with Devin — workspace switcher open</div>
+  <div class="rail-sub">Flip the switcher and the whole context becomes the couple — its own sub-nav (Overview · Accounts · Goals · Bills). The account menu on your avatar is unchanged.</div>
+  <div class="frame">
+    <div class="tagbar">Shared workspace <span class="badge">switcher → context</span></div>
+    <div class="appbar-in">
+      <div class="brand"><span class="mark">✦</span> Juniper</div>
+      <div class="ws-pill shared"><div class="ava-stack"><div class="ava m" style="width:19px;height:19px;font-size:8px">M</div><div class="ava d" style="width:19px;height:19px;font-size:8px">D</div></div> Shared with Devin <span class="caret" style="color:var(--accent)">▾</span></div>
+      <div class="divider"></div>
+      <div class="nav"><a class="on">Overview</a><a>Accounts</a><a>Goals</a><a>Bills</a><a>Activity</a></div>
+      <div class="spacer"></div>
+      <div class="icon-btn">◔</div>
+      <div class="avatar">M<span class="caret" style="position:absolute;right:-9px">▾</span></div>
+      <div class="pop switcher">
+        <div class="si-lab">Workspace</div>
+        <div class="si"><div class="ava you" style="width:26px;height:26px;font-size:11px">M</div><div><b style="font-size:12.5px">My finances</b><div style="font-size:10.5px;color:var(--ink-3)">Just you · private</div></div></div>
+        <div class="si on"><div class="ava-stack"><div class="ava m" style="width:26px;height:26px;font-size:10px">M</div><div class="ava d" style="width:26px;height:26px;font-size:10px">D</div></div><div><b style="font-size:12.5px">Shared with Devin</b><div style="font-size:10.5px;color:var(--ink-3)">2 goals · joint accounts</div></div><span class="ck">✓</span></div>
+        <div class="sep"></div>
+        <div class="si"><div style="width:26px;height:26px;border-radius:50%;border:1.5px dashed var(--ink-3);display:grid;place-items:center;color:var(--ink-3)">＋</div><div style="font-size:12px;color:var(--ink-2)">Invite someone else</div></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="band"><div><b>Shared with Devin</b><div class="s">Both your finances — only what you each choose to share</div></div><span class="pill-light">● Both connected</span></div>
+      <div class="card" style="text-align:center;margin-bottom:10px"><div style="font-size:11px;color:var(--ink-3)">Together</div><div style="font-size:22px;font-weight:750" class="tnum">$186,400</div><div style="height:9px;border-radius:20px;overflow:hidden;display:flex;max-width:360px;margin:8px auto 0"><i style="width:56%;background:var(--maya)"></i><i style="width:44%;background:var(--devin)"></i></div></div>
+      <div class="grid2">
+        <div class="card col-card" style="border-top-color:var(--maya)"><div class="col-head"><div class="ava m" style="width:22px;height:22px;font-size:9px">M</div> Maya · <span class="tnum">$104.6k</span></div><div class="skl" style="width:80%"></div><div class="skl" style="width:60%"></div></div>
+        <div class="card col-card" style="border-top-color:var(--devin)"><div class="col-head"><div class="ava d" style="width:22px;height:22px;font-size:9px">D</div> Devin · <span class="tnum">$81.8k</span></div><div class="skl" style="width:70%"></div><div class="skl" style="width:55%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="tagpill"><b>Switcher</b> (left) = which finances you're viewing</span>
+    <span class="tagpill"><b>Avatar menu</b> (right) = your account · invite · settings</span>
+    <span class="tagpill"><b>Sub-nav</b> changes per workspace</span>
+  </div>
+
+  <div class="rail"><span class="step">✓</span> Why this combination works</div>
+  <div class="recbox">
+    <p>The two controls never compete: the <b>switcher</b> answers <i>“whose money am I looking at?”</i> and the <b>avatar menu</b> answers <i>“my account &amp; actions.”</i> You keep Option 2's clean "our money" mode with its own tabs (Overview · Accounts · Goals · Bills · Activity), and Option 1's familiar profile dropdown where <b>Invite partner</b> naturally lives. Solo users only ever see "My finances" in the switcher — the shared workspace appears the moment a partner connects, and disconnecting removes it. Invite is reachable from both the avatar menu and the Plans panel.</p>
+  </div>
+
+</div>
+</body>
+</html>

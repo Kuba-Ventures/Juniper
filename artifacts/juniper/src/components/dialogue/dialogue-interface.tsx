@@ -314,7 +314,7 @@ export function DialogueInterface({
     setStepIndex(newStepIndex);
 
     // Persist progress. Inviter writes current_state.collected; partner writes
-    // partner_collected — the identical key set that PlanAlignment compares.
+    // partner_collected, the identical key set that PlanAlignment compares.
     if (isPartner) {
       void savePlan({
         domain,
@@ -351,7 +351,7 @@ export function DialogueInterface({
   }
 
   // Update collected live (e.g. dragging the money slider) without persisting
-  // or advancing — keeps the preview in lockstep with the control.
+  // or advancing, keeps the preview in lockstep with the control.
   function setLiveValue(key: string, value: unknown) {
     const nextCollected = { ...collectedRef.current, [key]: value };
     collectedRef.current = nextCollected;
@@ -1535,7 +1535,7 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
         },
         {
           label: "Monthly savings needed",
-          value: monthly != null ? fmtMoney(monthly) : "—",
+          value: monthly != null ? fmtMoney(monthly) : "-",
           sub: gap != null ? `${fmtMoney(gap)} to go` : null,
           pct: monthly != null ? 100 : 0,
         },
@@ -1561,13 +1561,13 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
       rows: [
         {
           label: "Emergency fund target",
-          value: months != null ? `${months} months` : "—",
+          value: months != null ? `${months} months` : "-",
           sub: null,
           pct: months != null ? Math.min(100, Math.round((months / 12) * 100)) : 0,
         },
         {
           label: "Saving together",
-          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "—",
+          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "-",
           sub: null,
           pct: monthly ? 100 : 0,
         },
@@ -1591,10 +1591,10 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
           ? `Pay off ${fmtMoney(total)}${method ? ` with the ${method} method` : ""}`
           : "Your plan builds as you answer",
       rows: [
-        { label: "Total debt", value: total != null ? fmtMoney(total) : "—", sub: null, pct: total ? 100 : 0 },
+        { label: "Total debt", value: total != null ? fmtMoney(total) : "-", sub: null, pct: total ? 100 : 0 },
         {
           label: "Months to debt-free",
-          value: months != null ? `${months} mo` : "—",
+          value: months != null ? `${months} mo` : "-",
           sub: monthly ? `${fmtMoney(monthly)}/mo` : null,
           pct: months != null ? 100 : 0,
         },
@@ -1614,10 +1614,10 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
       title: "Baby Planning",
       headline: year != null ? `Ready for a baby by ${year}` : "Your plan builds as you answer",
       rows: [
-        { label: "Baby fund goal", value: goal != null ? fmtMoney(goal) : "—", sub: null, pct: goal ? 100 : 0 },
+        { label: "Baby fund goal", value: goal != null ? fmtMoney(goal) : "-", sub: null, pct: goal ? 100 : 0 },
         {
           label: "Monthly childcare",
-          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "—",
+          value: monthly != null ? `${fmtMoney(monthly)}/mo` : "-",
           sub: null,
           pct: monthly ? 100 : 0,
         },
@@ -1649,9 +1649,9 @@ const PREVIEW_BUILDERS: Record<string, (a: Record<string, unknown>) => PreviewDa
       title: "Prenup & Legal",
       headline: "Your prenup framework",
       rows: [
-        { label: "Property", value: property ?? "—", sub: null, pct: property ? 100 : 0 },
-        { label: "Inheritances", value: inheritance ?? "—", sub: null, pct: inheritance ? 100 : 0 },
-        { label: "Spousal support", value: support ?? "—", sub: null, pct: support ? 100 : 0 },
+        { label: "Property", value: property ?? "-", sub: null, pct: property ? 100 : 0 },
+        { label: "Inheritances", value: inheritance ?? "-", sub: null, pct: inheritance ? 100 : 0 },
+        { label: "Spousal support", value: support ?? "-", sub: null, pct: support ? 100 : 0 },
       ],
       next: property ? "Bring this framework to a family law attorney to formalize it." : null,
     };
@@ -1752,7 +1752,7 @@ function PreviewRowView({ row }: { row: PreviewRow }) {
 
 // ── Money formatting (shared with preview) ──────────────────────────────
 function fmtMoney(n: number | null): string {
-  if (n == null) return "—";
+  if (n == null) return "-";
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
   if (n >= 1_000) { const k = n / 1000; return `$${k % 1 === 0 ? k : k.toFixed(1)}K`; }
   return `$${n}`;
