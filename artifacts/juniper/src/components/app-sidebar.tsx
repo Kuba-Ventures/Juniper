@@ -2,13 +2,11 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { BarChart2, Calculator, GitFork, Plus, ChevronDown, X, Link2, LayoutGrid, MessageCircle, BookOpen } from "lucide-react";
 
-// Theme-aware surface palette — resolves against the CSS variables in
-// index.css so the sidebar follows the light/dark toggle.
-const sage = "hsl(var(--primary))";
-const cream = "hsl(var(--sidebar))";
-const ink = "hsl(var(--sidebar-foreground))";
-const muted = "hsl(var(--muted-foreground))";
-const border = "hsl(var(--sidebar-border))";
+const sage = "#5C7A65";
+const cream = "#FAF7F2";
+const ink = "#2A2A2A";
+const muted = "#6B6B6B";
+const border = "#E8E2D6";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
@@ -55,7 +53,7 @@ function timeAgo(date: Date): string {
 const navItemStyle = (active: boolean): React.CSSProperties => ({
   width: "100%",
   textAlign: "left",
-  background: active ? "hsl(var(--primary) / 0.12)" : "transparent",
+  background: active ? "rgba(92,122,101,0.09)" : "transparent",
   border: "none",
   borderRadius: 7,
   padding: "9px 12px",
@@ -238,7 +236,7 @@ export function AppSidebar({
                           transition: "opacity 0.12s, color 0.12s",
                           padding: 0,
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = "hsl(var(--destructive))")}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "#b94040")}
                         onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
                       >
                         <X size={12} strokeWidth={2.5} />
@@ -256,9 +254,9 @@ export function AppSidebar({
                           padding: "8px 10px",
                           cursor: "pointer",
                           background: isActive
-                            ? "hsl(var(--primary) / 0.12)"
+                            ? "rgba(92,122,101,0.09)"
                             : isHovered
-                              ? "hsl(var(--primary) / 0.08)"
+                              ? "rgba(92,122,101,0.06)"
                               : "none",
                           transition: "background 0.12s",
                         }}
@@ -309,7 +307,7 @@ export function AppSidebar({
               cursor: "pointer",
               transition: "background 0.12s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "hsl(var(--primary) / 0.10)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(92,122,101,0.08)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             <div
@@ -357,7 +355,7 @@ export function AppSidebar({
                 bottom: "calc(100% + 8px)",
                 left: 0,
                 right: 0,
-                background: "hsl(var(--popover))",
+                background: "#fff",
                 border: `1px solid ${border}`,
                 borderRadius: 10,
                 boxShadow: "0 4px 20px rgba(0,0,0,0.09)",
@@ -386,7 +384,7 @@ export function AppSidebar({
                     fontSize: 13,
                     fontFamily: sans,
                     transition: "background 0.1s",
-                    color: item.disabled ? muted : item.danger ? "hsl(var(--destructive))" : ink,
+                    color: item.disabled ? muted : item.danger ? "#b94040" : ink,
                     cursor: item.disabled ? "default" : "pointer",
                   }}
                   onMouseEnter={(e) => {
