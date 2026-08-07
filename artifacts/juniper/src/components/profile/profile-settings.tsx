@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { X, LogOut, RotateCcw } from "lucide-react";
+import { X, LogOut, RotateCcw, Moon } from "lucide-react";
 import { UserProfile, saveProfile } from "@/lib/profile";
+import { useTheme } from "@/lib/theme";
+import { Switch } from "@/components/ui/switch";
 
-const sage = "#5C7A65";
-const cream = "#FAF7F2";
-const ink = "#2A2A2A";
-const muted = "#6B6B6B";
-const border = "#E8E2D6";
+// Theme-aware surface palette. These resolve against the CSS variables in
+// index.css (:root for light, .dark for dark), so every surface below flips
+// with the dark-mode toggle instead of being pinned to a light hex.
+const sage = "hsl(var(--primary))";
+const cream = "hsl(var(--card))";
+const ink = "hsl(var(--foreground))";
+const muted = "hsl(var(--muted-foreground))";
+const border = "hsl(var(--border))";
 const serif = "'Fraunces', Georgia, serif";
 const sans = "'Inter', sans-serif";
 
@@ -55,6 +60,7 @@ export function ProfileSettings({
   onSignOut,
   onResetForTesting,
 }: Props) {
+  const { theme, toggleTheme } = useTheme();
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -177,7 +183,7 @@ export function ProfileSettings({
                   style={{
                     width: "100%", height: 46, boxSizing: "border-box",
                     padding: "0 14px", border: `1.5px solid ${border}`,
-                    borderRadius: 8, background: "#fff", fontFamily: sans,
+                    borderRadius: 8, background: "hsl(var(--background))", fontFamily: sans,
                     fontSize: 16, color: ink, outline: "none", transition: "border-color 0.15s",
                   }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
@@ -195,13 +201,51 @@ export function ProfileSettings({
                   style={{
                     width: "100%", minHeight: 46, boxSizing: "border-box",
                     padding: "12px 14px", border: `1.5px solid ${border}`,
-                    borderRadius: 8, background: "rgba(92,122,101,0.05)",
+                    borderRadius: 8, background: "hsl(var(--muted))",
                     fontSize: 15, color: muted, display: "flex", alignItems: "center",
                     wordBreak: "break-all",
                   }}
                 >
                   {email || "Not available"}
                 </div>
+              </div>
+
+              {/* Appearance */}
+              <div style={{ marginBottom: 28 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: ink, marginBottom: 4 }}>
+                  Appearance
+                </label>
+                <p style={{ fontSize: 12, color: muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+                  Switch between the light and dark theme
+                </p>
+                <label
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px", border: `1.5px solid ${border}`,
+                    borderRadius: 8, background: "hsl(var(--background))", cursor: "pointer",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                      background: "hsl(var(--primary) / 0.12)", color: sage,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <Moon size={17} strokeWidth={1.8} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: ink, margin: 0 }}>Dark mode</p>
+                    <p style={{ fontSize: 12, color: muted, margin: "1px 0 0" }}>
+                      {theme === "dark" ? "On" : "Off"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={toggleTheme}
+                    aria-label="Toggle dark mode"
+                  />
+                </label>
               </div>
 
               {/* Sign out */}
@@ -212,9 +256,9 @@ export function ProfileSettings({
                   height: 44, padding: "0 18px",
                   background: "none", border: `1.5px solid ${border}`,
                   borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 500,
-                  color: "#b94040", cursor: "pointer", transition: "border-color 0.15s",
+                  color: "hsl(var(--destructive))", cursor: "pointer", transition: "border-color 0.15s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#b94040")}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "hsl(var(--destructive))")}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = border)}
               >
                 <LogOut size={16} />
@@ -239,9 +283,9 @@ export function ProfileSettings({
                         height: 44, padding: "0 18px",
                         background: "none", border: `1.5px solid ${border}`,
                         borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 500,
-                        color: "#b94040", cursor: "pointer", transition: "border-color 0.15s",
+                        color: "hsl(var(--destructive))", cursor: "pointer", transition: "border-color 0.15s",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#b94040")}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "hsl(var(--destructive))")}
                       onMouseLeave={(e) => (e.currentTarget.style.borderColor = border)}
                     >
                       <RotateCcw size={16} />
@@ -267,7 +311,7 @@ export function ProfileSettings({
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 8,
                             height: 44, padding: "0 18px",
-                            background: "#b94040", border: "none",
+                            background: "hsl(var(--destructive))", border: "none",
                             borderRadius: 8, fontFamily: sans, fontSize: 14, fontWeight: 600,
                             color: "#fff", cursor: resetting ? "default" : "pointer",
                             opacity: resetting ? 0.7 : 1,
@@ -324,7 +368,7 @@ export function ProfileSettings({
                           width: "100%", height: 46, boxSizing: "border-box",
                           paddingLeft: 28, paddingRight: 14,
                           border: `1.5px solid ${border}`, borderRadius: 8,
-                          background: "#fff", fontFamily: sans, fontSize: 16,
+                          background: "hsl(var(--background))", fontFamily: sans, fontSize: 16,
                           color: ink, outline: "none", transition: "border-color 0.15s",
                         }}
                         onFocus={(e) => (e.currentTarget.style.borderColor = sage)}
@@ -353,7 +397,7 @@ export function ProfileSettings({
                         style={{
                           padding: "8px 14px", borderRadius: 100,
                           border: `1.5px solid ${selected ? sage : border}`,
-                          background: selected ? "rgba(92,122,101,0.1)" : "#fff",
+                          background: selected ? "hsl(var(--primary) / 0.14)" : "hsl(var(--background))",
                           color: selected ? sage : ink, fontSize: 13,
                           fontFamily: sans, fontWeight: selected ? 500 : 400,
                           cursor: "pointer", transition: "all 0.12s",
