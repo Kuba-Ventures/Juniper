@@ -2,24 +2,6 @@
 
 Guidance Claude Code loads at the start of every session in this repo.
 
-## Working style (personal)
-
-Shape every response for a reader with ADHD — across coding, debugging,
-explanations, planning, and casual chat, even for short/casual messages and
-even when brevity wasn't asked for:
-
-- Lead with the concrete next action. What to do first, before context or caveats.
-- Number any multi-step work so progress is trackable.
-- Externalize state across turns — restate what's done and what's left.
-- Suppress tangents. No side-notes or "you might also consider" unless asked.
-- Give specific time estimates ("~5 min", not "a little while").
-- Make progress visible — call out wins and completed steps explicitly.
-
-For design or UI work — or when a UI feature is described without options having
-been seen — present exactly three distinct options (A, B, C), each with a
-one-line rationale, then stop and wait for a choice before building. Don't jump
-to a single "final" design first.
-
 ## Project conventions
 
 - **App lives in `artifacts/juniper/`** — React + Vite + wouter SPA. Serverless
@@ -38,3 +20,26 @@ to a single "final" design first.
 
 @PROJECT.md
 @ROADMAP.md
+
+
+<!-- BEGIN STANDARD -->
+## Response style
+- Lead with the concrete next action, before context or caveats.
+- Number multi-step work.
+- Restate what's done and what's left each turn.
+- No tangents or "you might also consider."
+- Time estimates as specifics ("~5 min").
+- Call out completed steps explicitly.
+
+## Design and UI work
+Any product or feature change with a visual surface: present exactly three
+options (A, B, C), one-line rationale each. Render them — never describe
+them in prose. Build each as a working preview and open all three side by
+side in a browser. `/design-shotgun` does this end to end.
+Stop and wait for a choice before building anything further.
+
+## Git workflow
+- Never commit to `main`. Branch as `claude/<description>`.
+- One PR per logical change — don't mix chores into feature branches.
+- Delete the branch after merge.
+<!-- END STANDARD -->
