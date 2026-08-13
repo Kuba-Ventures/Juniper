@@ -59,8 +59,40 @@ table with RLS locked so only the service role can read it. It's idempotent.
 
 1. Apply for Production access in the Plaid dashboard (business/compliance review).
 2. Set `PLAID_ENV=production` and `PLAID_SECRET=<production secret>`.
-3. If you use OAuth banks (most large US banks), register `PLAID_REDIRECT_URI`
-   in the Plaid dashboard and set the env var.
+3. OAuth banks (Chase, BofA, Wells, Capital One, most large US banks): see below.
+   Without this, only non-OAuth / smaller banks will link in Production.
+
+### OAuth banks (redirect URI)
+
+Large US banks won't show a password box inside Plaid Link; Plaid redirects the
+whole tab to the bank, and the bank returns the user to a **pre-registered**
+redirect URI. Juniper handles that return on the Connections page
+(`src/lib/use-link-queue.ts`): it stashes the in-flight token + queue in
+`localStorage`, and on return (URL carries `?oauth_state_id=...`) re-opens Link
+with `receivedRedirectUri` to finish, then continues the queue.
+
+To turn it on:
+
+1. **Plaid dashboard → Developers → API → Allowed redirect URIs → Configure.**
+   Add the return URL(s), exact match, one per environment/domain you serve:
+   - `https://juniper-api-server.vercel.app/app/connections`
+   - `https://<your-custom-domain>/app/connections` (add when you launch on it)
+2. **Set `PLAID_REDIRECT_URI`** in Vercel to the URL whose origin matches the
+   domain your users actually browse on (the return lands on that origin, and
+   the Supabase session is per-origin, so a mismatch would drop their session).
+   The backend attaches it to the link token automatically
+   ([link-token.ts:41](api/plaid/link-token.ts)); leaving it unset disables the
+   redirect flow (non-OAuth banks still work).
+3. Redeploy. OAuth banks now link on the live site.
+
+**Caveats.**
+- **Preview deploys can't do OAuth:** their URLs change per deploy and Plaid
+  needs exact-registered URLs, so test OAuth on production (or a stable domain).
+- **First-run onboarding:** an OAuth bank picked during onboarding finishes on
+  the Connections page (the redirect wipes the wizard's in-memory state). All
+  selected banks still link; making onboarding OAuth seamless is a follow-up.
+- **Plaid Layer (tier 1)** has its own redirect handling; wire it when Layer is
+  actually enabled (Production + `PLAID_LAYER_TEMPLATE_ID`).
 
 ## What this does / doesn't do
 

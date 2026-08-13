@@ -12,8 +12,67 @@ import { trackEngagement } from "@/lib/analytics";
 //
 // Queue position is kept in refs so the Plaid callbacks always read the current
 // item, never a stale closure.
+//
+// OAuth banks (Chase, BofA, most large US banks) can't show a password box
+// inside Link. Plaid redirects the whole browser tab to the bank's site, and the
+// bank returns the user to our registered redirect URI (PLAID_REDIRECT_URI, set
+// to <domain>/app/connections). That full-page navigation wipes this hook's
+// in-memory state, so before each open (any bank might be OAuth) we stash the
+// active token + remaining queue in localStorage. On return the URL carries
+// ?oauth_state_id=...; we rehydrate the stash and re-open Link with
+// `receivedRedirectUri` to finish the handshake, then the queue continues as
+// normal. Non-OAuth banks complete inline and the stash is cleared on finish.
 
 export type LinkResult = { linked: number; failed: number };
+
+const INFLIGHT_KEY = "juniper_plaid_link_inflight";
+
+type Inflight = {
+  token: string;
+  queue: LinkInstitution[];
+  index: number;
+  result: LinkResult;
+};
+
+function readInflight(): Inflight | null {
+  try {
+    const raw = localStorage.getItem(INFLIGHT_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Inflight;
+    if (!v || typeof v.token !== "string" || !Array.isArray(v.queue)) return null;
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+function writeInflight(v: Inflight): void {
+  // If storage is blocked/full the only loss is OAuth resume for this attempt;
+  // inline (non-OAuth) linking is unaffected, so fail quietly.
+  try {
+    localStorage.setItem(INFLIGHT_KEY, JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearInflight(): void {
+  try {
+    localStorage.removeItem(INFLIGHT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+// True when this page load is Plaid handing control back after an OAuth bank
+// login (it appends ?oauth_state_id=... to our redirect URI).
+function isOAuthReturn(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).has("oauth_state_id");
+  } catch {
+    return false;
+  }
+}
 
 export type LinkQueueControls = {
   start: (institutions: LinkInstitution[]) => Promise<void>;
@@ -31,6 +90,10 @@ export function useLinkQueue(opts?: {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ index: number; total: number }>({ index: 0, total: 0 });
   const [notice, setNotice] = useState<string | null>(null);
+  // Set only while completing an OAuth return, so usePlaidLink resumes the
+  // redirected flow instead of starting a new one. Cleared before the next queue
+  // item opens fresh (a fresh open with receivedRedirectUri set would throw).
+  const [oauthReturnUri, setOauthReturnUri] = useState<string | null>(null);
 
   const queueRef = useRef<LinkInstitution[]>([]);
   const indexRef = useRef(0);
@@ -44,10 +107,23 @@ export function useLinkQueue(opts?: {
     const result = resultRef.current;
     setBusy(false);
     setLinkToken(null);
+    setOauthReturnUri(null);
     setProgress({ index: 0, total: 0 });
     queueRef.current = [];
     indexRef.current = 0;
+    clearInflight();
     onDoneRef.current?.(result);
+  }, []);
+
+  // Stash just enough to resume the queue if the next open redirects to a bank
+  // for OAuth (which reloads the app). Overwritten per item, cleared on finish.
+  const persist = useCallback((token: string) => {
+    writeInflight({
+      token,
+      queue: queueRef.current,
+      index: indexRef.current,
+      result: resultRef.current,
+    });
   }, []);
 
   // Open Plaid Link for the queue item at `at`; finish when the queue is drained.
@@ -66,9 +142,11 @@ export function useLinkQueue(opts?: {
       }
       indexRef.current = at;
       setProgress({ index: at, total: q.length });
+      setOauthReturnUri(null); // a fresh open, not an OAuth resume
+      persist(token);
       setLinkToken(token);
     },
-    [finish],
+    [finish, persist],
   );
 
   const onSuccess = useCallback(
@@ -77,6 +155,7 @@ export function useLinkQueue(opts?: {
         ? { institution_id: metadata.institution.institution_id, name: metadata.institution.name }
         : queueRef.current[indexRef.current];
       setLinkToken(null);
+      setOauthReturnUri(null);
       const item = await exchangePublicToken(publicToken, institution);
       if (item) {
         resultRef.current.linked += 1;
@@ -92,10 +171,13 @@ export function useLinkQueue(opts?: {
 
   const { open, ready } = usePlaidLink({
     token: linkToken ?? "",
+    // Only set on an OAuth return; undefined for normal inline opens.
+    receivedRedirectUri: oauthReturnUri ?? undefined,
     onSuccess,
     // A cancel/exit skips just this institution and moves on to the rest.
     onExit: () => {
       setLinkToken(null);
+      setOauthReturnUri(null);
       void openAt(indexRef.current + 1);
     },
   });
@@ -103,6 +185,37 @@ export function useLinkQueue(opts?: {
   useEffect(() => {
     if (linkToken && ready) open();
   }, [linkToken, ready, open]);
+
+  // On mount, resume a queue interrupted by an OAuth redirect. Plaid returns the
+  // user to our redirect URI with ?oauth_state_id=...; we rehydrate the stashed
+  // token + queue and re-open Link with the current URL as receivedRedirectUri
+  // to finish the handshake, after which the queue continues as normal. Runs
+  // once; strips the oauth params so a refresh can't re-trigger it.
+  const claimedRef = useRef(false);
+  useEffect(() => {
+    if (claimedRef.current) return;
+    claimedRef.current = true;
+    const inflight = readInflight();
+    if (isOAuthReturn() && inflight) {
+      queueRef.current = inflight.queue;
+      indexRef.current = inflight.index;
+      resultRef.current = inflight.result;
+      setBusy(true);
+      setProgress({ index: inflight.index, total: inflight.queue.length });
+      setOauthReturnUri(window.location.href);
+      setLinkToken(inflight.token);
+      try {
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch {
+        /* ignore */
+      }
+    } else if (inflight) {
+      // Stale stash from an abandoned flow with no OAuth return to complete it;
+      // drop it so it can't resurface on a later, unrelated link.
+      clearInflight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const start = useCallback(
     async (institutions: LinkInstitution[]) => {
