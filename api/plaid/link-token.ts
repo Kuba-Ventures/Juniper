@@ -52,6 +52,13 @@ export default async function handler(req: Request): Promise<Response> {
   );
 
   if (!ok || !data.link_token) {
+    // Surface Plaid's reason in the server logs so failures (e.g. a product not
+    // enabled for Production, or a redirect_uri mismatch) are diagnosable without
+    // digging in the browser Network tab. error_message is a Plaid status string,
+    // not credentials, so it is safe to log.
+    console.error(
+      `[plaid] link/token/create failed (${status}): ${data.error_message || "unknown error"}`,
+    );
     return json({ error: data.error_message || "Failed to create link token" }, status || 502);
   }
   return json({ link_token: data.link_token });
