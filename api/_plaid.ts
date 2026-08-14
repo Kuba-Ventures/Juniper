@@ -21,10 +21,14 @@ export function plaidConfigured(): boolean {
   return !!readEnv("PLAID_CLIENT_ID") && !!readEnv("PLAID_SECRET");
 }
 
-// Products requested at Link time. Default "auth" (universally supported).
-// Override via env to add e.g. "transactions,liabilities,investments" later.
+// Products requested at Link time. Default "transactions": it returns accounts +
+// balances and powers the budgeting/net-worth features, and unlike "auth" it does
+// not require the (unused) account/routing-number product. `auth` was the old
+// default but Juniper never reads routing numbers, so requesting it only caused
+// "account not enabled for auth" 400s. Override via env to add e.g.
+// "transactions,liabilities,investments" later.
 export function plaidProducts(): string[] {
-  return (readEnv("PLAID_PRODUCTS") || "auth")
+  return (readEnv("PLAID_PRODUCTS") || "transactions")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
