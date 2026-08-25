@@ -7,10 +7,13 @@ import { normInstitutionName, type LinkInstitution } from "@/lib/plaid";
 // account" flow (account discovery, tier 2). Users can browse by category, type
 // to filter, tick several institutions (or "Select all" a category), and connect
 // them in one go, the caller links them sequentially via the Plaid Link queue.
-// The per-category "Other" / global "Search all" path opens Plaid's full search
-// for anything not in the gallery (small/regional banks like Carter Bank). The
-// "Add manually" action hands off to the manual-entry form for accounts Plaid
-// can't link at all.
+// Each category ends with a dashed "Not listed" tile, and the bar carries a
+// global "Search all banks"; both open Plaid's full search for anything outside
+// the gallery (small/regional banks like Carter Bank, which Plaid does link, via
+// OAuth). Only "Enter it by hand" goes to the manual form, for accounts Plaid
+// can't reach at all. Keeping the manual path visibly last matters: a hand-typed
+// balance is a static snapshot that never refreshes, so it should be the choice
+// someone makes deliberately, not the first door they find.
 //
 // Tiles carry only a display name; the real institution id/name comes back from
 // Plaid on success, so a tapped name is just a hint + label.
@@ -250,14 +253,31 @@ export function InstitutionPicker({
                     </button>
                   );
                 })}
+                {/* Per-category escape hatch. The failure it fixes is a scanning
+                    failure: someone looks for their bank, doesn't see it, and has
+                    no idea what to do next. So the way out sits in the grid being
+                    scanned, not only in the bar at the bottom of the page. Routes
+                    to Plaid's own search (not the manual form) because most
+                    "missing" banks are reachable, just not in the top-12 gallery. */}
+                <button
+                  className="inst-tile other"
+                  onClick={() => onConnect([{}])}
+                  disabled={busy}
+                  aria-label={`My ${cat.category.toLowerCase()} provider isn't listed, search all of Plaid`}
+                >
+                  <span className="inst-other-ic">
+                    <Search />
+                  </span>
+                  <span className="inst-name">Not listed</span>
+                </button>
               </div>
             </div>
           );
         })}
         {filtered.length === 0 && (
           <div className="inst-empty">
-            No matches for "{query.trim()}". Tap <b>Search all institutions</b> below to find it in Plaid, or add it
-            manually.
+            No matches for "{query.trim()}". Tap <b>Search all banks</b> below to find it in Plaid, or enter it by
+            hand.
           </div>
         )}
       </div>
@@ -265,11 +285,14 @@ export function InstitutionPicker({
       <div className="inst-bar">
         <div className="inst-bar-left">
           <button className="inst-otherbtn" onClick={() => onConnect([{}])} disabled={busy}>
-            <Plus size={15} /> Search all institutions
+            <Plus size={15} /> Search all banks
           </button>
           {onManual && (
+            // The label states the tradeoff inline. "Add manually" read as the
+            // obvious choice to someone who couldn't find their bank, so people
+            // hand-typed a static balance for institutions Plaid links live.
             <button className="inst-otherbtn" onClick={onManual} disabled={busy}>
-              <PencilLine size={15} /> Add manually
+              <PencilLine size={15} /> Enter it by hand (no live balance)
             </button>
           )}
         </div>

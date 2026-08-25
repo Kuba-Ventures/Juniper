@@ -220,8 +220,8 @@ export function ConnectionsView() {
             <div className="card" style={{ marginTop: hasItems ? 16 : 0 }}>
               <h3 style={{ fontSize: 15, marginBottom: 4 }}>{hasItems ? "Add another account" : "Connect your accounts"}</h3>
               <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
-                Pick everything you use and connect it in one pass, use <b>Search all institutions</b> for small and
-                regional banks, or <b>Add manually</b> for accounts Plaid can't link.
+                Pick everything you use and connect it in one pass, tap <b>Not listed</b> in any section for small and
+                regional banks, or <b>enter it by hand</b> for accounts Plaid can't link.
               </p>
               {layerEnabled() && !showManual && (
                 <LayerDiscovery
