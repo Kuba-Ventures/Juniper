@@ -128,10 +128,10 @@ export function ConnectionsView() {
   // member shouldn't be invited to re-link a bank they already have. Refreshes
   // with `items`/`manualAccts` as connections are added or removed.
   const connected = useMemo(() => {
-    const set = new Set<string>();
-    for (const it of items) if (it.institution_name) set.add(normInstitutionName(it.institution_name));
-    for (const m of manualAccts) if (m.institution) set.add(normInstitutionName(m.institution));
-    return set;
+    const map = new Map<string, string>();
+    for (const it of items) if (it.institution_name) map.set(normInstitutionName(it.institution_name), it.institution_name);
+    for (const m of manualAccts) if (m.institution) map.set(normInstitutionName(m.institution), m.institution);
+    return map;
   }, [items, manualAccts]);
 
   return (

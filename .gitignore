@@ -55,3 +55,6 @@ Thumbs.db
 
 # Local env backups (may contain secrets)
 .env.bak*
+
+# Claude Code local machine settings
+.claude/settings.local.json

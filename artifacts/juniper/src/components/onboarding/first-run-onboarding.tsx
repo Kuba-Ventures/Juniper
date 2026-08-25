@@ -380,14 +380,14 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
   // those tiles read as already-connected instead of still-to-do — otherwise a
   // member who imported, say, Marcus via the phone-first flow sees Marcus sitting
   // unchecked below and assumes it didn't take.
-  const [connected, setConnected] = useState<Set<string>>(new Set());
+  const [connected, setConnected] = useState<Map<string, string>>(new Map());
 
   const markConnected = useCallback(
     (institutions?: string[]) => {
       if (institutions?.length) {
         setConnected((prev) => {
-          const next = new Set(prev);
-          for (const n of institutions) if (n) next.add(normInstitutionName(n));
+          const next = new Map(prev);
+          for (const n of institutions) if (n) next.set(normInstitutionName(n), n);
           return next;
         });
       }

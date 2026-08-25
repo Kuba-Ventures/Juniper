@@ -98,6 +98,13 @@ const SORTED_CATALOG = CATALOG.map((c) => ({
   items: [...c.items].sort((a, b) => a.name.localeCompare(b.name)),
 }));
 
+// Normalized catalog name to its logo + color, so a connected institution that
+// does live in the gallery keeps its brand mark when hoisted into the Connected
+// section instead of degrading to a monogram.
+const CATALOG_BY_NAME = new Map<string, { logo?: string; color: string }>(
+  CATALOG.flatMap((c) => c.items.map((i) => [i.name.trim().toLowerCase(), { logo: i.logo, color: c.color }] as const)),
+);
+
 function Mark({ inst, color }: { inst: Inst; color: string }) {
   if (inst.logo && LOGOS[inst.logo]) return <img className="inst-logo" src={LOGOS[inst.logo]} alt="" />;
   return (
@@ -116,9 +123,13 @@ export function InstitutionPicker({
   onConnect: (institutions: LinkInstitution[]) => void;
   onManual?: () => void;
   busy?: boolean;
-  // Normalized names of institutions already connected this session — rendered as
-  // locked-in "Connected" tiles, and kept out of the selectable set.
-  connected?: Set<string>;
+  // Institutions already connected, keyed by normalized name so matching against
+  // the catalog is case-insensitive, valued by the display name Plaid (or the
+  // manual form) actually gave us. A Map rather than a Set because the value is
+  // the only label we have for a connection that isn't in CATALOG: Carter Bank
+  // and most regional banks are linkable but not in the gallery, and before this
+  // they connected successfully and then appeared nowhere.
+  connected?: Map<string, string>;
 }) {
   const [query, setQuery] = useState("");
   // Selection keyed by "category:name" so the same brand in two categories stays
@@ -129,19 +140,43 @@ export function InstitutionPicker({
 
   const isConnected = (name: string) => !!connected && connected.has(normInstitutionName(name));
 
+  // Everything connected, hoisted into its own section at the top and removed from
+  // the category grids below, so "what do I already have" is one glance instead of
+  // a hunt through five categories. Catalog members keep their real logo; anything
+  // outside the catalog falls back to a monogram tile.
+  const connectedItems = useMemo(() => {
+    if (!connected?.size) return [];
+    return [...connected.entries()]
+      .map(([norm, label]) => {
+        const known = CATALOG_BY_NAME.get(norm);
+        return {
+          inst: { name: label, logo: known?.logo } as Inst,
+          color: known?.color ?? "--jnpr-c1",
+        };
+      })
+      .sort((a, b) => a.inst.name.localeCompare(b.inst.name));
+  }, [connected]);
+
+  const connectedFiltered = useMemo(
+    () => (q ? connectedItems.filter((c) => c.inst.name.toLowerCase().includes(q)) : connectedItems),
+    [connectedItems, q],
+  );
+
   const filtered = useMemo(
     () =>
       SORTED_CATALOG.map((cat) => ({
         ...cat,
-        items: q ? cat.items.filter((i) => i.name.toLowerCase().includes(q)) : cat.items,
+        items: cat.items
+          .filter((i) => !isConnected(i.name))
+          .filter((i) => (q ? i.name.toLowerCase().includes(q) : true)),
       })).filter((cat) => cat.items.length > 0),
-    [q],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [q, connected],
   );
 
   const keyOf = (category: string, name: string) => `${category}:${name}`;
 
   const toggle = (category: string, name: string) => {
-    if (isConnected(name)) return; // already connected — not selectable
     setSelected((prev) => {
       const next = new Set(prev);
       const k = keyOf(category, name);
@@ -151,15 +186,13 @@ export function InstitutionPicker({
     });
   };
 
-  // "Select all" / per-category "All" operate on selectable (not-yet-connected)
-  // tiles only, so an already-connected institution is never re-queued.
+  // "Select all" / per-category "All" cover every visible tile. `filtered` is the
+  // single place connected institutions get excluded, so nothing already linked
+  // can be re-queued from here.
   const allVisibleKeys = useMemo(
-    () =>
-      filtered.flatMap((cat) =>
-        cat.items.filter((i) => !isConnected(i.name)).map((i) => keyOf(cat.category, i.name)),
-      ),
+    () => filtered.flatMap((cat) => cat.items.map((i) => keyOf(cat.category, i.name))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filtered, connected],
+    [filtered],
   );
   const allVisibleSelected = allVisibleKeys.length > 0 && allVisibleKeys.every((k) => selected.has(k));
 
@@ -211,9 +244,33 @@ export function InstitutionPicker({
       </div>
 
       <div className="inst-cats">
+        {connectedFiltered.length > 0 && (
+          <div className="inst-cat">
+            <div className="inst-cat-row">
+              <div className="inst-cat-h">Connected</div>
+            </div>
+            <div className="inst-grid">
+              {connectedFiltered.map(({ inst, color }) => (
+                <div
+                  key={`connected-${inst.name}`}
+                  className="inst-tile connected"
+                  aria-label={`${inst.name}, already connected`}
+                  title="Already connected"
+                >
+                  <Mark inst={inst} color={color} />
+                  <span className="inst-name">{inst.name}</span>
+                  <span className="inst-connected-tag">
+                    <Check size={11} strokeWidth={3} /> Connected
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {filtered.map((cat) => {
-          // Connected tiles are excluded from the category's select-all target.
-          const keys = cat.items.filter((i) => !isConnected(i.name)).map((i) => keyOf(cat.category, i.name));
+          // `filtered` already dropped connected institutions into the Connected
+          // section above, so every tile here is selectable.
+          const keys = cat.items.map((i) => keyOf(cat.category, i.name));
           const catAllOn = keys.length > 0 && keys.every((k) => selected.has(k));
           return (
             <div className="inst-cat" key={cat.category}>
@@ -229,27 +286,19 @@ export function InstitutionPicker({
               </div>
               <div className="inst-grid">
                 {cat.items.map((inst) => {
-                  const conn = isConnected(inst.name);
-                  const on = !conn && selected.has(keyOf(cat.category, inst.name));
+                  const on = selected.has(keyOf(cat.category, inst.name));
                   return (
                     <button
                       key={`${cat.category}-${inst.name}`}
-                      className={`inst-tile ${on ? "on" : ""} ${conn ? "connected" : ""}`}
+                      className={`inst-tile ${on ? "on" : ""}`}
                       onClick={() => toggle(cat.category, inst.name)}
-                      disabled={busy || conn}
+                      disabled={busy}
                       aria-pressed={on}
-                      aria-label={conn ? `${inst.name}, already connected` : inst.name}
-                      title={conn ? "Already connected" : undefined}
+                      aria-label={inst.name}
                     >
                       <Mark inst={inst} color={cat.color} />
                       <span className="inst-name">{inst.name}</span>
-                      {conn ? (
-                        <span className="inst-connected-tag">
-                          <Check size={11} strokeWidth={3} /> Connected
-                        </span>
-                      ) : (
-                        <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
-                      )}
+                      <span className={`inst-check ${on ? "on" : ""}`}>{on && <Check size={12} strokeWidth={3} />}</span>
                     </button>
                   );
                 })}
@@ -274,7 +323,7 @@ export function InstitutionPicker({
             </div>
           );
         })}
-        {filtered.length === 0 && (
+        {filtered.length === 0 && connectedFiltered.length === 0 && (
           <div className="inst-empty">
             No matches for "{query.trim()}". Tap <b>Search all banks</b> below to find it in Plaid, or enter it by
             hand.

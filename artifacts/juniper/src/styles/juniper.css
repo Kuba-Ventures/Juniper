@@ -711,7 +711,7 @@
 .jnpr .inst-check.on{background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
 /* already-connected tile: locked-in "done" state (green), distinct from the accent
    "selected to connect" state, and full-opacity despite being disabled */
-.jnpr .inst-tile.connected{border-color:var(--jnpr-good);background:var(--jnpr-good-soft)}
+.jnpr .inst-tile.connected{border-color:var(--jnpr-good);background:var(--jnpr-good-soft);cursor:default}
 .jnpr .inst-tile.connected:disabled{opacity:1;cursor:default}
 .jnpr .inst-connected-tag{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--jnpr-good)}
 .jnpr .inst-connected-tag svg{flex:0 0 auto}
