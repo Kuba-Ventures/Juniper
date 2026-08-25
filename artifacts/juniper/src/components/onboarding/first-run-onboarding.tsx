@@ -417,8 +417,8 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
       <p className="ob-help">
         Optional, but it's the magic: pick every bank, card, or investment provider you use, then connect them
         in one pass and Juniper keeps your net worth, spending, and score up to date automatically. Don't see
-        yours? Use <b>Search all institutions</b>, or <b>Add manually</b> for anything Plaid can't reach. You can
-        always do this later.
+        yours? Tap <b>Not listed</b> in any section to search every bank Plaid supports, or <b>enter it by hand</b>{" "}
+        for anything Plaid can't reach. You can always do this later.
       </p>
 
       {linked && (
