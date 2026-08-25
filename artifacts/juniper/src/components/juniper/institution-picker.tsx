@@ -243,30 +243,36 @@ export function InstitutionPicker({
         </button>
       </div>
 
-      <div className="inst-cats">
-        {connectedFiltered.length > 0 && (
-          <div className="inst-cat">
-            <div className="inst-cat-row">
-              <div className="inst-cat-h">Connected</div>
-            </div>
-            <div className="inst-grid">
-              {connectedFiltered.map(({ inst, color }) => (
-                <div
-                  key={`connected-${inst.name}`}
-                  className="inst-tile connected"
-                  aria-label={`${inst.name}, already connected`}
-                  title="Already connected"
-                >
-                  <Mark inst={inst} color={color} />
-                  <span className="inst-name">{inst.name}</span>
-                  <span className="inst-connected-tag">
-                    <Check size={11} strokeWidth={3} /> Connected
-                  </span>
-                </div>
-              ))}
-            </div>
+      {connectedFiltered.length > 0 && (
+        // Outside `.inst-cats` on purpose. That element is a 44vh scroll box, so
+        // anything inside it slides out of view once you are browsing the lower
+        // categories, which is exactly when you want to check what already took.
+        // Its own grid is capped at two rows so a long list of connections can
+        // never crowd out the gallery it sits above.
+        <div className="inst-cat inst-cat-pinned">
+          <div className="inst-cat-row">
+            <div className="inst-cat-h">Connected</div>
           </div>
-        )}
+          <div className="inst-grid inst-grid-capped">
+            {connectedFiltered.map(({ inst, color }) => (
+              <div
+                key={`connected-${inst.name}`}
+                className="inst-tile connected"
+                aria-label={`${inst.name}, already connected`}
+                title="Already connected"
+              >
+                <Mark inst={inst} color={color} />
+                <span className="inst-name">{inst.name}</span>
+                <span className="inst-connected-tag">
+                  <Check size={11} strokeWidth={3} /> Connected
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="inst-cats">
         {filtered.map((cat) => {
           // `filtered` already dropped connected institutions into the Connected
           // section above, so every tile here is selectable.
