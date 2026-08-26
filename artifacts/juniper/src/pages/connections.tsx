@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine } from "lucide-react";
-import { InstitutionPicker } from "@/components/juniper/institution-picker";
+import { InstitutionPicker, localBrandLogo } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
 import {
   fetchPlaidItems,
+  fetchInstitutionLogos,
+  institutionLogoSrc,
   removePlaidItem,
   syncFinances,
   syncFinancesUntilTransactions,
   layerEnabled,
   normInstitutionName,
+  type InstitutionBrand,
+  type InstitutionBrandMap,
   type PlaidItem,
 } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
@@ -41,9 +45,60 @@ function accountLine(a: PlaidItem["accounts"][number]): string {
 
 const catLabel = (key: string) => MANUAL_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 
+// Plaid's primary_color is whatever the bank's own brand is, which runs from
+// near-white golds to near-black navies, and the tile it paints sits on a white
+// surface in light mode and a near-black one in dark. So the letter is colored
+// from the tint's measured brightness rather than assumed white (a white "T" on a
+// pale gold tile is unreadable), and .ci-mono carries a hairline border so a very
+// dark brand color does not dissolve into the dark-mode surface. Returns null for
+// anything that isn't a plain 6-digit hex, which is the only shape Plaid sends.
+function brandTint(hex: string | null | undefined): { background: string; color: string } | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex ?? "").trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  // Rec. 709 luma, the cheap standard proxy for perceived brightness.
+  const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return { background: `#${m[1]}`, color: luma > 0.6 ? "#232B21" : "#FFFFFF" };
+}
+
+// One connection's mark, resolved widest-first so a row is never a blank space:
+// the real logo Plaid holds for that institution, then our bundled brand map
+// (the same one the gallery tiles read), then a monogram tinted with the bank's
+// primary_color, then the row's default glyph. Before this, every row rendered
+// that last glyph and a page of real banks read as one undifferentiated list.
+//
+// `brand` is absent for a manually added account, which carries an institution
+// name and no Plaid id at all, so those rows resolve through the local map or
+// drop straight to their pencil glyph.
+function InstitutionMark({
+  name,
+  brand,
+  glyph,
+}: {
+  name: string;
+  brand?: InstitutionBrand;
+  glyph: ReactNode;
+}) {
+  const src = institutionLogoSrc(brand?.logo) ?? localBrandLogo(name);
+  if (src) return <img className="ci-logo" src={src} alt="" />;
+  const tint = brandTint(brand?.primary_color);
+  if (tint) {
+    return (
+      <span className="ci-mono" style={tint}>
+        {name.charAt(0).toUpperCase()}
+      </span>
+    );
+  }
+  return <span className="ci-mark">{glyph}</span>;
+}
+
 export function ConnectionsView() {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [manualAccts, setManualAccts] = useState<ManualAccount[]>([]);
+  // institution_id -> Plaid brand metadata, for the marks below. Held per page
+  // rather than per row because the payload is a base64 PNG per institution.
+  const [brands, setBrands] = useState<InstitutionBrandMap>({});
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingManualId, setRemovingManualId] = useState<string | null>(null);
@@ -55,6 +110,19 @@ export function ConnectionsView() {
     const [next, manual] = await Promise.all([fetchPlaidItems(), fetchManualAccounts()]);
     setItems(next);
     setManualAccts(manual);
+    // Brand marks are decoration, so they load off the critical path: the rows
+    // appear (on the local map or the monogram) the moment the items land, and
+    // the real logos swap in behind them. Awaiting this would put a Plaid call
+    // per institution in front of the page's own loading state. Fired once per
+    // refresh (first load, a link, a removal), never per render.
+    //
+    // Merged rather than replaced because fetchInstitutionLogos returns {} on
+    // failure: a flaky refresh should leave the logos we already have alone
+    // rather than dropping the whole page back to monograms. Entries for a
+    // disconnected institution are simply never read again.
+    void fetchInstitutionLogos(next.map((i) => i.institution_id)).then((map) => {
+      setBrands((prev) => ({ ...prev, ...map }));
+    });
   }, []);
 
   const {
@@ -148,6 +216,21 @@ export function ConnectionsView() {
     return map;
   }, [items, manualAccts]);
 
+  // The same connections again, this time as marks for the gallery's Connected
+  // section. Keyed by normalized name because that is all the picker has to match
+  // on, and built here because this is the only place holding both the item rows
+  // (which carry the institution id) and the fetched map. Plaid logos only: the
+  // picker already falls back to its own catalog art and then a monogram.
+  const connectedLogos = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const it of items) {
+      if (!it.institution_name || !it.institution_id) continue;
+      const src = institutionLogoSrc(brands[it.institution_id]?.logo);
+      if (src) map.set(normInstitutionName(it.institution_name), src);
+    }
+    return map;
+  }, [items, brands]);
+
   return (
     <div className="frame">
       <PageHeader
@@ -180,7 +263,11 @@ export function ConnectionsView() {
             {items.map((item) => (
               <div className="conn-item" key={item.item_id}>
                 <div className="conn-inst">
-                  <span className="ci-mark"><Building2 size={19} /></span>
+                  <InstitutionMark
+                    name={item.institution_name || "Linked institution"}
+                    brand={item.institution_id ? brands[item.institution_id] : undefined}
+                    glyph={<Building2 size={19} />}
+                  />
                   <span className="ci-name">{item.institution_name || "Linked institution"}</span>
                   <button
                     className="btn ghost sm"
@@ -203,7 +290,11 @@ export function ConnectionsView() {
             {manualAccts.map((m) => (
               <div className="conn-item" key={m.id}>
                 <div className="conn-inst">
-                  <span className="ci-mark"><PencilLine size={17} /></span>
+                  {/* No Plaid id on a hand-added account, so this only ever
+                      reaches the local brand map or the pencil glyph. The
+                      "Manual" tag beside it still carries that meaning when a
+                      logo resolves. */}
+                  <InstitutionMark name={m.institution || m.name} glyph={<PencilLine size={17} />} />
                   <span className="ci-name">
                     {m.institution || m.name} <span className="conn-tag">Manual</span>
                   </span>
@@ -253,7 +344,13 @@ export function ConnectionsView() {
                   onCancel={() => setShowManual(false)}
                 />
               ) : (
-                <InstitutionPicker onConnect={handleConnect} onManual={() => setShowManual(true)} busy={connecting} connected={connected} />
+                <InstitutionPicker
+                  onConnect={handleConnect}
+                  onManual={() => setShowManual(true)}
+                  busy={connecting}
+                  connected={connected}
+                  connectedLogos={connectedLogos}
+                />
               )}
             </div>
           </>
