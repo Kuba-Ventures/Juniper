@@ -2,9 +2,14 @@
 // Plaid transactions + the categorization/budget engine in Stage 3. Keep
 // components reading these typed selectors so that swap is data-layer only.
 
+// c1 to c7 are the seven chart colors. The three semantic tokens are here
+// because the Stage-3b category groups need more than seven distinct wedges:
+// `accent` and `ink-2` carry the two newest spending groups, and `good` / `ink-3`
+// mark income and transfers (which never appear in the donut, only on rows).
+// All four are already defined in both palettes in styles/juniper.css.
 export type SeriesKey =
   | "--jnpr-c1" | "--jnpr-c2" | "--jnpr-c3" | "--jnpr-c4" | "--jnpr-c5" | "--jnpr-c6" | "--jnpr-c7"
-  | "--jnpr-good";
+  | "--jnpr-good" | "--jnpr-accent" | "--jnpr-ink-2" | "--jnpr-ink-3";
 
 export interface SpendCat { c: string; v: number; k: SeriesKey }
 export interface Budget { c: string; s: number; l: number }

@@ -4,6 +4,7 @@
 // scopes by user_id itself (RLS is bypassed here, see _supabase-admin).
 import { adminRest } from "./_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
+import { kindOf } from "./_categorize";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null };
@@ -55,12 +56,24 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
     return { linked: false, input: emptyInput(), signals: emptySignals() };
   }
 
-  // Plaid convention: positive amount = money out, negative = money in.
+  // Plaid convention: positive amount = money out, negative = money in. But the
+  // sign alone does not say whether money was CONSUMED, so this applies the same
+  // three rules as /api/finances (see the cashflow block there): transfers and
+  // credit-card payments are dropped, income is netted from its own categories,
+  // and spending is summed signed so refunds reduce it. This matters more here
+  // than on the dashboard, because these two numbers drive the savings rate and
+  // the emergency-fund factor: counting transfers to savings as spending both
+  // inflated the fund the member needs and hid the saving they were doing.
   const months = WINDOW_DAYS / 30;
-  const outflow = txns.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0);
-  const inflow = Math.abs(txns.filter((t) => t.amount < 0).reduce((a, t) => a + t.amount, 0));
-  const monthlySpending = outflow / months;
-  const monthlyIncome = inflow / months;
+  let outflow = 0, inflow = 0;
+  for (const t of txns) {
+    const kind = kindOf(t.category);
+    if (kind === "transfer") continue;
+    if (kind === "income") inflow -= t.amount;
+    else outflow += t.amount;
+  }
+  const monthlySpending = Math.max(0, outflow) / months;
+  const monthlyIncome = Math.max(0, inflow) / months;
 
   let cashReserves = 0, investmentBalance = 0, cardDebt = 0, loanDebt = 0;
   for (const it of items) {

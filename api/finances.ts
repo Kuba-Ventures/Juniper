@@ -12,12 +12,18 @@
 // are omitted rather than zero-filled: the client merges what arrives over the
 // member's own manual figures, and a zero would overwrite a real one with a lie.
 // Colors are added client-side.
+//
+// Spending, income, and the breakdown all read the taxonomy in ./_categorize:
+// transfers between the member's own accounts and credit-card payments are not
+// consumption and are excluded from every figure here. See the cashflow block
+// below for why that was a real bug and not a rounding nicety.
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { fetchScoreInput } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
+import { CATEGORY_GROUPS, groupOf, kindOf, isGroupLabel } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -33,7 +39,11 @@ function json(body: unknown, status = 200) {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const CAT_ORDER = ["Housing", "Groceries & dining", "Transportation", "Shopping", "Utilities & bills", "Kids & health", "Everything else"];
+// Display order for the spending rollup comes from the taxonomy itself
+// (api/_categorize.ts), so there is no second list of category names here to
+// drift out of sync with the one that actually classifies transactions. The old
+// hand-kept CAT_ORDER is what this replaces.
+const SPEND_GROUPS = CATEGORY_GROUPS.filter((g) => g.kind === "spend").map((g) => g.label);
 const fmtDay = (d: string) => { const [, m, day] = d.split("-"); return `${MONTHS[+m - 1]} ${+day}`; };
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
@@ -88,26 +98,72 @@ export default async function handler(req: Request): Promise<Response> {
   const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   const thisMonth = txns.filter((t) => t.date.startsWith(ym));
 
-  // Spending by category (this month, outflows only)
-  const byCat = new Map<string, number>();
-  for (const t of thisMonth) if (t.amount > 0) { const c = t.category || "Everything else"; byCat.set(c, (byCat.get(c) || 0) + t.amount); }
-  const spending = [...byCat.entries()]
-    .map(([c, v]) => ({ c, v: Math.round(v) }))
-    .sort((a, b) => (CAT_ORDER.indexOf(a.c) + 99) % 100 - ((CAT_ORDER.indexOf(b.c) + 99) % 100) || b.v - a.v);
+  // ── This month's cashflow and spending ──────────────────────────────────
+  //
+  // The sign of an amount says which way the money moved (Plaid: positive is
+  // out); the CATEGORY says what kind of movement it was. Reading only the sign,
+  // which is what this used to do, made every outflow spending and every inflow
+  // income, so a transfer to savings, a Venmo to a friend, and a credit-card
+  // payment all registered as money spent, and a refund or a transfer in
+  // registered as earnings. The card payment was the worst of it: the purchases
+  // behind it already counted when they happened, so the member was billed twice
+  // for the same month.
+  //
+  // Three rules, one pass:
+  //   transfer  -> ignored entirely, it is the member's own money changing seats
+  //   income    -> summed as inflow, so a reversal (an outflow on an income
+  //                category) reduces income rather than becoming spending
+  //   spend     -> summed SIGNED, so a refund nets against the category it came
+  //                back to instead of masquerading as income
+  const byCat = new Map<string, number>();   // leaf category -> net spend, for budgets
+  const byGroup = new Map<string, number>(); // group -> net spend, for the donut
+  let incomeRaw = 0;
+  for (const t of thisMonth) {
+    const cat = t.category || "Everything else";
+    const kind = kindOf(cat);
+    if (kind === "transfer") continue;
+    if (kind === "income") { incomeRaw -= t.amount; continue; }
+    const g = groupOf(cat);
+    byCat.set(cat, (byCat.get(cat) || 0) + t.amount);
+    byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
+  }
 
-  const spent = Math.round(thisMonth.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0));
-  const income = Math.round(Math.abs(thisMonth.filter((t) => t.amount < 0).reduce((a, t) => a + t.amount, 0)));
+  // The breakdown is by GROUP, not leaf category: nine coherent wedges instead
+  // of forty slivers, and the two-level table is what makes that a derived view
+  // rather than a second stored vocabulary. Order follows the table.
+  //
+  // A group whose refunds outran its spending nets negative, which a donut
+  // cannot draw, so it is dropped from the breakdown and `spent` is defined as
+  // the sum of what the breakdown shows. That keeps the card header, the donut
+  // center, and the "Spent" figure in the cashflow strip identical by
+  // construction, which matters more than the fraction of a dollar it rounds off.
+  const spending = SPEND_GROUPS
+    .map((c) => ({ c, v: Math.round(byGroup.get(c) || 0) }))
+    .filter((s) => s.v > 0);
+
+  const spent = spending.reduce((a, s) => a + s.v, 0);
+  const income = Math.max(0, Math.round(incomeRaw));
 
   const transactions = txns.slice(0, 8).map((t) => ({
     m: t.merchant_name || t.name || "Transaction",
     c: t.category || "Everything else",
+    // The group rides along so the client can color a row from the same table
+    // the rollup used, instead of keeping its own copy of the taxonomy.
+    g: groupOf(t.category),
     v: -t.amount, // flip Plaid's +out convention to the UI's -spend / +income
     d: fmtDay(t.date),
-    inc: (t.category || "") === "Income",
+    inc: kindOf(t.category) === "income",
   }));
 
-  // Budgets with this-month spent
-  const budgetsOut = budgets.map((b) => ({ c: b.category, s: Math.round(byCat.get(b.category) || 0), l: Math.round(b.limit_amount) }));
+  // Budgets with this-month spent. A budget is stored by label, and every label
+  // a member could have set before Stage 3b is now a GROUP, so a group-labelled
+  // budget measures the whole group and a leaf-labelled one measures just that
+  // category. Without this, widening the vocabulary would have quietly zeroed
+  // every budget the member already had. Clamped at zero so a refund-heavy month
+  // cannot render a negative bar.
+  const budgetSpent = (label: string) =>
+    Math.max(0, Math.round((isGroupLabel(label) ? byGroup.get(label) : byCat.get(label)) || 0));
+  const budgetsOut = budgets.map((b) => ({ c: b.category, s: budgetSpent(b.category), l: Math.round(b.limit_amount) }));
 
   // Accounts grouped from the linked snapshots
   const group = (pred: (a: Acct) => boolean, debt = false) =>
@@ -180,6 +236,10 @@ export default async function handler(req: Request): Promise<Response> {
       : {}),
     ...(hasTransactions
       ? {
+          // `saved` is income minus consumption, so money moved to savings or
+          // investments counts as saved rather than spent, which is the point.
+          // It also means a credit-card payment no longer eats the month's
+          // savings twice over.
           cashflow: { income, spent, saved: income - spent, month: MONTHS[now.getUTCMonth()] },
           spending,
           budgets: budgetsOut,
