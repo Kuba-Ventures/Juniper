@@ -5,7 +5,6 @@ import { money } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
 import { useThreads, previewOf, relativeTime } from "@/lib/planner";
 import { useSession } from "@/lib/use-session";
-import { PartnerPanel } from "@/components/juniper/partner-panel";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import {
   useMemberPlans,
@@ -753,7 +752,16 @@ export default function Plans({ profile = null, profileReady = false }: {
         }
       />
 
-      <PartnerPanel />
+      {/* The "Planning with a partner? Invite partner" panel stood here
+          (components/juniper/partner-panel.tsx). Removed in Stage 4c because
+          accepting one of its invites produced nothing a member could see. Its
+          link goes to /invite/:token, which on accept sends the partner to
+          /app/plans/:domain, a route only the retired app-shell.tsx ever
+          defined, so they land on the not-found card. And this page rendered
+          <PartnerPanel /> with no partnerName, so the panel could never leave
+          its "Planning with a partner?" state, even after acceptance. Bring it
+          back with a plan-detail route that renders the partner's answers and
+          the alignment view, so an accepted invite arrives somewhere. */}
 
       {loading ? (
         <div className="grid plan-grid">

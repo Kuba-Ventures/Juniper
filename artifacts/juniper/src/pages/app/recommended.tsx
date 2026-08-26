@@ -1,3 +1,46 @@
+// UNROUTED as of Stage 4c. Nothing in the app links here and there is no
+// /app/recommended route, so a member who types the URL gets the app's
+// not-found card. The file, GET /api/partners, GET /api/recommendations,
+// POST /api/partners/submit, and the partners table all stay as they are.
+//
+// This is not the usual mock-data problem. The Library reads real rows from the
+// `partners` table and "Picked for you" is genuinely computed from the member's
+// own financial signals. Two things upstream are the problem.
+//
+// 1. The offers are placeholders wearing a real schema. Every URL in the seeded
+//    catalog (supabase/migrations/0011_partners_seed.sql) is still
+//    example.com/partners/..., and no affiliate program has been approved. The
+//    page tells a member Juniper "may earn a commission when you open an account
+//    through these links" and offers a "View" button, over nine offers that do
+//    not exist. The rates in the seed ("4.25% APY") are invented too, the same
+//    open loop as the illustrative rates in lib/projection.tsx.
+//
+// 2. Licensing is unsettled, and this surface is what makes it bite. The credit
+//    services statutes turn on doing something "with respect to the extension of
+//    credit by others" (Cal. Civ. Code 1789.12(d), quoted in
+//    docs/CREDIT_PROVIDER.md section 4). Juniper displaying a member's own score
+//    is arguably outside that; an affiliate marketplace that routes members to
+//    balance-transfer cards and refinance offers for compensation is the element
+//    the statute is looking for. California alone means Department of Justice
+//    registration and a $100,000 surety bond before doing business, and the memo
+//    lists Texas (Fin. Code ch. 393) among the states it did not research at all.
+//    Its standing recommendation is to treat the conservative reading as the
+//    nationwide default rather than a California quirk to route around.
+//
+// What has to be true to route it again:
+//   a. Approved affiliate programs with real, working URLs and real rates,
+//      replacing every example.com row. This is the standing Stage 5 compliance
+//      item, still open.
+//   b. Category-specific disclosures and any licensing the category needs
+//      (mortgage, insurance, credit cards, legal).
+//   c. A lawyer's answer on the credit-services question in
+//      docs/CREDIT_PROVIDER.md, specifically whether paid credit-offer referrals
+//      make Juniper a credit services organization, and in which states. Every
+//      state Juniper serves needs a workable path. The memo researched California
+//      only; the state-by-state sweep, including whether any state's regime is
+//      criminal or has no registration route, has not been done.
+// Until (a) through (c) hold, this page is a commission promise over offers that
+// do not exist, on a surface that may need a license to exist.
 import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { listings, listingCategories, type Listing } from "@/lib/mock-data";

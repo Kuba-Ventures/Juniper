@@ -135,11 +135,16 @@ export function FirstRunOnboarding({
                 <div style={{ marginTop: 22 }}>
                   <p className="ob-help" style={{ margin: "0 0 10px" }}>Who are you planning for?</p>
                   <div className="ob-seg">
+                    {/* Both sub-labels describe the household, not a feature.
+                        They used to promise inviting a partner and planning
+                        together, which Stage 4c took out of reach. `household`
+                        is stored on the profile and read by nothing else, so it
+                        stays as a question about the member's situation. */}
                     <button className={household === "solo" ? "on" : undefined} onClick={() => setHousehold("solo")}>
-                      Just me<small>Solo, you can invite a partner later</small>
+                      Just me<small>Planning on your own</small>
                     </button>
                     <button className={household === "partner" ? "on" : undefined} onClick={() => setHousehold("partner")}>
-                      Me & my partner<small>Plan and align together</small>
+                      Me & my partner<small>Planning for two</small>
                     </button>
                   </div>
                 </div>

@@ -4,6 +4,34 @@ import { usePartner } from "@/lib/partner";
 import { InviteModal } from "@/components/juniper/invite-modal";
 import { you, partner as demoPartner } from "@/lib/shared-data";
 
+// UNROUTED as of Stage 4c, along with every page that wraps itself in SharedPage
+// (src/pages/app/shared/*.tsx). This is the shell for all six of them, so the
+// reasoning lives here rather than repeated six times.
+//
+// Why it is unreachable: the workspace could not honor the rule that only the
+// member's own real data may appear in the app. All six pages fall back to
+// lib/shared-data.ts, which is a seeded household, and goals.tsx has no live
+// branch at all. The signed-in member is named "Maya" and the partner "Devin",
+// including on the live branch (`you.initial` in the header band below, and the
+// SharedAccount `inst` labels). The gate was `partner.connected`, client-only
+// localStorage state a "Preview shared space" button flipped with no server
+// partnership behind it, so any signed-in member could walk into a stranger's
+// invented finances.
+//
+// What has to be true to route these again:
+//   1. Every page reads only /api/partner (and /api/partner/bills, /activity).
+//      No lib/shared-data.ts fallback anywhere, goals.tsx included. An active
+//      partnership with nothing in it shows an empty state, not a demo one.
+//   2. "You" and the partner are named from the session and user_profiles.name.
+//      No hardcoded "Maya" or "Devin" on any branch.
+//   3. The only thing that can connect a partner is /api/partner reporting an
+//      active partnership. No client-only flip, no preview mode.
+//   4. Migrations 0012 and 0013 are applied, so the endpoints have tables to
+//      read, and the accept flow lands somewhere a member can see.
+//
+// Kept, not deleted: the pages, this shell, lib/shared-data.ts (Stage 4d tears
+// the seeds down), and all the api/partner* endpoints and tables.
+
 // Couple header band for every shared sub-page. `live` distinguishes a real,
 // accepted partnership (both accounts linked) from the demo preview, so the
 // status pill tells the truth instead of always claiming "Both connected".
