@@ -3,6 +3,20 @@
   "outputDirectory": "artifacts/juniper/dist",
   "installCommand": "pnpm install",
   "framework": null,
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "juniper-api-server.vercel.app" }],
+      "destination": "https://www.juniperplan.com/",
+      "permanent": false
+    },
+    {
+      "source": "/:path((?!api/).*)",
+      "has": [{ "type": "host", "value": "juniper-api-server.vercel.app" }],
+      "destination": "https://www.juniperplan.com/:path",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/((?!api/|.*\\..+).*)", "destination": "/index.html" }
   ]
