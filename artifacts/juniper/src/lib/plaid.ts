@@ -27,6 +27,33 @@ export type PlaidItem = {
   created_at?: string;
 };
 
+// Brand metadata for one institution, mirroring InstitutionBrand in
+// api/plaid/institution-logos.ts. Both fields are optional on Plaid's side: a
+// small bank or credit union routinely has neither a logo nor a brand color on
+// file, so every consumer needs the fallback chain rather than these values.
+export type InstitutionBrand = {
+  name: string | null;
+  // Base64 PNG body exactly as Plaid returns it, with no data: prefix. Use
+  // institutionLogoSrc() rather than interpolating it yourself.
+  logo: string | null;
+  // Hex like "#0a7cff". Display-only, used to tint the monogram tile that an
+  // institution with no logo falls back to.
+  primary_color: string | null;
+};
+
+// institution_id -> brand, as /api/plaid/institution-logos returns it. Keyed by
+// id rather than name because that is the only identifier that survives Plaid
+// spelling a bank differently from our gallery ("Citi" vs "Citibank").
+export type InstitutionBrandMap = Record<string, InstitutionBrand>;
+
+// Turn a Plaid logo into something an <img src> accepts. Plaid sends the raw
+// base64 body; the guard is there because a future Plaid change (or a cached
+// payload from one) handing over a full data URI should not double-prefix it.
+export function institutionLogoSrc(logo: string | null | undefined): string | null {
+  if (!logo) return null;
+  return logo.startsWith("data:") ? logo : `data:image/png;base64,${logo}`;
+}
+
 export type LinkInstitution = {
   institution_id?: string;
   name?: string;
@@ -357,6 +384,51 @@ export async function fetchPlaidItems(): Promise<PlaidItem[]> {
     return Array.isArray(data.items) ? data.items : [];
   } catch {
     return [];
+  }
+}
+
+// Cheap 32-bit FNV-1a over a string, rendered as hex. Not a hash for security,
+// only a short stable fingerprint for the cache-busting query param below.
+function fingerprint(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+// Real brand marks for the institutions the caller has linked. The server reads
+// the id set from the caller's own plaid_items rows, so `institutionIds` is NOT
+// what gets looked up: it is only used to skip the round trip when nothing is
+// linked, and to vary the URL so the browser's cache key tracks the linked set.
+//
+// That second use is the point of the fingerprint. The response carries a long
+// `private, max-age`, because a bank's logo is a static asset, but the payload is
+// keyed to the member's connections. Without a varying URL, linking a new bank
+// would be served the previous map from cache and the new row would sit on the
+// monogram fallback for a week. The server ignores the param entirely, so this
+// stays a cache key and never a way to ask for someone else's institutions. The
+// ids are fingerprinted rather than sent in the clear so which banks a member
+// holds does not end up in a query string.
+//
+// Returns {} on any failure, the same contract as the rest of this file: logos
+// are decoration, so a member with a dead endpoint sees monograms, not an error.
+//
+// Costs roughly 10 to 20KB per institution, so call it once per page load
+// alongside the item fetch, never per render.
+export async function fetchInstitutionLogos(
+  institutionIds: (string | null | undefined)[],
+): Promise<InstitutionBrandMap> {
+  const ids = [...new Set(institutionIds.filter((id): id is string => !!id))].sort();
+  if (ids.length === 0) return {};
+  try {
+    const res = await authedFetch(`/api/plaid/institution-logos?set=${fingerprint(ids.join(","))}`);
+    if (!res.ok) return {};
+    const data = (await res.json()) as { logos?: InstitutionBrandMap };
+    return data.logos && typeof data.logos === "object" ? data.logos : {};
+  } catch {
+    return {};
   }
 }
 

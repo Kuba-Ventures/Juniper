@@ -855,6 +855,18 @@
 .jnpr .conn-item + .conn-item{margin-top:12px}
 .jnpr .conn-inst{display:flex;align-items:center;gap:13px}
 .jnpr .conn-inst .ci-mark{width:38px;height:38px;border-radius:10px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;flex:0 0 auto}
+/* The institution's own brand mark, when Plaid or the bundled map has one. White
+   plate in both themes on purpose, the same choice .blogo and .inst-logo already
+   make: these PNGs are dark artwork on transparency, so painting them straight
+   onto the dark-mode surface would erase them. `contain` plus padding rather than
+   `cover` because Plaid's logos are not all square and cropping a wordmark is
+   worse than letterboxing it. */
+.jnpr .conn-inst .ci-logo{width:38px;height:38px;border-radius:10px;object-fit:contain;padding:3px;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto;display:block}
+/* Monogram tinted with the bank's own primary_color, for an institution Plaid has
+   a brand color but no artwork for. Background and letter color both arrive
+   inline from brandTint(); the border is what keeps a near-black brand color from
+   dissolving into the dark-mode surface. */
+.jnpr .conn-inst .ci-mono{width:38px;height:38px;border-radius:10px;border:1px solid var(--jnpr-line);display:grid;place-items:center;font-weight:700;font-size:16px;flex:0 0 auto}
 .jnpr .conn-inst .ci-name{font-size:15px;font-weight:650;color:var(--jnpr-ink);flex:1;min-width:0}
 .jnpr .conn-acct{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:9px;margin-top:9px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
 .jnpr .conn-acct .ca-name{color:var(--jnpr-ink-2);min-width:0}

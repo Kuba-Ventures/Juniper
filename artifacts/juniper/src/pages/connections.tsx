@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine } from "lucide-react";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
+import { resolveInstitutionMark } from "@/lib/institution-brand";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
 import {
   fetchPlaidItems,
+  fetchInstitutionLogos,
   removePlaidItem,
   syncFinances,
   syncFinancesUntilTransactions,
   layerEnabled,
   normInstitutionName,
+  type InstitutionBrand,
+  type InstitutionBrandMap,
   type PlaidItem,
 } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
@@ -41,9 +45,38 @@ function accountLine(a: PlaidItem["accounts"][number]): string {
 
 const catLabel = (key: string) => MANUAL_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 
+// One connection's mark. The fallback chain itself lives in lib/institution-brand
+// so the next surface that shows an institution reuses it instead of rewriting it;
+// this component is only the Connections list's markup for the three outcomes.
+// Before this, every row rendered the same building glyph and a page of real banks
+// read as one undifferentiated list.
+function InstitutionMark({
+  name,
+  brand,
+  glyph,
+}: {
+  name: string;
+  brand?: InstitutionBrand;
+  glyph: ReactNode;
+}) {
+  const mark = resolveInstitutionMark(name, brand);
+  if (mark.kind === "logo") return <img className="ci-logo" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return (
+      <span className="ci-mono" style={{ background: mark.background, color: mark.color }}>
+        {mark.letter}
+      </span>
+    );
+  }
+  return <span className="ci-mark">{glyph}</span>;
+}
+
 export function ConnectionsView() {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [manualAccts, setManualAccts] = useState<ManualAccount[]>([]);
+  // institution_id -> Plaid brand metadata, for the marks below. Held per page
+  // rather than per row because the payload is a base64 PNG per institution.
+  const [brands, setBrands] = useState<InstitutionBrandMap>({});
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingManualId, setRemovingManualId] = useState<string | null>(null);
@@ -55,6 +88,19 @@ export function ConnectionsView() {
     const [next, manual] = await Promise.all([fetchPlaidItems(), fetchManualAccounts()]);
     setItems(next);
     setManualAccts(manual);
+    // Brand marks are decoration, so they load off the critical path: the rows
+    // appear (on the local map or the monogram) the moment the items land, and
+    // the real logos swap in behind them. Awaiting this would put a Plaid call
+    // per institution in front of the page's own loading state. Fired once per
+    // refresh (first load, a link, a removal), never per render.
+    //
+    // Merged rather than replaced because fetchInstitutionLogos returns {} on
+    // failure: a flaky refresh should leave the logos we already have alone
+    // rather than dropping the whole page back to monograms. Entries for a
+    // disconnected institution are simply never read again.
+    void fetchInstitutionLogos(next.map((i) => i.institution_id)).then((map) => {
+      setBrands((prev) => ({ ...prev, ...map }));
+    });
   }, []);
 
   const {
@@ -180,7 +226,11 @@ export function ConnectionsView() {
             {items.map((item) => (
               <div className="conn-item" key={item.item_id}>
                 <div className="conn-inst">
-                  <span className="ci-mark"><Building2 size={19} /></span>
+                  <InstitutionMark
+                    name={item.institution_name || "Linked institution"}
+                    brand={item.institution_id ? brands[item.institution_id] : undefined}
+                    glyph={<Building2 size={19} />}
+                  />
                   <span className="ci-name">{item.institution_name || "Linked institution"}</span>
                   <button
                     className="btn ghost sm"
@@ -203,7 +253,11 @@ export function ConnectionsView() {
             {manualAccts.map((m) => (
               <div className="conn-item" key={m.id}>
                 <div className="conn-inst">
-                  <span className="ci-mark"><PencilLine size={17} /></span>
+                  {/* No Plaid id on a hand-added account, so this only ever
+                      reaches the local brand map or the pencil glyph. The
+                      "Manual" tag beside it still carries that meaning when a
+                      logo resolves. */}
+                  <InstitutionMark name={m.institution || m.name} glyph={<PencilLine size={17} />} />
                   <span className="ci-name">
                     {m.institution || m.name} <span className="conn-tag">Manual</span>
                   </span>
