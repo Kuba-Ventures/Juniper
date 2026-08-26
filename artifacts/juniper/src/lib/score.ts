@@ -37,7 +37,9 @@ export interface Improvement {
   title: string;
   detail: string;
   potentialPts: number;
-  planIcon: string | null;
+  // No plan cross-link, matching api/_score.ts. The factor key is the handle;
+  // the Score page maps it onto the member's own plans (FACTOR_ROUTES in
+  // pages/app/score.tsx). The old `planIcon` named a seeded demo plan.
 }
 
 export type Band = "At risk" | "Building" | "Fair" | "Healthy" | "Excellent";
@@ -151,12 +153,14 @@ function creditFactor(i: ScoreInput): Factor {
   return { key: "credit", label: "Credit health", score: 70, weight: WEIGHTS.credit, status: "fair", detail: "Connect a credit card to track credit health." };
 }
 
-const TEMPLATES: Record<FactorKey, { title: string; detail: string; planIcon: string | null }> = {
-  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", planIcon: null },
-  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income.", planIcon: null },
-  debt: { title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", planIcon: "debt" },
-  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", planIcon: null },
-  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score.", planIcon: null },
+// Words only, matching api/_score.ts. Which plan a lever belongs to is decided
+// on the Score page, where the member's real plans are in hand.
+const TEMPLATES: Record<FactorKey, { title: string; detail: string }> = {
+  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account." },
+  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income." },
+  debt: { title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load." },
+  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track." },
+  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score." },
 };
 
 export function computeScore(input: ScoreInput): ScoreResult {
@@ -179,7 +183,6 @@ export function computeScore(input: ScoreInput): ScoreResult {
         title: t.title,
         detail: t.detail,
         potentialPts: Math.max(1, round(f.weight * (100 - f.score))),
-        planIcon: t.planIcon,
       };
     })
     .sort((a, b) => b.potentialPts - a.potentialPts);

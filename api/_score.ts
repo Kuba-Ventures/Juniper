@@ -5,10 +5,12 @@
 // the 300–850 credit number is just one of five factors here, not the hero.
 //
 // Pure and I/O-free on purpose: given a snapshot of inputs it returns the score,
-// the per-factor breakdown, and a ranked list of "ways to improve" cross-linked
-// to the relevant plan. That makes it trivial to unit-test and lets both the
-// read endpoint (/api/finances) and the history writer (/api/score/compute)
-// share one source of truth.
+// the per-factor breakdown, and a ranked list of "ways to improve", each tagged
+// with the factor it came from. That makes it trivial to unit-test and lets both
+// the read endpoint (/api/finances) and the history writer (/api/score/compute)
+// share one source of truth. Tying a lever to one of the member's plans is a
+// client concern precisely BECAUSE this stays I/O-free: it cannot read their
+// plans, so it does not pretend to know them.
 
 export interface ScoreInput {
   monthlyIncome: number;      // avg take-home per month
@@ -38,7 +40,11 @@ export interface Improvement {
   title: string;
   detail: string;
   potentialPts: number;   // ~how many Juniper-Score points this could add
-  planIcon: string | null; // cross-link to a plan icon/type, else null
+  // No plan cross-link. This used to carry a plan icon name, which the Score
+  // page resolved against a seeded demo plan list, so the payload effectively
+  // told the client which stranger's plan to name. The factor key is the whole
+  // handle the client needs: it maps `factor` onto the MEMBER'S own plans, which
+  // only it can see (this file is I/O-free and never reads the plans table).
 }
 
 export type Band = "At risk" | "Building" | "Fair" | "Healthy" | "Excellent";
@@ -166,18 +172,19 @@ function creditFactor(i: ScoreInput): Factor {
 }
 
 // ── Improvement templates ────────────────────────────────────────────────────
-// Each below-target factor becomes a ranked, plan-linked next step. Potential
-// points ≈ the weighted headroom left in that factor.
-// planIcon cross-links an improvement to a plan ONLY when the plan genuinely
-// matches the lever. Debt paydown maps to a debt plan; the others have no
-// one-to-one plan in the default set, so they stay null and the UI offers to
-// start a dedicated plan instead (never hijack an unrelated goal like a baby fund).
-const TEMPLATES: Record<FactorKey, { title: string; detail: string; planIcon: string | null }> = {
-  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", planIcon: null },
-  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income.", planIcon: null },
-  debt: { title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", planIcon: "debt" },
-  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", planIcon: null },
-  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score.", planIcon: null },
+// Each below-target factor becomes a ranked next step. Potential points ≈ the
+// weighted headroom left in that factor.
+// Deliberately just words: the title, the detail, and the factor key that
+// carries them. Deciding which plan a lever belongs to needs the member's plans,
+// which this file cannot see and should not guess at, so that decision lives on
+// the Score page (see FACTOR_ROUTES in src/pages/app/score.tsx) where the real
+// plans are in hand.
+const TEMPLATES: Record<FactorKey, { title: string; detail: string }> = {
+  emergency: { title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account." },
+  savings: { title: "Raise your savings rate", detail: "Trim a category or automate a transfer to save closer to 20% of income." },
+  debt: { title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load." },
+  investing: { title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track." },
+  credit: { title: "Improve your credit health", detail: "Keep card utilization under 30% and payments on time to lift your score." },
 };
 
 export function computeScore(input: ScoreInput): ScoreResult {
@@ -200,7 +207,6 @@ export function computeScore(input: ScoreInput): ScoreResult {
         title: t.title,
         detail: t.detail,
         potentialPts: Math.max(1, round(f.weight * (100 - f.score))),
-        planIcon: t.planIcon,
       };
     })
     .sort((a, b) => b.potentialPts - a.potentialPts);

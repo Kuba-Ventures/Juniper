@@ -16,12 +16,6 @@ export interface Budget { c: string; s: number; l: number }
 export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; inc?: boolean }
 export interface Account { n: string; i: string; v: number; k: SeriesKey; apr?: string }
 export interface PlanIcon { }
-export interface Plan {
-  t: string; ab: string; icon?: string; saved: number; target: number; pct: number;
-  note: string; st: "ok" | "new" | "setup" | "done"; stl: string; k: SeriesKey;
-  monthly?: string; date?: string; traj?: number[]; down?: boolean; done?: boolean; next: string;
-  rec?: { save: number; h: string; p: string; partner: string };
-}
 
 export const netWorth = {
   value: 67330,
@@ -77,13 +71,14 @@ export const accounts: { cash: Account[]; invest: Account[]; debt: Account[] } =
   ],
 };
 
-export const plans: Plan[] = [
-  { t: "Buy a home", ab: "H", icon: "home", saved: 28000, target: 60000, pct: 47, note: "Down payment · Mar 2027", st: "ok", stl: "On track", k: "--jnpr-c1", monthly: "$850/mo", date: "Ready Mar 2027", traj: [12, 15, 18, 20, 23, 25, 27, 28], next: "Auto-transfer $850/mo to the Ally HYSA" },
-  { t: "Pay off student loans", ab: "S", icon: "debt", saved: 0, target: 0, pct: 38, note: "$22,400 left · 5.8%", st: "ok", stl: "On track", k: "--jnpr-c2", monthly: "$520/mo", date: "Debt-free 2029", traj: [30, 28.6, 27.2, 26, 24.9, 23.8, 22.9, 22.4], down: true, next: "Keep paying $520/mo, debt-free by 2029", rec: { save: 540, h: "Speed up this plan", p: "Move your Sapphire balance off 24.9% APR, frees ~$45/mo toward the payoff.", partner: "SoFi" } },
-  { t: "Baby fund", ab: "B", icon: "baby", saved: 4200, target: 12000, pct: 35, note: "Started 3 weeks ago", st: "new", stl: "New", k: "--jnpr-c5", monthly: "Not set", date: "Due Feb 2027", traj: [0.5, 1, 1.6, 2.4, 3, 3.4, 3.9, 4.2], next: "Set a monthly amount to stay on pace" },
-  { t: "Combine finances", ab: "C", icon: "combine", saved: 0, target: 0, pct: 0, note: "2 steps left in setup", st: "setup", stl: "Setup", k: "--jnpr-c3", next: "Invite Devin to finish linking accounts" },
-  { t: "Wedding fund", ab: "W", icon: "wedding", saved: 18000, target: 18000, pct: 100, note: "Completed Jun 2025", st: "done", stl: "Completed", k: "--jnpr-c6", done: true, monthly: "-", date: "Reached Jun 2025", traj: [3, 6, 9, 12, 14, 16, 17.5, 18], next: "Goal reached, rolled the surplus into the home down payment" },
-];
+// The demo household's five plans that used to sit here are gone, along with the
+// `Plan` shape they filled. The Score page was the last surface reading them: it
+// used them as a lookup to cross-link each "way to improve" to a plan, so the
+// levers under a score computed from the member's own balances pointed at a home
+// purchase, student loans and a baby fund belonging to nobody. That page reads
+// the member's real plans through `useMemberPlans()` now, the same source as the
+// Plans page and Overview, and decides what counts as a plan for a lever from
+// the plan's own shape.
 
 // The subscription seeds that used to sit here are gone, along with the Overview
 // panel they fed. Nothing in Juniper detects a recurring charge: no endpoint, no
@@ -94,7 +89,12 @@ export const plans: Plan[] = [
 export type FactorKey = "savings" | "emergency" | "debt" | "investing" | "credit";
 export type FactorStatus = "strong" | "fair" | "weak";
 export interface ScoreFactor { key: FactorKey; label: string; score: number; weight: number; status: FactorStatus; detail: string }
-export interface ScoreImprovement { factor: FactorKey; title: string; detail: string; potentialPts: number; planIcon: string | null }
+// No `planIcon`. The engines used to stamp each improvement with a demo plan's
+// icon name so the Score page could look that plan up; the page matches the
+// member's own plans on `factor` now, so the field went with the seeds it keyed
+// into. Keep it out: it was the only route by which a lever could name a plan
+// nobody has.
+export interface ScoreImprovement { factor: FactorKey; title: string; detail: string; potentialPts: number }
 export interface Score {
   value: number;
   band: string;
@@ -118,9 +118,9 @@ export const score: Score = {
     { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726, good." },
   ],
   improvements: [
-    { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11, planIcon: null },
-    { factor: "debt", title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", potentialPts: 6, planIcon: "debt" },
-    { factor: "investing", title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", potentialPts: 4, planIcon: null },
+    { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11 },
+    { factor: "debt", title: "Pay down high-interest debt", detail: "Target the highest-APR balance first to lighten your debt load.", potentialPts: 6 },
+    { factor: "investing", title: "Invest more consistently", detail: "Increase automatic contributions to keep your investing pace on track.", potentialPts: 4 },
   ],
 };
 
