@@ -10,6 +10,12 @@ export type PlaidAccount = {
   type: string | null;
   subtype: string | null;
   balance: number | null;
+  // Credit limit, mirroring SanitizedAccount in api/_plaid.ts. Optional rather
+  // than `number | null` because snapshots stored before the server started
+  // sanitizing this field have no `limit` key at all, and they only gain one
+  // once balances are re-read (the "Refresh data" button on Connections). Treat
+  // absent and null the same: limit unknown, so utilization is not computable.
+  limit?: number | null;
   currency: string | null;
 };
 
