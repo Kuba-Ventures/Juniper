@@ -110,7 +110,14 @@ export default function JuniperApp() {
             </Route>
             <Route path="/app/score" component={Score} />
             <Route path="/app/admin" component={Admin} />
-            <Route path="/app/plans" component={Plans} />
+            {/* Plans reads the profile's signup goals to offer the ones with no
+                plan yet, so it gets this component's already-hydrated profile
+                rather than calling useProfile() a second time. `ready` travels
+                with it: the goals section needs to know the remote attempt has
+                resolved before deciding a goal is missing. */}
+            <Route path="/app/plans">
+              {() => <Plans profile={profile} profileReady={ready} />}
+            </Route>
             <Route path="/app/ask" component={Ask} />
             <Route path="/app/credit" component={Credit} />
             <Route path="/app/recommended" component={Recommended} />

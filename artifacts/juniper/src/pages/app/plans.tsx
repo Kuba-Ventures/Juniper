@@ -16,6 +16,7 @@ import {
   planTitle,
   planNumbers,
   suggestShape,
+  domainFromName,
   uniqueDomain,
   monthsToClose,
   monthLabelFromNow,
@@ -27,6 +28,7 @@ import {
   type PlanGoal,
   type PlanShape,
 } from "@/lib/plans";
+import type { UserProfile } from "@/lib/profile";
 
 // Balances distilled from the member's linked accounts, used to auto-fill a new
 // plan so goals are funded from real money instead of guessed inputs.
@@ -69,7 +71,7 @@ type Filter = "active" | "completed" | "all";
 type ModalState =
   | null
   | { k: "new" }
-  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey }
+  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; fromGoal?: boolean }
   | { k: "edit"; domain: string };
 
 const TEMPLATES: { label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey }[] = [
@@ -262,6 +264,174 @@ function PlanCard({ v, onOpen, onAsk, chatCount }: { v: PlanView; onOpen: () => 
         </div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Goals from signup: the member's own words, not plans yet.
+ *
+ * Onboarding's goals step asks "What are you working toward?" and promises
+ * "We'll shape your plans and recommendations around these", then stores the
+ * answers as a string array on the profile. Nothing ever turned them into plan
+ * rows, so a member who typed "Nomad" at signup came here and read "No plans
+ * yet". This section is the bridge: it shows the goals that have no plan and
+ * hands each one to the same create flow the New plan button uses.
+ *
+ * It is not a plan list. These rows carry no target, no monthly amount and no
+ * date, because the member never gave us any, so they render as chips, are
+ * never counted in `views`, and never reach Overview.
+ * ------------------------------------------------------------------ */
+
+// What a signup goal maps onto. Keyed by the goal's slug from `domainFromName`,
+// which is what makes every lookup here case- and punctuation-insensitive
+// without a second normalizer: "Buy a home", "buy a home" and "BUY A HOME" all
+// arrive as "buy-a-home".
+type GoalRoute = {
+  // Plan domains that ALREADY cover this goal, so we never offer a duplicate.
+  // The seven presets overlap the five scripted plan domains and this page's
+  // own templates under different words: a member who built the scripted
+  // `home-buying` plan has answered "Buy a home", and slug equality alone would
+  // miss that and offer them a second one. Listed explicitly rather than guessed
+  // by keyword, because a wrong guess here either hides a goal the member still
+  // wants or duplicates a plan they already have.
+  domains: string[];
+  // The create-modal template to open. A template carries an explicit shape,
+  // color and real-balance prefill, all better signals than a keyword scan of
+  // the goal text (same reasoning as CreateForm's `shapePinned`).
+  template?: string;
+  // An explicit shape for a preset with no template, where `suggestShape` would
+  // otherwise fall through to its "save" default and start the member on the
+  // wrong framing.
+  shape?: PlanShape;
+};
+
+const GOAL_ROUTES: Record<string, GoalRoute> = {
+  "buy-a-home": { domains: ["home-buying"], template: "Buy a home" },
+  "pay-off-debt": { domains: ["debt-paydown"], template: "Pay off debt" },
+  "build-an-emergency-fund": { domains: ["emergency-fund"], template: "Emergency fund" },
+  "save-for-a-family": { domains: ["baby-planning", "baby-and-family"], template: "Baby and family" },
+  "invest-for-retirement": { domains: [], template: "Invest for retirement" },
+  // No template and no scripted domain. "Plan a big purchase" contains none of
+  // the keywords in `suggestShape`'s buy list, so it needs the shape stated here
+  // rather than a new keyword added to a table the whole app reads.
+  "plan-a-big-purchase": { domains: [], shape: "buy" },
+  "increase-my-income": { domains: [] },
+};
+
+// An income goal is a "get more" word plus an "earnings" word, in either order.
+// Two lists rather than one so "save 10% of my income" (earnings word, no
+// increase word) stays a plannable savings goal. Word boundaries, not
+// substrings, so "increase my down payment" is not read as income just because
+// "payment" contains "pay".
+const MORE_RE = /\b(increase|increasing|grow|growing|boost|raise|higher|more|double)\b/;
+const EARN_RE = /\b(income|salary|salaries|pay|paycheck|earn|earnings|wage|wages|job|career)\b/;
+
+// The one preset that no plan shape can hold honestly. "Increase my income" has
+// nothing to save toward, nothing to buy and no balance to clear, so all three
+// shapes are fictions and `suggestShape` would default it to "save": we would
+// be inventing a savings target the member never set. It gets the planner
+// instead, which can actually work on it, and the chip says why. Matched on the
+// words rather than the exact preset label so a hand-typed "get a higher paying
+// job" lands in the same place.
+function isIncomeGoal(goal: string): boolean {
+  const g = goal.toLowerCase();
+  return MORE_RE.test(g) && EARN_RE.test(g);
+}
+
+// Whether a goal is already represented by a plan. Two ways to match, both
+// through Stage 3's helpers so this cannot drift from how plans are named and
+// keyed: the goal's slug against the plan's `domain` (which is `domainFromName`
+// of whatever it was created from), and against the slug of the plan's current
+// title (which catches a renamed plan, and a plan whose key got a `-2` suffix
+// from `uniqueDomain`).
+function isAlreadyPlanned(goal: string, plans: Plan[]): boolean {
+  const slug = domainFromName(goal);
+  const claimed = new Set<string>([slug, ...(GOAL_ROUTES[slug]?.domains ?? [])]);
+  return plans.some((p) => claimed.has(p.domain) || claimed.has(domainFromName(planTitle(p))));
+}
+
+type GoalOffer = {
+  goal: string; // shown verbatim: these are the member's words
+  // "plan" opens the create form pre-filled. "talk" opens the planner, for a
+  // goal a plan cannot honestly hold.
+  kind: "plan" | "talk";
+  shape: PlanShape;
+  color: PlanColor;
+  prefill: PrefillKey;
+  note: string;
+};
+
+function offerFor(goal: string, i: number): GoalOffer {
+  // Spread by list position rather than by hashing: a goal has no `domain` to
+  // hash yet, and whatever color is chosen here is written into the plan on
+  // create, so the chip and the card that follows it match.
+  const color = PLAN_COLORS[i % PLAN_COLORS.length];
+  if (isIncomeGoal(goal)) {
+    return { goal, kind: "talk", shape: "save", color, prefill: null, note: "No amount to track, so Juniper can talk this one through." };
+  }
+  const route = GOAL_ROUTES[domainFromName(goal)];
+  const template = route?.template ? TEMPLATES.find((t) => t.label === route.template) : undefined;
+  return {
+    goal,
+    kind: "plan",
+    shape: template?.shape ?? route?.shape ?? suggestShape(goal),
+    color: template?.color ?? color,
+    prefill: template?.prefill ?? null,
+    note: "",
+  };
+}
+
+function GoalBridge({
+  goals, plans, onPlan, onTalk,
+}: {
+  goals: string[];
+  plans: Plan[];
+  onPlan: (o: GoalOffer) => void;
+  onTalk: (o: GoalOffer) => void;
+}) {
+  const offers = useMemo(() => {
+    const seen = new Set<string>();
+    const out: GoalOffer[] = [];
+    for (const raw of goals) {
+      const goal = typeof raw === "string" ? raw.trim() : "";
+      if (!goal) continue;
+      // Dedupe on the slug, not the string: onboarding only prevents an exact
+      // duplicate, so a member can have both the "Buy a home" chip and a
+      // hand-typed "buy a home".
+      const slug = domainFromName(goal);
+      if (seen.has(slug)) continue;
+      seen.add(slug);
+      if (isAlreadyPlanned(goal, plans)) continue;
+      out.push(offerFor(goal, out.length));
+    }
+    return out;
+  }, [goals, plans]);
+
+  if (!offers.length) return null;
+
+  return (
+    <section className="goal-bridge">
+      <div className="gb-lede">
+        <h3>Goals you picked at signup</h3>
+        <p>Not plans yet. Turn one into a plan and Juniper tracks a target, a monthly amount, and a date for it.</p>
+      </div>
+      <div className="gb-row">
+        {offers.map((o) => (
+          <div className="gb-chip" key={o.goal}>
+            <span className="gb-dot" style={{ background: cssVar(o.color) }} />
+            <span className="gb-txt">
+              <span className="gb-t">{o.goal}</span>
+              {o.note && <span className="gb-n">{o.note}</span>}
+            </span>
+            {o.kind === "plan" ? (
+              <button className="gb-go" onClick={() => onPlan(o)} aria-label={`Make a plan for ${o.goal}`}>Make a plan</button>
+            ) : (
+              <button className="gb-go" onClick={() => onTalk(o)} aria-label={`Ask Juniper about ${o.goal}`}>Ask Juniper</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -515,7 +685,14 @@ function goalFrom(draft: Draft, existing: PlanGoal | null): PlanGoal {
  * Page.
  * ------------------------------------------------------------------ */
 
-export default function Plans() {
+// `profile` and `profileReady` come from the single `useProfile()` in
+// juniper-app.tsx, passed down rather than re-read here: a second call would
+// mean a second /api/profile round-trip and a second hydration timeline to keep
+// in step with this one. Both are optional so the page still renders standalone.
+export default function Plans({ profile = null, profileReady = false }: {
+  profile?: UserProfile | null;
+  profileReady?: boolean;
+}) {
   const { plans, loading, upsertLocal, removeLocal } = useMemberPlans();
   const [filter, setFilter] = useState<Filter>("active");
   const [modal, setModal] = useState<ModalState>(null);
@@ -593,6 +770,26 @@ export default function Plans() {
         </div>
       )}
 
+      {/* The signup goals with no plan yet: the member's own words, so they sit
+          above the examples and below their real plans. Gated on BOTH loads
+          having settled, because what shows depends on the two agreeing:
+          rendering while plans are still in flight would offer a chip for a goal
+          that already has a plan and then yank it, and rendering before the
+          profile resolves would miss goals that live only on the server (see
+          use-profile.ts on local-then-remote hydration). Either flash reads as a
+          bug, so the section waits for both. */}
+      {!loading && profileReady && (
+        <GoalBridge
+          goals={Array.isArray(profile?.goals) ? profile.goals : []}
+          plans={plans}
+          onPlan={(o) => setModal({ k: "form", label: o.goal, shape: o.shape, color: o.color, prefill: o.prefill, fromGoal: true })}
+          // No `plan=` param: there is no plan to scope the chat to, and passing
+          // one would have Ask claim it is grounded in a plan that does not
+          // exist. The goal's own words become the opening question.
+          onTalk={(o) => navigate(`/app/ask?q=${encodeURIComponent(`${o.goal}. Where should I start?`)}`)}
+        />
+      )}
+
       {/* Examples sit last, below the member's own plans, and only once we know
           who is signed in (the dismissal list is per account). */}
       {session?.user.id && <ExampleSection userId={session.user.id} />}
@@ -619,7 +816,8 @@ export default function Plans() {
           state={modal}
           prefill={prefillFor(modal.prefill, balances)}
           existing={plans}
-          onBack={() => setModal({ k: "new" })}
+          fromGoal={!!modal.fromGoal}
+          onBack={() => setModal(modal.fromGoal ? null : { k: "new" })}
           onCreated={(plan) => { upsertLocal(plan); setFilter("active"); close(); }}
         />
       )}
@@ -637,15 +835,19 @@ export default function Plans() {
 }
 
 function CreateForm({
-  state, prefill, existing, onBack, onCreated,
+  state, prefill, existing, fromGoal = false, onBack, onCreated,
 }: {
   state: { label: string; shape: PlanShape; color: PlanColor };
   prefill: Prefill;
   existing: Plan[];
+  /** Opened from a signup goal rather than from the template picker. */
+  fromGoal?: boolean;
   onBack: () => void;
   onCreated: (p: Plan) => void;
 }) {
-  const isCustom = state.label === "Custom goal";
+  // A signup goal's label is the member's own text, so it is always the name to
+  // pre-fill, even in the unlikely event they typed the words "Custom goal".
+  const isCustom = !fromGoal && state.label === "Custom goal";
   const [draft, setDraft] = useState<Draft>({
     name: isCustom ? "" : state.label,
     shape: state.shape,
@@ -697,7 +899,11 @@ function CreateForm({
   return (
     <Backdrop onClose={onBack}>
       <h3>{isCustom ? "Custom goal" : state.label}</h3>
-      <p>Name it, pick how it works, and set a target. You can change all of it later.</p>
+      <p>
+        {fromGoal
+          ? "One of the goals you picked at signup. Set a target and Juniper starts tracking it from here."
+          : "Name it, pick how it works, and set a target. You can change all of it later."}
+      </p>
       {prefill.hint && (
         <div className="prefill-hint"><PlanIcon name="target" /><span>{prefill.hint}</span></div>
       )}
@@ -705,7 +911,7 @@ function CreateForm({
       <DraftFields draft={draft} set={set} />
       <div className="modal-actions">
         <button className="btn" disabled={saving} onClick={create}>{saving ? "Creating…" : "Create plan"}</button>
-        <button className="btn ghost" disabled={saving} onClick={onBack}>Back</button>
+        <button className="btn ghost" disabled={saving} onClick={onBack}>{fromGoal ? "Cancel" : "Back"}</button>
       </div>
     </Backdrop>
   );

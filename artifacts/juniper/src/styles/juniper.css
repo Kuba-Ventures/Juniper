@@ -265,6 +265,32 @@
 .jnpr .modal-danger span{margin-right:auto}
 .jnpr .btn.ghost.danger{color:var(--jnpr-bad);border-color:color-mix(in srgb,var(--jnpr-bad) 40%,transparent)}
 
+/* ---------- plans: goals from signup, not plans yet ----
+   A chip strip on purpose, not a card grid. A signup goal has no target, no
+   monthly amount and no date, so anything shaped like a plan card would read as
+   numbers the member never entered. Sits between their real plans and the
+   examples: quieter than a plan, louder than an illustration. */
+.jnpr .goal-bridge{margin-top:28px;padding-top:20px;border-top:1px solid var(--jnpr-line)}
+.jnpr .gb-lede{margin-bottom:12px;max-width:560px}
+.jnpr .gb-lede h3{font-size:14px;color:var(--jnpr-ink-2);margin-bottom:4px}
+.jnpr .gb-lede p{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.5;margin:0}
+.jnpr .gb-row{display:flex;flex-wrap:wrap;gap:9px}
+.jnpr .gb-chip{display:flex;align-items:center;gap:10px;max-width:100%;padding:7px 8px 7px 13px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:22px}
+.jnpr .gb-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.jnpr .gb-txt{display:flex;flex-direction:column;min-width:0}
+.jnpr .gb-t{font-size:13px;font-weight:650;color:var(--jnpr-ink);line-height:1.3}
+.jnpr .gb-n{font-size:11px;color:var(--jnpr-ink-3);line-height:1.35;margin-top:1px}
+.jnpr .gb-go{flex:0 0 auto;font-family:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent-deep);background:var(--jnpr-accent-soft);
+  border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+.jnpr .gb-go:hover{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-color:var(--jnpr-accent)}
+/* Narrow: the pills stack full width so a long custom goal is not squeezed to
+   one word per line next to its button. */
+@media(max-width:560px){
+  .jnpr .gb-row{flex-direction:column;align-items:stretch}
+  .jnpr .gb-chip{border-radius:var(--jnpr-r-sm);padding:10px 10px 10px 13px}
+  .jnpr .gb-txt{flex:1}
+}
+
 /* ---------- plans: example section (illustration, not the member's data) ----
    Deliberately quieter than a real plan card: no shadow, a dashed border, a
    tinted ground, and smaller type, so it can never be mistaken for their own
