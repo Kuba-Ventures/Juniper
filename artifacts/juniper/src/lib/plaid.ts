@@ -21,7 +21,23 @@ export type PlaidItem = {
   created_at?: string;
 };
 
-export type LinkInstitution = { institution_id?: string; name?: string };
+export type LinkInstitution = {
+  institution_id?: string;
+  name?: string;
+  // Carried from an /institutions/search result so link-token can ask Plaid to
+  // highlight this bank in Link's list. Best-effort, see api/plaid/link-token.ts.
+  routing_number?: string | null;
+};
+
+// One row of Plaid's real institution list, as returned by
+// /api/plaid/institutions-search. Names come from Plaid, so they are the exact
+// strings Link will show.
+export type PlaidInstitutionMatch = {
+  institution_id: string;
+  name: string;
+  oauth: boolean;
+  routing_number: string | null;
+};
 
 // Normalized key for matching an institution across the connect flow (Layer
 // import, gallery link, manual add) against the gallery tiles, so a name that
@@ -45,14 +61,43 @@ async function authedFetch(input: string, init?: RequestInit): Promise<Response>
 // Fetch a short-lived link_token to open Plaid Link. Returns null if linking
 // isn't configured yet (503) or on any error, so callers can show a friendly
 // "not turned on" state.
-export async function createLinkToken(): Promise<string | null> {
+export async function createLinkToken(opts?: { routingNumber?: string | null }): Promise<string | null> {
   try {
-    const res = await authedFetch("/api/plaid/link-token", { method: "POST" });
+    const res = await authedFetch("/api/plaid/link-token", {
+      method: "POST",
+      body: JSON.stringify(opts?.routingNumber ? { routing_number: opts.routingNumber } : {}),
+    });
     if (!res.ok) return null;
     const data = (await res.json()) as { link_token?: string };
     return data.link_token ?? null;
   } catch {
     return null;
+  }
+}
+
+// Search Plaid's real institution list. Powers the gallery search bar, so a bank
+// that Plaid supports but we never hand-listed is findable by name instead of
+// dead-ending in "No matches". Returns [] on any failure (including 503 when
+// Plaid isn't configured) so the caller degrades to the curated tiles plus the
+// "search all banks" path rather than showing an error.
+//
+// `signal` lets the caller abort a stale in-flight query, which matters because
+// this fires while someone is still typing.
+export async function searchInstitutions(
+  query: string,
+  signal?: AbortSignal,
+): Promise<PlaidInstitutionMatch[]> {
+  try {
+    const res = await authedFetch("/api/plaid/institutions-search", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+      signal,
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { institutions?: PlaidInstitutionMatch[] };
+    return data.institutions ?? [];
+  } catch {
+    return [];
   }
 }
 

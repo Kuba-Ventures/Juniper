@@ -1,6 +1,15 @@
-// POST /api/plaid/link-token
+// POST /api/plaid/link-token  { routing_number? }
 // Returns a short-lived link_token the browser hands to Plaid Link to open the
 // account-connection flow. Requires a signed-in user.
+//
+// Plaid has no way to preselect an institution: Link always opens on its own
+// institution list, so a user who already found their bank in our search still
+// has to pick it again. `institution_data.routing_number` is the only lever
+// Plaid offers, and it highlights that bank in the list, turning the second step
+// from a re-typed search into a tap. It is best-effort by design: Plaid
+// documents that a routing number shared by several institutions highlights
+// nothing, and most institutions come back from /institutions/search without
+// one, in which case Link opens exactly as it does today.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch, plaidProducts, plaidCountryCodes } from "../_plaid";
@@ -39,6 +48,14 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
 
   const redirectUri = readEnv("PLAID_REDIRECT_URI");
+  const body = (await req.json().catch(() => ({}))) as { routing_number?: unknown };
+  // Client-supplied, so validated to the only shape Plaid accepts (9 digits)
+  // rather than forwarded as-is. Worst case for a wrong-but-valid value is that
+  // Link highlights nothing.
+  const routingNumber =
+    typeof body.routing_number === "string" && /^[0-9]{9}$/.test(body.routing_number)
+      ? body.routing_number
+      : null;
   const { ok, status, data } = await plaidFetch<{ link_token?: string; error_message?: string }>(
     "/link/token/create",
     {
@@ -48,6 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
       country_codes: plaidCountryCodes(),
       language: "en",
       ...(redirectUri ? { redirect_uri: redirectUri } : {}),
+      ...(routingNumber ? { institution_data: { routing_number: routingNumber } } : {}),
     },
   );
 
