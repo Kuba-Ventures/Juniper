@@ -169,31 +169,46 @@ export default async function handler(req: Request): Promise<Response> {
   const netWorth = round(assets - debts);
   const asOf = new Date().toISOString().slice(0, 10); // UTC day
 
-  const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth }),
-  });
-  if (!up.ok) {
-    const detail = await up.text().catch(() => "");
-    console.error(`[plaid] net_worth_snapshots upsert failed (${up.status}): ${detail}`);
-    return json({ error: "Failed to save snapshot", detail }, 500);
+  // A partial refresh must not write the day's trend point. The totals above
+  // cover only the items that resolved, so a member with one broken connection
+  // would get a permanently low dip in their net-worth history, and a wrong
+  // point in a trend outlives the outage that caused it. A skipped day is
+  // invisible by comparison: the chart simply has no sample there. Per-item
+  // snapshots were already refreshed above, so balances and credit limits are
+  // still up to date for everything that answered.
+  const partial = failures.length > 0;
+  let snapshotRow: unknown = null;
+  if (!partial) {
+    const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth }),
+    });
+    if (!up.ok) {
+      const detail = await up.text().catch(() => "");
+      console.error(`[plaid] net_worth_snapshots upsert failed (${up.status}): ${detail}`);
+      return json({ error: "Failed to save snapshot", detail }, 500);
+    }
+    const rows = (await up.json().catch(() => [])) as unknown[];
+    snapshotRow = rows[0] ?? null;
+  } else {
+    console.error(
+      `[plaid] net_worth snapshot skipped for ${asOf}: ${failures.length} of ${items.length} items failed to refresh`,
+    );
   }
-  const rows = (await up.json().catch(() => [])) as unknown[];
 
   // `refreshed` / `failed` / `failures` let the caller tell a clean refresh from
-  // one that skipped broken connections. Caveat worth knowing: on a partial
-  // refresh the totals above cover only the items that resolved, so today's row
-  // can understate net worth until the failing connections are re-linked or
-  // removed. Still strictly better than the old behavior, where one bad item
-  // refreshed nothing and said nothing.
+  // one that skipped broken connections, and `snapshot_skipped` says why no
+  // trend point was written. Totals are still reported so the caller can show
+  // what did resolve; they just are not persisted on a partial run.
   return json({
     linked: true,
     as_of: asOf,
     assets,
     debts,
     net_worth: netWorth,
-    snapshot: rows[0] ?? null,
+    snapshot: snapshotRow,
+    snapshot_skipped: partial,
     items: items.length,
     refreshed,
     failed: failures.length,
