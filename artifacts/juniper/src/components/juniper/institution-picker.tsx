@@ -162,6 +162,26 @@ export function InstitutionPicker({
   const cacheRef = useRef<Map<string, PlaidInstitutionMatch[]>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
 
+  // After a link lands, hand the gallery back. Someone who searched for one bank
+  // is left staring at a filtered view: their new connection at the top and an
+  // empty grid under it, because the query that found that bank matches nothing
+  // else. Clearing it restores the full category list with the fresh connection
+  // pinned in the Connected section, which is the natural place to pick the next
+  // account from. Keyed on the connected count growing, so it fires for a Plaid
+  // row, a gallery tile, or a manual add, and never on an unrelated re-render.
+  const catsRef = useRef<HTMLDivElement | null>(null);
+  const prevConnectedRef = useRef(connected?.size ?? 0);
+  useEffect(() => {
+    const size = connected?.size ?? 0;
+    const grew = size > prevConnectedRef.current;
+    prevConnectedRef.current = size;
+    if (!grew) return;
+    setQuery("");
+    // The scroll box keeps its offset across the re-render, so a user who had
+    // scrolled down would get the unfiltered gallery mid-list.
+    if (catsRef.current) catsRef.current.scrollTop = 0;
+  }, [connected]);
+
   useEffect(() => {
     abortRef.current?.abort();
     // Under two characters matches too much to be useful and still costs a call.
@@ -382,7 +402,7 @@ export function InstitutionPicker({
         </div>
       )}
 
-      <div className="inst-cats">
+      <div className="inst-cats" ref={catsRef}>
         {filtered.map((cat) => {
           // `filtered` already dropped connected institutions into the Connected
           // section above, so every tile here is selectable.
