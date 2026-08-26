@@ -3,12 +3,15 @@ import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link"
 import { createLinkToken, exchangePublicToken, type LinkInstitution } from "@/lib/plaid";
 import { trackEngagement } from "@/lib/analytics";
 
-// Sequential Plaid Link queue. The multi-select gallery lets a user pick several
-// institutions (or "Select all") at once; because each institution needs its own
-// Plaid credential flow, we open Link for them one at a time, minting a fresh
-// link_token per institution and advancing on success or exit. (The true
-// one-tap-for-all experience needs Plaid Layer, tier 1, gated on Production, this
-// is the tier-2 gallery path that works today on Sandbox.)
+// Sequential Plaid Link queue: one link_token per institution, opened one at a
+// time, advancing on success or exit. Callers hand it a single institution today,
+// because Plaid Link authenticates exactly one per session and the multi-select
+// gallery that used to queue several was removed for exactly that reason (see
+// institution-picker.tsx). The queue shape stays because the OAuth return path
+// below needs it: a bank that redirects the whole tab has to rehydrate "what was
+// I linking, and what is left" from localStorage either way. (The true
+// one-tap-for-many experience needs Plaid Layer, tier 1, gated on Production;
+// this is the tier-2 path that works today on Sandbox.)
 //
 // Queue position is kept in refs so the Plaid callbacks always read the current
 // item, never a stale closure.
@@ -135,8 +138,8 @@ export function useLinkQueue(opts?: {
         return;
       }
       // A routing number, when the queue item came from Plaid's own search, asks
-      // Link to highlight that bank in its list. Absent for gallery tiles and
-      // for institutions Plaid returns without one; Link then opens as usual.
+      // Link to highlight that bank in its list. Absent for "Search all banks"
+      // and for institutions Plaid returns without one; Link then opens as usual.
       const token = await createLinkToken({ routingNumber: q[at]?.routing_number ?? null });
       if (!token) {
         setNotice("Account linking isn't enabled yet. You can add it later from Connections.");

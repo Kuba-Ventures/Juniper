@@ -183,8 +183,8 @@ export function ConnectionsView() {
   const hasItems = items.length > 0 || manualAccts.length > 0;
   const shownNotice = notice || queueNotice;
 
-  // Institutions already on file (linked via Plaid or added by hand) so the
-  // gallery below shows them as "Connected" instead of pickable — a returning
+  // Institutions already on file (linked via Plaid or added by hand), so the
+  // picker below can drop them out of its Plaid search results: a returning
   // member shouldn't be invited to re-link a bank they already have. Refreshes
   // with `items`/`manualAccts` as connections are added or removed.
   const connected = useMemo(() => {
@@ -288,8 +288,8 @@ export function ConnectionsView() {
             <div className="card" style={{ marginTop: hasItems ? 16 : 0 }}>
               <h3 style={{ fontSize: 15, marginBottom: 4 }}>{hasItems ? "Add another account" : "Connect your accounts"}</h3>
               <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
-                Pick everything you use and connect it in one pass, tap <b>Not listed</b> in any section for small and
-                regional banks, or <b>enter it by hand</b> for accounts Plaid can't link.
+                Search for your bank and tap it to connect. Plaid links one institution per session, so come back to
+                the box and search again for the next one. Use <b>enter it by hand</b> for accounts Plaid can't link.
               </p>
               {layerEnabled() && !showManual && (
                 <LayerDiscovery
@@ -307,7 +307,16 @@ export function ConnectionsView() {
                   onCancel={() => setShowManual(false)}
                 />
               ) : (
-                <InstitutionPicker onConnect={handleConnect} onManual={() => setShowManual(true)} busy={connecting} connected={connected} />
+                // showConnected={false}: the linked-items list above already
+                // names every connection, so the picker's own Connected section
+                // would repeat it a few pixels lower.
+                <InstitutionPicker
+                  onConnect={handleConnect}
+                  onManual={() => setShowManual(true)}
+                  busy={connecting}
+                  connected={connected}
+                  showConnected={false}
+                />
               )}
             </div>
           </>

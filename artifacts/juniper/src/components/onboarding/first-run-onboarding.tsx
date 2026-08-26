@@ -375,11 +375,12 @@ function IncomeStep({
 
 function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => void }) {
   const [manual, setManual] = useState(false);
-  // Institutions connected this session (via instant discovery, the gallery link
-  // queue, or manual add), normalized for matching. Passed to the gallery so
-  // those tiles read as already-connected instead of still-to-do — otherwise a
-  // member who imported, say, Marcus via the phone-first flow sees Marcus sitting
-  // unchecked below and assumes it didn't take.
+  // Institutions connected this session (via instant discovery, the Plaid link
+  // queue, or manual add), normalized for matching. Passed to the picker, which
+  // both drops them out of its search results and lists them as Connected. That
+  // list is the only confirmation this step has: there is no linked-accounts list
+  // on this screen, so a member who links two banks in a row needs to see both
+  // names to know the first one took.
   const [connected, setConnected] = useState<Map<string, string>>(new Map());
 
   const markConnected = useCallback(
@@ -418,15 +419,15 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
     <>
       <h2>Connect your accounts for live balances.</h2>
       <p className="ob-help">
-        Optional, but it's the magic: pick every bank, card, or investment provider you use, then connect them
-        in one pass and Juniper keeps your net worth, spending, and score up to date automatically. Don't see
-        yours? Tap <b>Not listed</b> in any section to search every bank Plaid supports, or <b>enter it by hand</b>{" "}
-        for anything Plaid can't reach. You can always do this later.
+        Optional, but it's the magic: search for your bank and tap it to connect, and Juniper keeps your net
+        worth, spending, and score up to date automatically. Plaid links one institution per session, so search
+        again for each account you want. Use <b>enter it by hand</b> for anything Plaid can't reach. You can
+        always do this later.
       </p>
 
       {linked && (
         <div className="ob-connected">
-          <Check size={18} strokeWidth={2.5} /> Account added. Pick more below, or continue.
+          <Check size={18} strokeWidth={2.5} /> Account added. Search for another below, or continue.
         </div>
       )}
       {notice && <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>}

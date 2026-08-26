@@ -1,7 +1,7 @@
 // How an institution gets a visual mark, in one place. Any surface that displays
-// an institution (today the Connections list; next the single "Connect an account"
-// flow that replaces the gallery) should call resolveInstitutionMark rather than
-// rebuilding the fallback chain, because the chain is the whole point: Plaid has a
+// an institution (the Connections list, and the search rows in the connect flow)
+// should call resolveInstitutionMark rather than rebuilding the fallback chain,
+// because the chain is the whole point: Plaid has a
 // real logo for most big banks, no logo at all for plenty of small ones, and a
 // brand color for some institutions it has no artwork for.
 //
