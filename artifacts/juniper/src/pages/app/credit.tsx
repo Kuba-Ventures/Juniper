@@ -76,12 +76,18 @@ const pct = (balance: number, limit: number) => Math.round((balance / limit) * 1
 
 // The factors a real score is built from, named so the not-live panel is specific
 // about what is coming rather than vaguely promising "credit features".
+//
+// FOUR, not five, and that is a statutory cap rather than a layout choice.
+// 15 U.S.C. 1681g(f) and Cal. Civ. Code 1785.15.1 both require that a disclosed
+// score come with AT MOST FOUR adverse key factors, ordered by importance, per
+// model. This list is illustrative today because no score is displayed, but the
+// moment a real one is, the live component must render the provider's own
+// ordered factors and must not exceed four. Do not grow this array.
 const PLANNED_FACTORS = [
   "Utilization",
   "On-time payments",
-  "Inquiries",
   "Age of credit",
-  "Derogatory marks",
+  "Inquiries",
 ];
 
 function ScorePending() {
@@ -89,10 +95,18 @@ function ScorePending() {
     <div className="card pad-lg" style={{ marginBottom: 16 }}>
       <div className="eyebrow">Credit score</div>
       <h3 style={{ fontSize: 15, marginTop: 7 }}>Not tracked yet</h3>
+      {/* Deliberately names no score model. An earlier version promised "FICO 8 and
+          VantageScore 3.0" together, and research since (see docs/CREDIT_PROVIDER.md)
+          found that pairing may be barred by FICO's Open Access license, which
+          forbids disclosing any other score to consumers alongside a FICO score in
+          that program. Across eighteen consumer products checked, none showed both.
+          Until a provider agreement settles it in writing, promising both is a
+          promise we may not be able to keep, so the copy commits to a bureau score
+          and to the factors, which are safe either way. */}
       <p className="cs-note">
         Juniper does not read your credit score, and nothing on this page is one. Score tracking is
-        planned: FICO 8 and VantageScore 3.0, alongside the factors that move them. It needs a
-        credit-data provider under contract first, so there is no date to give you.
+        planned: a real bureau score, alongside the factors that move it. It needs a credit-data
+        provider under contract first, so there is no date to give you.
       </p>
       <div className="cs-chips">
         {PLANNED_FACTORS.map((f) => <span key={f}>{f}</span>)}
