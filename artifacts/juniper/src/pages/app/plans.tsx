@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
@@ -698,9 +698,28 @@ export default function Plans({ profile = null, profileReady = false }: {
   const [modal, setModal] = useState<ModalState>(null);
   const close = () => setModal(null);
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { threads } = useThreads();
   const session = useSession();
   const chatCountFor = (t: string) => threads.filter((x) => x.planTitle === t).length;
+
+  // Deep link from the Score page: `?new=<template slug>` opens this page's own
+  // create modal on that template. The "ways to improve" column offers to start
+  // the plan a lever needs, and this is the whole of how it does it: one create
+  // flow entered from two places, rather than a second form living over there
+  // and drifting from this one. Slugged with `domainFromName` so both ends share
+  // the single normalizer, and an unrecognized slug falls back to the template
+  // picker instead of dropping the member on a page that ignored them. The param
+  // is replaced out of the URL so a reload or a back-navigation does not reopen
+  // the modal on them.
+  useEffect(() => {
+    const want = new URLSearchParams(search).get("new");
+    if (!want) return;
+    const t = TEMPLATES.find((x) => domainFromName(x.label) === want);
+    setModal(t ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill } : { k: "new" });
+    navigate("/app/plans", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const { data, source } = useFinances();
   const balances: Balances = {
