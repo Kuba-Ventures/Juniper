@@ -203,12 +203,19 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (req.method === "DELETE") {
-    // Reset for testing: delete every plan the caller OWNS. RLS
-    // (plans_delete_own) scopes this to their own rows, and the user_id
-    // filter means plans where they're only a partner are left untouched.
-    console.log(`[plans DELETE] user=${userId} deleting owned plans`);
+    // Two scopes, distinguished by the `domain` param:
+    //   ?domain=x  delete just that plan, what the Plans page's per-plan Delete
+    //              needs so removing a goal actually persists.
+    //   (no param) reset for testing: delete every plan the caller OWNS.
+    // Either way RLS (plans_delete_own) scopes this to their own rows, and the
+    // user_id filter means plans where they're only a partner are left untouched.
+    const delDomain = new URL(req.url).searchParams.get("domain");
+    const delDomainClause = delDomain ? `&domain=eq.${encodeURIComponent(delDomain)}` : "";
+    console.log(
+      `[plans DELETE] user=${userId} deleting owned plans${delDomain ? ` domain=${delDomain}` : ""}`,
+    );
     const delRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}`,
+      `${SUPABASE_URL}/rest/v1/plans?user_id=eq.${encodeURIComponent(userId)}${delDomainClause}`,
       { method: "DELETE", headers: supabaseHeaders(token) },
     );
     if (!delRes.ok) {

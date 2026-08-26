@@ -1,13 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
-  plans, subscriptions as seedSubs,
+  subscriptions as seedSubs,
   money, moneyK, money2,
   type Budget, type Account, type Subscription, type Txn,
 } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
 import {
-  BrandTile, planMark, cssVar, NetWorthChart, SpendingDonut, MiniRing,
+  useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON,
+} from "@/lib/plans";
+import {
+  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing,
 } from "@/components/juniper/primitives";
 
 const UpArrow = () => (
@@ -178,6 +181,53 @@ function SubscriptionsPanel() {
   );
 }
 
+// The member's real plans, read through the same `useMemberPlans` hook the Plans
+// page uses so the two surfaces cannot disagree about what exists. Example plans
+// live only on the Plans page: they are illustration, so they must never appear
+// here, where everything on the screen is the member's own money.
+function YourPlansCard() {
+  const { plans, loading } = useMemberPlans();
+  const active = plans.filter((p) => p.status !== "completed");
+  return (
+    <div className="card">
+      <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
+      {loading ? (
+        <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>Loading your plans…</div>
+      ) : active.length ? (
+        <div className="plans-col">
+          {active.map((p) => {
+            const shape = planShape(p);
+            const color = planColor(p);
+            const { current, target } = planNumbers(p);
+            const prog = target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0;
+            return (
+              <Link href="/app/plans" className="plan-row" key={p.domain}>
+                <div className="track" style={{ background: cssVar(color) }}><PlanIcon name={SHAPE_ICON[shape]} /></div>
+                <div className="pr-body">
+                  <div className="pr-top">
+                    <span className="pt">{planTitle(p)}</span>
+                    {target > 0 ? <span className="amt tnum">{moneyK(current)} <small>/ {moneyK(target)}</small></span> : null}
+                  </div>
+                  <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(color) }} /></div>
+                  <div className="pr-bot">
+                    <span>{target > 0 ? `${prog}% funded` : "No target set yet"}</span>
+                    <span className={`status ${target > 0 ? "ok" : "setup"}`}>{target > 0 ? "On track" : "Setup"}</span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
+          No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
+          <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Overview({
   name,
   showWelcome,
@@ -198,10 +248,12 @@ export default function Overview({
   //
   // Gated on the server's `hasTransactions`, not on source === "live", which is
   // now true for a member who only has balances (api/finances.ts gates per
-  // section). Two of the panels below this flag, Subscriptions and the "Your
-  // plans" card, still render seeded demo rows, so widening the flag would show
-  // demo data to more people. A later stage deletes those seeds; until then this
-  // stays pinned to the one signal that means a real feed exists.
+  // section). One panel below this flag, Subscriptions, still renders seeded
+  // demo rows, so widening the flag would show demo data to more people. A later
+  // stage deletes those seeds; until then this stays pinned to the one signal
+  // that means a real feed exists. The "Your plans" card no longer sits behind
+  // it: real plans exist whether or not a transaction feed does, so it reads
+  // them directly and shows its own empty state.
   const hasTxns = hasTransactions && (transactions.length > 0 || spending.length > 0);
   return (
     <div className="frame">
@@ -263,34 +315,7 @@ export default function Overview({
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
-          {hasTxns ? (
-            <div className="plans-col">
-              {plans.filter((p) => !p.done).map((p, i) => {
-                const prog = p.target ? Math.round((p.saved / p.target) * 100) : p.pct;
-                return (
-                  <Link href="/app/plans" className="plan-row" key={i}>
-                    <div className="track" style={{ background: cssVar(p.k) }}>{planMark(p)}</div>
-                    <div className="pr-body">
-                      <div className="pr-top">
-                        <span className="pt">{p.t}</span>
-                        {p.target ? <span className="amt tnum">{moneyK(p.saved)} <small>/ {moneyK(p.target)}</small></span> : null}
-                      </div>
-                      <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(p.k) }} /></div>
-                      <div className="pr-bot"><span>{p.note}</span><span className={`status ${p.st}`}>{p.stl}</span></div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
-              No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
-              <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
-            </div>
-          )}
-        </div>
+        <YourPlansCard />
       </div>
 
       {hasTxns && (

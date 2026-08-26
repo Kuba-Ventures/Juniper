@@ -216,7 +216,6 @@
 .jnpr .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
 .jnpr .plan-lg .nums .big small{font-size:12px;color:var(--jnpr-ink-3);font-weight:550}
 .jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
-.jnpr .plan-spark{margin:12px 0 2px}
 .jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
 .jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
 .jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;opacity:0;transition:opacity .15s}
@@ -226,13 +225,6 @@
 .jnpr .plan-ask:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}
 .jnpr .plan-ask svg{width:14px;height:14px}
 .jnpr .plan-ask .pa-badge{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-radius:20px;font-size:10px;font-weight:700;padding:0 6px;min-width:16px;text-align:center}
-.jnpr .embed-rec{margin:0 18px 18px;display:flex;gap:12px;align-items:center;padding:13px;border-radius:var(--jnpr-r-sm);background:linear-gradient(180deg,var(--jnpr-accent-soft),var(--jnpr-surface-2));border:1px solid var(--jnpr-line)}
-.jnpr .embed-rec .save{font-weight:750;font-size:15px;color:var(--jnpr-accent-deep);white-space:nowrap;text-align:center}
-.jnpr .embed-rec .save small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--jnpr-ink-3)}
-.jnpr .embed-rec .eb h4{font-size:12.5px;margin-bottom:2px;color:var(--jnpr-ink)}
-.jnpr .embed-rec .eb p{margin:0;font-size:11.5px;color:var(--jnpr-ink-2);line-height:1.4}
-.jnpr .embed-rec .eb .cta{margin-top:8px;display:flex;gap:8px;align-items:center}
-.jnpr .partner{font-size:11px;color:var(--jnpr-ink-3)}.jnpr .partner b{color:var(--jnpr-ink-2)}
 
 /* ---------- modal + forms ---------- */
 .jnpr .modal-bg{position:fixed;inset:0;background:rgba(15,20,15,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
@@ -251,6 +243,51 @@
 .jnpr .tmpl-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
 .jnpr .tmpl-ic svg{width:58%;height:58%;display:block;color:#fff}
 .jnpr .disc{font-size:10.5px;color:var(--jnpr-ink-3);margin-top:14px;line-height:1.45}
+
+/* ---------- plans: loading, empty, shape + color pickers ---------- */
+.jnpr .plan-skel{min-height:190px;display:grid;place-items:center;color:var(--jnpr-ink-3);font-size:13px;font-weight:600}
+.jnpr .plan-empty{grid-column:1/-1;text-align:center;padding:34px 26px;max-width:520px;margin:0 auto}
+.jnpr .plan-empty .pe-ic{width:42px;height:42px;border-radius:12px;display:inline-grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);margin-bottom:12px}
+.jnpr .plan-empty .pe-ic svg{width:20px;height:20px}
+.jnpr .plan-empty h3{font-size:17px;margin-bottom:7px;color:var(--jnpr-ink)}
+.jnpr .plan-empty p{font-size:13.5px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 auto 16px;max-width:400px}
+.jnpr .field-hint{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.45}
+.jnpr .shape-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.jnpr .shape-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border:1px solid var(--jnpr-line);border-radius:10px;background:var(--jnpr-surface-2);font-family:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-ink-2);cursor:pointer;text-align:center;line-height:1.25}
+.jnpr .shape-btn:hover{border-color:var(--jnpr-accent)}
+.jnpr .shape-btn.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
+.jnpr .shape-btn .sb-ic{width:24px;height:24px;display:grid;place-items:center}
+.jnpr .shape-btn .sb-ic svg{width:100%;height:100%;stroke-width:1.9}
+.jnpr .color-pick{display:flex;flex-wrap:wrap;gap:8px}
+.jnpr .swatch{width:26px;height:26px;border-radius:8px;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);cursor:pointer;padding:0}
+.jnpr .swatch.on{border-color:var(--jnpr-ink);box-shadow:inset 0 0 0 2px var(--jnpr-surface)}
+.jnpr .modal-danger{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--jnpr-line-2);font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .modal-danger span{margin-right:auto}
+.jnpr .btn.ghost.danger{color:var(--jnpr-bad);border-color:color-mix(in srgb,var(--jnpr-bad) 40%,transparent)}
+
+/* ---------- plans: example section (illustration, not the member's data) ----
+   Deliberately quieter than a real plan card: no shadow, a dashed border, a
+   tinted ground, and smaller type, so it can never be mistaken for their own
+   plans sitting above it. */
+.jnpr .ex-wrap{margin-top:34px;padding-top:22px;border-top:1px solid var(--jnpr-line)}
+.jnpr .ex-lede{margin-bottom:14px;max-width:560px}
+.jnpr .ex-lede h3{font-size:14px;color:var(--jnpr-ink-2);margin-bottom:4px}
+.jnpr .ex-lede p{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.5;margin:0}
+.jnpr .ex-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.jnpr .plan-ex{position:relative;padding:14px 15px;background:var(--jnpr-surface-2);border:1px dashed var(--jnpr-line);box-shadow:none;opacity:.9}
+.jnpr .plan-ex:hover{opacity:1}
+.jnpr .plan-ex .ex-x{position:absolute;top:8px;right:8px;width:22px;height:22px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--jnpr-ink-3);cursor:pointer;padding:0}
+.jnpr .plan-ex .ex-x:hover{background:var(--jnpr-line-2);color:var(--jnpr-ink)}
+.jnpr .plan-ex .ex-x svg{width:13px;height:13px}
+.jnpr .plan-ex .ex-top{display:flex;align-items:center;gap:10px;margin-bottom:9px;padding-right:22px}
+.jnpr .plan-ex .ex-ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:#fff;flex:0 0 auto;opacity:.8}
+.jnpr .plan-ex .ex-ic svg{width:58%;height:58%;display:block;color:#fff}
+.jnpr .plan-ex .ex-head-txt{min-width:0}
+.jnpr .plan-ex .ex-t{font-size:13px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .plan-ex .ex-s{font-size:11px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .plan-ex .bar{opacity:.65}
+.jnpr .plan-ex .ex-b{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.5;margin:9px 0 0}
+
 
 /* ---------- subscriptions ---------- */
 .jnpr .sum-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
