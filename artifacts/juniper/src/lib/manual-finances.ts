@@ -10,7 +10,6 @@
 
 import type { FinanceData } from "@/lib/finances";
 import type { Account, SeriesKey } from "@/lib/mock-data";
-import { netWorth as mockNetWorth } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/profile";
 import { computeScore } from "@/lib/score";
 
@@ -25,6 +24,21 @@ const monthLabel = () => {
     return "This month";
   }
 };
+
+// Same fixed English abbreviations api/finances.ts labels its series with, so a
+// manual chart and a live one read identically.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Trailing `n` month labels ending at the current month. NetWorthChart wants one
+// label per point, and this used to borrow the demo household's label array,
+// which dated a real member's flat line to the mock's period (a chart of their
+// money, captioned with someone else's months).
+export function trailingMonthLabels(n = 12): string[] {
+  const now = new Date();
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) out.push(MONTHS[new Date(now.getFullYear(), now.getMonth() - i, 1).getMonth()]);
+  return out;
+}
 
 // True when the profile carries at least one real number to show.
 export function hasManualFinances(p: UserProfile | null): boolean {
@@ -71,7 +85,8 @@ export function buildManualFinances(p: UserProfile | null): FinanceData | null {
 
   // No history yet, so the trend line is honestly flat at the current value.
   // A 12-point series keeps NetWorthChart's fixed month ticks/labels valid.
-  const flatSeries = mockNetWorth.labels.map(() => netWorthValue);
+  const labels = trailingMonthLabels();
+  const flatSeries = labels.map(() => netWorthValue);
 
   const income = p.monthlyIncome ?? 0;
   const spent = p.monthlyExpenses ?? 0;
@@ -91,7 +106,7 @@ export function buildManualFinances(p: UserProfile | null): FinanceData | null {
       changeAbs: 0,
       changePct: 0,
       series: flatSeries,
-      labels: mockNetWorth.labels,
+      labels,
     },
     cashflow: { income, spent, saved: income - spent, month: monthLabel() },
     // Transaction-derived surfaces are empty until an account is linked.

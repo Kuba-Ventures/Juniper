@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
-import { syncFinances, layerEnabled, pollCashflowEstimate, normInstitutionName } from "@/lib/plaid";
+import { syncFinancesUntilTransactions, layerEnabled, pollCashflowEstimate, normInstitutionName } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -399,7 +399,10 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
   const { start, busy, progress, notice, setNotice } = useLinkQueue({
     onItemLinked: (institution) => markConnected(institution ? [institution] : undefined),
     onDone: ({ linked: count }) => {
-      if (count > 0) void syncFinances();
+      // Bounded background retry, not a single shot: the first pull is usually
+      // not ready yet, and the very next step of onboarding polls the same data
+      // to pre-fill the member's income and spending.
+      if (count > 0) void syncFinancesUntilTransactions();
     },
   });
 

@@ -162,29 +162,146 @@ export async function exchangePublicToken(
   }
 }
 
+// One item's leg of a sync that Plaid or storage refused, as both sync endpoints
+// now report them: they isolate per item rather than aborting the whole run, so
+// one dead connection no longer costs the member every other refresh.
+// `needs_relink` marks the codes that mean the connection itself is finished
+// (ITEM_LOGIN_REQUIRED, INVALID_ACCESS_TOKEN) rather than a transient failure.
+type ItemFailure = {
+  item_id?: string;
+  error_code?: string | null;
+  error_message?: string | null;
+  needs_relink?: boolean;
+};
+
+async function postOk(path: string): Promise<boolean> {
+  try {
+    const res = await authedFetch(path, { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// POST a sync leg and read its body instead of discarding it. `res.ok` alone
+// can't tell "nothing to sync" from "we pulled rows and failed to store them",
+// and it can't tell the retry loop below whether transactions have landed.
+async function postSync(path: string): Promise<{ ok: boolean; added: number; failures: ItemFailure[] }> {
+  try {
+    const res = await authedFetch(path, { method: "POST" });
+    const body = (await res.json().catch(() => ({}))) as { added?: number; failures?: ItemFailure[] };
+    return {
+      ok: res.ok,
+      added: Number(body.added ?? 0),
+      failures: Array.isArray(body.failures) ? body.failures : [],
+    };
+  } catch {
+    return { ok: false, added: 0, failures: [] };
+  }
+}
+
+export type SyncResult = {
+  transactions: boolean;
+  netWorth: boolean;
+  score: boolean;
+  // Transaction rows written by this call. 0 is normal and not an error: Plaid
+  // often hasn't prepared the first pull yet right after a link.
+  added: number;
+  // Items either leg could not refresh at all, and of those, the ones whose
+  // connection is dead until it's linked again. Reported so a caller can say so
+  // rather than leaving a refresh that quietly did nothing.
+  failedItems: number;
+  needsRelink: string[];
+};
+
 // Kick the server-side data pipeline for the caller's linked items: pull new
-// transactions (/transactions/sync) and snapshot net worth. Fire-and-report, 
+// transactions (/transactions/sync) and snapshot net worth. Fire-and-report,
 // both run server-side, are user-scoped by JWT, and are safe to call repeatedly
 // (the sync resumes from its cursor; the snapshot upserts one row per day).
-// Returns whether at least one leg succeeded; degrades quietly when Plaid /
-// storage isn't configured yet so callers never block the UI on it.
-export async function syncFinances(): Promise<{ transactions: boolean; netWorth: boolean; score: boolean }> {
-  const call = async (path: string) => {
-    try {
-      const res = await authedFetch(path, { method: "POST" });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  };
+// Degrades quietly when Plaid / storage isn't configured yet so callers never
+// block the UI on it.
+export async function syncFinances(): Promise<SyncResult> {
   // Transactions + net worth first (they populate what the score reads), then
   // snapshot the Juniper Score for the trend/delta history.
-  const [transactions, netWorth] = await Promise.all([
-    call("/api/plaid/transactions-sync"),
-    call("/api/plaid/networth-snapshot"),
+  const [txn, snapshot] = await Promise.all([
+    postSync("/api/plaid/transactions-sync"),
+    postSync("/api/plaid/networth-snapshot"),
   ]);
-  const score = await call("/api/score/compute");
-  return { transactions, netWorth, score };
+  const score = await postOk("/api/score/compute");
+  const failures = [...txn.failures, ...snapshot.failures];
+  const needsRelink = [
+    ...new Set(failures.filter((f) => f.needs_relink && f.item_id).map((f) => f.item_id as string)),
+  ];
+  return {
+    transactions: txn.ok,
+    netWorth: snapshot.ok,
+    score,
+    added: txn.added,
+    failedItems: new Set(failures.map((f) => f.item_id ?? "")).size,
+    needsRelink,
+  };
+}
+
+// Whether the server holds transaction rows for the caller yet. Reads the
+// dashboard payload's explicit `hasTransactions` flag rather than inferring it
+// from which sections came back, since api/finances.ts now sends balances
+// without a feed.
+export async function hasSyncedTransactions(): Promise<boolean> {
+  try {
+    const res = await authedFetch("/api/finances");
+    if (!res.ok) return false;
+    const data = (await res.json()) as { linked?: boolean; hasTransactions?: boolean };
+    return !!data?.linked && !!data.hasTransactions;
+  } catch {
+    return false;
+  }
+}
+
+// Run the pipeline, then keep retrying the transactions leg until rows actually
+// land. The single syncFinances() fired at link time (Connections' onDone, the
+// onboarding connect step) almost always beats Plaid's first transaction pull
+// being ready, and nothing retried it, so a member's feed stayed empty until
+// they happened to hit "Refresh data" days later.
+//
+// Bounded, backed off, and cancellable, the same shape as pollCashflowEstimate
+// above: stops on the first success, gives up after `attempts`, and bails as
+// soon as the caller's signal aborts. Callers don't await it, balances and the
+// score already landed on the first pass, so nothing in the UI waits on this.
+export async function syncFinancesUntilTransactions(opts?: {
+  attempts?: number;
+  intervalMs?: number;
+  signal?: { aborted: boolean };
+}): Promise<boolean> {
+  const attempts = opts?.attempts ?? 5;
+  const intervalMs = opts?.intervalMs ?? 2000;
+  const aborted = () => !!opts?.signal?.aborted;
+
+  // Pass one is the full pipeline: balances and the score should appear right
+  // away, transactions are the one leg worth waiting on.
+  const first = await syncFinances();
+  if (first.added > 0) return true;
+  if (await hasSyncedTransactions()) return true;
+
+  for (let a = 1; a < attempts; a++) {
+    if (aborted()) return false;
+    // Backoff rather than a fixed interval: what we're waiting on is Plaid
+    // preparing the first pull, which can take minutes. 2s, 4s, 8s, 16s.
+    await new Promise((r) => setTimeout(r, intervalMs * 2 ** (a - 1)));
+    if (aborted()) return false;
+    // Only the transactions leg on a retry. Re-pulling balances from Plaid on
+    // every attempt would multiply calls against the Item cap for nothing, and
+    // the snapshot below covers the one case where they need re-reading.
+    const again = await postSync("/api/plaid/transactions-sync");
+    if (again.added > 0 || (await hasSyncedTransactions())) {
+      // Rows arrived after pass one, so the trend point and the score were
+      // computed without them. Redo those two legs off the fuller data.
+      if (!aborted()) {
+        await Promise.all([postOk("/api/plaid/networth-snapshot"), postOk("/api/score/compute")]);
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 // Best-effort monthly income/spending estimate from live data, used to pre-fill
