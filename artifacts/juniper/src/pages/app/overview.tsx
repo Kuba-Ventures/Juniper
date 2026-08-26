@@ -241,6 +241,12 @@ export default function Overview({
   const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  // The donut's own total, so the "Where it went" header can never disagree with
+  // the wedges under it. On live data it also equals `cashflow.spent` in the
+  // strip above: /api/finances defines spent AS the sum of this breakdown, both
+  // of them net of transfers and credit-card payments. Read from the wedges
+  // rather than from cashflow so the header stays true to what is drawn even on
+  // a manual or demo dashboard, where the two come from different places.
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
   // With no transaction feed (manual entry, demo, or a fresh link whose
   // transactions haven't landed), spending/budgets/subs have nothing real to

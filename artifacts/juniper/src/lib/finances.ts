@@ -57,18 +57,46 @@ const MOCK: FinanceData = {
 // null, hence the cast.
 const EMPTY = buildManualFinances({}) as FinanceData;
 
-// Category -> series color, matching the mock so live + demo look identical.
-const CAT_COLOR: Record<string, SeriesKey> = {
-  "Housing": "--jnpr-c1",
-  "Groceries & dining": "--jnpr-c2",
-  "Transportation": "--jnpr-c3",
-  "Shopping": "--jnpr-c4",
-  "Utilities & bills": "--jnpr-c5",
-  "Kids & health": "--jnpr-c6",
-  "Everything else": "--jnpr-c7",
+// Category GROUP -> series color. One color per group, so every category inside
+// a group reads as the same family on the donut and on a transaction row, and
+// the vocabulary can keep widening without a color decision per leaf.
+//
+// The group labels ARE the seven pre-3b categories plus two new ones, so the
+// seven old rows below are untouched: a member's Housing wedge is still the same
+// green. Every token here already exists in both palettes (styles/juniper.css,
+// light and `.dark .jnpr`), nothing new was invented. The two additions had to
+// come from outside c1 to c7 because that ramp holds seven distinct hues and
+// there are nine spending groups; `accent` (deep pine in light, mint in dark) and
+// `ink-2` (sage) are what is left that stays legible in both themes. Both are
+// greenish, so the rollup order keeps them apart from each other and from c1 and
+// c6, and no two adjacent wedges share a hue. Worth knowing: in dark mode `accent` and
+// `good` resolve to the same green, which is harmless only because Income never
+// appears in the donut, it is excluded from spending.
+//
+// The server decides which group a category belongs to (api/_categorize.ts, the
+// single source of truth) and sends it, so this file never mirrors that table.
+// Listed in the rollup order the server sends (api/_categorize.ts), so the
+// adjacency this order buys is visible right here.
+const GROUP_COLOR: Record<string, SeriesKey> = {
+  "Housing": "--jnpr-c1",            // green
+  "Groceries & dining": "--jnpr-c2", // gold
+  "Transportation": "--jnpr-c3",     // blue
+  "Debt payments": "--jnpr-ink-2",   // sage
+  "Shopping": "--jnpr-c4",           // terracotta
+  "Fun & travel": "--jnpr-accent",   // pine
+  "Utilities & bills": "--jnpr-c5",  // violet
+  "Kids & health": "--jnpr-c6",      // olive
+  "Everything else": "--jnpr-c7",    // grey
   "Income": "--jnpr-good",
+  // Muted on purpose: a transfer or a card payment is not spending, and it
+  // should not look like a category competing for the member's attention.
+  "Transfers & payments": "--jnpr-ink-3",
 };
-const catColor = (c: string): SeriesKey => CAT_COLOR[c] ?? "--jnpr-c7";
+// `group` is the server's answer and is preferred; `label` is the fallback for a
+// spending row (whose label IS its group) or a stale payload from before the
+// server sent groups.
+const catColor = (label: string, group?: string): SeriesKey =>
+  GROUP_COLOR[group ?? ""] ?? GROUP_COLOR[label] ?? "--jnpr-c7";
 const ACCT_CYCLE: SeriesKey[] = ["--jnpr-c1", "--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c4"];
 
 // Raw shape returned by GET /api/finances (colors are a frontend concern, so the
@@ -77,9 +105,14 @@ interface RawFinances {
   linked: boolean;
   netWorth?: FinanceData["netWorth"];
   cashflow?: FinanceData["cashflow"];
+  // `c` is a category GROUP label here: the endpoint rolls the month up by group
+  // (nine coherent wedges) rather than by leaf category (dozens of slivers), and
+  // excludes transfers and card payments so the total matches `cashflow.spent`.
   spending?: { c: string; v: number }[];
   budgets?: Budget[];
-  transactions?: { m: string; c: string; v: number; d: string; inc?: boolean }[];
+  // `c` is the transaction's own leaf category (the granular label), `g` the
+  // group it rolls up into, which is what colors the row.
+  transactions?: { m: string; c: string; g?: string; v: number; d: string; inc?: boolean }[];
   accounts?: { cash: Omit<Account, "k">[]; invest: Omit<Account, "k">[]; debt: Omit<Account, "k">[] };
   score?: FinanceData["score"];
   // Whether transaction rows exist for this member. The three transaction-derived
@@ -104,7 +137,7 @@ function mergeLive(raw: RawFinances, base: FinanceData): FinanceData {
     spending: raw.spending ? raw.spending.map((s) => ({ ...s, k: catColor(s.c) })) : base.spending,
     budgets: raw.budgets ?? base.budgets,
     transactions: raw.transactions
-      ? raw.transactions.map((t) => ({ ...t, k: t.inc ? "--jnpr-good" : catColor(t.c) }))
+      ? raw.transactions.map((t) => ({ ...t, k: t.inc ? "--jnpr-good" : catColor(t.c, t.g) }))
       : base.transactions,
     accounts: raw.accounts
       ? {
