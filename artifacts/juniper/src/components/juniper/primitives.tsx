@@ -58,13 +58,37 @@ export function PlanSpark({ data, k, height = 38 }: { data: number[]; k: string;
 /* ---------- net-worth area chart with hover ---------- */
 export function NetWorthChart({ series, labels, height = 150 }: { series: number[]; labels: string[]; height?: number }) {
   const W = 560, H = height, padL = 6, padR = 6, padT = 12, padB = 18;
-  const min = Math.min(...series) * 0.985, max = Math.max(...series) * 1.01;
-  const x = (i: number) => padL + (i * (W - padL - padR)) / (series.length - 1);
+  const n = series.length;
+  // Three shapes this has to survive, all of them now reachable. A ONE-POINT
+  // series: net_worth_snapshots holds one row per day, so a member who linked
+  // this morning has exactly one, and the range pills above can select a single
+  // day. A DEAD FLAT series: a manual or empty dashboard has no history, so
+  // every point is the current value. A NEGATIVE series: net worth below zero.
+  // The old arithmetic divided by `n - 1` and scaled the bounds by 0.985/1.01,
+  // which gave NaN for the first two and inverted bounds for the third, and it
+  // was only safe while the numbers came from a demo household with twelve
+  // rising positive points.
+  const minV = Math.min(...series), maxV = Math.max(...series);
+  const spread = maxV - minV;
+  // A flat series has to have bounds invented around it or every point lands on
+  // one row of pixels; a series with real spread just gets breathing room so the
+  // extremes are not flush against the frame.
+  const pad = spread > 0 ? spread * 0.06 : (Math.abs(maxV) || 1000) * 0.08;
+  const min = minV - pad, max = maxV + pad;
+  // A single point sits in the middle of the plot rather than pinned to the left
+  // edge, where it reads as the start of a line that never got drawn.
+  const x = (i: number) => (n > 1 ? padL + (i * (W - padL - padR)) / (n - 1) : padL + (W - padL - padR) / 2);
   const y = (v: number) => padT + (1 - (v - min) / (max - min)) * (H - padT - padB);
   const line = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-  const area = `M${x(0)} ${y(series[0])} ` + series.map((v, i) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + ` L${x(series.length - 1)} ${H - padB} L${x(0)} ${H - padB} Z`;
+  const area = `M${x(0)} ${y(series[0])} ` + series.map((v, i) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + ` L${x(n - 1)} ${H - padB} L${x(0)} ${H - padB} Z`;
   const grid = [0, 0.5, 1].map((f) => padT + f * (H - padT - padB));
-  const ticks = [0, 3, 6, 9, 11];
+  // Derived from the series length instead of the old fixed [0,3,6,9,11], which
+  // assumed twelve points and printed blanks for any shorter window. Runs of
+  // daily snapshots share a month label, so a tick repeating the one before it is
+  // dropped: a 30-day window gets one "Aug", not five.
+  const ticks = (n > 1 ? [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (n - 1))) : [0])
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .filter((v, i, a) => i === 0 || labels[v] !== labels[a[i - 1]]);
   const ref = useRef<HTMLDivElement>(null);
   const [hi, setHi] = useState<number | null>(null);
   const [rect, setRect] = useState({ w: 0, h: 0 });
@@ -73,8 +97,8 @@ export function NetWorthChart({ series, labels, height = 150 }: { series: number
     const el = ref.current; if (!el) return;
     const r = el.getBoundingClientRect();
     setRect({ w: r.width, h: r.height });
-    let i = Math.round(((e.clientX - r.left) / r.width * W - padL) / ((W - padL - padR) / (series.length - 1)));
-    i = Math.max(0, Math.min(series.length - 1, i));
+    let i = n > 1 ? Math.round(((e.clientX - r.left) / r.width * W - padL) / ((W - padL - padR) / (n - 1))) : 0;
+    i = Math.max(0, Math.min(n - 1, i));
     setHi(i);
   };
 
@@ -86,8 +110,8 @@ export function NetWorthChart({ series, labels, height = 150 }: { series: number
         <path className="nw-line" d={line} />
         {hi != null && <line className="nw-grid" x1={x(hi)} x2={x(hi)} y1={padT} y2={H - padB} style={{ stroke: "var(--jnpr-ink-3)", opacity: 0.5, strokeDasharray: "none" }} />}
         {hi != null && <circle className="nw-dot" cx={x(hi)} cy={y(series[hi])} r={4} />}
-        <circle className="nw-dot" cx={x(series.length - 1)} cy={y(series[series.length - 1])} r={4} />
-        {ticks.map((i) => <text key={i} className="ax" x={x(i)} y={H - 5} textAnchor={i === 0 ? "start" : i === 11 ? "end" : "middle"}>{labels[i]}</text>)}
+        <circle className="nw-dot" cx={x(n - 1)} cy={y(series[n - 1])} r={4} />
+        {ticks.map((i) => <text key={i} className="ax" x={x(i)} y={H - 5} textAnchor={n === 1 ? "middle" : i === 0 ? "start" : i === n - 1 ? "end" : "middle"}>{labels[i] ?? ""}</text>)}
       </svg>
       {hi != null && rect.w > 0 && (
         <div className="jnpr-tip" style={{ left: (x(hi) / W) * rect.w, top: (y(series[hi]) / H) * rect.h - 6 }}>

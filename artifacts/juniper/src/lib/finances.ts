@@ -2,27 +2,33 @@
 //
 // The dashboard's money data behind stable shapes, exposed via a context so the
 // several pages that read it (Overview, Score, Plans) share one source of truth
-// and one /api/finances fetch. There are three sources, in priority order:
+// and one /api/finances fetch. There are two sources, in priority order:
 //
 //   live, the member linked Plaid and/or saved accounts server-side;
 //         GET /api/finances returned data
 //   manual, no link yet, but they entered accounts/income in onboarding
 //            (built from the local profile by `buildManualFinances`)
-//   mock, neither; the demo household so the UI always renders something
 //
 // `<FinancesProvider profile={…}>` wraps the app shell; `useFinances()` reads
 // the resolved value.
 //
+// There used to be a third layer under those two: the demo household from
+// mock-data.ts, handed to any session with no profile and no server data so the
+// UI would always render something. It is gone. Somebody else's money rendered
+// as yours is worse than an empty chart, and every surface below has an honest
+// empty state now, so the floor is EMPTY: a real dashboard with nothing in it.
+//
 // The live payload is PARTIAL by design (api/finances.ts gates each section on
 // its own source), so it is merged field by field over the layer beneath it: the
-// member's own manual figures, or EMPTY when they never entered any. Never over
-// the mock household. A member with real balances but no transaction feed yet
-// must see their own cashflow or nothing at all, not the demo's income printed
-// as theirs. MOCK is reachable only as a whole layer, for a session with no
-// profile and no server data whatsoever.
+// member's own manual figures, or EMPTY when they never entered any. A member
+// with real balances but no transaction feed yet must see their own cashflow or
+// nothing at all.
 import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getAccessToken } from "@/lib/supabase";
-import * as M from "@/lib/mock-data";
+// Type-only: nothing in mock-data.ts is read as a VALUE from here any more. The
+// three `typeof M.x` shapes below still point at the seeds because that is where
+// those shapes are declared; a later stage moves them to a module of their own.
+import type * as M from "@/lib/mock-data";
 import type { Account, SpendCat, Budget, Txn, SeriesKey } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/profile";
 import { buildManualFinances } from "@/lib/manual-finances";
@@ -37,17 +43,7 @@ export interface FinanceData {
   score: typeof M.score;
 }
 
-const MOCK: FinanceData = {
-  netWorth: M.netWorth,
-  cashflow: M.cashflow,
-  spending: M.spending,
-  budgets: M.budgets,
-  transactions: M.transactions,
-  accounts: M.accounts,
-  score: M.score,
-};
-
-// The floor under a real member: a dashboard with nothing in it. Derived from an
+// The floor under every member: a dashboard with nothing in it. Derived from an
 // empty profile so it is built by exactly the same code as the manual layer,
 // giving $0 net worth on a flat trailing-12-month line, no accounts, no
 // transaction surfaces, and a score computed from zeros. A live payload merges
@@ -123,9 +119,9 @@ interface RawFinances {
 
 // Merge a live payload over `base`, the layer beneath it: the member's own
 // manual figures, or EMPTY. Colors are applied here so the endpoint can stay
-// color-agnostic. Every field falls back to `base` and none to MOCK: an absent
-// section means "nothing honest to report server-side", and answering that with
-// the demo household would put another family's money on this dashboard. A
+// color-agnostic. Every field falls back to `base`, and `base` bottoms out at
+// zeroes: an absent section means "nothing honest to report server-side", and
+// answering that with a stand-in would put invented money on this dashboard. A
 // present-but-empty section (say, no spending yet this month) is respected as
 // given, which is why these test for the key rather than coalescing.
 function mergeLive(raw: RawFinances, base: FinanceData): FinanceData {
@@ -167,13 +163,18 @@ async function fetchFinances(): Promise<RawFinances | null> {
   }
 }
 
-export type FinanceSource = "mock" | "manual" | "live";
+// "manual" covers everything the client knows without the server: the figures
+// the member typed in onboarding, or EMPTY when they typed none. Consumers only
+// ever ask whether it is "live" (app-frame's linked count, the Plans subtitle),
+// and neither of those has anything to say about a member with no profile, so
+// the two collapse into one label rather than earning a third.
+export type FinanceSource = "manual" | "live";
 export interface FinancesValue {
   data: FinanceData;
   source: FinanceSource;
   loading: boolean;
   // Whether a real transaction feed sits behind `data`. Only a live payload can
-  // set it (manual and demo dashboards have no feed). Pages gate their
+  // set it (a manual or empty dashboard has no feed). Pages gate their
   // transaction-dependent cards on this rather than on `source === "live"`,
   // which is now true for members who have balances and nothing else.
   hasTransactions: boolean;
@@ -213,9 +214,10 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
         hasTransactions: !!raw.hasTransactions,
       };
     }
-    return manual
-      ? { data: manual, source: "manual", loading, hasTransactions: false }
-      : { data: MOCK, source: "mock", loading, hasTransactions: false };
+    // No live payload. Their own onboarding figures if they entered any,
+    // otherwise an empty dashboard: a member who has told us nothing is shown
+    // nothing, not a demo household's net worth under their name.
+    return { data: manual ?? EMPTY, source: "manual", loading, hasTransactions: false };
   }, [raw, manual, loading]);
 
   return createElement(FinancesContext.Provider, { value }, children);
@@ -223,7 +225,8 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
 
 export function useFinances(): FinancesValue {
   const ctx = useContext(FinancesContext);
-  // Fallback keeps any consumer rendered outside the provider working on mock
-  // data rather than throwing.
-  return ctx ?? { data: MOCK, source: "mock", loading: false, hasTransactions: false };
+  // Fallback keeps any consumer rendered outside the provider working rather
+  // than throwing. It renders empty, because a component with no provider above
+  // it has no member to speak for.
+  return ctx ?? { data: EMPTY, source: "manual", loading: false, hasTransactions: false };
 }

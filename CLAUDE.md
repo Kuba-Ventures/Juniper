@@ -13,8 +13,10 @@ Guidance Claude Code loads at the start of every session in this repo.
 - **PRs:** open against `main`; don't push to `main` directly. Keep each PR
   scoped to one change.
 - **Money data layer:** the dashboard reads finances through the
-  `lib/finances.ts` seam (live → manual → mock, in priority order). Keep new
-  money features going through it rather than reading sources directly.
+  `lib/finances.ts` seam (live → manual, in priority order, bottoming out at an
+  empty dashboard). Keep new money features going through it rather than reading
+  sources directly. Only the member's own data may render: no placeholders, no
+  demo household, no seeded stand-ins.
 
 ## Project docs
 
