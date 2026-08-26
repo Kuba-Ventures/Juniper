@@ -70,6 +70,13 @@ export type SanitizedAccount = {
   type: string | null;
   subtype: string | null;
   balance: number | null;
+  // Credit limit, for showing card utilization. Display-only, and Plaid leaves
+  // it null on plenty of accounts (anything that has no limit, plus cards where
+  // the bank does not report one), so every consumer has to handle a missing
+  // limit rather than dividing by it. Snapshots written before this field
+  // existed also carry no limit until /accounts/balance/get runs over the item
+  // again, which is what "Refresh data" on Connections triggers.
+  limit: number | null;
   currency: string | null;
 };
 
@@ -80,7 +87,7 @@ type PlaidAccount = {
   mask?: string | null;
   type?: string | null;
   subtype?: string | null;
-  balances?: { available?: number | null; current?: number | null; iso_currency_code?: string | null };
+  balances?: { available?: number | null; current?: number | null; limit?: number | null; iso_currency_code?: string | null };
 };
 
 export function sanitizeAccounts(accounts: PlaidAccount[]): SanitizedAccount[] {
@@ -91,6 +98,7 @@ export function sanitizeAccounts(accounts: PlaidAccount[]): SanitizedAccount[] {
     type: a.type ?? null,
     subtype: a.subtype ?? null,
     balance: a.balances?.current ?? a.balances?.available ?? null,
+    limit: a.balances?.limit ?? null,
     currency: a.balances?.iso_currency_code ?? null,
   }));
 }

@@ -859,3 +859,9 @@
 .jnpr .conn-acct{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:9px;margin-top:9px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
 .jnpr .conn-acct .ca-name{color:var(--jnpr-ink-2);min-width:0}
 .jnpr .conn-acct .ca-bal{color:var(--jnpr-ink);font-weight:650;flex:0 0 auto}
+
+/* credit: the score panel is a not-live notice, not a number. Copy width is
+   capped so the paragraph stays readable next to the wide card list below it. */
+.jnpr .cs-note{font-size:13px;color:var(--jnpr-ink-2);line-height:1.6;margin:8px 0 0;max-width:66ch}
+.jnpr .cs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.jnpr .cs-chips span{font-size:11px;font-weight:650;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:7px;padding:3px 9px}
