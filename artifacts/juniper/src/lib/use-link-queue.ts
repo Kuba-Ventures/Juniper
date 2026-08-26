@@ -134,7 +134,10 @@ export function useLinkQueue(opts?: {
         finish();
         return;
       }
-      const token = await createLinkToken();
+      // A routing number, when the queue item came from Plaid's own search, asks
+      // Link to highlight that bank in its list. Absent for gallery tiles and
+      // for institutions Plaid returns without one; Link then opens as usual.
+      const token = await createLinkToken({ routingNumber: q[at]?.routing_number ?? null });
       if (!token) {
         setNotice("Account linking isn't enabled yet. You can add it later from Connections.");
         finish();

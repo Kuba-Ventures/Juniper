@@ -1,12 +1,27 @@
-import { useMemo, useState } from "react";
-import { Check, Plus, Search, PencilLine } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Plus, Search, PencilLine, Loader2, ArrowRight } from "lucide-react";
 import { LOGOS } from "@/lib/mock-logos";
-import { normInstitutionName, type LinkInstitution } from "@/lib/plaid";
+import {
+  normInstitutionName,
+  searchInstitutions,
+  type LinkInstitution,
+  type PlaidInstitutionMatch,
+} from "@/lib/plaid";
 
 // A searchable, sorted, multi-select institution gallery for the "connect an
 // account" flow (account discovery, tier 2). Users can browse by category, type
 // to filter, tick several institutions (or "Select all" a category), and connect
 // them in one go, the caller links them sequentially via the Plaid Link queue.
+//
+// The search bar does two things at once. It filters the curated CATALOG tiles
+// locally, and it queries Plaid's real institution list over
+// /api/plaid/institutions-search, rendering those hits in a "From Plaid" section
+// below the tiles. That second half is the point: the bar's placeholder promises
+// "any bank", and before this it only matched ~60 hardcoded names, so typing a
+// bank Plaid supports but we never listed (Carter Bank, most regional banks and
+// credit unions) produced "No matches" and nudged people into the manual form,
+// whose hand-typed balance never refreshes. Debounced and cached per query
+// because it fires while someone is typing and Plaid rate-limits the endpoint.
 // Each category ends with a dashed "Not listed" tile, and the bar carries a
 // global "Search all banks"; both open Plaid's full search for anything outside
 // the gallery (small/regional banks like Carter Bank, which Plaid does link, via
@@ -135,8 +150,48 @@ export function InstitutionPicker({
   // Selection keyed by "category:name" so the same brand in two categories stays
   // independent in the UI; we dedupe by name when connecting.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [plaidHits, setPlaidHits] = useState<PlaidInstitutionMatch[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const q = query.trim().toLowerCase();
+  const trimmed = query.trim();
+
+  // Results are cached for the life of the picker so backspacing through a word,
+  // or retyping a bank someone already looked at, costs nothing. Keyed by the
+  // normalized query, the same string the request sends.
+  const cacheRef = useRef<Map<string, PlaidInstitutionMatch[]>>(new Map());
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    // Under two characters matches too much to be useful and still costs a call.
+    if (q.length < 2) {
+      setPlaidHits([]);
+      setSearching(false);
+      return;
+    }
+    const cached = cacheRef.current.get(q);
+    if (cached) {
+      setPlaidHits(cached);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const timer = setTimeout(() => {
+      void searchInstitutions(q, controller.signal).then((hits) => {
+        if (controller.signal.aborted) return;
+        cacheRef.current.set(q, hits);
+        setPlaidHits(hits);
+        setSearching(false);
+      });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [q]);
 
   const isConnected = (name: string) => !!connected && connected.has(normInstitutionName(name));
 
@@ -222,6 +277,16 @@ export function InstitutionPicker({
     return [...names];
   }, [selected]);
 
+  // Plaid's hits minus anything the user already has, and minus names the curated
+  // grid is already showing, so one bank never appears as two rows.
+  const plaidVisible = useMemo(() => {
+    const shown = new Set(filtered.flatMap((cat) => cat.items.map((i) => normInstitutionName(i.name))));
+    return plaidHits.filter(
+      (h) => !isConnected(h.name) && !shown.has(normInstitutionName(h.name)),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plaidHits, filtered, connected]);
+
   const connectSelected = () => {
     onConnect(selectedNames.map((name) => ({ name })));
     setSelected(new Set());
@@ -234,7 +299,7 @@ export function InstitutionPicker({
         <input
           className="inst-search"
           value={query}
-          placeholder="Search banks, cards, and investment providers"
+          placeholder="Search any bank, card, or investment provider"
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search institutions"
         />
@@ -269,6 +334,51 @@ export function InstitutionPicker({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Outside `.inst-cats` and directly under the bar, for the same reason the
+          Connected section is: this is the answer to what the person just typed,
+          so it must not sit at the bottom of a 44vh scroller. A row here is a
+          single tap that starts Link for that one bank, rather than a checkbox,
+          because someone who typed an exact name is done choosing. */}
+      {(searching || plaidVisible.length > 0) && (
+        <div className="inst-cat inst-cat-pinned">
+          <div className="inst-cat-row">
+            <div className="inst-cat-h">From Plaid</div>
+            {searching && (
+              <span className="inst-searching">
+                <Loader2 size={12} className="inst-spin" /> Searching
+              </span>
+            )}
+          </div>
+          {plaidVisible.length > 0 && (
+            <div className="inst-plaid-list">
+              {plaidVisible.map((hit) => (
+                <button
+                  key={hit.institution_id}
+                  className="inst-plaid-row"
+                  onClick={() =>
+                    onConnect([
+                      {
+                        institution_id: hit.institution_id,
+                        name: hit.name,
+                        routing_number: hit.routing_number,
+                      },
+                    ])
+                  }
+                  disabled={busy}
+                  aria-label={`Connect ${hit.name} through Plaid`}
+                >
+                  <span className="inst-mono" style={{ background: "var(--jnpr-c3)" }}>
+                    {hit.name.charAt(0)}
+                  </span>
+                  <span className="inst-name">{hit.name}</span>
+                  <ArrowRight size={14} className="inst-plaid-go" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -331,8 +441,18 @@ export function InstitutionPicker({
         })}
         {filtered.length === 0 && connectedFiltered.length === 0 && (
           <div className="inst-empty">
-            No matches for "{query.trim()}". Tap <b>Search all banks</b> below to find it in Plaid, or enter it by
-            hand.
+            {searching ? (
+              <>Looking for "{trimmed}" in Plaid.</>
+            ) : plaidVisible.length > 0 ? (
+              <>Nothing in the shortlist matches "{trimmed}". Plaid's matches are above.</>
+            ) : q.length < 2 ? (
+              <>Keep typing to search Plaid.</>
+            ) : (
+              <>
+                No bank matching "{trimmed}", in the shortlist or in Plaid. Check the spelling, or enter it by hand
+                below.
+              </>
+            )}
           </div>
         )}
       </div>

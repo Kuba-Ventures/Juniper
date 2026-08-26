@@ -718,6 +718,20 @@
 .jnpr .inst-tile.connected:disabled{opacity:1;cursor:default}
 .jnpr .inst-connected-tag{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--jnpr-good)}
 .jnpr .inst-connected-tag svg{flex:0 0 auto}
+/* live Plaid institution search: rows, not tiles. A row is one tap that starts
+   Link for that bank, so it reads as a result list rather than a pickable grid */
+/* Plaid returns up to 10 hits; capped and scrolled for the same reason the
+   Connected grid is, so a long result list can never crowd out the gallery */
+.jnpr .inst-plaid-list{display:flex;flex-direction:column;gap:6px;max-height:184px;overflow-y:auto;padding-right:6px}
+.jnpr .inst-plaid-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;font-size:13px;
+  color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:10px;padding:8px 11px;cursor:pointer}
+.jnpr .inst-plaid-row:hover{border-color:var(--jnpr-accent)}
+.jnpr .inst-plaid-row:disabled{opacity:.55;cursor:default}
+.jnpr .inst-plaid-go{margin-left:auto;flex:0 0 auto;color:var(--jnpr-ink-3)}
+.jnpr .inst-plaid-row:hover .inst-plaid-go{color:var(--jnpr-accent)}
+.jnpr .inst-searching{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;letter-spacing:.02em;color:var(--jnpr-ink-3)}
+.jnpr .inst-spin{animation:jnpr-spin 1s linear infinite}
+@keyframes jnpr-spin{to{transform:rotate(360deg)}}
 .jnpr .inst-empty{font-size:13px;color:var(--jnpr-ink-2);line-height:1.55;padding:8px 2px}
 .jnpr .inst-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--jnpr-line)}
 .jnpr .inst-bar-left{display:flex;gap:8px;flex-wrap:wrap}
