@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Plus, Search, PencilLine, Loader2, ArrowRight } from "lucide-react";
 import { LOGOS } from "@/lib/mock-logos";
-import { LOGO_KEY } from "@/lib/mock-data";
 import {
   normInstitutionName,
   searchInstitutions,
@@ -121,30 +120,8 @@ const CATALOG_BY_NAME = new Map<string, { logo?: string; color: string }>(
   CATALOG.flatMap((c) => c.items.map((i) => [i.name.trim().toLowerCase(), { logo: i.logo, color: c.color }] as const)),
 );
 
-// Resolve an institution's mark out of the bundled brand map from a display name
-// alone, for callers that have no catalog entry to read a key off (the Connections
-// list, which only ever knows what Plaid called the bank). Three passes, widest
-// last: the gallery's own name-to-key table, then the merchant table the dashboard
-// tiles use, then the name slugified into a key, which is how most of LOGOS is
-// spelled anyway ("Wells Fargo" -> wellsfargo). Returns null rather than a
-// placeholder so the caller owns its own fallback.
-export function localBrandLogo(name: string): string | null {
-  const trimmed = name.trim();
-  const norm = trimmed.toLowerCase();
-  const catalogKey = CATALOG_BY_NAME.get(norm)?.logo;
-  if (catalogKey && LOGOS[catalogKey]) return LOGOS[catalogKey];
-  const merchantKey = LOGO_KEY[trimmed];
-  if (merchantKey && LOGOS[merchantKey]) return LOGOS[merchantKey];
-  return LOGOS[norm.replace(/[^a-z0-9]/g, "")] ?? null;
-}
-
-// `src` wins over the catalog key when the caller has a better mark than we
-// bundle, which in practice means the real logo Plaid holds for an institution
-// the member has actually linked. Optional: every existing caller passes nothing
-// and keeps the catalog-or-monogram behavior.
-function Mark({ inst, color, src }: { inst: Inst; color: string; src?: string | null }) {
-  const logo = src ?? (inst.logo ? LOGOS[inst.logo] ?? null : null);
-  if (logo) return <img className="inst-logo" src={logo} alt="" />;
+function Mark({ inst, color }: { inst: Inst; color: string }) {
+  if (inst.logo && LOGOS[inst.logo]) return <img className="inst-logo" src={LOGOS[inst.logo]} alt="" />;
   return (
     <span className="inst-mono" style={{ background: `var(${color})` }}>
       {inst.name.charAt(0)}
@@ -157,7 +134,6 @@ export function InstitutionPicker({
   onManual,
   busy,
   connected,
-  connectedLogos,
 }: {
   onConnect: (institutions: LinkInstitution[]) => void;
   onManual?: () => void;
@@ -169,14 +145,6 @@ export function InstitutionPicker({
   // and most regional banks are linkable but not in the gallery, and before this
   // they connected successfully and then appeared nowhere.
   connected?: Map<string, string>;
-  // Real brand marks for connected institutions, ready-to-use <img src> values
-  // keyed the same way `connected` is (normalized name), because a name is all
-  // this component has to match on. Optional, and only ever an upgrade: without
-  // it the Connected section resolves marks from CATALOG exactly as before, which
-  // leaves every regional bank on a monogram since the gallery lists none of
-  // them. The caller owns the fetch because only it holds the institution ids
-  // Plaid's logo map is keyed by (see fetchInstitutionLogos).
-  connectedLogos?: Map<string, string>;
 }) {
   const [query, setQuery] = useState("");
   // Selection keyed by "category:name" so the same brand in two categories stays
@@ -249,9 +217,8 @@ export function InstitutionPicker({
 
   // Everything connected, hoisted into its own section at the top and removed from
   // the category grids below, so "what do I already have" is one glance instead of
-  // a hunt through five categories. Marks resolve widest-first: the real logo the
-  // caller fetched from Plaid, then the catalog's bundled one, then a monogram
-  // tile.
+  // a hunt through five categories. Catalog members keep their real logo; anything
+  // outside the catalog falls back to a monogram tile.
   const connectedItems = useMemo(() => {
     if (!connected?.size) return [];
     return [...connected.entries()]
@@ -260,11 +227,10 @@ export function InstitutionPicker({
         return {
           inst: { name: label, logo: known?.logo } as Inst,
           color: known?.color ?? "--jnpr-c1",
-          src: connectedLogos?.get(norm) ?? null,
         };
       })
       .sort((a, b) => a.inst.name.localeCompare(b.inst.name));
-  }, [connected, connectedLogos]);
+  }, [connected]);
 
   const connectedFiltered = useMemo(
     () => (q ? connectedItems.filter((c) => c.inst.name.toLowerCase().includes(q)) : connectedItems),
@@ -373,14 +339,14 @@ export function InstitutionPicker({
             <div className="inst-cat-h">Connected</div>
           </div>
           <div className="inst-grid inst-grid-capped">
-            {connectedFiltered.map(({ inst, color, src }) => (
+            {connectedFiltered.map(({ inst, color }) => (
               <div
                 key={`connected-${inst.name}`}
                 className="inst-tile connected"
                 aria-label={`${inst.name}, already connected`}
                 title="Already connected"
               >
-                <Mark inst={inst} color={color} src={src} />
+                <Mark inst={inst} color={color} />
                 <span className="inst-name">{inst.name}</span>
                 <span className="inst-connected-tag">
                   <Check size={11} strokeWidth={3} /> Connected
