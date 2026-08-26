@@ -3,6 +3,11 @@ import { useLocation } from "wouter";
 import { acceptInvite } from "@/lib/partner";
 import "@/styles/juniper.css";
 
+// UNROUTED as of Stage 4c, with the shared workspace it fed. See the note in
+// src/App.tsx where the route was. Accepting still worked server-side, but it
+// then sent the member to /app/shared, which is gone, so the whole invite ended
+// on a not-found card. Route this again alongside the workspace.
+//
 // Landing for /invite/partner/:token, the invited partner accepts here, which
 // activates the partnership, then lands them in the shared workspace.
 export default function JoinPartner({ token }: { token: string }) {

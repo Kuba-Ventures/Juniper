@@ -4,8 +4,16 @@
 // connected, a second "workspace" appears and the app can switch between the
 // member's private finances and the shared view. This holds that state (which
 // workspace is active + whether a partner is connected), persisted to
-// localStorage so it survives navigation. All data behind it is mock for now, 
-// real cross-partner data sharing is a later backend stage.
+// localStorage so it survives navigation.
+//
+// Stage 4c: nothing mounts this provider. The shared workspace it drove is
+// unrouted (see src/pages/juniper-app.tsx) because its pages still render a
+// seeded household. The `connect()` action went with it: it flipped
+// `partner.connected` from the client alone, on a "Preview shared space" button,
+// with no server partnership behind it, which is exactly how a member ended up
+// looking at Maya and Devin's money. Whoever restores the workspace should leave
+// it that way and let the /api/partner sync below be the only thing that can
+// connect a partner.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { fetchPartner } from "@/lib/partner";
 
@@ -20,7 +28,6 @@ interface WorkspaceCtx {
   workspace: Workspace;
   setWorkspace: (w: Workspace) => void;
   partner: PartnerState;
-  connect: (name?: string) => void;
   disconnect: () => void;
 }
 
@@ -70,18 +77,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setWorkspaceState(w === "shared" && !partner.connected ? "personal" : w);
   }, [partner.connected]);
 
-  const connect = useCallback((name?: string) => {
-    setPartner((p) => ({ name: (name || p.name || "Devin").trim() || "Devin", connected: true }));
-  }, []);
-
   const disconnect = useCallback(() => {
     setPartner((p) => ({ ...p, connected: false }));
     setWorkspaceState("personal");
   }, []);
 
   const value = useMemo(
-    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, connect, disconnect }),
-    [workspace, partner, setWorkspace, connect, disconnect],
+    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, disconnect }),
+    [workspace, partner, setWorkspace, disconnect],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

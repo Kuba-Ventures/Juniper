@@ -1,6 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { createInvite } from "@/lib/invites";
 
+// UNMOUNTED as of Stage 4c. The Plans page was the only place this rendered.
+// Accepting one of its invites led nowhere a member could see: the link is
+// /invite/:token, and invite-landing.tsx sends an accepter to
+// /app/plans/:domain, a route only the retired app-shell.tsx ever defined. On
+// the inviter's side, plans.tsx rendered this with no `partnerName`, so it could
+// never show the connected state either. The backend half is untouched and
+// works: POST /api/invites writes invite_token + partner_invite_status on the
+// plans row, and accept_plan_invite records the partner. What is missing is a
+// reachable surface, a plan-detail route rendering the partner's answers and the
+// alignment view. Restore this panel when that exists, not before.
+//
 // The partner layer (Stage 7). Juniper is solo-first; this is the OPTIONAL layer
 // that lets a member invite a partner to share goals. Individual accounts, net
 // worth, and spending stay private, only shared goals become visible to both.

@@ -1,118 +1,58 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { useWorkspace } from "@/lib/workspace";
 import { useFinances } from "@/lib/finances";
-import { InviteModal } from "@/components/juniper/invite-modal";
 import { SettingsModal } from "@/components/juniper/settings-modal";
 
 type NavItem = { path: string; label: string; count?: number };
 
+// Stage 4c: the bar is single-workspace again. "Recommended" left this list with
+// its route (every seeded partner URL is still example.com, and the licensing
+// question in docs/CREDIT_PROVIDER.md is open), and so did the shared sub-nav,
+// the individual-to-shared workspace switcher, and the account-menu partner
+// items, whose only destination was /app/shared. Nothing in this bar may point
+// at a surface that cannot show the member their own real data.
 const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Overview" },
   { path: "/app/plans", label: "Plans" },
   { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
-  { path: "/app/recommended", label: "Recommended" },
-];
-
-const SHARED_NAV: NavItem[] = [
-  { path: "/app/shared", label: "Overview" },
-  { path: "/app/shared/accounts", label: "Accounts" },
-  { path: "/app/shared/goals", label: "Goals" },
-  { path: "/app/shared/bills", label: "Bills" },
-  { path: "/app/shared/activity", label: "Activity" },
-  { path: "/app/shared/sharing", label: "Sharing" },
 ];
 
 function isActive(current: string, path: string) {
   if (path === "/app") return current === "/app" || current === "/app/";
-  if (path === "/app/shared") return current === "/app/shared" || current === "/app/shared/";
   return current === path || current.startsWith(path + "/");
 }
 
-const Caret = () => <svg className="caret" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth={1.6}><path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-
 export function AppBar({ name, email }: { name: string; email?: string }) {
   const [loc, setLocation] = useLocation();
-  const { workspace, setWorkspace, partner, disconnect } = useWorkspace();
   const { data: finances, source } = useFinances();
-  const [open, setOpen] = useState<null | "switcher" | "account">(null);
-  const [invite, setInvite] = useState(false);
+  const [open, setOpen] = useState<null | "account">(null);
   const [settings, setSettings] = useState(false);
   const initial = (name || "You").trim().charAt(0).toUpperCase();
-  const shared = workspace === "shared";
-  const nav = shared ? SHARED_NAV : PERSONAL_NAV;
   // Only show a "linked" count when the member actually linked + synced Plaid;
-  // manual/demo dashboards have no linked institutions.
+  // a manual-only dashboard has no linked institutions.
   const linkedCount = source === "live"
     ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
     : 0;
 
-  const go = (w: "personal" | "shared") => { setWorkspace(w); setOpen(null); setLocation(w === "shared" ? "/app/shared" : "/app"); };
   const navTo = (path: string) => { setOpen(null); setLocation(path); };
-  const openInvite = () => { setOpen(null); setInvite(true); };
   const signOut = async () => { setOpen(null); try { await supabase.auth.signOut(); } catch { /* ignore */ } setLocation("/"); };
 
   return (
     <div className="appbar">
       <div className="appbar-in">
-        {/* Row 1, brand · workspace switcher · account controls, all inline.
-           A 3-column grid keeps the switcher centered regardless of how wide
-           the brand and account clusters are. */}
+        {/* Row 1, brand and account controls inline, then the primary nav below.
+           The workspace switcher used to sit centered between them; it went with
+           the shared workspace in Stage 4c, so the grid is two columns now. */}
         <div className="appbar-top">
-          <Link href={shared ? "/app/shared" : "/app"} className="brand">
+          <Link href="/app" className="brand">
             <img src="/logo.png" alt="Juniper" />
             Juniper
           </Link>
 
-          {/* Workspace switcher (always shown). Type 01 "quiet": My Overview is
-             the base; Shared Overview offers a soft connection request until a
-             partner is connected. */}
-          <div className="appbar-ws">
-            <div className="ws-wrap">
-              <button className={`ws-pill ${shared ? "on" : ""}`} onClick={() => setOpen(open === "switcher" ? null : "switcher")} aria-haspopup="true">
-                {shared
-                  ? <><span className="ws-duo"><span className="d1" /><span className="d2" /></span> Shared Overview</>
-                  : <><span className="ws-solo">{initial}</span> My Overview</>}
-                <Caret />
-              </button>
-              {open === "switcher" && (
-                <>
-                  <div className="pop-scrim" onClick={() => setOpen(null)} />
-                  <div className="pop ws-menu">
-                    <div className="pop-lbl">Workspace</div>
-                    <button className={`pop-i ${!shared ? "on" : ""}`} onClick={() => go("personal")}>
-                      <span className="ws-solo">{initial}</span>
-                      <span><b>My Overview</b><small>Just you · private</small></span>
-                      {!shared && <span className="ck">✓</span>}
-                    </button>
-                    {partner.connected ? (
-                      <button className={`pop-i ${shared ? "on" : ""}`} onClick={() => go("shared")}>
-                        <span className="ws-duo"><span className="d1" /><span className="d2" /></span>
-                        <span><b>Shared Overview</b><small>Goals · joint accounts</small></span>
-                        {shared && <span className="ck">✓</span>}
-                      </button>
-                    ) : (
-                      <button className="pop-i" onClick={openInvite}>
-                        <span className="ws-duo"><span className="d1" /><span className="d2" /></span>
-                        <span>
-                          <b>Shared Overview</b>
-                          <span className="ws-cta">
-                            Send connection request
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                          </span>
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="appbar-acct">
-            {!shared && linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
+            {linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
             <button className="icon-btn" aria-label="Notifications">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" strokeLinecap="round" strokeLinejoin="round" />
@@ -128,8 +68,9 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
                   <div className="pop acct-menu">
                     <div className="pop-head"><div className="avatar sm">{initial}</div><div><b>{name || "You"}</b><small>{email || "you@email.com"}</small></div></div>
                     <button className="pop-i flat" onClick={() => navTo("/app/connections")}>Connections</button>
-                    <button className="pop-i flat hl" onClick={openInvite}>{partner.connected ? "Manage partner" : "Invite partner"}</button>
-                    {partner.connected && <button className="pop-i flat" onClick={() => { setOpen(null); disconnect(); }}>Disconnect partner</button>}
+                    {/* Invite partner, Manage partner, and Disconnect partner
+                        lived here. All three only led to /app/shared, which is
+                        unrouted, so they were an invitation into nothing. */}
                     <button className="pop-i flat" onClick={() => { setOpen(null); setSettings(true); }}>Settings</button>
                     <div className="pop-sep" />
                     <button className="pop-i flat" onClick={signOut}>Sign out</button>
@@ -142,7 +83,7 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
 
         {/* Row 2, primary nav */}
         <nav className="nav" aria-label="Primary">
-          {nav.map((n) => (
+          {PERSONAL_NAV.map((n) => (
             <Link key={n.path} href={n.path} className={isActive(loc, n.path) ? "on" : undefined}>
               <span className="lbl">{n.label}</span>
               {n.count != null && <span className="count">{n.count}</span>}
@@ -150,7 +91,6 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
           ))}
         </nav>
       </div>
-      {invite && <InviteModal onClose={() => setInvite(false)} />}
       {settings && <SettingsModal name={name} email={email ?? ""} onClose={() => setSettings(false)} />}
     </div>
   );
