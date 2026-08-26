@@ -30,7 +30,7 @@ import { trackEngagement } from "@/lib/analytics";
 //    recognized accounts are mocked and, on connect, saved as manual accounts
 //    (tier 3) so they actually land on the dashboard + net worth.
 // `onLinked` optionally carries the institution names that were imported, so the
-// caller can reflect them as already-connected in the gallery below.
+// caller can list them as already-connected in the picker below.
 type OnLinked = (institutions?: string[]) => void;
 
 export function LayerDiscovery({ onLinked }: { onLinked: OnLinked }) {
@@ -173,7 +173,7 @@ function LayerDemo({ onLinked }: { onLinked: OnLinked }) {
     if (ok > 0) {
       setImportedCount(ok);
       trackEngagement("connection_linked");
-      // Report the imported institutions so the gallery below can check them off.
+      // Report the imported institutions so the picker below lists them as connected.
       onLinked([...new Set(picked.map((a) => a.institution))]);
       void syncFinances();
       setPhase("done");

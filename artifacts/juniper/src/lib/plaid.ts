@@ -43,7 +43,8 @@ export type InstitutionBrand = {
 
 // institution_id -> brand, as /api/plaid/institution-logos returns it. Keyed by
 // id rather than name because that is the only identifier that survives Plaid
-// spelling a bank differently from our gallery ("Citi" vs "Citibank").
+// spelling a bank differently from the name stored on the item ("Citi" vs
+// "Citibank").
 export type InstitutionBrandMap = Record<string, InstitutionBrand>;
 
 // Turn a Plaid logo into something an <img src> accepts. Plaid sends the raw
@@ -73,10 +74,11 @@ export type PlaidInstitutionMatch = {
 };
 
 // Normalized key for matching an institution across the connect flow (Layer
-// import, gallery link, manual add) against the gallery tiles, so a name that
+// import, Plaid link, manual add) against the set already on file, so a name that
 // came back capitalized or padded still lines up. Case- and whitespace-
-// insensitive; shared by ConnectStep (building the set) and InstitutionPicker
-// (checking it) so both sides agree.
+// insensitive; shared by the callers that build the set (ConnectStep, the
+// Connections page) and InstitutionPicker, which checks it to keep a linked bank
+// out of its search results.
 export const normInstitutionName = (s: string): string => s.trim().toLowerCase();
 
 async function authedFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -108,11 +110,12 @@ export async function createLinkToken(opts?: { routingNumber?: string | null }):
   }
 }
 
-// Search Plaid's real institution list. Powers the gallery search bar, so a bank
-// that Plaid supports but we never hand-listed is findable by name instead of
-// dead-ending in "No matches". Returns [] on any failure (including 503 when
-// Plaid isn't configured) so the caller degrades to the curated tiles plus the
-// "search all banks" path rather than showing an error.
+// Search Plaid's real institution list. This is the whole front door of the
+// connect flow now that the curated gallery is gone (see institution-picker.tsx),
+// so every bank Plaid supports is findable by name rather than only the ~60 we
+// once hand-listed. Returns [] on any failure (including 503 when Plaid isn't
+// configured) so the caller degrades to the "search all banks" path rather than
+// showing an error.
 //
 // `signal` lets the caller abort a stale in-flight query, which matters because
 // this fires while someone is still typing.
@@ -138,7 +141,7 @@ export async function searchInstitutions(
 // Plaid Link can open in returning-user mode, recognizing the person by phone
 // and surfacing accounts they've already connected across the Plaid network for
 // one-tap selection. Returns null when Layer isn't enabled yet (503), so callers
-// fall back to the tier-2 gallery. Gated on Plaid Production + a Layer template
+// fall back to the tier-2 search. Gated on Plaid Production + a Layer template
 // (PLAID_LAYER_TEMPLATE_ID); see api/plaid/layer-session.ts.
 export async function createLayerSession(phone?: string): Promise<string | null> {
   try {
