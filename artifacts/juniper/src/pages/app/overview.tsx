@@ -1,11 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import {
-  subscriptions as seedSubs,
   money, moneyK, money2,
-  type Budget, type Account, type Subscription, type Txn,
+  type Budget, type Account, type Txn,
 } from "@/lib/mock-data";
-import { useFinances } from "@/lib/finances";
+import { useFinances, type FinanceData } from "@/lib/finances";
 import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON,
 } from "@/lib/plans";
@@ -13,8 +12,11 @@ import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing,
 } from "@/components/juniper/primitives";
 
-const UpArrow = () => (
-  <svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
+// Points down for a decline. The net-worth delta used to be hardcoded up-and-
+// green, which was safe only while the number came from a demo household that
+// always rose. It is now computed from the selected range, so it can be negative.
+const TrendArrow = ({ down }: { down?: boolean }) => (
+  <svg viewBox="0 0 12 12" fill="none" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
 const SearchIcon = () => (
@@ -29,15 +31,17 @@ const CloseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width={16} height={16}><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
 );
 
-// Shown in place of the spending/budgets/subscriptions cards when there's no
-// transaction feed yet (manual or demo data). Nothing fake is presented as the
-// member's, just an honest path to unlock the real thing.
+// Shown in place of the spending and budgets cards when there's no transaction
+// feed yet. Nothing fake is presented as the member's, just an honest path to
+// unlock the real thing. Subscription tracking used to be named here too; it was
+// never built, so promising it was the same lie as showing seeded rows, only
+// politer.
 function ConnectNudge() {
   return (
     <div className="card nudge-card">
       <div className="nc-mark"><LinkIcon /></div>
-      <h3>Unlock spending, budgets & subscriptions</h3>
-      <p>Connect an account and Juniper categorizes your transactions automatically: spending breakdowns, budgets, and subscription tracking appear here.</p>
+      <h3>Unlock spending and budgets</h3>
+      <p>Connect an account and Juniper categorizes your transactions automatically: your spending breakdown and your budgets appear here.</p>
       <Link href="/app/connections" className="btn" style={{ marginTop: 4 }}>Connect an account</Link>
     </div>
   );
@@ -104,80 +108,98 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
   );
 }
 
-function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
-    </div>
-  );
+// Net-worth range windows, in months. "All" is the whole series.
+//
+// The series is one point per net_worth_snapshots row (api/finances.ts reads them
+// in date order, and the snapshot job writes one per day), but each point arrives
+// carrying a MONTH label rather than a date, so a window can only be cut on a
+// month boundary: count runs of the same label back from the newest point. Good
+// enough for these five pills, and it needs no change to the endpoint's contract.
+const RANGES = [["1M", 1], ["3M", 3], ["6M", 6], ["1Y", 12]] as const;
+type RangeId = (typeof RANGES)[number][0] | "All";
+
+// How many calendar months the labels span, counting a run of identical labels
+// (a month's worth of daily snapshots) as one.
+function monthSpan(labels: string[]): number {
+  return labels.reduce((n, l, i) => (i === 0 || l !== labels[i - 1] ? n + 1 : n), 0);
 }
 
-function SubscriptionsPanel() {
-  const [subs, setSubs] = useState<Subscription[]>(() => seedSubs.map((s) => ({ ...s })));
-  const [target, setTarget] = useState<number | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+// First index of the last `months` month-runs.
+function windowStart(labels: string[], months: number): number {
+  let runs = 0;
+  for (let i = labels.length - 1; i >= 0; i--) {
+    if (i === labels.length - 1 || labels[i] !== labels[i + 1]) {
+      runs++;
+      if (runs > months) return i + 1;
+    }
+  }
+  return 0;
+}
 
-  const active = subs.filter((s) => !s.canceled);
-  const monthly = active.reduce((a, s) => a + s.amt, 0);
-  const flagged = active.filter((s) => s.flag).length;
-  const savings = active.filter((s) => s.flag?.includes("Not used")).reduce((a, s) => a + s.amt, 0);
-
-  const openCancel = (i: number) => { setTarget(i); setConfirmed(false); };
-  const close = () => setTarget(null);
-  const sub = target != null ? subs[target] : null;
+function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"]; cashflow: FinanceData["cashflow"] }) {
+  const [range, setRange] = useState<RangeId>("All");
+  const { labels, series } = netWorth;
+  const span = monthSpan(labels);
+  // A window at least as wide as the data draws exactly the same line as "All",
+  // so it is offered disabled rather than as a pill that looks like it did
+  // something. The degenerate case is the common one at first: with one day of
+  // history every pill collapses onto "All", so all four go dim and the note
+  // below says why, instead of five buttons quietly showing one identical point.
+  const enabled = (id: RangeId) => id === "All" || (RANGES.find(([r]) => r === id)?.[1] ?? 0) < span;
+  // Falling back at render, rather than resetting state, keeps a member's choice
+  // if a later fetch brings enough history to make it valid again.
+  const active: RangeId = enabled(range) ? range : "All";
+  const months = RANGES.find(([r]) => r === active)?.[1];
+  const from = months == null ? 0 : windowStart(labels, months);
+  const win = series.slice(from);
+  const winLabels = labels.slice(from);
+  // Change ACROSS THE SELECTED WINDOW, which is the only reading of these pills
+  // that means anything. A one-point window has no change to report, so the chip
+  // is dropped rather than printed as 0%. The denominator is the absolute
+  // opening value so a member climbing out of net debt reads as up, not down.
+  const changeAbs = win.length > 1 ? win[win.length - 1] - win[0] : 0;
+  const base = Math.abs(win[0] ?? 0);
+  const changePct = changeAbs && base ? Math.round((changeAbs / base) * 1000) / 10 : 0;
+  const noRanges = !RANGES.some(([r]) => enabled(r));
 
   return (
-    <>
-      <div className="sum-strip">
-        <div className="sum-card"><div className="l">Monthly total</div><div className="v tnum">{money(monthly)}</div><div className="s">{active.length} subscriptions · {money(Math.round(monthly * 12))}/yr</div></div>
-        <div className="sum-card"><div className="l">Flagged to review</div><div className="v tnum">{flagged}</div><div className="s">price hikes + unused</div></div>
-        <div className="sum-card"><div className="l">You could save</div><div className="v acc tnum">{money(Math.round(savings))}/mo</div><div className="s">~{money(Math.round(savings * 12))}/yr on unused</div></div>
-      </div>
-      <div className="card">
-        <div className="card-head"><h3>Subscriptions</h3><span style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>Sorted by next charge</span></div>
-        <div className="rows">
-          {subs.map((s, i) => (
-            <div className={`sub-row ${s.canceled ? "canceled" : ""}`} key={i}>
-              <BrandTile name={s.n} letter={s.n[0]} k={s.k} />
-              <div style={{ minWidth: 0 }}>
-                <div className="nm">{s.n}</div>
-                <div className="mt">{s.cat} · next {s.next}{s.flag && <span className="sub-flag">{s.flag}</span>}</div>
-              </div>
-              <div className="sub-amt"><div className="a tnum">${s.amt.toFixed(2)}</div><div className="c">/mo</div></div>
-              {s.canceled
-                ? <button className="btn ghost sm" disabled>Cancellation requested</button>
-                : <button className="btn ghost sm" onClick={() => openCancel(i)}>Cancel</button>}
-            </div>
+    <div className="card pad-lg">
+      <div className="card-head">
+        <div>
+          <div className="eyebrow">Net worth</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 6 }}>
+            <span className="big-num tnum">{money(netWorth.value)}</span>
+            {changeAbs !== 0 && (
+              <span className={`delta ${changeAbs > 0 ? "up" : "down"}`} style={{ marginBottom: 5 }}>
+                <TrendArrow down={changeAbs < 0} />{Math.abs(changePct)}%
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="pills" role="group" aria-label="Net worth range">
+          {([...RANGES.map(([r]) => r), "All"] as RangeId[]).map((r) => (
+            <button
+              key={r}
+              className={r === active ? "on" : undefined}
+              disabled={!enabled(r)}
+              title={enabled(r) ? undefined : "Not enough history yet"}
+              onClick={() => setRange(r)}
+            >
+              {r}
+            </button>
           ))}
         </div>
       </div>
-      <p className="disc">Juniper submits cancellations on your behalf and confirms once done, often via an assisted or partner flow, not a universal one-click API. Nothing is canceled without your approval.</p>
-
-      {sub && !confirmed && (
-        <Backdrop onClose={close}>
-          <h3>Cancel {sub.n}?</h3>
-          <p>Juniper will submit the cancellation on your behalf and confirm within 2 business days. Nothing is canceled until you approve here.</p>
-          <div className="facts">
-            <div className="fr"><span className="k">Plan</span><span className="v">{sub.cat}</span></div>
-            <div className="fr"><span className="k">Cost</span><span className="v tnum">${sub.amt.toFixed(2)}/mo</span></div>
-            <div className="fr"><span className="k">Next charge</span><span className="v">{sub.next}</span></div>
-            <div className="fr"><span className="k">You'll save</span><span className="v save-hl tnum">~{money(Math.round(sub.amt * 12))}/yr</span></div>
-          </div>
-          <div className="modal-actions">
-            <button className="btn" onClick={() => { setSubs((cur) => cur.map((x, idx) => (idx === target ? { ...x, canceled: true } : x))); setConfirmed(true); }}>Request cancellation</button>
-            <button className="btn ghost" onClick={close}>Keep it</button>
-          </div>
-          <div className="fine">We'll email you when it's confirmed. You can undo within 24 hours.</div>
-        </Backdrop>
+      <NetWorthChart series={win} labels={winLabels} />
+      {noRanges && (
+        <p className="nw-note">Ranges open up as history builds. Juniper saves one net worth point a day, and this is everything recorded so far.</p>
       )}
-      {sub && confirmed && (
-        <Backdrop onClose={close}>
-          <h3>Cancellation requested</h3>
-          <p><b>{sub.n}</b> is being canceled. We'll confirm by {sub.next} and you won't be charged after this cycle. Estimated savings: <span className="save-hl">{money(Math.round(sub.amt * 12))}/yr</span>.</p>
-          <div className="modal-actions"><button className="btn" onClick={close}>Done</button></div>
-        </Backdrop>
-      )}
-    </>
+      <div className="cf-foot">
+        <div><div className="l">Income · {cashflow.month}</div><div className="v pos tnum">+{money(cashflow.income)}</div></div>
+        <div><div className="l">Spent</div><div className="v tnum">{money(cashflow.spent)}</div></div>
+        <div><div className="l">Saved</div><div className="v acc tnum">{money(cashflow.saved)}</div></div>
+      </div>
+    </div>
   );
 }
 
@@ -246,20 +268,21 @@ export default function Overview({
   // strip above: /api/finances defines spent AS the sum of this breakdown, both
   // of them net of transfers and credit-card payments. Read from the wedges
   // rather than from cashflow so the header stays true to what is drawn even on
-  // a manual or demo dashboard, where the two come from different places.
+  // a manual dashboard, where the two come from different places.
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
-  // With no transaction feed (manual entry, demo, or a fresh link whose
-  // transactions haven't landed), spending/budgets/subs have nothing real to
-  // show, so swap them for an honest connect nudge.
+  // With no transaction feed (manual entry, or a fresh link whose transactions
+  // haven't landed), spending and budgets have nothing real to show, so swap
+  // them for an honest connect nudge.
   //
   // Gated on the server's `hasTransactions`, not on source === "live", which is
   // now true for a member who only has balances (api/finances.ts gates per
-  // section). One panel below this flag, Subscriptions, still renders seeded
-  // demo rows, so widening the flag would show demo data to more people. A later
-  // stage deletes those seeds; until then this stays pinned to the one signal
-  // that means a real feed exists. The "Your plans" card no longer sits behind
-  // it: real plans exist whether or not a transaction feed does, so it reads
-  // them directly and shows its own empty state.
+  // section). Everything behind this flag is now the member's own: the
+  // Subscriptions panel that used to sit under it was built entirely from seeded
+  // rows, and since the gate only opens for members with a REAL feed, the people
+  // shown invented subscriptions were exactly the linked ones. The panel is
+  // gone. The "Your plans" card does not sit behind the flag either: real plans
+  // exist whether or not a transaction feed does, so it reads them directly and
+  // shows its own empty state.
   const hasTxns = hasTransactions && (transactions.length > 0 || spending.length > 0);
   return (
     <div className="frame">
@@ -278,7 +301,7 @@ export default function Overview({
         <div className="welcome-tip">
           <div className="wt-body">
             <b>Welcome to Juniper, {first} 🌿</b>
-            <p>This is your dashboard. Your net worth, accounts, and Juniper Score are built from what you shared. Connect an account anytime to unlock live spending, budgets, and subscriptions.</p>
+            <p>This is your dashboard. Your net worth, accounts, and Juniper Score are built from what you shared. Connect an account anytime to unlock live spending and budgets.</p>
           </div>
           <button className="wt-x" onClick={onDismissWelcome} aria-label="Dismiss">
             <CloseIcon />
@@ -300,44 +323,34 @@ export default function Overview({
       </div>
 
       <div className="grid hero" style={{ marginBottom: 16 }}>
-        <div className="card pad-lg">
-          <div className="card-head">
-            <div>
-              <div className="eyebrow">Net worth</div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 6 }}>
-                <span className="big-num tnum">{money(netWorth.value)}</span>
-                <span className="delta up" style={{ marginBottom: 5 }}><UpArrow />{netWorth.changePct}%</span>
-              </div>
-            </div>
-            <div className="pills" role="group" aria-label="Range">
-              <button>1M</button><button>3M</button><button>6M</button><button className="on">1Y</button><button>All</button>
-            </div>
-          </div>
-          <NetWorthChart series={netWorth.series} labels={netWorth.labels} />
-          <div className="cf-foot">
-            <div><div className="l">Income · {cashflow.month}</div><div className="v pos tnum">+{money(cashflow.income)}</div></div>
-            <div><div className="l">Spent</div><div className="v tnum">{money(cashflow.spent)}</div></div>
-            <div><div className="l">Saved</div><div className="v acc tnum">{money(cashflow.saved)}</div></div>
-          </div>
-        </div>
-
+        <NetWorthCard netWorth={netWorth} cashflow={cashflow} />
         <YourPlansCard />
       </div>
 
       {hasTxns && (
         <div className="grid two" style={{ marginBottom: 16 }}>
           <div className="card">
-            <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="pills"><button>June</button><button className="on">July</button><button>Aug</button></span></div>
+            {/* No month picker. /api/finances rolls up the CURRENT month and
+               nothing else, so the three pills that used to sit here (June,
+               July, Aug, with July lit whatever the date) were inert and
+               mislabeled at once. The month is stated instead. */}
+            <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{cashflow.month}</span></div>
             <SpendingDonut data={spending} />
           </div>
           <div className="card">
-            <div className="card-head"><h3>Budgets</h3><button className="link">Edit</button></div>
+            {/* No Edit control. /api/budgets already does full CRUD on the
+               member's limits, but no client code calls it, and a button that
+               opens nothing is worse than no button. Wiring that endpoint up is
+               a feature for a later stage, not part of this cleanup. */}
+            <div className="card-head"><h3>Budgets</h3></div>
             <Budgets items={budgets} />
           </div>
         </div>
       )}
 
-      <div className="grid two" style={{ marginBottom: 16 }}>
+      {/* Last block on the page now that Subscriptions is gone, so no trailing
+         margin: `.frame` already carries the bottom gutter. */}
+      <div className="grid two">
         {hasTxns ? <TransactionsPanel items={transactions} /> : <ConnectNudge />}
         <div className="card">
           <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
@@ -354,8 +367,6 @@ export default function Overview({
           )}
         </div>
       </div>
-
-      {hasTxns && <SubscriptionsPanel />}
     </div>
   );
 }
