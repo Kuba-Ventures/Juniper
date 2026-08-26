@@ -1,9 +1,17 @@
 // GET /api/finances
 // Assembles the dashboard's money data for the caller from the Stage-3 tables
-// (transactions, budgets, net_worth_snapshots) + the linked-account snapshots
-// in plaid_items. Read-only. Returns { linked: false } when there's nothing to
-// show yet (no items or no synced transactions), so the frontend keeps its demo
-// mock until real data exists. Colors are added client-side.
+// (transactions, budgets, net_worth_snapshots), the linked-account snapshots in
+// plaid_items, and the hand-entered rows in manual_accounts. Read-only.
+//
+// Gated per section, not globally: balances ship the moment an account exists,
+// and the transaction-derived sections (cashflow, spending, budgets,
+// transactions) ship only once transaction rows exist, flagged by
+// `hasTransactions` so the client never has to infer it. Returns
+// { linked: false } only when all three sources are empty, so the frontend keeps
+// its demo mock until the member has data of their own. Sections with no source
+// are omitted rather than zero-filled: the client merges what arrives over the
+// member's own manual figures, and a zero would overwrite a real one with a lie.
+// Colors are added client-side.
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
@@ -53,9 +61,27 @@ export default async function handler(req: Request): Promise<Response> {
 
   const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts`);
   const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category&order=date.desc&limit=400`);
-  if (!items.length || !txns.length) return json({ linked: false });
+  // Manual accounts (tier 3) are a balance source in their own right, so they're
+  // read up here with the other two: the "does this member have anything" test
+  // below has to see all three. Balance-less entries are dropped (they still
+  // show under Connections, there's just nothing to add to a rollup).
+  const manualAccts = (await fetchManualAccounts(uid)).filter((m) => m.balance != null);
 
-  const budgets = await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,limit_amount`);
+  // Per-section gating starts here. The old single gate (items AND txns) held
+  // back the whole payload whenever the transaction feed was empty, so a member
+  // who had just linked a bank, or typed their accounts in by hand, saw net
+  // worth $0 and "No accounts yet" while their balances sat in these very rows.
+  // Transactions land minutes after a link, and never at all for some
+  // institutions, so balances must not queue behind them.
+  const hasAccounts = items.length > 0 || manualAccts.length > 0;
+  const hasTransactions = txns.length > 0;
+  if (!hasAccounts && !hasTransactions) return json({ linked: false });
+
+  // Budgets only mean something next to a this-month spend figure, so they're
+  // read only when there are transactions to measure them against.
+  const budgets = hasTransactions
+    ? await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,limit_amount`)
+    : [];
   const snaps = await rows<Snap>(`net_worth_snapshots?user_id=eq.${uid}&select=as_of,net_worth&order=as_of.asc&limit=400`);
 
   const now = new Date();
@@ -91,11 +117,9 @@ export default async function handler(req: Request): Promise<Response> {
         v: debt ? -Math.abs(a.balance || 0) : (a.balance || 0),
       })),
     );
-  // Manually-added accounts (tier 3) join the same groups, so they show in the
-  // Accounts rollup and count toward net worth below. Skip balance-less entries
-  // (they still appear in Connections, just nothing to add here). Debts render
-  // negative, matching the linked-debt convention in group().
-  const manualAccts = (await fetchManualAccounts(uid)).filter((m) => m.balance != null);
+  // The manual accounts read at the top of the handler join the same groups, so
+  // they show in the Accounts rollup and count toward net worth below. Debts
+  // render negative, matching the linked-debt convention in group().
   const manualIn = (bucket: "cash" | "invest" | "debt") =>
     manualAccts
       .filter((m) => manualBucket(m) === bucket)
@@ -139,14 +163,29 @@ export default async function handler(req: Request): Promise<Response> {
     improvements: computed.improvements,
   };
 
+  // Each section rides along only when its own source exists. `accounts` and
+  // `netWorth` are omitted (not sent empty) when there is no account source at
+  // all, so a member's hand-entered onboarding accounts aren't blanked out by an
+  // empty live rollup. Same reasoning for cashflow: with no transactions there
+  // is no honest income/spent to send, and the client keeps the figures the
+  // member gave us in onboarding.
   return json({
     linked: true,
-    netWorth: { value, changeAbs, changePct, series, labels },
-    cashflow: { income, spent, saved: income - spent, month: MONTHS[now.getUTCMonth()] },
-    spending,
-    budgets: budgetsOut,
-    transactions,
-    accounts,
+    // Explicit so the client gates its transaction-dependent cards on a real
+    // signal rather than inferring one from "a live payload arrived", which is
+    // now true for members who only have balances.
+    hasTransactions,
+    ...(hasAccounts
+      ? { netWorth: { value, changeAbs, changePct, series, labels }, accounts }
+      : {}),
+    ...(hasTransactions
+      ? {
+          cashflow: { income, spent, saved: income - spent, month: MONTHS[now.getUTCMonth()] },
+          spending,
+          budgets: budgetsOut,
+          transactions,
+        }
+      : {}),
     score: scoreOut,
   });
 }

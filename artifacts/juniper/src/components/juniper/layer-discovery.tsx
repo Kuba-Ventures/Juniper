@@ -5,6 +5,7 @@ import {
   createLayerSession,
   exchangePublicToken,
   syncFinances,
+  syncFinancesUntilTransactions,
   layerDemo,
   type LinkInstitution,
 } from "@/lib/plaid";
@@ -54,7 +55,11 @@ function LayerLive({ onLinked }: { onLinked: OnLinked }) {
       if (item) {
         trackEngagement("connection_linked");
         onLinked(institution?.name ? [institution.name] : undefined);
-        void syncFinances();
+        // A real Plaid link, so the same wait applies as on the other link
+        // paths: retry until the transaction feed lands. (The demo path below
+        // imports manual accounts, which never produce transactions, so it
+        // stays on the single pass.)
+        void syncFinancesUntilTransactions();
       } else {
         setNotice("We couldn't finish importing those accounts. You can pick them below instead.");
       }

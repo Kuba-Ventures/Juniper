@@ -16,13 +16,13 @@ import { fetchPlaidItems, type PlaidItem } from "@/lib/plaid";
 //
 // Deliberately reads accounts via fetchPlaidItems() (GET /api/plaid/accounts, the
 // stored sanitized snapshot) rather than useFinances(), even though the house rule
-// is to route money features through the lib/finances.ts seam. Reason: api/finances.ts
-// early-returns { linked: false } unless the caller has BOTH plaid_items AND
-// transaction rows, so a member with a linked card whose transactions have not
-// synced yet (or whose card issuer returns no transactions) would see the "connect
-// an account" empty state while their real card sits in the database. A later stage
-// loosens that gate; when it lands, collapse this back onto useFinances() so the
-// page stops having its own data path.
+// is to route money features through the lib/finances.ts seam. The original reason
+// is gone: api/finances.ts no longer withholds everything until transactions exist,
+// it gates per section, so balances arrive for a member whose card has no feed yet.
+// One reason remains, and it is why this page still has its own data path: the
+// /api/finances account rollup carries name/institution/balance only, and
+// utilization needs each card's `limit`, which lives on the stored snapshot this
+// endpoint returns. Collapsing onto useFinances() means widening that rollup first.
 //
 // APR is not shown. Plaid only returns card APRs under the `liabilities` product,
 // and PLAID_PRODUCTS is `transactions` (see api/_plaid.ts), so there is no honest

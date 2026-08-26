@@ -187,14 +187,22 @@ export default function Overview({
   showWelcome?: boolean;
   onDismissWelcome?: () => void;
 }) {
-  const { data, source } = useFinances();
+  const { data, hasTransactions } = useFinances();
   const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
-  // With no transaction feed (manual entry or demo), spending/budgets/subs have
-  // nothing real to show, so swap them for an honest connect nudge.
-  const hasTxns = source === "live" && (transactions.length > 0 || spending.length > 0);
+  // With no transaction feed (manual entry, demo, or a fresh link whose
+  // transactions haven't landed), spending/budgets/subs have nothing real to
+  // show, so swap them for an honest connect nudge.
+  //
+  // Gated on the server's `hasTransactions`, not on source === "live", which is
+  // now true for a member who only has balances (api/finances.ts gates per
+  // section). Two of the panels below this flag, Subscriptions and the "Your
+  // plans" card, still render seeded demo rows, so widening the flag would show
+  // demo data to more people. A later stage deletes those seeds; until then this
+  // stays pinned to the one signal that means a real feed exists.
+  const hasTxns = hasTransactions && (transactions.length > 0 || spending.length > 0);
   return (
     <div className="frame">
       <div className="greet">

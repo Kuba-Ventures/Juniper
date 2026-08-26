@@ -7,6 +7,7 @@ import {
   fetchPlaidItems,
   removePlaidItem,
   syncFinances,
+  syncFinancesUntilTransactions,
   layerEnabled,
   normInstitutionName,
   type PlaidItem,
@@ -65,7 +66,10 @@ export function ConnectionsView() {
   } = useLinkQueue({
     onItemLinked: refresh,
     onDone: ({ linked }) => {
-      if (linked > 0) void syncFinances();
+      // Plaid is rarely ready to hand over transactions this soon after a link,
+      // so this keeps retrying in the background (bounded, backed off) until
+      // they land, instead of firing once and leaving the feed empty.
+      if (linked > 0) void syncFinancesUntilTransactions();
     },
   });
 
@@ -74,9 +78,19 @@ export function ConnectionsView() {
   const handleSync = useCallback(async () => {
     setNotice(null);
     setSyncing(true);
-    await syncFinances();
+    const result = await syncFinances();
     await refresh();
     setSyncing(false);
+    // A refresh that reached Plaid for some connections and not others used to
+    // be indistinguishable from a clean one: the endpoints aborted on the first
+    // bad item and the response body went unread, so the button appeared to do
+    // nothing. A dead token (an item linked under a different Plaid environment,
+    // or a login that has expired) can only be fixed by connecting it again.
+    if (result.needsRelink.length === 1) {
+      setNotice("One connection needs reconnecting. Disconnect it below, then connect it again to refresh its balances.");
+    } else if (result.needsRelink.length > 1) {
+      setNotice(`${result.needsRelink.length} connections need reconnecting. Disconnect them below, then connect them again to refresh their balances.`);
+    }
   }, [refresh]);
 
   useEffect(() => {

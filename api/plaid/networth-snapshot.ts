@@ -28,13 +28,34 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
+// Only account_id/type/balances are read by classify() below, but the same raw
+// accounts are handed to sanitizeAccounts(), which persists the name, mask,
+// currency, and (since the Credit page started showing card utilization) the
+// credit `limit` into the stored snapshot. The type stopped at
+// current/available, describing less than this code actually handles, which is
+// how a field could be persisted without anything here admitting it exists.
 type BalanceAccount = {
   account_id: string;
+  name?: string;
+  official_name?: string;
+  mask?: string | null;
   type?: string | null;
   subtype?: string | null;
-  balances?: { current?: number | null; available?: number | null };
+  balances?: {
+    current?: number | null;
+    available?: number | null;
+    limit?: number | null;
+    iso_currency_code?: string | null;
+  };
 };
 type BalanceResp = { accounts?: BalanceAccount[]; error_message?: string; error_code?: string };
+
+// Plaid codes that mean the connection itself is finished: the token will never
+// work again, so the member has to link that institution afresh. Worth telling
+// apart from a transient failure, which retrying does fix. Reported, not acted
+// on: there is no re-link flow yet.
+const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"]);
+type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
 const DEBT_TYPES = new Set(["credit", "loan"]);
 
@@ -61,7 +82,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Load the caller's linked items (server-only: access_token).
   const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token`);
-  if (!itemsRes.ok) return json({ error: "Failed to read items" }, 500);
+  if (!itemsRes.ok) {
+    // Logged for the same reason as the per-item failures below: this endpoint
+    // runs in the background and its body is not read by the UI. A non-2xx
+    // PostgREST body is an error object, not rows, so no token can appear here.
+    const detail = await itemsRes.text().catch(() => "");
+    console.error(`[plaid] networth-snapshot could not read items (${itemsRes.status}): ${detail}`);
+    return json({ error: "Failed to read items" }, 500);
+  }
   const items = (await itemsRes.json().catch(() => [])) as { item_id: string; access_token: string }[];
 
   // Manually-added accounts (tier 3) count toward the snapshotted net worth too,
@@ -76,10 +104,33 @@ export default async function handler(req: Request): Promise<Response> {
 
   let assets = manualAssets, debts = manualDebts;
 
+  // Items are isolated from each other. This loop used to return on the first
+  // item Plaid refused, and because the stored-snapshot PATCH sits inside the
+  // loop after the fetch, one bad connection meant NO connection got refreshed:
+  // the member pressed "Refresh data", every balance stayed stale, and they saw
+  // no error because syncFinances() dropped the body. Real case: two items
+  // linked while PLAID_ENV was sandbox, whose tokens are invalid against
+  // Production, sitting in front of one healthy card.
+  const failures: ItemFailure[] = [];
+  let refreshed = 0;
+
   for (const item of items) {
     const bal = await plaidFetch<BalanceResp>("/accounts/balance/get", { access_token: item.access_token });
     if (!bal.ok) {
-      return json({ error: bal.data.error_message || "Plaid balance fetch failed", error_code: bal.data.error_code, item_id: item.item_id }, 502);
+      const code = bal.data.error_code ?? null;
+      // Logged as well as returned, matching link-token.ts: error_code and
+      // error_message are Plaid status strings, never the access token, and a
+      // background refresh has nowhere else to report itself.
+      console.error(
+        `[plaid] accounts/balance/get failed (${bal.status}) for item ${item.item_id}: ${code || "unknown"} ${bal.data.error_message || ""}`.trim(),
+      );
+      failures.push({
+        item_id: item.item_id,
+        error_code: code,
+        error_message: bal.data.error_message ?? null,
+        needs_relink: !!code && DEAD_ITEM_CODES.has(code),
+      });
+      continue;
     }
     const accts = bal.data.accounts ?? [];
     for (const a of accts) {
@@ -93,6 +144,23 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ accounts: sanitizeAccounts(accts), updated_at: new Date().toISOString() }),
     });
+    refreshed++;
+  }
+
+  // The only non-200 path: nothing at all resolved, so there is no snapshot to
+  // write (a row built from the manual side alone would stamp a fake dip on the
+  // trend). A partial refresh is a real success and proceeds.
+  if (items.length > 0 && refreshed === 0) {
+    return json(
+      {
+        error: failures[0]?.error_message || "Plaid balance fetch failed",
+        error_code: failures[0]?.error_code ?? null,
+        refreshed: 0,
+        failed: failures.length,
+        failures,
+      },
+      502,
+    );
   }
 
   const round = (n: number) => Math.round(n * 100) / 100;
@@ -101,13 +169,49 @@ export default async function handler(req: Request): Promise<Response> {
   const netWorth = round(assets - debts);
   const asOf = new Date().toISOString().slice(0, 10); // UTC day
 
-  const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth }),
-  });
-  if (!up.ok) return json({ error: "Failed to save snapshot", detail: await up.text().catch(() => "") }, 500);
-  const rows = (await up.json().catch(() => [])) as unknown[];
+  // A partial refresh must not write the day's trend point. The totals above
+  // cover only the items that resolved, so a member with one broken connection
+  // would get a permanently low dip in their net-worth history, and a wrong
+  // point in a trend outlives the outage that caused it. A skipped day is
+  // invisible by comparison: the chart simply has no sample there. Per-item
+  // snapshots were already refreshed above, so balances and credit limits are
+  // still up to date for everything that answered.
+  const partial = failures.length > 0;
+  let snapshotRow: unknown = null;
+  if (!partial) {
+    const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth }),
+    });
+    if (!up.ok) {
+      const detail = await up.text().catch(() => "");
+      console.error(`[plaid] net_worth_snapshots upsert failed (${up.status}): ${detail}`);
+      return json({ error: "Failed to save snapshot", detail }, 500);
+    }
+    const rows = (await up.json().catch(() => [])) as unknown[];
+    snapshotRow = rows[0] ?? null;
+  } else {
+    console.error(
+      `[plaid] net_worth snapshot skipped for ${asOf}: ${failures.length} of ${items.length} items failed to refresh`,
+    );
+  }
 
-  return json({ linked: true, as_of: asOf, assets, debts, net_worth: netWorth, snapshot: rows[0] ?? null, items: items.length });
+  // `refreshed` / `failed` / `failures` let the caller tell a clean refresh from
+  // one that skipped broken connections, and `snapshot_skipped` says why no
+  // trend point was written. Totals are still reported so the caller can show
+  // what did resolve; they just are not persisted on a partial run.
+  return json({
+    linked: true,
+    as_of: asOf,
+    assets,
+    debts,
+    net_worth: netWorth,
+    snapshot: snapshotRow,
+    snapshot_skipped: partial,
+    items: items.length,
+    refreshed,
+    failed: failures.length,
+    failures,
+  });
 }
