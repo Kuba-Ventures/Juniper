@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine } from "lucide-react";
+import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine, Plus, X } from "lucide-react";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -24,6 +24,7 @@ import {
   type ManualAccount,
 } from "@/lib/manual-accounts";
 import { PageHeader } from "@/components/juniper/app-frame";
+import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
 function money(n: number | null, currency: string | null): string {
   if (n == null) return "";
@@ -83,6 +84,13 @@ export function ConnectionsView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  // Whether the add-an-account panel is open. The search used to sit in a card
+  // below every linked institution, which put it past the fold for anyone with
+  // more than three connections and gave it the same visual weight as the rows
+  // it followed, so the one action this page exists for read as a footer. It is
+  // now behind "Add account" in the page header, where every other page action
+  // on this app lives.
+  const [addOpen, setAddOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const [next, manual] = await Promise.all([fetchPlaidItems(), fetchManualAccounts()]);
@@ -112,6 +120,11 @@ export function ConnectionsView() {
   } = useLinkQueue({
     onItemLinked: refresh,
     onDone: ({ linked }) => {
+      // Plaid links one institution per session, so the panel has served its
+      // purpose the moment the queue drains: closing it puts the member back on
+      // their list, where the bank they just linked now appears. Someone adding
+      // a second bank reopens it from the header.
+      if (linked > 0) setAddOpen(false);
       // Plaid is rarely ready to hand over transactions this soon after a link,
       // so this keeps retrying in the background (bounded, backed off) until
       // they land, instead of firing once and leaving the feed empty.
@@ -194,17 +207,68 @@ export function ConnectionsView() {
     return map;
   }, [items, manualAccts]);
 
+  // One connect flow, rendered in two places: inline on first run, and inside
+  // the header's panel once the member has connections. Declared here rather
+  // than duplicated so the two can never drift, which is the same reason the
+  // picker itself replaced the old hardcoded gallery.
+  const addFlow = (
+    <>
+      {layerEnabled() && !showManual && (
+        <LayerDiscovery
+          onLinked={() => {
+            void refresh();
+          }}
+        />
+      )}
+      {showManual ? (
+        <ManualAccountForm
+          onSaved={async () => {
+            setShowManual(false);
+            setAddOpen(false);
+            await refresh();
+          }}
+          onCancel={() => setShowManual(false)}
+        />
+      ) : (
+        // showConnected={false}: the page's own linked-items list names every
+        // connection already, and in the panel it sits directly behind it, so
+        // the picker's Connected section would say the same thing twice.
+        <InstitutionPicker
+          onConnect={handleConnect}
+          onManual={() => setShowManual(true)}
+          busy={connecting}
+          connected={connected}
+          showConnected={false}
+        />
+      )}
+    </>
+  );
+
   return (
     <div className="frame">
       <PageHeader
         title="Connections"
         sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically. Add anything Plaid can't reach by hand."
         actions={
-          items.length > 0 ? (
-            <button className="btn ghost" onClick={handleSync} disabled={syncing}>
-              <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
+          <>
+            {items.length > 0 && (
+              <button className="btn ghost" onClick={handleSync} disabled={syncing}>
+                <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
+              </button>
+            )}
+            {/* The page's primary action, and the only one that is offered
+                whether or not anything is linked yet. */}
+            <button
+              className="btn"
+              onClick={() => {
+                setShowManual(false);
+                setAddOpen(true);
+              }}
+              disabled={connecting}
+            >
+              <Plus size={15} /> Add account
             </button>
-          ) : undefined
+          </>
         }
       />
 
@@ -285,40 +349,21 @@ export function ConnectionsView() {
               </div>
             ))}
 
-            <div className="card" style={{ marginTop: hasItems ? 16 : 0 }}>
-              <h3 style={{ fontSize: 15, marginBottom: 4 }}>{hasItems ? "Add another account" : "Connect your accounts"}</h3>
-              <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
-                Search for your bank and tap it to connect. Plaid links one institution per session, so come back to
-                the box and search again for the next one. Use <b>enter it by hand</b> for accounts Plaid can't link.
-              </p>
-              {layerEnabled() && !showManual && (
-                <LayerDiscovery
-                  onLinked={() => {
-                    void refresh();
-                  }}
-                />
-              )}
-              {showManual ? (
-                <ManualAccountForm
-                  onSaved={async () => {
-                    setShowManual(false);
-                    await refresh();
-                  }}
-                  onCancel={() => setShowManual(false)}
-                />
-              ) : (
-                // showConnected={false}: the linked-items list above already
-                // names every connection, so the picker's own Connected section
-                // would repeat it a few pixels lower.
-                <InstitutionPicker
-                  onConnect={handleConnect}
-                  onManual={() => setShowManual(true)}
-                  busy={connecting}
-                  connected={connected}
-                  showConnected={false}
-                />
-              )}
-            </div>
+            {/* First run only. With nothing linked there is no list to push
+                the search below, and a member who has just arrived needs the
+                affordance in front of them rather than behind a button, so the
+                connect flow stays inline here. Once anything is on file this
+                collapses and the same flow lives in the header's panel. */}
+            {!hasItems && (
+              <div className="card">
+                <h3 style={{ fontSize: 15, marginBottom: 4 }}>Connect your accounts</h3>
+                <p style={{ fontSize: 13, color: "var(--jnpr-ink-2)", margin: "0 0 16px", lineHeight: 1.55 }}>
+                  Search for your bank and tap it to connect. Plaid links one institution per session, so come back to
+                  the box and search again for the next one. Use <b>enter it by hand</b> for accounts Plaid can't link.
+                </p>
+                {addFlow}
+              </div>
+            )}
           </>
         )}
 
@@ -328,6 +373,23 @@ export function ConnectionsView() {
           credentials are entered with Plaid and never touch Juniper's servers.
         </p>
       </div>
+
+      {addOpen && (
+        <ModalBackdrop wide onClose={() => setAddOpen(false)}>
+          <div className="conn-add-head">
+            <h3>{showManual ? "Enter an account by hand" : "Add an account"}</h3>
+            <button className="conn-add-x" onClick={() => setAddOpen(false)} aria-label="Close">
+              <X size={15} />
+            </button>
+          </div>
+          <p>
+            {showManual
+              ? "For accounts Plaid can't reach. The balance is yours to maintain: it stays exactly as you type it until you edit it again."
+              : "Search for your bank and tap it to connect. Plaid links one institution per session, so reopen this for the next one."}
+          </p>
+          {addFlow}
+        </ModalBackdrop>
+      )}
     </div>
   );
 }

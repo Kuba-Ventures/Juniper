@@ -4,6 +4,7 @@ import { resolveInstitutionMark } from "@/lib/institution-brand";
 import {
   normInstitutionName,
   searchInstitutions,
+  type InstitutionBrand,
   type LinkInstitution,
   type PlaidInstitutionMatch,
 } from "@/lib/plaid";
@@ -36,18 +37,17 @@ import {
 // name is done choosing and wants one tap, not a checkbox and a submit button.
 
 // One row's brand mark, resolved through lib/institution-brand so a row here
-// looks like the same institution does in the Connections list.
+// looks like the same institution does in the Connections list: Plaid's own
+// logo, then our bundled art, then a monogram tinted with the bank's brand
+// color, then the building glyph.
 //
-// No Plaid brand payload is passed, and that is a server-side rule rather than
-// an omission: /api/plaid/institution-logos only ever serves institutions the
-// caller has already linked (ids come from their own plaid_items rows, never the
-// request), so nothing can fetch artwork for an arbitrary search hit. Search
-// rows therefore resolve through the bundled art for household names and take
-// the building glyph otherwise, which is the same last resort Connections uses.
-// The monogram arm is unreachable until someone threads a brand through; it is
-// handled anyway so that change is a one-line prop rather than a bug.
-function RowMark({ name }: { name: string }) {
-  const mark = resolveInstitutionMark(name);
+// `brand` carries the logo and primary_color that /api/plaid/institutions-search
+// now returns with each hit, so a searched bank shows its real mark before it is
+// linked. A Connected row passes none: those are institutions already on file
+// and the section is capped status, so it stays on the bundled art rather than
+// holding a second copy of the same base64 payload the list above already has.
+function RowMark({ name, brand }: { name: string; brand?: InstitutionBrand | null }) {
+  const mark = resolveInstitutionMark(name, brand);
   if (mark.kind === "logo") return <img className="inst-logo" src={mark.src} alt="" />;
   if (mark.kind === "monogram") {
     return (
@@ -228,7 +228,10 @@ export function InstitutionPicker({
               disabled={busy}
               aria-label={`Connect ${hit.name} through Plaid`}
             >
-              <RowMark name={hit.name} />
+              <RowMark
+                name={hit.name}
+                brand={{ name: hit.name, logo: hit.logo, primary_color: hit.primary_color }}
+              />
               <span className="inst-name">{hit.name}</span>
               <ArrowRight size={14} className="inst-row-go" />
             </button>

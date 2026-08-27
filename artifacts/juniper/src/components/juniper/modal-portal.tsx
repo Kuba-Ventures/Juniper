@@ -12,11 +12,26 @@ import { createPortal } from "react-dom";
 // the `.jnpr` class (for scoped tokens + `.jnpr .modal-bg` styles) but uses
 // `display: contents` so it adds no box of its own (no stray full-height
 // background from the `.jnpr` block rule).
-export function ModalBackdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+export function ModalBackdrop({
+  children,
+  onClose,
+  wide = false,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  /** Widens the panel to 560px, for content that is a list of choices rather
+      than a paragraph and two buttons. See `.modal.wide` in juniper.css. */
+  wide?: boolean;
+}) {
   const content = (
     <div className="jnpr" style={{ display: "contents" }}>
       <div className="modal-bg" onClick={onClose}>
-        <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div
+          className={wide ? "modal wide" : "modal"}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.stopPropagation()}
+        >
           {children}
         </div>
       </div>
