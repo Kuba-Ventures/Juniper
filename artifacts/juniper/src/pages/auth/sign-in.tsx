@@ -24,7 +24,7 @@ export default function SignIn() {
     if (!session) return;
     if (partnerInviteToken) {
       void acceptInvite(partnerInviteToken).then((result) => {
-        if (result?.ok) setLocation(`/app/plans/${result.domain}`);
+        if (result?.ok) setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
         else setLocation("/app");
       });
     } else {

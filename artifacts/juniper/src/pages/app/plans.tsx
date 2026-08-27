@@ -720,6 +720,30 @@ export default function Plans({ profile = null, profileReady = false }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // Where an accepted partner invite lands: `?open=<domain>` opens that plan
+  // once the list has loaded. Accepting an invite attaches the caller as
+  // `partner_user_id` on the inviter's existing row rather than creating a
+  // second plan, and GET /api/plans returns partner rows alongside owned ones,
+  // so the plan the member was invited to is already in `plans` here. This
+  // replaces a redirect to /app/plans/:domain, a route only the retired
+  // app-shell.tsx ever defined, which dropped every accepter on the not-found
+  // card. Gated on `loading`, or the lookup misses on the first render and the
+  // member arrives at a page that ignored them. An unknown domain falls through
+  // to the list rather than to an error: a stale invite link should still leave
+  // someone somewhere they can use. Param is replaced out of the URL so a
+  // reload does not reopen the modal.
+  const [openHandled, setOpenHandled] = useState(false);
+  useEffect(() => {
+    if (openHandled || loading) return;
+    const want = new URLSearchParams(search).get("open");
+    if (!want) return;
+    const hit = plans.find((p) => p.domain === want);
+    if (hit) setModal({ k: "edit", domain: hit.domain });
+    setOpenHandled(true);
+    navigate("/app/plans", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openHandled, loading, plans, search]);
+
   const { data, source } = useFinances();
   const balances: Balances = {
     totalDebt: data.accounts.debt.reduce((a, x) => a + Math.abs(x.v), 0),
@@ -754,14 +778,15 @@ export default function Plans({ profile = null, profileReady = false }: {
 
       {/* The "Planning with a partner? Invite partner" panel stood here
           (components/juniper/partner-panel.tsx). Removed in Stage 4c because
-          accepting one of its invites produced nothing a member could see. Its
-          link goes to /invite/:token, which on accept sends the partner to
-          /app/plans/:domain, a route only the retired app-shell.tsx ever
-          defined, so they land on the not-found card. And this page rendered
-          <PartnerPanel /> with no partnerName, so the panel could never leave
-          its "Planning with a partner?" state, even after acceptance. Bring it
-          back with a plan-detail route that renders the partner's answers and
-          the alignment view, so an accepted invite arrives somewhere. */}
+          accepting one of its invites produced nothing a member could see. Half
+          of that is now fixed: an accepter used to be sent to /app/plans/:domain
+          and land on the not-found card, and instead arrives on this page with
+          the shared plan open (the `?open=` effect above). The panel itself
+          stays out for the other half, which has not changed: this page rendered
+          <PartnerPanel /> with no partnerName, so it could never leave its
+          "Planning with a partner?" state even after acceptance, and there is
+          still no surface that shows the partner's answers or where the two of
+          them align. Bring it back with that view, not before. */}
 
       {loading ? (
         <div className="grid plan-grid">
@@ -852,6 +877,7 @@ export default function Plans({ profile = null, profileReady = false }: {
       {editing && (
         <EditForm
           plan={editing}
+          owned={editing.user_id === session?.user.id}
           onSaved={(plan) => { upsertLocal(plan); close(); }}
           onDeleted={(domain) => { removeLocal(domain); close(); }}
           onClose={close}
@@ -945,9 +971,17 @@ function CreateForm({
 }
 
 function EditForm({
-  plan, onSaved, onDeleted, onClose,
+  plan, owned, onSaved, onDeleted, onClose,
 }: {
   plan: Plan;
+  /** False on a plan the member only partners on. Hides Delete, which the
+      server will not perform for them: DELETE /api/plans filters on
+      `user_id=eq.<caller>` and the `plans_delete_own` policy scopes to the
+      owner, so a partner's delete matches no rows and returns a cheerful
+      `{ ok: true }`. The row stays, and the list drops it locally, so the plan
+      reappears on the next load. Editing is deliberately still open to them,
+      which POST and `plans_update_own` both allow. */
+  owned: boolean;
   onSaved: (p: Plan) => void;
   onDeleted: (domain: string) => void;
   onClose: () => void;
@@ -1046,17 +1080,19 @@ function EditForm({
           {plan.status === "completed" ? "Reopen" : "Mark complete"}
         </button>
       </div>
-      <div className="modal-danger">
-        {confirmDelete ? (
-          <>
-            <span>Delete this plan for good?</span>
-            <button className="btn ghost sm" disabled={busy} onClick={() => setConfirmDelete(false)}>Keep it</button>
-            <button className="btn ghost sm danger" disabled={busy} onClick={remove}>Delete</button>
-          </>
-        ) : (
-          <button className="btn ghost sm danger" disabled={busy} onClick={() => setConfirmDelete(true)}>Delete plan</button>
-        )}
-      </div>
+      {owned && (
+        <div className="modal-danger">
+          {confirmDelete ? (
+            <>
+              <span>Delete this plan for good?</span>
+              <button className="btn ghost sm" disabled={busy} onClick={() => setConfirmDelete(false)}>Keep it</button>
+              <button className="btn ghost sm danger" disabled={busy} onClick={remove}>Delete</button>
+            </>
+          ) : (
+            <button className="btn ghost sm danger" disabled={busy} onClick={() => setConfirmDelete(true)}>Delete plan</button>
+          )}
+        </div>
+      )}
     </Backdrop>
   );
 }
