@@ -48,7 +48,7 @@ export default function InviteLanding({ token }: { token: string }) {
   useEffect(() => {
     if (!info) return;
     if (info.partner_is_self || info.inviter_is_self) {
-      setLocation(`/app/plans/${info.domain}`);
+      setLocation(`/app/plans?open=${encodeURIComponent(info.domain)}`);
     }
   }, [info, setLocation]);
 
@@ -57,7 +57,7 @@ export default function InviteLanding({ token }: { token: string }) {
     setAccepting(true);
     const result = await acceptInvite(token);
     if (result?.ok) {
-      setLocation(`/app/plans/${result.domain}`);
+      setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
     } else {
       setError("Could not accept invite. Try again.");
       setAccepting(false);
