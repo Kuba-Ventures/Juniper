@@ -150,7 +150,7 @@ function investingFactor(i: ScoreInput): Factor {
 
 // Credit health from the credit score when known (300–850 → 0–100), else from
 // revolving utilization, else a neutral placeholder.
-function creditFactor(i: ScoreInput): Factor {
+function creditFactor(i: ScoreInput): Factor | null {
   if (typeof i.creditScore === "number") {
     const score = clamp(((i.creditScore - 300) / 550) * 100);
     return {
@@ -168,7 +168,12 @@ function creditFactor(i: ScoreInput): Factor {
       detail: `Using ${Math.round(util * 100)}% of your credit limits${util > 0.3 ? ", aim under 30%" : ", nicely under 30%"}.`,
     };
   }
-  return { key: "credit", label: "Credit health", score: 70, weight: WEIGHTS.credit, status: "fair", detail: "Connect a credit card to track credit health." };
+  // Nothing measured, so nothing claimed. This used to return a flat 70, which
+  // was 10.5 points of a score presented as the member's own, and it routinely
+  // won the improvement ranking, so the app's top recommendation was to improve
+  // the one factor it had no data for. computeScore drops a null factor and
+  // renormalizes the rest, so the score is only ever built from what is known.
+  return null;
 }
 
 // ── Improvement templates ────────────────────────────────────────────────────
@@ -188,13 +193,21 @@ const TEMPLATES: Record<FactorKey, { title: string; detail: string }> = {
 };
 
 export function computeScore(input: ScoreInput): ScoreResult {
-  const factors = [
+  // A factor returns null when its input is absent (today only credit does).
+  // The remaining weights are then renormalized to sum to 1, so an unmeasured
+  // factor neither contributes a made-up score nor silently caps the total: with
+  // credit unknown, the four measured factors carry the whole score, and each
+  // one's published "% of score" on the Score page is what it actually is.
+  const measured = [
     savingsFactor(input),
     emergencyFactor(input),
     debtFactor(input),
     investingFactor(input),
     creditFactor(input),
-  ];
+  ].filter((f): f is Factor => f !== null);
+
+  const weighed = measured.reduce((a, f) => a + f.weight, 0);
+  const factors = weighed > 0 ? measured.map((f) => ({ ...f, weight: f.weight / weighed })) : measured;
 
   const value = round(factors.reduce((a, f) => a + f.weight * f.score, 0));
 

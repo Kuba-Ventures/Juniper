@@ -8,7 +8,10 @@ import { kindOf } from "./_categorize";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null };
-type Acct = { type: string | null; balance: number | null };
+// `limit` is the card's credit line, persisted into the stored snapshot by
+// sanitizeAccounts. Present on most cards, null on plenty of them, which is why
+// utilization below is computed only across the cards that report one.
+type Acct = { type: string | null; balance: number | null; limit?: number | null };
 type Item = { accounts: Acct[] };
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
@@ -16,9 +19,37 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
   catch { return []; }
 }
 
-// Days back to average income/spending over, a trailing window keeps the score
-// stable across a partial current month.
+// How far back to ask for transactions. A trailing window keeps the score stable
+// across a partial current month.
 const WINDOW_DAYS = 90;
+
+// The shortest span this will treat as representative. Below it the monthly
+// figures are still an extrapolation, but from a floor rather than from however
+// few days happen to exist: a member who linked three days ago would otherwise
+// have their weekend multiplied into a month. Two weeks is the point where a
+// pay cycle and a rent payment are usually both inside the window.
+const MIN_COVERED_DAYS = 14;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// How many days of history the transactions actually span, counting from the
+// oldest one to today. This is the divisor the monthly averages need, and using
+// the WINDOW length instead was a real bug: a member who linked three weeks ago
+// had every monthly figure divided by three, which left their spending at a
+// third of reality and therefore their emergency fund reading three times the
+// months it covers, their investing pace three times the pace, and their debt
+// load a third of the burden. Savings rate came out right by luck, being a ratio
+// of two numbers that were both a third too small.
+function coveredDays(dates: string[]): number {
+  let oldest = Infinity;
+  for (const d of dates) {
+    const t = Date.parse(d);
+    if (!Number.isNaN(t) && t < oldest) oldest = t;
+  }
+  if (!Number.isFinite(oldest)) return MIN_COVERED_DAYS;
+  const spanned = Math.floor((Date.now() - oldest) / DAY_MS) + 1;
+  return Math.min(WINDOW_DAYS, Math.max(MIN_COVERED_DAYS, spanned));
+}
 
 // Richer breakdown for personalized marketplace picks, separates the debt kinds
 // and precomputes the ratios the pick rules read.
@@ -64,7 +95,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // than on the dashboard, because these two numbers drive the savings rate and
   // the emergency-fund factor: counting transfers to savings as spending both
   // inflated the fund the member needs and hid the saving they were doing.
-  const months = WINDOW_DAYS / 30;
+  const months = coveredDays(txns.map((t) => t.date)) / 30;
   let outflow = 0, inflow = 0;
   for (const t of txns) {
     const kind = kindOf(t.category);
@@ -76,16 +107,33 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   const monthlyIncome = Math.max(0, inflow) / months;
 
   let cashReserves = 0, investmentBalance = 0, cardDebt = 0, loanDebt = 0;
+  // Numerator and denominator of revolving utilization, accumulated together
+  // across only the cards that report a limit so the ratio stays consistent: a
+  // card with a balance and no limit would otherwise inflate it, and a card with
+  // a limit and no balance is legitimately 0% of that line.
+  let utilBalance = 0, utilLimit = 0;
   for (const it of items) {
     for (const a of it.accounts || []) {
       const bal = a.balance || 0;
       const type = (a.type || "").toLowerCase();
       if (type === "depository") cashReserves += bal;
       else if (type === "investment" || type === "brokerage") investmentBalance += bal;
-      else if (type === "credit") cardDebt += Math.abs(bal);
+      else if (type === "credit") {
+        cardDebt += Math.abs(bal);
+        const limit = typeof a.limit === "number" ? a.limit : 0;
+        if (limit > 0) {
+          utilLimit += limit;
+          utilBalance += Math.abs(bal);
+        }
+      }
       else if (type === "loan") loanDebt += Math.abs(bal);
     }
   }
+
+  // Real credit health, from the linked cards, computed before the manual
+  // balances fold in below: a hand-added card carries a balance and no credit
+  // line, so counting it would report utilization of a limit nobody entered.
+  const creditUtilization = utilLimit > 0 ? utilBalance / utilLimit : undefined;
 
   // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
   // a regional bank Plaid can't reach, count toward the score just like linked
@@ -109,8 +157,11 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       totalDebt: Math.round(totalDebt),
       totalAssets: Math.round(totalAssets),
       investmentBalance: Math.round(investmentBalance),
-      // creditScore / creditUtilization left undefined until we ingest credit
-      // data (Stage 10); the engine falls back to a neutral credit factor.
+      // Real utilization when the linked cards report their limits. creditScore
+      // stays undefined until a bureau feed exists (Stage 10, see
+      // docs/CREDIT_PROVIDER.md). With neither, the engine drops the credit
+      // factor rather than inventing a number for it.
+      creditUtilization,
     },
     signals: {
       monthlySpending: Math.round(monthlySpending),
