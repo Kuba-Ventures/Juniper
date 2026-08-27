@@ -71,6 +71,13 @@ export type PlaidInstitutionMatch = {
   name: string;
   oauth: boolean;
   routing_number: string | null;
+  // Plaid's own brand art for this institution, from the same search response
+  // (options.include_optional_metadata). Shaped to drop straight into
+  // resolveInstitutionMark as an InstitutionBrand, so a search row and a linked
+  // row resolve their mark through one code path. Null on the many small
+  // institutions Plaid holds nothing for.
+  logo: string | null;
+  primary_color: string | null;
 };
 
 // Normalized key for matching an institution across the connect flow (Layer

@@ -10,10 +10,21 @@
 // products we request at link time would fail inside Link, so it should not be
 // offered here.
 //
-// Returns names and ids only. Logos are deliberately not requested
-// (`include_logo` returns a base64 PNG per institution, up to 10 per keystroke
-// burst); the client falls back to its monogram tile, same as any catalog entry
-// without a bundled logo.
+// Brand metadata (logo + primary_color) IS requested, via
+// `options.include_optional_metadata`, so a search row shows the bank's real
+// mark rather than a monogram. The earlier objection was payload: Plaid returns
+// a base64 PNG per institution, up to 10 per response. What makes that fine is
+// the client's own throttle, not the endpoint: the search is debounced 300ms,
+// cached per normalized query, and aborts the in-flight request on the next
+// keystroke, so this is one response per query someone actually finished typing,
+// not one per keystroke.
+//
+// Note the boundary this does NOT cross. /api/plaid/institution-logos serves
+// brand art only for institutions the caller has already linked, because it
+// reads their own plaid_items ids and never an id from the request. This
+// endpoint stays inside that rule: the ids and the artwork both come from
+// Plaid's own answer to the member's query, so there is still no way to ask
+// Juniper for artwork for an arbitrary institution id.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch, plaidProducts, plaidCountryCodes } from "../_plaid";
@@ -44,6 +55,10 @@ type PlaidInstitution = {
   // /link/token/create as institution_data.routing_number so Plaid highlights
   // that bank in Link's own list instead of opening on a blank search.
   routing_numbers?: string[];
+  // Both from include_optional_metadata, and both routinely absent: plenty of
+  // small banks and credit unions have neither on file with Plaid.
+  logo?: string | null;
+  primary_color?: string | null;
 };
 
 export type SanitizedInstitution = {
@@ -51,6 +66,10 @@ export type SanitizedInstitution = {
   name: string;
   oauth: boolean;
   routing_number: string | null;
+  // Base64 PNG body as Plaid sends it, no data: prefix. The client adds that
+  // through institutionLogoSrc().
+  logo: string | null;
+  primary_color: string | null;
 };
 
 export default async function handler(req: Request): Promise<Response> {
@@ -81,6 +100,7 @@ export default async function handler(req: Request): Promise<Response> {
     query,
     products: plaidProducts(),
     country_codes: plaidCountryCodes(),
+    options: { include_optional_metadata: true },
   });
 
   if (!ok) {
@@ -102,6 +122,9 @@ export default async function handler(req: Request): Promise<Response> {
       name: i.name,
       oauth: i.oauth === true,
       routing_number: i.routing_numbers?.find((r) => typeof r === "string" && r.length > 0) ?? null,
+      logo: typeof i.logo === "string" && i.logo.length > 0 ? i.logo : null,
+      primary_color:
+        typeof i.primary_color === "string" && i.primary_color.length > 0 ? i.primary_color : null,
     }));
 
   return json({ institutions });

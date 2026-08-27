@@ -234,6 +234,15 @@
 /* ---------- modal + forms ---------- */
 .jnpr .modal-bg{position:fixed;inset:0;background:rgba(15,20,15,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
 .jnpr .modal{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);max-width:440px;width:100%;padding:24px;box-shadow:var(--jnpr-shadow-lg);max-height:calc(100vh - 40px);overflow-y:auto}
+/* The connect flow needs more room than a confirm dialog: its rows carry a
+   38px mark, a bank name long enough to be unambiguous, and two fallback
+   actions side by side. */
+.jnpr .modal.wide{max-width:560px}
+.jnpr .conn-add-head{display:flex;align-items:flex-start;gap:12px}
+.jnpr .conn-add-head h3{flex:1;min-width:0}
+.jnpr .conn-add-x{width:30px;height:30px;flex:0 0 auto;border-radius:9px;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface-2);color:var(--jnpr-ink-2);display:grid;place-items:center;cursor:pointer}
+.jnpr .conn-add-x:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
 .jnpr .modal h3{font-size:19px;margin-bottom:9px;color:var(--jnpr-ink)}
 .jnpr .modal p{font-size:13.5px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 0 15px}
 .jnpr .modal-actions{display:flex;gap:10px}.jnpr .modal-actions .btn{flex:1;justify-content:center}

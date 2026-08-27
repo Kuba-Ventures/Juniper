@@ -1,0 +1,225 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connections: add-account placement</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+  html,body{margin:0}
+  /* ---- mock-only chrome: the variant switcher, not part of the app ---- */
+  .vswitch{position:fixed;z-index:200;right:18px;bottom:18px;display:flex;gap:6px;align-items:center;
+    background:#0B0F0B;border:1px solid #2A332A;border-radius:12px;padding:7px 9px;
+    font:13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#717B6E;box-shadow:0 10px 30px -12px rgba(0,0,0,.8)}
+  .vswitch b{font-weight:600;color:#A6B0A2;margin-right:3px;letter-spacing:.02em}
+  .vswitch button{font:inherit;font-weight:600;border:1px solid #2A332A;background:#171E17;color:#A6B0A2;
+    border-radius:8px;padding:6px 11px;cursor:pointer}
+  .vswitch button:hover{border-color:#6FB98C;color:#6FB98C}
+  .vswitch button[aria-pressed="true"]{background:#213024;border-color:#6FB98C;color:#8ACFA4}
+  .vlabel{max-width:680px;margin:18px auto 0;padding:0 22px;font:12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:#717B6E;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+
+  /* ================= A. header action + picker in a modal ================= */
+  .a-overlay{position:fixed;inset:0;z-index:100;background:rgba(6,10,6,.72);display:grid;place-items:start center;padding:70px 20px 40px;overflow:auto}
+  .a-sheet{width:100%;max-width:560px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);
+    border-radius:var(--jnpr-r);box-shadow:var(--jnpr-shadow-lg);padding:20px}
+  .a-sheet-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+  .a-sheet-head h3{font-size:16px;flex:1}
+  .a-x{width:30px;height:30px;flex:0 0 auto;border-radius:8px;border:1px solid var(--jnpr-line);
+    background:var(--jnpr-surface-2);color:var(--jnpr-ink-2);display:grid;place-items:center;cursor:pointer}
+  .a-x:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+  .a-sheet p.a-sub{font-size:13px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 0 16px}
+
+  /* ================= B. search pinned above the list ================= */
+  .b-dock{position:sticky;top:84px;z-index:30;background:var(--jnpr-ground);padding:2px 0 12px;margin-bottom:4px}
+  .b-bar{display:flex;align-items:center;gap:10px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);
+    border-radius:13px;padding:11px 14px;box-shadow:var(--jnpr-shadow)}
+  .b-bar:focus-within{border-color:var(--jnpr-accent)}
+  .b-bar svg{color:var(--jnpr-ink-3);flex:0 0 auto}
+  .b-bar input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:14px;color:var(--jnpr-ink);outline:none}
+  .b-bar input::placeholder{color:var(--jnpr-ink-3)}
+  .b-hint{font-size:11.5px;color:var(--jnpr-ink-3);margin:8px 2px 0;line-height:1.5}
+  .b-hint a{color:var(--jnpr-accent);font-weight:650;text-decoration:none;cursor:pointer}
+  .b-results{margin-top:10px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:13px;
+    padding:10px;box-shadow:var(--jnpr-shadow-lg)}
+  .b-sechead{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 10px}
+  .b-sechead .inst-cat-h{margin-bottom:0}
+  .b-count{font-size:11.5px;color:var(--jnpr-ink-3)}
+
+  /* ================= C. docked action bar ================= */
+  .c-dock{position:fixed;left:0;right:0;bottom:0;z-index:60;
+    background:color-mix(in srgb,var(--jnpr-ground) 92%,transparent);backdrop-filter:saturate(1.3) blur(12px);
+    border-top:1px solid var(--jnpr-line)}
+  .c-dock-in{max-width:680px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:10px}
+  .c-dock .btn{flex:1;justify-content:center;padding:11px 15px;font-size:13.5px}
+  .c-dock .inst-otherbtn{padding:10px 13px}
+  .c-tally{font-size:12px;color:var(--jnpr-ink-3);flex:0 0 auto;margin-right:2px}
+  .c-sheet-wrap{position:fixed;inset:0;z-index:70;background:rgba(6,10,6,.66);display:flex;align-items:flex-end;justify-content:center}
+  .c-sheet{width:100%;max-width:680px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);
+    border-bottom:0;border-radius:18px 18px 0 0;padding:18px 22px 22px;box-shadow:var(--jnpr-shadow-lg)}
+  .c-grab{width:38px;height:4px;border-radius:99px;background:var(--jnpr-line);margin:0 auto 14px}
+  .c-pad{height:74px}
+</style>
+</head>
+<body class="jnpr">
+
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-top">
+      <div class="brand">Juniper</div>
+      <div class="appbar-acct">
+        <span class="plaid-pill"><span class="dot"></span>5 linked</span>
+        <button class="icon-btn" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        </button>
+        <div class="avatar">F</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a>Overview</a><a>Plans</a><a>Ask Juniper</a><a>Credit</a><a class="on">Connections</a>
+    </nav>
+  </div>
+</header>
+
+<div class="vlabel" id="vlabel">Mockup A</div>
+<main class="frame" id="app"></main>
+
+<div class="vswitch">
+  <b>Mockup</b>
+  <button data-v="a" aria-pressed="true">A</button>
+  <button data-v="b" aria-pressed="false">B</button>
+  <button data-v="c" aria-pressed="false">C</button>
+</div>
+
+<script>
+const ICON = {
+  refresh:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  trash:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  search:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  arrow:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>',
+  pencil:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L20 8l-4-4L4 16v4z"/></svg>',
+  shield:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>',
+  x:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  bank:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5"/></svg>'
+};
+
+const LINKED = [
+  {name:'Carter Bank &amp; Trust - Personal', mono:'C', color:'#1F5C86',
+   accts:[['Checking · ····9928 · checking','$433']]},
+  {name:'Chase', mono:'J', color:'#1160A8',
+   accts:[['Ultimate Rewards® · ····1575 · credit card','$46']]},
+  {name:'PayPal', mono:'P', color:'#25397C',
+   accts:[['PayPal · paypal','$0']]},
+  {name:'Charles Schwab', mono:'S', color:'#0C9AD8',
+   accts:[['Individual · ····0734 · brokerage','$28,728'],['Roth Contributory IRA · ····6519 · roth','$42,350']]},
+  {name:'Marcus by Goldman Sachs', mono:'M', color:'#4E6E8E',
+   accts:[['Philanthropy · ····0396 · savings','$1,192']]}
+];
+
+const HITS = [
+  {name:'Ally Bank', mono:'A', color:'#4C1F7A'},
+  {name:'Alliant Credit Union', mono:'A', color:'#1F6F52'},
+  {name:'American Express', mono:'A', color:'#2671B9'},
+  {name:'Apple Card (Goldman Sachs)', mono:'A', color:'#3B3B3B'}
+];
+
+function mark(i){
+  return '<span class="ci-mono" style="background:'+i.color+';color:#fff">'+i.mono+'</span>';
+}
+function connItem(i){
+  return '<div class="conn-item"><div class="conn-inst">'+mark(i)+
+    '<span class="ci-name">'+i.name+'</span>'+
+    '<button class="btn ghost sm">'+ICON.trash+' Remove</button></div>'+
+    i.accts.map(a=>'<div class="conn-acct"><span class="ca-name">'+a[0]+'</span><span class="ca-bal tnum">'+a[1]+'</span></div>').join('')+
+    '</div>';
+}
+function instRow(i){
+  return '<button class="inst-row"><span class="inst-mono" style="background:'+i.color+'">'+i.mono+'</span>'+
+    '<span class="inst-name">'+i.name+'</span><span class="inst-row-go">'+ICON.arrow+'</span></button>';
+}
+const PICKER =
+  '<div class="inst-searchbar">'+ICON.search+
+  '<input class="inst-search" placeholder="Search any bank, card, or investment provider" value="al">'+
+  '</div><div class="inst-rows">'+HITS.map(instRow).join('')+'</div>'+
+  '<div class="inst-bar"><div class="inst-bar-left">'+
+  '<button class="inst-otherbtn">'+ICON.plus+' Search all banks</button>'+
+  '<button class="inst-otherbtn">'+ICON.pencil+' Enter it by hand (no live balance)</button>'+
+  '</div></div>';
+
+const SECURE = '<p class="ob-secure">'+ICON.shield+
+  'Juniper connects through Plaid with bank-grade encryption and read-only access. Your bank credentials are entered with Plaid and never touch Juniper\'s servers.</p>';
+
+const HEAD_SUB = 'Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically. Add anything Plaid can\'t reach by hand.';
+
+function pageHead(actions){
+  return '<div class="page-head"><div><h1>Connections</h1><div class="sub">'+HEAD_SUB+'</div></div>'+
+    '<div class="page-actions">'+actions+'</div></div>';
+}
+
+const VARIANT = {};
+
+VARIANT.a = () =>
+  pageHead(
+    '<button class="btn ghost">'+ICON.refresh+' Refresh data</button>'+
+    '<button class="btn">'+ICON.plus+' Add account</button>'
+  ) +
+  '<div class="conn-wrap">'+LINKED.map(connItem).join('')+SECURE+'</div>'+
+  '<div class="a-overlay"><div class="a-sheet">'+
+    '<div class="a-sheet-head"><h3>Add an account</h3><button class="a-x">'+ICON.x+'</button></div>'+
+    '<p class="a-sub">Search for your bank and tap it to connect. Plaid links one institution per session, so come back here for the next one.</p>'+
+    PICKER+
+  '</div></div>';
+
+VARIANT.b = () =>
+  pageHead('<button class="btn ghost">'+ICON.refresh+' Refresh data</button>') +
+  '<div class="conn-wrap">'+
+    '<div class="b-dock"><div class="b-bar">'+ICON.search+
+      '<input placeholder="Add an account: search any bank, card, or investment provider" value="al">'+
+      '</div>'+
+      '<div class="b-results"><div class="inst-rows">'+HITS.map(instRow).join('')+'</div></div>'+
+      '<p class="b-hint">Plaid links one institution per session. Can\'t find it? <a>Search all banks</a> or <a>enter it by hand</a>.</p>'+
+    '</div>'+
+    '<div class="b-sechead"><div class="inst-cat-h">Connected</div><span class="b-count">5 institutions · 6 accounts</span></div>'+
+    LINKED.map(connItem).join('')+SECURE+
+  '</div>';
+
+VARIANT.c = () =>
+  pageHead('<button class="btn ghost">'+ICON.refresh+' Refresh data</button>') +
+  '<div class="conn-wrap">'+LINKED.map(connItem).join('')+SECURE+'<div class="c-pad"></div></div>'+
+  '<div class="c-dock"><div class="c-dock-in">'+
+    '<span class="c-tally">5 linked</span>'+
+    '<button class="btn">'+ICON.plus+' Add account</button>'+
+    '<button class="inst-otherbtn">'+ICON.pencil+' Enter by hand</button>'+
+  '</div></div>'+
+  '<div class="c-sheet-wrap"><div class="c-sheet"><div class="c-grab"></div>'+
+    '<h3 style="font-size:16px;margin-bottom:4px">Add an account</h3>'+
+    '<p style="font-size:13px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 0 16px">Search for your bank and tap it to connect.</p>'+
+    PICKER+
+  '</div></div>';
+
+const app = document.getElementById('app');
+const label = document.getElementById('vlabel');
+function show(v){
+  app.innerHTML = VARIANT[v]();
+  label.textContent = 'Mockup ' + v.toUpperCase();
+  document.querySelectorAll('.vswitch button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===v)));
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.vswitch button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.v)));
+
+app.addEventListener('click',(e)=>{
+  const t = e.target.closest('.a-x, .a-overlay, .c-sheet-wrap, .btn, .c-grab');
+  if(!t) return;
+  const overlay = app.querySelector('.a-overlay, .c-sheet-wrap');
+  if(t.classList.contains('a-x') || t.classList.contains('a-overlay') || t.classList.contains('c-sheet-wrap') || t.classList.contains('c-grab')){
+    if(overlay) overlay.style.display='none';
+    return;
+  }
+  if(t.classList.contains('btn') && !t.classList.contains('ghost') && overlay) overlay.style.display='';
+});
+
+show('a');
+</script>
+</body>
+</html>
