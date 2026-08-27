@@ -12,7 +12,7 @@
 // is the presentation decision on top of it.
 import { LOGOS } from "@/lib/mock-logos";
 import { LOGO_KEY } from "@/lib/mock-data";
-import { institutionLogoSrc, type InstitutionBrand } from "@/lib/plaid";
+import { institutionLogoSrc, type InstitutionBrand, type InstitutionBrandMap } from "@/lib/plaid";
 
 // Display names whose bundled art is filed under a key the slug pass below cannot
 // reach ("American Express" slugifies to americanexpress, the asset is amex).
@@ -78,6 +78,24 @@ export type InstitutionMark =
 // `brand` is absent for a hand-added account, which carries an institution name
 // and no Plaid id at all, so those resolve through the bundled art or drop
 // straight to the glyph.
+// Find an institution's brand in a map keyed by Plaid institution id, using its
+// display NAME. Needed because the account rollup in /api/finances carries only
+// the institution's name (it is a display rollup, not an item list), while the
+// brand map is keyed by id. Matching on the normalized name is safe here because
+// the map only ever holds institutions this member has actually linked, so the
+// candidate set is their own handful of banks, not Plaid's twelve thousand.
+export function brandForName(
+  map: InstitutionBrandMap | null | undefined,
+  name: string,
+): InstitutionBrand | null {
+  if (!map || !name) return null;
+  const want = name.trim().toLowerCase();
+  for (const brand of Object.values(map)) {
+    if ((brand.name ?? "").trim().toLowerCase() === want) return brand;
+  }
+  return null;
+}
+
 export function resolveInstitutionMark(
   name: string,
   brand?: InstitutionBrand | null,
