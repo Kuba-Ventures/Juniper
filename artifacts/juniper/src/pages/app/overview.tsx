@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   money, moneyK, money2,
   type Budget, type Account, type Txn,
 } from "@/lib/mock-data";
 import { useFinances, type FinanceData } from "@/lib/finances";
+import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from "@/lib/plaid";
+import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON,
 } from "@/lib/plans";
@@ -67,13 +69,33 @@ function Budgets({ items }: { items: Budget[] }) {
   );
 }
 
-function AccountGroup({ title, arr }: { title: string; arr: Account[] }) {
+// The mark belongs to the INSTITUTION, not the account. This used to key off
+// `a.n`, the account name, so a Chase card called "Ultimate Rewards" got a "U"
+// tile and a checking account at any bank got a "C". Neither ever matched a
+// brand, which is why every row here was a colored letter. `a.i` is the
+// institution, and that is what has a logo.
+function AccountMark({ account, brands }: { account: Account; brands: InstitutionBrandMap | null }) {
+  const mark = resolveInstitutionMark(account.i, brandForName(brands, account.i));
+  if (mark.kind === "logo") return <img className="blogo" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return (
+      <div className="tile" style={{ background: mark.background, color: mark.color }}>
+        {mark.letter}
+      </div>
+    );
+  }
+  // Last resort keeps a row from ever being blank: the rollup's own series color
+  // with the institution's initial.
+  return <BrandTile name={account.i} letter={(account.i[0] || "?").toUpperCase()} k={account.k} />;
+}
+
+function AccountGroup({ title, arr, brands }: { title: string; arr: Account[]; brands: InstitutionBrandMap | null }) {
   return (
     <>
       <div className="subhead">{title}</div>
       {arr.map((a, i) => (
         <div className="row" key={i}>
-          <BrandTile name={a.n} letter={a.n[0]} k={a.k} />
+          <AccountMark account={a} brands={brands} />
           <div><div className="nm">{a.n}</div><div className="mt">{a.i}</div></div>
           <div className="amt">{money(a.v)} {a.apr && <span className="apr-chip">{a.apr}</span>}</div>
         </div>
@@ -260,6 +282,30 @@ export default function Overview({
   onDismissWelcome?: () => void;
 }) {
   const { data, hasTransactions } = useFinances();
+  // Institution brand art for the Accounts card. One fetch per page load, cached
+  // for a week server-side, and it only ever covers institutions this member has
+  // linked. Failure is silent by design: the mark resolver falls through to
+  // bundled art and then a monogram, so a logo is a nicety, never a dependency.
+  const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // Two calls rather than one: the logo endpoint keys its week-long cache on
+    // the set of institution ids the caller holds, so it needs the ids, and the
+    // account rollup this page renders carries only institution names. Without
+    // the id set a newly linked bank would sit on a cached miss and show a
+    // monogram for a week.
+    fetchPlaidItems()
+      .then((items) => fetchInstitutionLogos(items.map((it) => it.institution_id)))
+      .then((m) => {
+        if (!cancelled) setBrands(m);
+      })
+      .catch(() => {
+        /* a logo is a nicety: the resolver falls through to bundled art, then a monogram */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -360,9 +406,9 @@ export default function Overview({
             </div>
           ) : (
             <div className="rows">
-              {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} />}
-              {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} />}
-              {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} />}
+              {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} brands={brands} />}
+              {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} brands={brands} />}
+              {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} brands={brands} />}
             </div>
           )}
         </div>

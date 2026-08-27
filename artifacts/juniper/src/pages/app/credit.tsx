@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
-import { fetchPlaidItems, type PlaidItem } from "@/lib/plaid";
+import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
+import { resolveInstitutionMark } from "@/lib/institution-brand";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -30,6 +31,9 @@ import { fetchPlaidItems, type PlaidItem } from "@/lib/plaid";
 
 type LinkedCard = {
   key: string;
+  // Plaid's id for the issuer, so the brand map (keyed by id) can be read
+  // directly rather than matched on a display name.
+  institutionId: string | null;
   institution: string;
   name: string;
   mask: string | null;
@@ -62,6 +66,7 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
       .filter((a) => (a.type ?? "").toLowerCase() === "credit")
       .map((a) => ({
         key: a.account_id,
+        institutionId: it.institution_id ?? null,
         institution: it.institution_name || "Linked institution",
         name: a.name,
         mask: a.mask,
@@ -173,11 +178,33 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
   );
 }
 
-function CardRow({ card }: { card: LinkedCard }) {
+// The issuer's own mark, resolved the same way the Connections list does it:
+// Plaid's logo, then bundled brand art, then a monogram tinted with the issuer's
+// brand color. The old flat "C on a coral tile" was the account's first letter,
+// which never matched anything.
+function CardMark({ card, brands }: { card: LinkedCard; brands: InstitutionBrandMap | null }) {
+  const brand = card.institutionId ? brands?.[card.institutionId] : null;
+  const mark = resolveInstitutionMark(card.institution, brand);
+  if (mark.kind === "logo") return <img className="blogo" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return (
+      <div className="tile" style={{ background: mark.background, color: mark.color }}>
+        {mark.letter}
+      </div>
+    );
+  }
+  return (
+    <div className="tile" style={{ background: "var(--jnpr-c4)" }}>
+      {(card.institution[0] || "C").toUpperCase()}
+    </div>
+  );
+}
+
+function CardRow({ card, brands }: { card: LinkedCard; brands: InstitutionBrandMap | null }) {
   const used = card.limit != null ? pct(card.balance, card.limit) : null;
   return (
     <div className="card-row">
-      <div className="tile" style={{ background: "var(--jnpr-c4)" }}>{(card.institution[0] || "C").toUpperCase()}</div>
+      <CardMark card={card} brands={brands} />
       <div className="ci">
         <div className="cn">{card.institution} · {card.name}</div>
         <div className="csub">
@@ -204,11 +231,20 @@ function CardRow({ card }: { card: LinkedCard }) {
 
 export function Credit() {
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
+  const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchPlaidItems().then((items) => {
       if (!cancelled) setCards(linkedCards(items));
+      // Brand art is fetched off the same item list, so the logo endpoint gets
+      // the id set its cache is keyed on. Silent on failure: the resolver falls
+      // through to bundled art and then a monogram.
+      void fetchInstitutionLogos(items.map((it) => it.institution_id))
+        .then((m) => {
+          if (!cancelled) setBrands(m);
+        })
+        .catch(() => undefined);
     });
     return () => {
       cancelled = true;
@@ -237,7 +273,7 @@ export function Credit() {
             </span>
           </div>
           <OverallUtilization cards={cards} />
-          {cards.map((c) => <CardRow card={c} key={c.key} />)}
+          {cards.map((c) => <CardRow card={c} brands={brands} key={c.key} />)}
         </div>
       )}
     </div>
