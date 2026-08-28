@@ -6,7 +6,7 @@ import { setAccountShare, type AccountScope, type PartnerAccount } from "@/lib/p
 
 // The one place a member decides what the other person can see.
 //
-// It exists because sharing is private by default (migration 0017). Before that
+// It exists because sharing is private by default (migration 0020). Before that
 // the answer was "everything, from the moment they accepted", so there was
 // nothing to decide and nowhere to decide it. This supersedes the unrouted
 // pages/app/shared/sharing.tsx, which drove a set of coarse toggles off seeded
