@@ -14,6 +14,7 @@ import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
+import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
 import { categorize } from "../_categorize";
 
 export const config = { runtime: "edge" };
@@ -41,10 +42,6 @@ type PlaidTxn = {
   pending?: boolean;
   personal_finance_category?: { primary?: string; detailed?: string } | null;
 };
-// Plaid codes that mean the connection itself is finished: the token will never
-// work again, so the institution has to be linked afresh. Reported so the client
-// can tell that apart from a transient failure. Mirrors networth-snapshot.ts.
-const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"]);
 type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
 type SyncResp = {
@@ -144,8 +141,12 @@ export default async function handler(req: Request): Promise<Response> {
           item_id: item.item_id,
           error_code: code,
           error_message: sync.data.error_message ?? null,
-          needs_relink: !!code && DEAD_ITEM_CODES.has(code),
+          needs_relink: isDeadItemCode(code),
         });
+        // Recorded so a later page load can name this connection without
+        // calling Plaid again. Only dead-item codes are stored, see
+        // _item-sync-state.ts.
+        if (isDeadItemCode(code)) await markItemDead(item.item_id, code!);
         failed = true;
         break;
       }
@@ -197,6 +198,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ transactions_cursor: cursor ?? null }),
     });
+    await markItemSynced(item.item_id);
     synced++;
   }
 

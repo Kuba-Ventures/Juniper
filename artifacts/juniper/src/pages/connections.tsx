@@ -24,6 +24,8 @@ import {
   type ManualAccount,
 } from "@/lib/manual-accounts";
 import { PageHeader } from "@/components/juniper/app-frame";
+import { useFinances } from "@/lib/finances";
+import { timeAgo } from "@/lib/auto-sync";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
 function money(n: number | null, currency: string | null): string {
@@ -72,6 +74,20 @@ function InstitutionMark({
   return <span className="ci-mark">{glyph}</span>;
 }
 
+/* The freshness line that replaced the Refresh button for everyone who is not
+   on a dev build. It states, it does not offer: there is nothing to press,
+   because the app is already doing the thing the button used to do. Compact by
+   design ("2h ago", not "2 hours ago"), since it sits in a header beside a
+   primary action and is read at a glance. */
+function Freshness({ syncedAt, busy }: { syncedAt: string | null; busy: boolean }) {
+  const ago = timeAgo(syncedAt);
+  if (busy) return <span className="fresh busy"><span className="dot" />Updating your accounts</span>;
+  // No timestamp yet means the first background sync has not landed. Saying
+  // nothing beats "Updated never".
+  if (!ago) return null;
+  return <span className="fresh"><span className="dot" />Updated {ago}</span>;
+}
+
 export function ConnectionsView() {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [manualAccts, setManualAccts] = useState<ManualAccount[]>([]);
@@ -82,6 +98,15 @@ export function ConnectionsView() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingManualId, setRemovingManualId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Freshness and breakage come from /api/finances, which every app load already
+  // fetches, so this page asks Plaid nothing to answer either question.
+  const { sync, syncing: autoSyncing, refresh: refreshFinances } = useFinances();
+  // The manual control is for a dev build or an admin only. A member is not
+  // meant to think about refreshing: the app does it (see lib/auto-sync.ts), and
+  // the one failure a button appeared to address, a connection whose login has
+  // expired, is not something a refresh can fix. That case gets its own prompt
+  // below, pointing at the action that does work.
+  const canForce = import.meta.env.DEV || !!sync?.canForceSync;
   const [syncing, setSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
   // Whether the add-an-account panel is open. The search used to sit in a card
@@ -139,6 +164,9 @@ export function ConnectionsView() {
     setSyncing(true);
     const result = await syncFinances();
     await refresh();
+    // Pull the sync state forward too, so the freshness line beside the button
+    // reflects the run that just finished rather than the one before it.
+    void refreshFinances();
     setSyncing(false);
     // A refresh that reached Plaid for some connections and not others used to
     // be indistinguishable from a clean one: the endpoints aborted on the first
@@ -251,9 +279,11 @@ export function ConnectionsView() {
         sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically. Add anything Plaid can't reach by hand."
         actions={
           <>
-            {items.length > 0 && (
+            {items.length > 0 && <Freshness syncedAt={sync?.syncedAt ?? null} busy={syncing || autoSyncing} />}
+            {canForce && items.length > 0 && (
               <button className="btn ghost" onClick={handleSync} disabled={syncing}>
                 <RefreshCw size={15} /> {syncing ? "Refreshing…" : "Refresh data"}
+                <span className="dev-badge">dev</span>
               </button>
             )}
             {/* The page's primary action, and the only one that is offered
@@ -273,6 +303,28 @@ export function ConnectionsView() {
       />
 
       <div className="conn-wrap">
+        {/* The only thing on this page a member has to act on. A dead Plaid
+           token cannot be fixed by refreshing, which is exactly why pressing
+           Refresh repeatedly was the old behaviour. Named per connection, with
+           the date its balances stopped, so it is clear what is stale and what
+           is not. */}
+        {(sync?.needsRelink?.length ?? 0) > 0 && (
+          <div className="relink-note" style={{ marginBottom: 16 }}>
+            <div className="rt">
+              <div className="rn">
+                {sync!.needsRelink.length === 1
+                  ? `${sync!.needsRelink[0].institution} needs reconnecting`
+                  : `${sync!.needsRelink.length} connections need reconnecting`}
+              </div>
+              <div className="rs">
+                {sync!.needsRelink.length === 1 && sync!.needsRelink[0].since
+                  ? `Its login expired, so its balances stopped updating on ${new Date(sync!.needsRelink[0].since!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. Everything else is current.`
+                  : "Their logins expired, so their balances stopped updating. Everything else is current."}
+                {" "}Disconnect below, then connect again.
+              </div>
+            </div>
+          </div>
+        )}
         {shownNotice && <div className="form-error" style={{ marginBottom: 16 }}>{shownNotice}</div>}
         {connecting && (
           <div className="ob-connected" style={{ color: "var(--jnpr-accent)", background: "var(--jnpr-accent-soft)" }}>

@@ -23,7 +23,7 @@
 // member's own manual figures, or EMPTY when they never entered any. A member
 // with real balances but no transaction feed yet must see their own cashflow or
 // nothing at all.
-import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getAccessToken } from "@/lib/supabase";
 import { categoryColor } from "@/lib/category-color";
 // Type-only: nothing in mock-data.ts is read as a VALUE from here any more. The
@@ -33,6 +33,7 @@ import type * as M from "@/lib/mock-data";
 import type { Account, SpendCat, Budget, Txn, SeriesKey } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/profile";
 import { buildManualFinances } from "@/lib/manual-finances";
+import { isStale, runBackgroundSync, type SyncState } from "@/lib/auto-sync";
 
 export interface FinanceData {
   netWorth: typeof M.netWorth;
@@ -97,6 +98,9 @@ interface RawFinances {
   // fields above are absent when it's false, so this is the signal pages gate on
   // rather than guessing from which fields arrived.
   hasTransactions?: boolean;
+  // How current the data is and what is broken, answered without a Plaid call.
+  // Absent on a deploy where migration 0017 has not been applied.
+  sync?: SyncState;
 }
 
 // Merge a live payload over `base`, the layer beneath it: the member's own
@@ -160,6 +164,15 @@ export interface FinancesValue {
   // transaction-dependent cards on this rather than on `source === "live"`,
   // which is now true for members who have balances and nothing else.
   hasTransactions: boolean;
+  // How current the data is, and which connections need relinking. Absent on a
+  // manual dashboard (nothing to sync) and on a deploy without migration 0017.
+  sync?: SyncState;
+  // True while an automatic refresh is running, so a surface can say so rather
+  // than leaving the member to guess whether the app is doing anything.
+  syncing: boolean;
+  // Re-read /api/finances without triggering a sync. For a surface that has
+  // just changed something server-side and wants the totals to catch up.
+  refresh: () => Promise<void>;
 }
 
 const FinancesContext = createContext<FinancesValue | null>(null);
@@ -172,18 +185,30 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
   const manual = useMemo(() => buildManualFinances(profile), [profile]);
   const [raw, setRaw] = useState<RawFinances | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    fetchFinances()
-      .then((next) => {
-        if (!alive) return;
-        if (next) setRaw(next);
-        setLoading(false);
-      })
-      .catch(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+  // One place decides whether to refresh, and it is the same fetch every page
+  // already waits on. Putting it here rather than in a page component means it
+  // runs once per app load no matter which route the member landed on, and a
+  // member who never opens Connections still gets current data.
+  const load = useCallback(async (opts?: { afterSync?: boolean }) => {
+    const next = await fetchFinances().catch(() => null);
+    if (next) setRaw(next);
+    setLoading(false);
+    if (opts?.afterSync) return;
+    // Fire and forget. The dashboard is already rendering the data we have; the
+    // refresh replaces it when it lands, and a failure leaves the member with
+    // the slightly older figures rather than an error they cannot act on.
+    if (next && isStale(next.sync)) {
+      setSyncing(true);
+      void runBackgroundSync().finally(() => {
+        setSyncing(false);
+        void load({ afterSync: true });
+      });
+    }
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   // Resolved at render, not on arrival, so a profile that loads late still ends
   // up underneath the live payload instead of being missed by it.
@@ -194,13 +219,16 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
         source: "live",
         loading,
         hasTransactions: !!raw.hasTransactions,
+        sync: raw.sync,
+        syncing,
+        refresh: () => load({ afterSync: true }),
       };
     }
     // No live payload. Their own onboarding figures if they entered any,
     // otherwise an empty dashboard: a member who has told us nothing is shown
     // nothing, not a demo household's net worth under their name.
-    return { data: manual ?? EMPTY, source: "manual", loading, hasTransactions: false };
-  }, [raw, manual, loading]);
+    return { data: manual ?? EMPTY, source: "manual", loading, hasTransactions: false, syncing, refresh: () => load({ afterSync: true }) };
+  }, [raw, manual, loading, syncing, load]);
 
   return createElement(FinancesContext.Provider, { value }, children);
 }
@@ -210,5 +238,7 @@ export function useFinances(): FinancesValue {
   // Fallback keeps any consumer rendered outside the provider working rather
   // than throwing. It renders empty, because a component with no provider above
   // it has no member to speak for.
-  return ctx ?? { data: EMPTY, source: "manual", loading: false, hasTransactions: false };
+  // `syncing` false and `refresh` a no-op: with no provider there is nothing
+  // to refresh and nothing running.
+  return ctx ?? { data: EMPTY, source: "manual", loading: false, hasTransactions: false, syncing: false, refresh: async () => {} };
 }
