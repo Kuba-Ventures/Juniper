@@ -24,6 +24,7 @@ import { fetchScoreInput } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
 import { CATEGORY_GROUPS, groupOf, kindOf, isGroupLabel } from "./_categorize";
+import { isAdminEmail } from "./_admin";
 
 export const config = { runtime: "edge" };
 
@@ -56,7 +57,16 @@ type Bud = { category: string; limit_amount: number };
 type Snap = { as_of: string; net_worth: number; estimated?: boolean };
 type ScoreRow = { as_of: string; value: number };
 type Acct = { name: string; mask: string | null; type: string | null; subtype: string | null; balance: number | null };
-type Item = { institution_name: string | null; accounts: Acct[] };
+type Item = {
+  institution_name: string | null;
+  accounts: Acct[];
+  // Per-item sync state (migration 0017). Absent on a deploy where 0017 has not
+  // been applied, which is why every read of these is optional: the page then
+  // simply shows no freshness line rather than breaking.
+  last_synced_at?: string | null;
+  last_error_code?: string | null;
+  last_error_at?: string | null;
+};
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -69,7 +79,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
   const uid = payload.sub;
 
-  const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts`);
+  const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts,last_synced_at,last_error_code,last_error_at`);
   const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category&order=date.desc&limit=400`);
   // Manual accounts (tier 3) are a balance source in their own right, so they're
   // read up here with the other two: the "does this member have anything" test
@@ -205,6 +215,35 @@ export default async function handler(req: Request): Promise<Response> {
   const changeAbs = series.length > 1 ? value - series[0] : 0;
   const changePct = series.length > 1 && series[0] ? Math.round((changeAbs / series[0]) * 1000) / 10 : 0;
 
+  // ── Sync state ───────────────────────────────────────────────────────────
+  //
+  // How current the data is, and what is broken, answered on a plain page load
+  // with no Plaid call. This is what lets refresh stop being a button: the
+  // client fires a background sync only when `syncedAt` is past its threshold,
+  // rather than on every mount or whenever a member happens to press something.
+  //
+  // The freshness of the WHOLE dashboard is the freshness of its STALEST
+  // connection, not its newest. Taking the newest would report a dashboard as
+  // current when eleven of twelve banks last answered a week ago, which is the
+  // flattering direction and the wrong one. A connection that has never synced
+  // (null) makes the whole thing stale, since that is exactly the case a first
+  // background sync exists to fix.
+  const syncable = items.filter((it) => it.last_synced_at !== undefined);
+  const stalest = syncable.reduce<string | null | undefined>((acc, it) => {
+    if (acc === null) return null;
+    const v = it.last_synced_at ?? null;
+    if (v === null) return null;
+    return acc === undefined || v < acc ? v : acc;
+  }, undefined);
+
+  // Only connections a member can actually do something about. A transient
+  // Plaid failure is never recorded (see api/_item-sync-state.ts), so anything
+  // here needs relinking, which is a thing a person can do and a refresh button
+  // never could.
+  const needsRelink = items
+    .filter((it) => !!it.last_error_code)
+    .map((it) => ({ institution: it.institution_name || "A connection", since: it.last_error_at ?? null }));
+
   // Juniper Score, computed from the same data, with trend + delta from the
   // stored history (written by /api/score/compute). Shares one engine so the
   // dashboard strip, the breakdown page, and the writer never disagree.
@@ -231,6 +270,22 @@ export default async function handler(req: Request): Promise<Response> {
   // member gave us in onboarding.
   return json({
     linked: true,
+    sync: {
+      // null means "not known yet", which the client treats as stale. undefined
+      // would mean migration 0017 is not applied, and there the client shows
+      // nothing rather than claiming the data is old.
+      syncedAt: stalest === undefined ? null : stalest,
+      // Whether the server knows how to answer at all, so the client can tell
+      // "never synced" from "this deploy cannot tell you".
+      tracked: syncable.length > 0,
+      connections: items.length,
+      needsRelink,
+      // Server-side admin check, so the allowlist never reaches the bundle. The
+      // manual refresh control is gated on this (or on a dev build); the sync
+      // endpoints themselves are unchanged and still open to any signed-in
+      // caller, because this gates a control, not a capability.
+      canForceSync: isAdminEmail(payload.email),
+    },
     // Explicit so the client gates its transaction-dependent cards on a real
     // signal rather than inferring one from "a live payload arrived", which is
     // now true for members who only have balances.

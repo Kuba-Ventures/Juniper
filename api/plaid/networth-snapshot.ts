@@ -12,6 +12,7 @@ import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch, sanitizeAccounts } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
+import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
 import { fetchManualAccounts, sumManualAccounts } from "../_manual-accounts";
 
 export const config = { runtime: "edge" };
@@ -50,11 +51,6 @@ type BalanceAccount = {
 };
 type BalanceResp = { accounts?: BalanceAccount[]; error_message?: string; error_code?: string };
 
-// Plaid codes that mean the connection itself is finished: the token will never
-// work again, so the member has to link that institution afresh. Worth telling
-// apart from a transient failure, which retrying does fix. Reported, not acted
-// on: there is no re-link flow yet.
-const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"]);
 type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
 const DEBT_TYPES = new Set(["credit", "loan"]);
@@ -127,6 +123,9 @@ export default async function handler(req: Request): Promise<Response> {
       console.error(
         `[plaid] accounts/balance/get failed (${bal.status}) for item ${item.item_id}: ${code || "unknown"} ${bal.data.error_message || ""}`.trim(),
       );
+      // Recorded so a later page load can name this connection without calling
+      // Plaid again. Only dead-item codes are stored, see _item-sync-state.ts.
+      if (isDeadItemCode(code)) await markItemDead(item.item_id, code!);
       return {
         assets: 0,
         debts: 0,
@@ -134,7 +133,7 @@ export default async function handler(req: Request): Promise<Response> {
           item_id: item.item_id,
           error_code: code,
           error_message: bal.data.error_message ?? null,
-          needs_relink: !!code && DEAD_ITEM_CODES.has(code),
+          needs_relink: isDeadItemCode(code),
         } as ItemFailure,
       };
     }
@@ -151,6 +150,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ accounts: sanitizeAccounts(accts), updated_at: new Date().toISOString() }),
     });
+    await markItemSynced(item.item_id);
     return { assets: a, debts: d, failure: null };
   };
 

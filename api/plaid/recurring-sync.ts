@@ -20,6 +20,11 @@ import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
+// Deliberately no markItemSynced here. Freshness means "your balances and
+// transactions are current", which is what the snapshot and transactions legs
+// deliver. A recurring detection run succeeding says nothing about either, so
+// stamping last_synced_at from here would report data as fresher than it is.
+import { isDeadItemCode, markItemDead } from "../_item-sync-state";
 import { categorize } from "../_categorize";
 
 export const config = { runtime: "edge" };
@@ -35,7 +40,6 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"]);
 type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
 // Six at a time, matching networth-snapshot.ts: enough to clear a dozen
@@ -122,13 +126,14 @@ export default async function handler(req: Request): Promise<Response> {
       console.error(
         `[plaid] transactions/recurring/get failed (${r.status}) for item ${item.item_id}: ${code || "unknown"} ${r.data.error_message || ""}`.trim(),
       );
+      if (isDeadItemCode(code)) await markItemDead(item.item_id, code!);
       return {
         rows: [],
         failure: {
           item_id: item.item_id,
           error_code: code,
           error_message: r.data.error_message ?? null,
-          needs_relink: !!code && DEAD_ITEM_CODES.has(code),
+          needs_relink: isDeadItemCode(code),
         },
       };
     }
