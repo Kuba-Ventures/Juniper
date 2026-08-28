@@ -10,10 +10,11 @@
 // The access_token is read server-side only (service-role) and never leaves here.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
-import { plaidConfigured, plaidFetch, sanitizeAccounts } from "../_plaid";
+import { plaidConfigured, plaidFetch, sanitizeAccounts, PLAID_TIMEOUT_CODE } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
 import { fetchManualAccounts, sumManualAccounts } from "../_manual-accounts";
+import { mapPool } from "../_pool";
 
 export const config = { runtime: "edge" };
 
@@ -113,8 +114,12 @@ export default async function handler(req: Request): Promise<Response> {
   // One item's balance refresh: a Plaid call, then the stored-snapshot write.
   // Returns rather than mutating, so the batching below can run several at once
   // without two items racing on the same totals.
-  const refreshItem = async (item: { item_id: string; access_token: string }) => {
-    const bal = await plaidFetch<BalanceResp>("/accounts/balance/get", { access_token: item.access_token });
+  const refreshItem = async (item: { item_id: string; access_token: string }, timeoutMs: number) => {
+    const bal = await plaidFetch<BalanceResp>(
+      "/accounts/balance/get",
+      { access_token: item.access_token },
+      { timeoutMs },
+    );
     if (!bal.ok) {
       const code = bal.data.error_code ?? null;
       // Logged as well as returned, matching link-token.ts: error_code and
@@ -154,29 +159,64 @@ export default async function handler(req: Request): Promise<Response> {
     return { assets: a, debts: d, failure: null };
   };
 
-  // Items are refreshed in parallel batches rather than one after another. This
-  // was a serial loop, which is fine at three connections and fatal at twelve: a
-  // Plaid balance call plus a Supabase write is a second or two, and an edge
-  // function is killed if it has not returned an initial response within 25
-  // seconds. A member with twelve institutions hit that ceiling, so the whole
-  // refresh 504'd, no trend point was written for the day, and the legs that run
-  // after this one in syncFinances were left waiting on a function already dead.
+  // Items are refreshed several at a time rather than one after another, because
+  // a Plaid balance call plus a Supabase write is a second or two at best and an
+  // edge function is killed if it has not returned an initial response within 25
+  // seconds. A member with twelve institutions hit that ceiling on a serial
+  // loop: the whole refresh 504'd, no trend point was written for the day, and
+  // the legs that run after this one in syncFinances were left waiting on a
+  // function already dead.
   //
   // Bounded rather than unbounded: the Item cap on this tier is 200, and firing
-  // 200 concurrent balance calls would trade a timeout for a rate limit. Six at
-  // a time clears twelve institutions in two rounds.
+  // 200 concurrent balance calls would trade a timeout for a rate limit.
   const CONCURRENCY = 6;
-  for (let i = 0; i < items.length; i += CONCURRENCY) {
-    const batch = await Promise.all(items.slice(i, i + CONCURRENCY).map(refreshItem));
-    for (const r of batch) {
-      if (r.failure) {
-        failures.push(r.failure);
-        continue;
-      }
-      assets += r.assets;
-      debts += r.debts;
-      refreshed++;
+
+  // Six at a time was first written as rounds: six items, wait for all six, then
+  // the next six. That is a barrier, and a barrier is only as fast as its
+  // slowest member, so one institution taking twenty seconds to answer held five
+  // finished calls and six unstarted ones behind it, and the ceiling was reached
+  // again with eleven healthy connections having done nothing. mapPool keeps the
+  // same six-at-a-time limit without the barrier: a slow bank occupies one
+  // worker and the other five keep going.
+  //
+  // The deadline is the other half of it. Being killed at 25 seconds means no
+  // response at all, which throws away the per-item snapshots that DID refresh
+  // and leaves the legs running after this one in syncFinances waiting on a dead
+  // function. Stopping at 18 gives a real answer about what resolved, and a
+  // connection that did not is already handled: the day's trend point is skipped
+  // rather than written from partial totals.
+  const DEADLINE_MS = 18_000;
+  const PER_ITEM_MS = 9_000;
+  const startedAt = Date.now();
+
+  const results = await mapPool(items, CONCURRENCY, async (item) => {
+    const budget = Math.min(PER_ITEM_MS, DEADLINE_MS - (Date.now() - startedAt));
+    if (budget <= 0) {
+      // Never reached, rather than tried and refused. Named as such, because
+      // "we ran out of time" and "your bank said no" are different facts, and
+      // the failures list is what a later page load reads to explain itself.
+      return {
+        assets: 0,
+        debts: 0,
+        failure: {
+          item_id: item.item_id,
+          error_code: PLAID_TIMEOUT_CODE,
+          error_message: "Ran out of time before this connection was refreshed",
+          needs_relink: false,
+        } as ItemFailure,
+      };
     }
+    return refreshItem(item, budget);
+  });
+
+  for (const r of results) {
+    if (r.failure) {
+      failures.push(r.failure);
+      continue;
+    }
+    assets += r.assets;
+    debts += r.debts;
+    refreshed++;
   }
 
   // The only non-200 path: nothing at all resolved, so there is no snapshot to
