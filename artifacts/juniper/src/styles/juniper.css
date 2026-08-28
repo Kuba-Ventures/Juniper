@@ -41,6 +41,8 @@
    The .appbar-ws and ws-* rules below are kept for whoever restores it. */
 .jnpr .appbar-in{max-width:1160px;margin:0 auto;padding:10px 22px 11px;display:flex;flex-direction:column;gap:9px}
 .jnpr .appbar-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px}
+.jnpr .appbar-top.with-ws{grid-template-columns:1fr auto 1fr}
+.jnpr .appbar-top.with-ws > .appbar-acct{justify-self:end}
 .jnpr .appbar-top > .brand{justify-self:start}
 .jnpr .appbar-ws{display:flex;justify-content:center;min-width:0}
 .jnpr .appbar-acct{display:flex;align-items:center;gap:12px;justify-self:end}
@@ -491,7 +493,10 @@
 
 /* ============ partner / shared workspace (Stage 7) ============ */
 /* workspace switcher */
+.jnpr .shared-nav{justify-content:flex-start;margin:-6px 0 16px}
 .jnpr .ws-wrap{position:relative}
+.jnpr .ws-menu{top:calc(100% + 8px);left:50%;transform:translateX(-50%);min-width:230px}
+.jnpr .ws-menu .pop-i{display:flex;align-items:center;gap:9px}
 .jnpr .ws-pill{display:inline-flex;align-items:center;gap:7px;background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;padding:5px 10px 5px 6px;font-size:12.5px;font-weight:650;color:var(--jnpr-ink);cursor:pointer;font-family:inherit;box-shadow:var(--jnpr-shadow);white-space:nowrap}
 .jnpr .ws-pill.on{background:var(--jnpr-accent-soft);border-color:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
 .jnpr .ws-pill .caret{width:9px;height:6px;color:var(--jnpr-ink-3)}

@@ -3,6 +3,7 @@ import { Route, Switch } from "wouter";
 import { useSession } from "@/lib/use-session";
 import { useProfile } from "@/lib/use-profile";
 import { FinancesProvider } from "@/lib/finances";
+import { WorkspaceProvider } from "@/lib/workspace";
 import { AppBar } from "@/components/juniper/app-frame";
 import { FirstRunOnboarding } from "@/components/onboarding/first-run-onboarding";
 import { isOnboarded, markOnboarded, shouldShowOnboarding, takeOnboardingReplay, type UserProfile } from "@/lib/profile";
@@ -14,6 +15,8 @@ import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
 import Ask from "@/pages/app/ask";
 import { ConnectionsView } from "@/pages/connections";
+import { SharedOverview } from "@/pages/app/shared/overview";
+import { SharedGoals } from "@/pages/app/shared/goals";
 import "@/styles/juniper.css";
 
 // Two surfaces are deliberately absent from this Switch (Stage 4c). Only the
@@ -30,11 +33,10 @@ import "@/styles/juniper.css";
 // What has to be true before either is routed again is written where the code
 // is: recommended.tsx's header for the marketplace, and
 // components/juniper/shared-frame.tsx's header for all six shared pages.
-// Restoring is re-adding the import and the <Route>, plus, for the shared
-// workspace, re-wrapping this tree in WorkspaceProvider. That provider is
-// removed here because with the switcher gone nothing consumed it, and leaving
-// it mounted kept writing jnpr.workspace.v1 and polling /api/partner on every
-// app load for a surface no one can reach.
+// Stage 4d restored the shared half of that: WorkspaceProvider is mounted again
+// and /app/shared plus /app/shared/goals are routed, because those two can now
+// show the member's own data and say so plainly when there is none. The other
+// four shared pages and the marketplace stay exactly as described above.
 
 const welcomedKey = (email: string) => `juniper_welcomed_${email}`;
 function isWelcomed(email: string): boolean {
@@ -112,6 +114,7 @@ export default function JuniperApp() {
 
   return (
     <FinancesProvider profile={profile}>
+      <WorkspaceProvider>
       <div className="jnpr">
         <AppBar name={displayName} email={email} />
         <Switch>
@@ -138,6 +141,14 @@ export default function JuniperApp() {
           <Route path="/app/ask" component={Ask} />
           <Route path="/app/credit" component={Credit} />
           <Route path="/app/connections" component={ConnectionsView} />
+          {/* Stage 4d: two of the six shared surfaces are routed again, the two
+              that can show the member's own real data or an honest empty state.
+              Accounts, Bills, Activity and Sharing stay unrouted under the
+              conditions in components/juniper/shared-frame.tsx. Both of these
+              handle "no partnership yet" themselves rather than being hidden,
+              so a typed URL lands somewhere that explains itself. */}
+          <Route path="/app/shared" component={SharedOverview} />
+          <Route path="/app/shared/goals" component={SharedGoals} />
           <Route>
             <div className="frame">
               <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 40 }}>Page not found.</div>
@@ -145,6 +156,7 @@ export default function JuniperApp() {
           </Route>
         </Switch>
       </div>
+      </WorkspaceProvider>
     </FinancesProvider>
   );
 }
