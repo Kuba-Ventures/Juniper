@@ -374,6 +374,38 @@
 .jnpr .partner-panel .btn{flex:0 0 auto}
 
 /* ---------- score trend mini-chart ---------- */
+/* ---------- Score page: one rail per factor ----------
+   Replaced a row of 0-100 sub-score bars. Those were the same shape for every
+   factor and reported our scoring model back to the member; these show what they
+   have against the target derived from their own income and spending, with the
+   target as a notch rather than the end of the rail so beating it is drawable.
+   See FactorRail in pages/app/score.tsx. */
+.jnpr .fg-row{padding:14px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .fg-row:first-child{border-top:0}
+.jnpr .fg-top{display:flex;align-items:baseline;gap:9px}
+.jnpr .fg-lab{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .fg-w{flex:1;font-size:11.5px;font-weight:550;color:var(--jnpr-ink-3)}
+.jnpr .fg-sc{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.jnpr .fg{margin-top:9px}
+.jnpr .fg-rail{position:relative;height:7px;border-radius:20px;background:var(--jnpr-surface-3)}
+.jnpr .fg-rail i{display:block;position:relative;z-index:1;height:100%;border-radius:20px;transition:width .35s ease}
+.jnpr .fg-tick{position:absolute;top:-4px;width:2px;height:15px;background:var(--jnpr-ink-2);border-radius:2px;z-index:2}
+/* Debt is the one factor where less is better, so the stretch past the notch is
+   the side to stay off. Without this an excellent $46 balance draws as an almost
+   empty rail, which reads as failure. */
+.jnpr .fg-rail.inv .fg-over{position:absolute;right:0;top:0;bottom:0;border-radius:0 20px 20px 0;
+  background:var(--jnpr-bad-soft);border-left:1px solid var(--jnpr-line)}
+.jnpr .fg-ends{display:flex;align-items:baseline;gap:6px;margin-top:7px;flex-wrap:wrap}
+.jnpr .fg-now{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.jnpr .fg-tgt{font-size:13px;font-weight:650;color:var(--jnpr-ink-2);margin-left:auto}
+.jnpr .fg-u{font-size:11px;color:var(--jnpr-ink-3)}
+.jnpr .fg-detail{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:7px}
+.jnpr .fg-headroom{font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600}
+.jnpr .fg-headroom b{color:var(--jnpr-accent);font-size:13.5px}
+@media(max-width:520px){
+  /* The target figure drops under the current one rather than crushing both. */
+  .jnpr .fg-tgt{margin-left:0;flex-basis:100%;margin-top:3px}
+}
 .jnpr .score-trend{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px 16px 12px}
 .jnpr .score-trend .st-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .jnpr .score-trend .st-head .delta{font-size:12px}

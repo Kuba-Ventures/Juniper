@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
-import type { FactorKey, ScoreFactor, ScoreImprovement } from "@/lib/mock-data";
+import { money, type FactorKey, type ScoreFactor, type ScoreGauge, type ScoreImprovement } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
 import { MiniRing, PlanSpark, PlanIcon, cssVar } from "@/components/juniper/primitives";
 import {
@@ -18,11 +18,14 @@ const UpArrow = () => (
   <svg viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
-// factor status -> the credit page's colored chip classes (green / amber / red).
-const chip: Record<ScoreFactor["status"], { cls: string; label: string; bar: string }> = {
-  strong: { cls: "exc", label: "Strong", bar: "var(--jnpr-good)" },
-  fair: { cls: "fair", label: "Fair", bar: "var(--jnpr-warn)" },
-  weak: { cls: "fair", label: "Needs work", bar: "var(--jnpr-bad)" },
+// Factor status -> its color. The Strong / Fair / Needs work chip that used to
+// sit beside each factor is gone with the sub-score bar: the rail's own fill
+// against the target notch says the same thing, and the chip was a third
+// restatement of it next to the number and the bar.
+const STATUS_COLOR: Record<ScoreFactor["status"], string> = {
+  strong: "var(--jnpr-good)",
+  fair: "var(--jnpr-warn)",
+  weak: "var(--jnpr-bad)",
 };
 
 /* ------------------------------------------------------------------ *
@@ -124,22 +127,69 @@ function planForFactor(factor: FactorKey, plans: Plan[]): Plan | null {
   );
 }
 
+// Where the target notch sits along the rail, as a percentage of its width. Not
+// at 100%: a member past their target has to have somewhere to be drawn, and a
+// rail that ends at the target can only ever say "done", never "well past it".
+const TARGET_AT = 68;
+// How far beyond the target the rail keeps scaling before it just saturates.
+// 1.45x the target fills the remaining 32%, so 2.4x annual income invested and
+// 1.1x both read as clearly past the notch without one squashing the other.
+const OVERSHOOT = 1.45;
+
+const fmtGauge = (n: number, unit: ScoreGauge["unit"]) =>
+  unit === "percent" ? `${Math.round(n)}%` : money(Math.round(n));
+
+// One factor's rail: fill is where they are, the notch is the target computed
+// from their own income and spending, and for debt the far side is shaded
+// because less is better there.
+//
+// Replaced a 0-100 sub-score bar. That bar was the same shape for every factor
+// and said nothing a member could act on: it reported our scoring model back to
+// them. This says "you have $1,625 in cash, six months of your spending is
+// $5,604", which is the same information the score is built from, in units they
+// recognize.
+function FactorRail({ gauge, weak }: { gauge: ScoreGauge; weak: boolean }) {
+  const ratio = gauge.target > 0 ? Math.max(0, gauge.now) / gauge.target : 0;
+  const fill = Math.min(ratio, OVERSHOOT) * TARGET_AT;
+  const good = gauge.invert ? ratio <= 1 : ratio >= 1;
+  const color = weak ? STATUS_COLOR.weak : good ? STATUS_COLOR.strong : STATUS_COLOR.fair;
+  return (
+    <div className="fg">
+      <div className={gauge.invert ? "fg-rail inv" : "fg-rail"}>
+        {gauge.invert && <span className="fg-over" style={{ left: `${TARGET_AT}%` }} />}
+        <i style={{ width: `${fill.toFixed(1)}%`, background: color }} />
+        <span className="fg-tick" style={{ left: `${TARGET_AT}%` }} />
+      </div>
+      <div className="fg-ends">
+        <span className="fg-now tnum" style={{ color }}>{fmtGauge(gauge.now, gauge.unit)}</span>
+        <span className="fg-u">{gauge.nowNote}</span>
+        <span className="fg-tgt tnum">{fmtGauge(gauge.target, gauge.unit)}</span>
+        <span className="fg-u">{gauge.targetNote}</span>
+      </div>
+    </div>
+  );
+}
+
 function Factors({ items }: { items: ScoreFactor[] }) {
   return (
     <div>
-      {items.map((f) => {
-        const c = chip[f.status];
-        return (
-          <div className="bud" key={f.key}>
-            <div className="t">
-              <span>{f.label} <span style={{ color: "var(--jnpr-ink-3)", fontWeight: 550 }}>· {Math.round(f.weight * 100)}% of score</span></span>
-              <span className={`cr ${c.cls}`} style={f.status === "weak" ? { color: "var(--jnpr-bad)", background: "var(--jnpr-bad-soft)" } : undefined}>{c.label}</span>
-            </div>
-            <div className="bar"><i style={{ width: `${f.score}%`, background: c.bar }} /></div>
-            <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", marginTop: 6 }}>{f.detail}</div>
+      {items.map((f) => (
+        <div className="fg-row" key={f.key}>
+          <div className="fg-top">
+            <span className="fg-lab">{f.label}</span>
+            <span className="fg-w">{Math.round(f.weight * 100)}% of score</span>
+            <span className="fg-sc tnum" style={{ color: STATUS_COLOR[f.status] }}>{f.score}</span>
           </div>
-        );
-      })}
+          {f.gauge ? (
+            <FactorRail gauge={f.gauge} weak={f.status === "weak"} />
+          ) : (
+            // No target to draw against, so the sentence carries the row on its
+            // own rather than a rail with an invented scale. Today this is only
+            // the credit factor on a member whose score came from a bureau.
+            <div className="fg-detail">{f.detail}</div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -192,6 +242,10 @@ function Improvements({ items }: { items: ScoreImprovement[] }) {
 export function Score() {
   const { data } = useFinances();
   const score = data.score;
+  // Points still on the table, the same figure the Ways to improve column ranks
+  // by, totalled once so the factor list opens with the size of the opportunity
+  // instead of leaving it to be added up row by row.
+  const headroom = score.improvements.reduce((a, im) => a + im.potentialPts, 0);
   return (
     <div className="frame">
       <PageHeader
@@ -236,7 +290,12 @@ export function Score() {
 
       <div className="grid two">
         <div className="card">
-          <div className="card-head"><h3>What goes into it</h3></div>
+          <div className="card-head">
+            <h3>What goes into it</h3>
+            {headroom > 0 && (
+              <span className="fg-headroom"><b className="tnum">+{headroom}</b> available</span>
+            )}
+          </div>
           <Factors items={score.factors} />
         </div>
         <div className="card">
