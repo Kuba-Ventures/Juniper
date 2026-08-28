@@ -210,6 +210,28 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
 
   useEffect(() => { void load(); }, [load]);
 
+  // Mount was the only trigger, so a dashboard left open all afternoon kept
+  // showing the figures it loaded at breakfast. Coming back to the tab is the
+  // moment a member looks at it again, so it is the moment to re-check.
+  //
+  // This re-reads /api/finances, it does not sync: the server's own freshness
+  // answer comes back with it and isStale() decides, exactly as on mount, so a
+  // tab returned to twice in an hour still syncs at most once every six.
+  useEffect(() => {
+    let lastCheck = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // Flicking between tabs is not a request for data. A minute is enough to
+      // collapse that into one read, and is nothing beside the six hour window
+      // the staleness check itself works in.
+      if (Date.now() - lastCheck < 60_000) return;
+      lastCheck = Date.now();
+      void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [load]);
+
   // Resolved at render, not on arrival, so a profile that loads late still ends
   // up underneath the live payload instead of being missed by it.
   const value = useMemo<FinancesValue>(() => {
