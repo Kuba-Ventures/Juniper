@@ -75,8 +75,15 @@ export default async function handler(req: Request): Promise<Response> {
   if (!token) return json({ error: "Unauthorized" }, 401);
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
-  const userId = payload.sub;
+  return runNetworthSnapshot(payload.sub);
+}
 
+// The work, with the caller already established. Split out so the daily cron
+// can run it for a member who is not there to authenticate: the sync endpoints
+// are JWT scoped, and a cron holds no member's JWT. The split is where the
+// request stops mattering, which is the moment the user id is known, so both
+// callers run byte for byte the same code below.
+export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // Load the caller's linked items (server-only: access_token).
   const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token`);
   if (!itemsRes.ok) {
