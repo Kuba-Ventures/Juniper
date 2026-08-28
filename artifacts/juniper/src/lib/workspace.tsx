@@ -28,10 +28,22 @@ export interface PartnerState {
   connected: boolean;
 }
 
+// What the shared space actually holds. The top bar's shared tabs are derived
+// from this rather than declared, so a tab never appears over an empty surface.
+// It lives on the context, not in a usePartner() of its own, because the app bar
+// and the shared page both need it and usePartner is a plain hook: two calls
+// would hold two copies, and sharing an account would grow one nav and not the
+// other.
+export interface SharedHolds {
+  accounts: boolean;
+  goals: boolean;
+}
+
 interface WorkspaceCtx {
   workspace: Workspace;
   setWorkspace: (w: Workspace) => void;
   partner: PartnerState;
+  holds: SharedHolds;
   // False until /api/partner has answered once, so the switcher can stay quiet
   // rather than flashing "Just you" at somebody who has a partner.
   ready: boolean;
@@ -55,6 +67,7 @@ const Ctx = createContext<WorkspaceCtx | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspaceState] = useState<Workspace>(loadWorkspace);
   const [partner, setPartner] = useState<PartnerState>({ name: "", connected: false });
+  const [holds, setHolds] = useState<SharedHolds>({ accounts: false, goals: false });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -77,6 +90,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     void fetchPartner().then((d) => {
       if (!alive) return;
       setPartner({ name: d?.partner?.name || "", connected: !!d?.connected });
+      // A private account never reaches the client at all, so anything here
+      // with a scope is something one of the two chose to share.
+      setHolds({
+        accounts: (d?.accounts ?? []).some((a) => a.scope !== "private"),
+        goals: (d?.goals ?? []).length > 0,
+      });
       setReady(true);
     });
     return () => { alive = false; };
@@ -92,8 +111,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [partner.connected]);
 
   const value = useMemo(
-    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, ready, refresh: sync }),
-    [workspace, partner, setWorkspace, ready, sync],
+    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, holds, ready, refresh: sync }),
+    [workspace, partner, holds, setWorkspace, ready, sync],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
