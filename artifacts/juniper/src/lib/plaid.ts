@@ -278,6 +278,12 @@ export async function syncFinances(): Promise<SyncResult> {
   // fewer rows until this lands, which is the right behaviour for a detector
   // that needs a few months of history before it can say anything at all.
   void postOk("/api/plaid/recurring-sync");
+  // Merchant art for charges stored before that art existed. /transactions/sync
+  // never revisits a stored row, so without this a member who synced before
+  // #178 sees monograms until every one of their merchants happens to charge
+  // them again. Safe to fire on every refresh: it asks the database what is
+  // missing first and returns without calling Plaid when nothing is.
+  void postOk("/api/plaid/merchant-art-backfill");
   const score = await postOk("/api/score/compute");
   const failures = [...txn.failures, ...snapshot.failures];
   const needsRelink = [

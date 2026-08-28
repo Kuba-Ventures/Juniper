@@ -26,6 +26,7 @@ import { plaidConfigured } from "../_plaid";
 import { runTransactionsSync } from "../plaid/transactions-sync";
 import { runNetworthSnapshot } from "../plaid/networth-snapshot";
 import { runScoreCompute } from "../score/compute";
+import { runMerchantArtBackfill } from "../plaid/merchant-art-backfill";
 
 export const config = { runtime: "edge" };
 
@@ -109,7 +110,7 @@ export default async function handler(req: Request): Promise<Response> {
     .sort((a, b) => a[1] - b[1])
     .map(([userId]) => userId);
 
-  const results: { user_id: string; transactions: number; networth: number; score: number }[] = [];
+  const results: { user_id: string; transactions: number; networth: number; score: number; merchant_art: number }[] = [];
   let skipped = 0;
 
   for (const userId of due) {
@@ -120,11 +121,15 @@ export default async function handler(req: Request): Promise<Response> {
     const transactions = await runTransactionsSync(userId);
     const networth = await runNetworthSnapshot(userId);
     const score = await runScoreCompute(userId);
+    // Last, and cheap: it returns without calling Plaid once a member's
+    // merchants are cached, so on a steady state this costs two indexed reads.
+    const art = await runMerchantArtBackfill(userId);
     results.push({
       user_id: userId,
       transactions: transactions.status,
       networth: networth.status,
       score: score.status,
+      merchant_art: art.status,
     });
   }
 
