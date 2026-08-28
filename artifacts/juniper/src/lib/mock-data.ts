@@ -94,7 +94,18 @@ export const accounts: { cash: Account[]; invest: Account[]; debt: Account[] } =
 
 export type FactorKey = "savings" | "emergency" | "debt" | "investing" | "credit";
 export type FactorStatus = "strong" | "fair" | "weak";
-export interface ScoreFactor { key: FactorKey; label: string; score: number; weight: number; status: FactorStatus; detail: string }
+// Mirrors FactorGauge in lib/score.ts and api/_score.ts. Declared here too
+// because this file is what types the payload the Score page reads, and the page
+// needs the field to draw each factor's rail.
+export interface ScoreGauge {
+  now: number;
+  target: number;
+  unit: "money" | "percent";
+  nowNote: string;
+  targetNote: string;
+  invert: boolean;
+}
+export interface ScoreFactor { key: FactorKey; label: string; score: number; weight: number; status: FactorStatus; detail: string; gauge: ScoreGauge | null }
 // No `planIcon`. The engines used to stamp each improvement with a demo plan's
 // icon name so the Score page could look that plan up; the page matches the
 // member's own plans on `factor` now, so the field went with the seeds it keyed
@@ -117,11 +128,15 @@ export const score: Score = {
   lever: "build your emergency fund",
   trend: [68, 70, 71, 73, 74, 75, 74, 78],
   factors: [
-    { key: "savings", label: "Savings rate", score: 82, weight: 0.25, status: "strong", detail: "You're saving about 22% of your income, great pace." },
-    { key: "emergency", label: "Emergency fund", score: 58, weight: 0.25, status: "fair", detail: "3.5 months of expenses saved, target is 6 months." },
-    { key: "debt", label: "Debt load", score: 71, weight: 0.20, status: "fair", detail: "Your debt is about 0.9× your annual income, moderate." },
-    { key: "investing", label: "Investing pace", score: 74, weight: 0.15, status: "fair", detail: "You've invested about 0.7× your annual income, keep contributing." },
-    { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726, good." },
+    { key: "savings", label: "Savings rate", score: 82, weight: 0.25, status: "strong", detail: "You're saving about 22% of your income, great pace.",
+      gauge: { now: 2300, target: 1648, unit: "money", nowNote: "saved a month", targetNote: "target", invert: false } },
+    { key: "emergency", label: "Emergency fund", score: 58, weight: 0.25, status: "fair", detail: "3.5 months of expenses saved, target is 6 months.",
+      gauge: { now: 20790, target: 35640, unit: "money", nowNote: "in cash", targetNote: "six months of spending", invert: false } },
+    { key: "debt", label: "Debt load", score: 71, weight: 0.20, status: "fair", detail: "Your debt is about 0.9× your annual income, moderate.",
+      gauge: { now: 88992, target: 29664, unit: "money", nowNote: "owed", targetNote: "ceiling, stay under", invert: true } },
+    { key: "investing", label: "Investing pace", score: 74, weight: 0.15, status: "fair", detail: "You've invested about 0.7× your annual income, keep contributing.",
+      gauge: { now: 69216, target: 98880, unit: "money", nowNote: "invested", targetNote: "one year of income", invert: false } },
+    { key: "credit", label: "Credit health", score: 88, weight: 0.15, status: "strong", detail: "Credit score 726, good.", gauge: null },
   ],
   improvements: [
     { factor: "emergency", title: "Build your emergency fund", detail: "Aim for 6 months of expenses in an accessible high-yield account.", potentialPts: 11 },

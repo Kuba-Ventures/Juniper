@@ -23,6 +23,33 @@ export interface ScoreInput {
   creditUtilization?: number; // 0–1 revolving utilization, if known
 }
 
+// What the member has against what would score full marks, for one factor. The
+// engine owns this rather than the page because every target here is derived
+// from the member's own income and spending, and the derivation belongs next to
+// the formula it comes from: 20% of income, six months of spending, 0.3x annual
+// income, one year of income. A page that recomputed them would be a second
+// definition of the same thresholds, free to drift.
+//
+// `null` on a factor whose target cannot be stated: with no income there is no
+// savings target, and with no credit data there is nothing to compare limits to.
+export interface FactorGauge {
+  /** The member's own figure, in `unit`. */
+  now: number;
+  /** The figure that scores 100, same unit. */
+  target: number;
+  unit: "money" | "percent";
+  /** Two or three words under each end of the rail. */
+  nowNote: string;
+  targetNote: string;
+  /**
+   * True when less is better, which is only debt today. The rail shades the
+   * far side rather than filling toward it, because a $46 balance against an
+   * $8,935 ceiling is excellent and would otherwise draw as an empty bar, which
+   * reads as failure.
+   */
+  invert: boolean;
+}
+
 export type FactorKey = "savings" | "emergency" | "debt" | "investing" | "credit";
 export type FactorStatus = "strong" | "fair" | "weak";
 
@@ -33,6 +60,8 @@ export interface Factor {
   weight: number;  // contribution weight (weights sum to 1)
   status: FactorStatus;
   detail: string;  // human-readable "where you stand"
+  /** Where they are against their own target, for the rail on the Score page. */
+  gauge: FactorGauge | null;
 }
 
 export interface Improvement {
@@ -84,6 +113,17 @@ export function bandOf(value: number): Band {
   return "At risk";
 }
 
+// ── Gauges: the member's figure against their own target ─────────────────────
+
+const gauge = (
+  now: number,
+  target: number,
+  nowNote: string,
+  targetNote: string,
+  unit: FactorGauge["unit"] = "money",
+  invert = false,
+): FactorGauge | null => (target > 0 ? { now, target, unit, nowNote, targetNote, invert } : null);
+
 // ── Per-factor sub-scores (each 0–100) ───────────────────────────────────────
 
 // Savings rate = (income − spending) / income. 20%+ saved → full marks.
@@ -95,6 +135,7 @@ function savingsFactor(i: ScoreInput): Factor {
   return {
     key: "savings", label: "Savings rate", score: round(score), weight: WEIGHTS.savings,
     status: statusOf(score),
+    gauge: gauge(inc - i.monthlySpending, inc * 0.2, "saved a month", "target"),
     detail: inc > 0
       ? `You're saving about ${pct}% of your income${pct >= 20 ? ", great pace" : pct >= 0 ? ", aim for 20%" : ", you're spending more than you earn"}.`
       : "Link income to measure your savings rate.",
@@ -108,6 +149,7 @@ function emergencyFactor(i: ScoreInput): Factor {
   return {
     key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
     status: statusOf(score),
+    gauge: gauge(i.cashReserves, i.monthlySpending * 6, "in cash", "six months of spending"),
     detail: i.monthlySpending > 0
       ? `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`
       : "Link spending to size your emergency fund.",
@@ -120,13 +162,20 @@ function emergencyFactor(i: ScoreInput): Factor {
 function debtFactor(i: ScoreInput): Factor {
   const annualIncome = Math.max(i.monthlyIncome * 12, 0);
   if (i.totalDebt <= 0) {
-    return { key: "debt", label: "Debt load", score: 100, weight: WEIGHTS.debt, status: "strong", detail: "No tracked debt, excellent." };
+    return {
+      key: "debt", label: "Debt load", score: 100, weight: WEIGHTS.debt, status: "strong",
+      detail: "No tracked debt, excellent.",
+      gauge: gauge(0, annualIncome * 0.3, "owed", "ceiling, stay under", "money", true),
+    };
   }
   const dti = annualIncome > 0 ? i.totalDebt / annualIncome : 2;
   const score = clamp(((2.0 - dti) / (2.0 - 0.3)) * 100);
   return {
     key: "debt", label: "Debt load", score: round(score), weight: WEIGHTS.debt,
     status: statusOf(score),
+    // Full marks at 0.3x annual income or less, so that is the ceiling, and this
+    // is the one gauge where the target is a limit rather than a goal.
+    gauge: gauge(i.totalDebt, annualIncome * 0.3, "owed", "ceiling, stay under", "money", true),
     detail: annualIncome > 0
       ? `Your debt is about ${dti.toFixed(1)}× your annual income${dti <= 0.3 ? ", very manageable" : dti >= 1.5 ? ", a heavy load" : ", moderate"}.`
       : "Link income to weigh your debt load.",
@@ -142,6 +191,7 @@ function investingFactor(i: ScoreInput): Factor {
   return {
     key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
     status: statusOf(score),
+    gauge: gauge(i.investmentBalance, annualIncome, "invested", "one year of income"),
     detail: annualIncome > 0
       ? `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`
       : "Link investments to track your pace.",
@@ -157,6 +207,7 @@ function creditFactor(i: ScoreInput): Factor | null {
       key: "credit", label: "Credit health", score: round(score), weight: WEIGHTS.credit,
       status: statusOf(score),
       detail: `Credit score ${Math.round(i.creditScore)}, ${i.creditScore >= 740 ? "excellent" : i.creditScore >= 670 ? "good" : "room to grow"}.`,
+      gauge: null,
     };
   }
   if (typeof i.creditUtilization === "number") {
@@ -166,6 +217,9 @@ function creditFactor(i: ScoreInput): Factor | null {
       key: "credit", label: "Credit health", score: round(score), weight: WEIGHTS.credit,
       status: statusOf(score),
       detail: `Using ${Math.round(util * 100)}% of your credit limits${util > 0.3 ? ", aim under 30%" : ", nicely under 30%"}.`,
+      // 30% is the convention the detail line already names, and utilization is
+      // the one factor measured as a percentage rather than an amount.
+      gauge: gauge(util * 100, 30, "of your limits", "keep under", "percent", true),
     };
   }
   // Nothing measured, so nothing claimed. This used to return a flat 70, which
