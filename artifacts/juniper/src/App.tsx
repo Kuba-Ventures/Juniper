@@ -13,6 +13,7 @@ import Forgot from "@/pages/auth/forgot";
 import Reset from "@/pages/auth/reset";
 import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
+import JoinPartner from "@/pages/join-partner";
 import { RequireAuth } from "@/components/auth/require-auth";
 
 const queryClient = new QueryClient();
@@ -25,11 +26,12 @@ function Router() {
       <Route path="/auth/sign-up" component={SignUp} />
       <Route path="/auth/forgot" component={Forgot} />
       <Route path="/auth/reset" component={Reset} />
-      {/* /invite/partner/:token (src/pages/join-partner.tsx) is unrouted as of
-          Stage 4c. Accepting activated the partnership and then sent the member
-          straight to /app/shared, which no longer exists, so the whole flow
-          ended on a not-found card. Nothing mints these links any more either.
-          Restore this route together with the shared workspace, not before. */}
+      {/* Routed again in Stage 4d: /app/shared exists once more, so accepting
+          now lands on the shared overview rather than a not-found card, and the
+          switcher's Invite mints these links again. */}
+      <Route path="/invite/partner/:token">
+        {(params) => <JoinPartner token={params.token} />}
+      </Route>
       <Route path="/invite/:token">
         {(params) => <InviteLanding token={params.token} />}
       </Route>

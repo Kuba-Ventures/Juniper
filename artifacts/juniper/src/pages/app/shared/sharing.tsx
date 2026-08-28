@@ -14,7 +14,7 @@ const FIELD: Record<string, keyof PartnerPrefs> = {
 const ALWAYS_ON = new Set(["goals", "joint"]);
 
 export function SharedSharing() {
-  const { partner, disconnect } = useWorkspace();
+  const { partner, refresh: refreshWorkspace } = useWorkspace();
   const { data, refresh } = usePartner();
   const name = partner.name || demoPartner.name;
   const live = data?.connected ? data : null;
@@ -41,7 +41,10 @@ export function SharedSharing() {
 
   const onDisconnect = async () => {
     if (live) await disconnectPartner();
-    disconnect();
+    // Re-read rather than flipping local state: the server decides whether a
+    // partnership exists, here as everywhere else since Stage 4d.
+    refreshWorkspace();
+    refresh();
   };
 
   return (

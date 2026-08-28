@@ -6,15 +6,19 @@
 // workspace is active + whether a partner is connected), persisted to
 // localStorage so it survives navigation.
 //
-// Stage 4c: nothing mounts this provider. The shared workspace it drove is
-// unrouted (see src/pages/juniper-app.tsx) because its pages still render a
-// seeded household. The `connect()` action went with it: it flipped
-// `partner.connected` from the client alone, on a "Preview shared space" button,
-// with no server partnership behind it, which is exactly how a member ended up
-// looking at Maya and Devin's money. Whoever restores the workspace should leave
-// it that way and let the /api/partner sync below be the only thing that can
-// connect a partner.
+// Stage 4d: mounted again, for the two shared surfaces that can show real data
+// (Overview and Goals). The rule the Stage 4c teardown left behind is kept and
+// is now the only rule here: /api/partner is the ONLY thing that can report a
+// partner. There is no connect() and no preview, because the previous version
+// flipped `partner.connected` from the client alone, on a "Preview shared space"
+// button with no server partnership behind it, which is how a member could end
+// up looking at a stranger's invented finances.
+//
+// What persists locally is which space you were last looking at, and nothing
+// else. The partner's existence and name are re-read from the server on every
+// load, so a partnership that ended elsewhere cannot survive in a stale cache.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { fetchPartner } from "@/lib/partner";
 
 export type Workspace = "personal" | "shared";
@@ -28,63 +32,68 @@ interface WorkspaceCtx {
   workspace: Workspace;
   setWorkspace: (w: Workspace) => void;
   partner: PartnerState;
-  disconnect: () => void;
+  // False until /api/partner has answered once, so the switcher can stay quiet
+  // rather than flashing "Just you" at somebody who has a partner.
+  ready: boolean;
+  refresh: () => void;
 }
 
 const KEY = "jnpr.workspace.v1";
-const DEFAULT: { workspace: Workspace; partner: PartnerState } = {
-  workspace: "personal",
-  partner: { name: "Devin", connected: false },
-};
 
-function load(): typeof DEFAULT {
+// Only the view preference is remembered. A cached partner would be a claim
+// about somebody else's account, made by this browser, with nothing behind it.
+function loadWorkspace(): Workspace {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT;
-    const p = JSON.parse(raw) as Partial<typeof DEFAULT>;
-    return {
-      workspace: p.workspace === "shared" ? "shared" : "personal",
-      partner: { name: p.partner?.name || "Devin", connected: !!p.partner?.connected },
-    };
+    return localStorage.getItem(KEY) === "shared" ? "shared" : "personal";
   } catch {
-    return DEFAULT;
+    return "personal";
   }
 }
 
 const Ctx = createContext<WorkspaceCtx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const initial = load();
-  const [workspace, setWorkspaceState] = useState<Workspace>(initial.workspace);
-  const [partner, setPartner] = useState<PartnerState>(initial.partner);
+  const [workspace, setWorkspaceState] = useState<Workspace>(loadWorkspace);
+  const [partner, setPartner] = useState<PartnerState>({ name: "", connected: false });
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify({ workspace, partner })); } catch { /* ignore */ }
-  }, [workspace, partner]);
+    try { localStorage.setItem(KEY, workspace); } catch { /* ignore */ }
+  }, [workspace]);
 
-  // Sync from the server: a real active partnership connects (and names) the
-  // partner. Only ever upgrades to connected, it won't undo a local demo preview.
+  // The route is also a way in. An accepted invite lands on /app/shared, and a
+  // member can type or bookmark it, so the switcher has to agree with the page
+  // underneath it rather than still reading "Just you" on the shared overview.
+  const [loc] = useLocation();
   useEffect(() => {
+    if (loc.startsWith("/app/shared") && partner.connected) setWorkspaceState("shared");
+  }, [loc, partner.connected]);
+
+  // The whole truth about whether a partner exists, re-read on every load.
+  // A failed read leaves `connected` false, which hides the shared space rather
+  // than showing it without data behind it.
+  const sync = useCallback(() => {
     let alive = true;
-    fetchPartner().then((d) => {
-      if (alive && d?.connected) setPartner({ name: d.partner?.name || "Devin", connected: true });
+    void fetchPartner().then((d) => {
+      if (!alive) return;
+      setPartner({ name: d?.partner?.name || "", connected: !!d?.connected });
+      setReady(true);
     });
     return () => { alive = false; };
   }, []);
 
-  // Never sit in the shared workspace without a partner connected.
+  useEffect(() => sync(), [sync]);
+
+  // Never sit in a space that does not exist. This also covers the partnership
+  // ending in another tab or on another device: the next load reports no
+  // partner, and the view falls back to personal on its own.
   const setWorkspace = useCallback((w: Workspace) => {
     setWorkspaceState(w === "shared" && !partner.connected ? "personal" : w);
   }, [partner.connected]);
 
-  const disconnect = useCallback(() => {
-    setPartner((p) => ({ ...p, connected: false }));
-    setWorkspaceState("personal");
-  }, []);
-
   const value = useMemo(
-    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, disconnect }),
-    [workspace, partner, setWorkspace, disconnect],
+    () => ({ workspace: partner.connected ? workspace : "personal", setWorkspace, partner, ready, refresh: sync }),
+    [workspace, partner, setWorkspace, ready, sync],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

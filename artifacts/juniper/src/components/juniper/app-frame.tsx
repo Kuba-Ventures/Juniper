@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useFinances } from "@/lib/finances";
 import { SettingsModal } from "@/components/juniper/settings-modal";
+import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 
 type NavItem = { path: string; label: string; count?: number };
 
@@ -55,11 +56,18 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
         {/* Row 1, brand and account controls inline, then the primary nav below.
            The workspace switcher used to sit centered between them; it went with
            the shared workspace in Stage 4c, so the grid is two columns now. */}
-        <div className="appbar-top">
+        <div className="appbar-top with-ws">
           <Link href="/app" className="brand">
             <img src="/logo.png" alt="Juniper" />
             Juniper
           </Link>
+
+          {/* The slot the Stage 4c teardown left in place. Centred between the
+              brand and the account controls, which is where a control that
+              changes the meaning of every number below it belongs. */}
+          <div className="appbar-ws">
+            <WorkspaceSwitcher initial={initial} />
+          </div>
 
           <div className="appbar-acct">
             {linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
