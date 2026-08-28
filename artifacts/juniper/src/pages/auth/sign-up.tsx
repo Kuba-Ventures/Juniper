@@ -20,25 +20,33 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const partnerInviteToken = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("invite");
+  // Two separate invite systems land here. ?invite= is a plan invite, accepted
+  // inline below. ?partner= is a partnership invite, handed back to
+  // /invite/partner/:token once there is a session, so that page stays the one
+  // place that accepts a partnership and reports why one was refused.
+  const { planInviteToken, partnershipToken } = useMemo(() => {
+    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null };
+    const q = new URLSearchParams(window.location.search);
+    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner") };
   }, []);
 
-  // If user is signing up via a partner invite, waive the signup invite code.
-  const needsSignupCode = !!REQUIRED_INVITE_CODE && !partnerInviteToken;
+  // Someone arriving on an invite of either kind was vouched for by the member
+  // who invited them, so the private-preview code is waived for them.
+  const needsSignupCode = !!REQUIRED_INVITE_CODE && !planInviteToken && !partnershipToken;
 
   useEffect(() => {
     if (!session) return;
-    if (partnerInviteToken) {
-      void acceptInvite(partnerInviteToken).then((result) => {
+    if (partnershipToken) {
+      setLocation(`/invite/partner/${encodeURIComponent(partnershipToken)}`);
+    } else if (planInviteToken) {
+      void acceptInvite(planInviteToken).then((result) => {
         if (result?.ok) setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
         else setLocation("/app");
       });
     } else {
       setLocation("/app");
     }
-  }, [session, partnerInviteToken, setLocation]);
+  }, [session, planInviteToken, partnershipToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,11 +66,15 @@ export default function SignUp() {
       return;
     }
 
+    // Confirming by email lands on a fresh page load with no React state, so the
+    // invite has to be carried in the URL the mail points at.
     const emailRedirectTo =
       typeof window !== "undefined"
-        ? partnerInviteToken
-          ? `${window.location.origin}/invite/${encodeURIComponent(partnerInviteToken)}`
-          : `${window.location.origin}/app`
+        ? partnershipToken
+          ? `${window.location.origin}/invite/partner/${encodeURIComponent(partnershipToken)}`
+          : planInviteToken
+            ? `${window.location.origin}/invite/${encodeURIComponent(planInviteToken)}`
+            : `${window.location.origin}/app`
         : undefined;
 
     const { data, error } = await supabase.auth.signUp({
@@ -86,8 +98,8 @@ export default function SignUp() {
     }
 
     setInfo(
-      partnerInviteToken
-        ? "Check your email to confirm your account. Your partner invite will accept automatically."
+      planInviteToken || partnershipToken
+        ? "Check your email to confirm your account. Your invite will accept automatically."
         : "Check your email to confirm your account, then sign in.",
     );
   }

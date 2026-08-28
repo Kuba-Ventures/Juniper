@@ -15,22 +15,29 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const partnerInviteToken = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("invite");
+  // Two separate invite systems land here. ?invite= is a plan invite, accepted
+  // inline below. ?partner= is a partnership invite, handed back to
+  // /invite/partner/:token once there is a session, so that page stays the one
+  // place that accepts a partnership and reports why one was refused.
+  const { planInviteToken, partnershipToken } = useMemo(() => {
+    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null };
+    const q = new URLSearchParams(window.location.search);
+    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner") };
   }, []);
 
   useEffect(() => {
     if (!session) return;
-    if (partnerInviteToken) {
-      void acceptInvite(partnerInviteToken).then((result) => {
+    if (partnershipToken) {
+      setLocation(`/invite/partner/${encodeURIComponent(partnershipToken)}`);
+    } else if (planInviteToken) {
+      void acceptInvite(planInviteToken).then((result) => {
         if (result?.ok) setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
         else setLocation("/app");
       });
     } else {
       setLocation("/app");
     }
-  }, [session, partnerInviteToken, setLocation]);
+  }, [session, planInviteToken, partnershipToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
