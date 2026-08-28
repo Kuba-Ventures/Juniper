@@ -53,7 +53,7 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
 
 type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null };
 type Bud = { category: string; limit_amount: number };
-type Snap = { as_of: string; net_worth: number };
+type Snap = { as_of: string; net_worth: number; estimated?: boolean };
 type ScoreRow = { as_of: string; value: number };
 type Acct = { name: string; mask: string | null; type: string | null; subtype: string | null; balance: number | null };
 type Item = { institution_name: string | null; accounts: Acct[] };
@@ -92,7 +92,7 @@ export default async function handler(req: Request): Promise<Response> {
   const budgets = hasTransactions
     ? await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,limit_amount`)
     : [];
-  const snaps = await rows<Snap>(`net_worth_snapshots?user_id=eq.${uid}&select=as_of,net_worth&order=as_of.asc&limit=400`);
+  const snaps = await rows<Snap>(`net_worth_snapshots?user_id=eq.${uid}&select=as_of,net_worth,estimated&order=as_of.asc&limit=400`);
 
   const now = new Date();
   const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -197,6 +197,10 @@ export default async function handler(req: Request): Promise<Response> {
   const current = Math.round(assets + debts);
   const series = snaps.length ? snaps.map((s) => Math.round(s.net_worth)) : [current];
   const labels = snaps.length ? snaps.map((s) => MONTHS[+s.as_of.split("-")[1] - 1]) : [MONTHS[now.getUTCMonth()]];
+  // Which points were reconstructed by networth-backfill rather than observed.
+  // Sent per point rather than as a cutoff index, so the client can slice it
+  // alongside the series for whichever range window is selected.
+  const estimated = snaps.length ? snaps.map((s) => s.estimated === true) : [false];
   const value = series[series.length - 1];
   const changeAbs = series.length > 1 ? value - series[0] : 0;
   const changePct = series.length > 1 && series[0] ? Math.round((changeAbs / series[0]) * 1000) / 10 : 0;
@@ -232,7 +236,7 @@ export default async function handler(req: Request): Promise<Response> {
     // now true for members who only have balances.
     hasTransactions,
     ...(hasAccounts
-      ? { netWorth: { value, changeAbs, changePct, series, labels }, accounts }
+      ? { netWorth: { value, changeAbs, changePct, series, labels, estimated }, accounts }
       : {}),
     ...(hasTransactions
       ? {

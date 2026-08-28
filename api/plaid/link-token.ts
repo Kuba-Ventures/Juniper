@@ -62,6 +62,21 @@ export default async function handler(req: Request): Promise<Response> {
       user: { client_user_id: payload.sub },
       client_name: "Juniper",
       products: plaidProducts(),
+      // Consent for investments now, so it can be called later. Plaid's Data
+      // Transparency Messaging (default on for US Link sessions since October
+      // 2024) only allows a product to be added to an existing item if it was
+      // named here at link time; without it, /investments/transactions/get fails
+      // and the member has to be sent back through update mode to grant it. This
+      // is consent, not a requirement: unlike `products`, naming it here does not
+      // narrow which institutions will link, and it is the pattern Plaid
+      // documents for personal-finance apps. What needs it: the net-worth
+      // backfill, which reads investment contributions to reconstruct the
+      // invested balance on days before the member joined.
+      //
+      // Sandbox caveat: with Plaid's CUSTOM sandbox user, investments has to sit
+      // in `products` instead and cannot be consented this way, so a custom
+      // sandbox item will report investments as unavailable to the backfill.
+      additional_consented_products: ["investments"],
       country_codes: plaidCountryCodes(),
       language: "en",
       ...(redirectUri ? { redirect_uri: redirectUri } : {}),

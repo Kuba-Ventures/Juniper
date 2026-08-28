@@ -56,7 +56,24 @@ export function PlanSpark({ data, k, height = 38 }: { data: number[]; k: string;
 }
 
 /* ---------- net-worth area chart with hover ---------- */
-export function NetWorthChart({ series, labels, height = 150 }: { series: number[]; labels: string[]; height?: number }) {
+export function NetWorthChart({
+  series,
+  labels,
+  estimated,
+  height = 150,
+}: {
+  series: number[];
+  labels: string[];
+  // Parallel to `series`, true where the point was rebuilt from transactions
+  // rather than recorded from a live balance. Those points are drawn dashed and
+  // named in a legend, because they are arithmetic on real transactions rather
+  // than an observation: the invested part of them carries contributions but not
+  // market movement (see api/plaid/networth-backfill.ts). Absent or shorter than
+  // the series means "all recorded", which is every member who linked before the
+  // backfill existed.
+  estimated?: boolean[];
+  height?: number;
+}) {
   const W = 560, H = height, padL = 6, padR = 6, padT = 12, padB = 18;
   const n = series.length;
   // Three shapes this has to survive, all of them now reachable. A ONE-POINT
@@ -80,6 +97,14 @@ export function NetWorthChart({ series, labels, height = 150 }: { series: number
   const x = (i: number) => (n > 1 ? padL + (i * (W - padL - padR)) / (n - 1) : padL + (W - padL - padR) / 2);
   const y = (v: number) => padT + (1 - (v - min) / (max - min)) * (H - padT - padB);
   const line = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  // The reconstructed run is a prefix: the backfill only ever writes days BEFORE
+  // the first recorded snapshot, and it never overwrites a recorded one. So the
+  // split is the last estimated index, and the two paths share that point rather
+  // than meeting at a gap.
+  const lastEst = series.reduce((acc, _v, i) => (estimated?.[i] === true ? i : acc), -1);
+  const hasEst = lastEst >= 0 && lastEst < n - 1;
+  const seg = (from: number, to: number) =>
+    series.slice(from, to + 1).map((v, k) => `${k ? "L" : "M"}${x(from + k).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
   const area = `M${x(0)} ${y(series[0])} ` + series.map((v, i) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + ` L${x(n - 1)} ${H - padB} L${x(0)} ${H - padB} Z`;
   const grid = [0, 0.5, 1].map((f) => padT + f * (H - padT - padB));
   // Derived from the series length instead of the old fixed [0,3,6,9,11], which
@@ -107,7 +132,14 @@ export function NetWorthChart({ series, labels, height = 150 }: { series: number
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
         {grid.map((gy, i) => <line key={i} className="nw-grid" x1={padL} x2={W - padR} y1={gy} y2={gy} />)}
         <path className="nw-area" d={area} />
-        <path className="nw-line" d={line} />
+        {hasEst ? (
+          <>
+            <path className="nw-line nw-line-est" d={seg(0, lastEst)} />
+            <path className="nw-line" d={seg(lastEst, n - 1)} />
+          </>
+        ) : (
+          <path className="nw-line" d={line} />
+        )}
         {hi != null && <line className="nw-grid" x1={x(hi)} x2={x(hi)} y1={padT} y2={H - padB} style={{ stroke: "var(--jnpr-ink-3)", opacity: 0.5, strokeDasharray: "none" }} />}
         {hi != null && <circle className="nw-dot" cx={x(hi)} cy={y(series[hi])} r={4} />}
         <circle className="nw-dot" cx={x(n - 1)} cy={y(series[n - 1])} r={4} />

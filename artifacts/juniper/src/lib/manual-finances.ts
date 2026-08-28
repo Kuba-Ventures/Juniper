@@ -107,6 +107,11 @@ export function buildManualFinances(p: UserProfile | null): FinanceData | null {
       changePct: 0,
       series: flatSeries,
       labels,
+      // Not dashed. The dash means "rebuilt from your transactions", and a
+      // manual-only dashboard has no transactions to rebuild from: this line is
+      // flat at today's value, which the card says in words. Borrowing the dash
+      // for it would blur two different claims into one visual.
+      estimated: flatSeries.map(() => false),
     },
     cashflow: { income, spent, saved: income - spent, month: monthLabel() },
     // Transaction-derived surfaces are empty until an account is linked.

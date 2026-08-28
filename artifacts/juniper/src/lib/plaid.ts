@@ -264,6 +264,14 @@ export async function syncFinances(): Promise<SyncResult> {
     postSync("/api/plaid/transactions-sync"),
     postSync("/api/plaid/networth-snapshot"),
   ]);
+  // Reconstruct the days before the first recorded snapshot. Fired on every
+  // sync rather than only when rows were added, because Plaid answers
+  // PRODUCT_NOT_READY on /investments/transactions for up to two minutes after a
+  // link: gating this on new transactions would leave the one member who needs
+  // it most, the one who just linked, with the invested part of their history
+  // permanently unadjusted. Writes use ignore-duplicates, so a repeat run
+  // rewrites nothing and a recorded day always beats a reconstructed one.
+  void postOk("/api/plaid/networth-backfill");
   const score = await postOk("/api/score/compute");
   const failures = [...txn.failures, ...snapshot.failures];
   const needsRelink = [

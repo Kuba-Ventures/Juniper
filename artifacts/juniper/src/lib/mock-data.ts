@@ -23,6 +23,12 @@ export const netWorth = {
   changePct: 2.9,
   series: [52100, 53400, 54800, 55200, 57600, 58900, 60100, 61800, 62400, 64500, 65390, 67330],
   labels: ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
+  // Parallel to `series`: true where the point was reconstructed backward from
+  // transactions rather than observed from live balances. Empty here because the
+  // demo household has no reconstructed history, and read as false when absent,
+  // so a shorter array is never a crash. This is what types the live payload's
+  // own flags, see api/finances.ts.
+  estimated: [] as boolean[],
 };
 
 export const cashflow = { income: 8240, spent: 5940, saved: 2300, month: "Aug" };

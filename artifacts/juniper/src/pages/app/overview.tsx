@@ -161,6 +161,7 @@ function windowStart(labels: string[], months: number): number {
 function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"]; cashflow: FinanceData["cashflow"] }) {
   const [range, setRange] = useState<RangeId>("All");
   const { labels, series } = netWorth;
+  const estimated = netWorth.estimated ?? [];
   const span = monthSpan(labels);
   // A window at least as wide as the data draws exactly the same line as "All",
   // so it is offered disabled rather than as a pill that looks like it did
@@ -175,6 +176,10 @@ function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"
   const from = months == null ? 0 : windowStart(labels, months);
   const win = series.slice(from);
   const winLabels = labels.slice(from);
+  // Sliced with the series so the dashed run stays attached to the right points
+  // whichever range pill is active.
+  const winEstimated = estimated.slice(from);
+  const anyEstimated = winEstimated.some(Boolean);
   // Change ACROSS THE SELECTED WINDOW, which is the only reading of these pills
   // that means anything. A one-point window has no change to report, so the chip
   // is dropped rather than printed as 0%. The denominator is the absolute
@@ -212,10 +217,23 @@ function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"
           ))}
         </div>
       </div>
-      <NetWorthChart series={win} labels={winLabels} />
-      {noRanges && (
-        <p className="nw-note">Ranges open up as history builds. Juniper saves one net worth point a day, and this is everything recorded so far.</p>
+      <NetWorthChart series={win} labels={winLabels} estimated={winEstimated} />
+      {anyEstimated && (
+        <div className="nw-legend">
+          <span><i className="est" />Rebuilt from your transactions</span>
+          <span><i />Recorded by Juniper</span>
+        </div>
       )}
+      {anyEstimated ? (
+        <p className="nw-note">
+          The dashed stretch is rebuilt from your transactions, back to the oldest one your bank
+          shared. Cash and card balances there are exact. Invested balances count the money you
+          added but not how the market moved, because Plaid reports today's prices and not past
+          ones.
+        </p>
+      ) : noRanges ? (
+        <p className="nw-note">Ranges open up as history builds. Juniper saves one net worth point a day, and this is everything recorded so far.</p>
+      ) : null}
       <div className="cf-foot">
         <div><div className="l">Income · {cashflow.month}</div><div className="v pos tnum">+{money(cashflow.income)}</div></div>
         <div><div className="l">Spent</div><div className="v tnum">{money(cashflow.spent)}</div></div>
