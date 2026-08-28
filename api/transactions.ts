@@ -247,6 +247,18 @@ export default async function handler(req: Request): Promise<Response> {
   const countByGroup = new Map<string, number>();
   const countByCat = new Map<string, number>();
   const catGroup = new Map<string, string>();
+  // Per-month totals, for the trend view, and income split by its own leaf
+  // category, for the flow view. Both are accumulated in the SAME pass as the
+  // rollup rather than by a second walk, so the trend bars and the donut can
+  // never be built from different reads of the table.
+  const monthly = new Map<string, { spent: number; income: number }>();
+  const bumpMonth = (ym: string, field: "spent" | "income", amt: number) => {
+    const m = monthly.get(ym) ?? { spent: 0, income: 0 };
+    m[field] += amt;
+    monthly.set(ym, m);
+  };
+  const byIncomeCat = new Map<string, number>();
+  const countByIncomeCat = new Map<string, number>();
   let incomeRaw = 0;
   let transfersRaw = 0;
   let spendCount = 0;
@@ -257,11 +269,19 @@ export default async function handler(req: Request): Promise<Response> {
   for (const t of all) {
     const ts = Date.parse(t.date);
     if (!Number.isNaN(ts)) { if (ts < oldest) oldest = ts; if (ts > newest) newest = ts; }
+    const ym = t.date.slice(0, 7);
     const cat = t.category || "Everything else";
     const kind = kindOf(cat);
     if (kind === "transfer") { transfersRaw += Math.abs(t.amount); continue; }
-    if (kind === "income") { incomeRaw -= t.amount; continue; }
+    if (kind === "income") {
+      incomeRaw -= t.amount;
+      bumpMonth(ym, "income", -t.amount);
+      byIncomeCat.set(cat, (byIncomeCat.get(cat) || 0) - t.amount);
+      countByIncomeCat.set(cat, (countByIncomeCat.get(cat) || 0) + 1);
+      continue;
+    }
     const g = groupOf(cat);
+    bumpMonth(ym, "spent", t.amount);
     byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
     byCat.set(cat, (byCat.get(cat) || 0) + t.amount);
     countByGroup.set(g, (countByGroup.get(g) || 0) + 1);
@@ -316,8 +336,28 @@ export default async function handler(req: Request): Promise<Response> {
   const [first] = await rows<{ date: string }>(`transactions?user_id=eq.${uid}&select=date&order=date.asc&limit=1`);
   const [latest] = await rows<{ date: string }>(`transactions?user_id=eq.${uid}&select=date&order=date.desc&limit=1`);
 
+  // Ascending, so the trend view can draw it left to right without re-sorting,
+  // and clamped at zero: a month whose refunds outran its spending cannot be
+  // drawn as a bar, and the same clamp is what /api/finances applies to a
+  // refund-heavy budget. `spent` above is NOT clamped per month, so in that rare
+  // case the bars sum to slightly more than the total. The alternative is a
+  // negative bar, which reads as a data error rather than as a refund.
+  const trend = [...monthly.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([ym, m]) => ({ ym, spent: Math.max(0, Math.round(m.spent)), income: Math.max(0, Math.round(m.income)) }));
+
+  // Income by leaf category (Paycheck, Interest & dividends, and the rest),
+  // which the flow view needs to show where money came IN from. The spend
+  // breakdown above only ever answers where it went.
+  const incomeBreakdown = [...byIncomeCat.entries()]
+    .map(([c, v]) => ({ c, v: Math.round(v), n: countByIncomeCat.get(c) || 0 }))
+    .filter((x) => x.v > 0)
+    .sort((a, b) => b.v - a.v);
+
   body.available = { from: first?.date ?? null, to: latest?.date ?? null };
   body.breakdown = withPct;
+  body.trend = trend;
+  body.incomeBreakdown = incomeBreakdown;
   body.summary = {
     count: all.length,
     spendCount,

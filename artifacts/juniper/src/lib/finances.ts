@@ -25,6 +25,7 @@
 // nothing at all.
 import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getAccessToken } from "@/lib/supabase";
+import { categoryColor } from "@/lib/category-color";
 // Type-only: nothing in mock-data.ts is read as a VALUE from here any more. The
 // three `typeof M.x` shapes below still point at the seeds because that is where
 // those shapes are declared; a later stage moves them to a module of their own.
@@ -73,26 +74,7 @@ const EMPTY = buildManualFinances({}) as FinanceData;
 // single source of truth) and sends it, so this file never mirrors that table.
 // Listed in the rollup order the server sends (api/_categorize.ts), so the
 // adjacency this order buys is visible right here.
-const GROUP_COLOR: Record<string, SeriesKey> = {
-  "Housing": "--jnpr-c1",            // green
-  "Groceries & dining": "--jnpr-c2", // gold
-  "Transportation": "--jnpr-c3",     // blue
-  "Debt payments": "--jnpr-ink-2",   // sage
-  "Shopping": "--jnpr-c4",           // terracotta
-  "Fun & travel": "--jnpr-accent",   // pine
-  "Utilities & bills": "--jnpr-c5",  // violet
-  "Kids & health": "--jnpr-c6",      // olive
-  "Everything else": "--jnpr-c7",    // grey
-  "Income": "--jnpr-good",
-  // Muted on purpose: a transfer or a card payment is not spending, and it
-  // should not look like a category competing for the member's attention.
-  "Transfers & payments": "--jnpr-ink-3",
-};
-// `group` is the server's answer and is preferred; `label` is the fallback for a
-// spending row (whose label IS its group) or a stale payload from before the
-// server sent groups.
-const catColor = (label: string, group?: string): SeriesKey =>
-  GROUP_COLOR[group ?? ""] ?? GROUP_COLOR[label] ?? "--jnpr-c7";
+const catColor = categoryColor;
 const ACCT_CYCLE: SeriesKey[] = ["--jnpr-c1", "--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c4"];
 
 // Raw shape returned by GET /api/finances (colors are a frontend concern, so the
