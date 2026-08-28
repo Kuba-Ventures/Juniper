@@ -7,6 +7,7 @@ import { AppBar } from "@/components/juniper/app-frame";
 import { FirstRunOnboarding } from "@/components/onboarding/first-run-onboarding";
 import { isOnboarded, markOnboarded, hasProfileData, type UserProfile } from "@/lib/profile";
 import Overview from "@/pages/app/overview";
+import Transactions from "@/pages/app/transactions";
 import { Credit } from "@/pages/app/credit";
 import { Score } from "@/pages/app/score";
 import { Admin } from "@/pages/app/admin";
@@ -119,6 +120,7 @@ export default function JuniperApp() {
               />
             )}
           </Route>
+          <Route path="/app/transactions" component={Transactions} />
           <Route path="/app/score" component={Score} />
           <Route path="/app/admin" component={Admin} />
           {/* Plans reads the profile's signup goals to offer the ones with no

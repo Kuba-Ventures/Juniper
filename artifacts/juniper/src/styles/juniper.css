@@ -992,3 +992,104 @@
 .jnpr .cs-note{font-size:13px;color:var(--jnpr-ink-2);line-height:1.6;margin:8px 0 0;max-width:66ch}
 .jnpr .cs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .jnpr .cs-chips span{font-size:11px;font-weight:650;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:7px;padding:3px 9px}
+
+/* ---------- transactions tab (/app/transactions) ---------- */
+/* The chart switcher. Sits in the card head beside the range, so choosing a view
+   never moves the card's title or the figures under it. */
+.jnpr .sc-switch{display:inline-flex;flex-wrap:wrap;background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:10px;padding:4px;gap:3px}
+.jnpr .sc-switch button{border:0;background:transparent;color:var(--jnpr-ink-2);font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
+.jnpr .sc-switch button.on{background:var(--jnpr-surface);color:var(--jnpr-accent);box-shadow:var(--jnpr-shadow)}
+
+/* Chart on the left, legend or summary on the right. Option 1 from the agreed
+   mock: the chart owns its width and the list runs full width underneath. */
+.jnpr .sc-row{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;align-items:center}
+.jnpr .sc-chart{min-width:0;display:flex;justify-content:center}
+.jnpr .sc-side{min-width:0}
+.jnpr .sc-toggle{display:flex;width:100%;margin-bottom:10px}
+.jnpr .sc-toggle button{flex:1}
+/* height:auto on a viewBox-only SVG collapses to zero height in Chrome, so each
+   wide view sets its own aspect-ratio inline from the same W/H that build its
+   viewBox. The pie carries explicit width/height attributes and does not need it. */
+.jnpr .sc-svg{display:block;width:100%;height:auto;max-width:100%}
+/* The three full-width views are capped rather than stretched. An SVG with
+   width:100% and a fixed viewBox scales its TEXT with the box, so on a wide
+   card the 10px axis labels rendered at 14px; and a max-height instead of a
+   max-width made preserveAspectRatio letterbox the chart with dead space down
+   both sides. Capping the width keeps the type at its designed size. */
+.jnpr .sc-wide{max-width:760px;margin:0 auto}
+.jnpr .sc-pie{display:flex;justify-content:center}
+.jnpr .sc-pie .sc-svg{width:210px;flex:0 0 auto}
+.jnpr .sc-cv{fill:var(--jnpr-ink);font-size:23px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.jnpr .sc-cl{fill:var(--jnpr-ink-3);font-size:10.5px;font-weight:600}
+.jnpr .sc-empty{padding:34px 2px;text-align:center;color:var(--jnpr-ink-3);font-size:13px}
+.jnpr .sc-empty.sm{padding:18px 2px;font-size:12.5px}
+.jnpr .sc-note{margin:14px 0 0;font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6}
+
+/* Breakdown bars. Scaled against the largest category so the ranking stays
+   legible; the percentage beside each is against the total. */
+.jnpr .sc-bars{display:flex;flex-direction:column;gap:11px;width:100%;padding:4px 0}
+.jnpr .sc-bar{cursor:pointer;transition:opacity .12s}
+.jnpr .sc-bar:not(.on) .sc-bar-f{opacity:.85}
+.jnpr .sc-bar-h{display:flex;align-items:baseline;gap:10px;margin-bottom:5px}
+.jnpr .sc-bar-n{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--jnpr-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .sc-bar-v{font-size:12.5px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .sc-bar-p{font-size:11px;color:var(--jnpr-ink-3);width:44px;text-align:right}
+.jnpr .sc-bar-t{height:9px;border-radius:5px;background:var(--jnpr-surface-3);overflow:hidden}
+.jnpr .sc-bar-f{height:100%;border-radius:5px;transition:width .2s}
+
+/* Treemap */
+.jnpr .sc-tm rect{transition:opacity .12s}
+.jnpr .sc-tm-n{fill:#0C120D;font-size:12px;font-weight:700}
+.jnpr .sc-tm-v{fill:#0C120D;font-size:11px;font-weight:600;opacity:.8}
+
+/* Trend bars: money in beside money out, one pair per month. */
+.jnpr .sc-trend{width:100%}
+.jnpr .sc-tb-in{fill:var(--jnpr-good)}
+.jnpr .sc-tb-out{fill:var(--jnpr-c4)}
+.jnpr .sc-tb-v{fill:var(--jnpr-ink);font-size:11px;font-weight:650}
+.jnpr .sc-avg{stroke:var(--jnpr-ink-3);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
+.jnpr .sc-avg-l{fill:var(--jnpr-ink-3);font-size:10px;font-weight:600}
+.jnpr .sc-ax{fill:var(--jnpr-ink-3);font-size:10px}
+.jnpr .sc-key{display:flex;gap:18px;justify-content:center;margin-top:6px;font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .sc-key span{display:inline-flex;align-items:center;gap:6px}
+.jnpr .sc-key i{width:9px;height:9px;border-radius:3px;display:block}
+.jnpr .sc-key-in{background:var(--jnpr-good)}
+.jnpr .sc-key-out{background:var(--jnpr-c4)}
+
+/* Flow */
+.jnpr .sc-rib{opacity:.42}
+.jnpr .sc-hub{fill:var(--jnpr-ink-3)}
+.jnpr .sc-fl-n{fill:var(--jnpr-ink-2);font-size:11px;font-weight:600}
+
+/* The table */
+.jnpr .tx-tablewrap{overflow-x:auto;margin-top:14px}
+.jnpr .tx-table{width:100%;border-collapse:collapse;font-size:13px}
+.jnpr .tx-table th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);padding:0 10px 9px 0;border-bottom:1px solid var(--jnpr-line)}
+.jnpr .tx-table td{padding:9px 10px 9px 0;border-bottom:1px solid var(--jnpr-line-2);vertical-align:middle}
+.jnpr .tx-table .ta-r{text-align:right;padding-right:0}
+.jnpr .tx-table tr:last-child td{border-bottom:0}
+.jnpr .td-d{color:var(--jnpr-ink-3);white-space:nowrap;font-size:12.5px}
+.jnpr .td-pend{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-warn);margin-top:2px}
+.jnpr .td-m{display:flex;align-items:center;gap:10px;min-width:0}
+.jnpr .td-m .blogo,.jnpr .td-m .tile{width:26px;height:26px;flex:0 0 auto;border-radius:8px}
+.jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .ctag{display:inline-block;font-size:11.5px;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);
+  border:1px solid transparent;border-left-width:3px;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.jnpr .td-a{font-weight:650;color:var(--jnpr-ink);white-space:nowrap}
+.jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
+.jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding-top:13px;font-size:11.5px;color:var(--jnpr-ink-3)}
+
+/* Summary panel (the toggle's other half) */
+.jnpr .sumbox .sum-r{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;
+  border-top:1px solid var(--jnpr-line-2);font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .sumbox .sum-r:first-child{border-top:0}
+.jnpr .sumbox .sum-r b{color:var(--jnpr-ink);font-size:13.5px}
+.jnpr .sum-note{margin:12px 0 0;font-size:11px;color:var(--jnpr-ink-3);line-height:1.6}
+
+@media(max-width:900px){
+  .jnpr .sc-row{grid-template-columns:1fr;gap:18px}
+  .jnpr .sc-side{max-width:420px;margin:0 auto;width:100%}
+}

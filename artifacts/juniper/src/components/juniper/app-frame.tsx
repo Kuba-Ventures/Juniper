@@ -14,6 +14,10 @@ type NavItem = { path: string; label: string; count?: number };
 // at a surface that cannot show the member their own real data.
 const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Overview" },
+  // Transactions sits second, next to the dashboard it drills into. The compact
+  // transactions card stays on the Overview: that card answers "what happened
+  // lately" without a page load, which is a different job from the full history.
+  { path: "/app/transactions", label: "Transactions" },
   { path: "/app/plans", label: "Plans" },
   { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
