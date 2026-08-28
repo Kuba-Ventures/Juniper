@@ -20,10 +20,29 @@ Everything below is the evidence for that, and the design rules that follow.
 
 ## 2. What Plaid gives us
 
-`/transactions/recurring/get`, **entitled under Transactions**, which Juniper
-already requests. No extra product, no relink, no consent change. This was worth
-confirming before anything was built, because the obvious assumption is that
-subscription detection is its own paid tier.
+`/transactions/recurring/get`, which is a **separate Plaid add on**,
+`recurring_transactions`, and not entitled under Transactions.
+
+> **Corrected 2026-08-28.** This section previously said the endpoint was
+> entitled under Transactions, so no extra product and no consent change were
+> needed. Production disproved it the first time the sync ran: every item came
+> back 400 `INVALID_PRODUCT`, "client is not authorized to access the following
+> products: [\"recurring_transactions\"]". The add on was requested that day and
+> is pending approval. The obvious assumption, that subscription detection is
+> its own tier, was the right one.
+>
+> Two consequences once it is granted. `api/plaid/link-token.ts` should add
+> `recurring_transactions` to `additional_consented_products`, but **not before**,
+> because naming an unentitled product there makes `/link/token/create` fail for
+> everyone. And items linked before that change may need a relink to consent to
+> it, the same way Investments did in #144.
+>
+> Until then `api/plaid/recurring-sync.ts` recognises the refusal, stops after
+> the first wave of calls, logs one warning rather than one error per
+> institution, and answers 200 with `available: false`. It deliberately writes
+> nothing at all in that state: an unentitled run produces no streams, and no
+> streams through the stale-stream delete would wipe the member's cached list on
+> the strength of a permissions error.
 
 The response splits `inflow_streams` and `outflow_streams`. Per stream:
 

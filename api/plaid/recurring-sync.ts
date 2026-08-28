@@ -2,8 +2,12 @@
 // Pulls the caller's recurring transaction streams from Plaid
 // (/transactions/recurring/get) and caches them in `recurring_streams`.
 //
-// No extra Plaid product. Recurring is entitled under Transactions, which
-// Juniper already requests, so this needs no relink and no consent change.
+// `recurring_transactions` is a SEPARATE Plaid add on, which the docs do not say
+// plainly and production settled on 2026-08-28: every item came back 400
+// INVALID_PRODUCT, "client is not authorized to access the following products".
+// It was requested that day and is pending. Until it is granted this endpoint
+// can do nothing, and it says so once rather than failing loudly every six hours
+// for as long as the wait lasts. See section 2 of docs/RECURRING_DETECTION.md.
 //
 // The endpoint deliberately writes NO member intent. Everything the member says
 // about a stream (confirmed, dismissed, renamed, corrected) lives in
@@ -46,6 +50,11 @@ type ItemFailure = { item_id: string; error_code: string | null; error_message: 
 // Six at a time, matching networth-snapshot.ts: enough to clear a dozen
 // institutions quickly, far short of a rate limit.
 const CONCURRENCY = 6;
+
+// Refusals that are about the Plaid client rather than the member's connection.
+// They cannot vary between one item and the next, because entitlement is a fact
+// about the account, so the first one answers for all of them.
+const ENTITLEMENT_CODES = new Set(["INVALID_PRODUCT", "PRODUCTS_NOT_SUPPORTED", "PRODUCT_NOT_ENABLED"]);
 
 type Amount = { amount?: number | null; iso_currency_code?: string | null };
 type Stream = {
@@ -120,10 +129,32 @@ export default async function handler(req: Request): Promise<Response> {
 
   const failures: ItemFailure[] = [];
 
+  // Set by the first item to be refused on entitlement grounds. Everything still
+  // queued then skips its call: twelve identical refusals cost twelve round
+  // trips and tell us nothing the first one did not.
+  // Held on an object rather than in a bare `let`, so the compiler does not
+  // narrow it to null at the check below: it is only ever assigned inside the
+  // callback, and control flow analysis cannot see through that.
+  const entitlement: { refused: { code: string; message: string | null } | null } = { refused: null };
+
   const pullItem = async (item: Item): Promise<{ rows: ReturnType<typeof toRow>[]; failure: ItemFailure | null }> => {
+    if (entitlement.refused) return { rows: [], failure: null };
     const r = await plaidFetch<RecurringResp>("/transactions/recurring/get", { access_token: item.access_token });
     if (!r.ok) {
       const code = r.data.error_code ?? null;
+      if (code && ENTITLEMENT_CODES.has(code)) {
+        // Logged once, at warning rather than error. This is a state of the
+        // Plaid account, not a fault in this run, and a background job that
+        // writes six error lines every six hours for a month trains whoever
+        // reads the logs to scroll past the one that matters.
+        if (!entitlement.refused) {
+          entitlement.refused = { code, message: r.data.error_message ?? null };
+          console.warn(
+            `[plaid] transactions/recurring/get is not entitled on this Plaid client (${code}). Recurring detection is idle until the add on is granted.`,
+          );
+        }
+        return { rows: [], failure: null };
+      }
       console.error(
         `[plaid] transactions/recurring/get failed (${r.status}) for item ${item.item_id}: ${code || "unknown"} ${r.data.error_message || ""}`.trim(),
       );
@@ -154,6 +185,31 @@ export default async function handler(req: Request): Promise<Response> {
   // in the current one, which is how one slow institution spends the whole 25
   // second ceiling on behalf of eleven healthy ones.
   const pulled = await mapPool(items, CONCURRENCY, pullItem);
+
+  // Nothing was read, so nothing may be written. This returns before the upsert
+  // and, more importantly, before the delete below: an unentitled run produces
+  // no rows, and "no rows" through that delete would read as "Plaid no longer
+  // detects any of your streams" and wipe a member's whole cached list on the
+  // strength of a permissions error. The member's own confirmations in
+  // recurring_overrides would survive, but the streams they hang off would not.
+  //
+  // 200 rather than an error, because nothing failed here: the endpoint ran, and
+  // the answer is that this Plaid account cannot serve recurring data yet. The
+  // caller fires this leg and drops the body (syncFinances), so a 5xx bought
+  // nothing except a red line in the logs every six hours.
+  if (entitlement.refused) {
+    return json({
+      items: items.length,
+      streams: 0,
+      synced: 0,
+      failed: 0,
+      failures: [],
+      available: false,
+      unavailable_code: entitlement.refused.code,
+      unavailable_message: entitlement.refused.message,
+    });
+  }
+
   for (const b of pulled) {
     if (b.failure) { failures.push(b.failure); continue; }
     rows.push(...b.rows);
