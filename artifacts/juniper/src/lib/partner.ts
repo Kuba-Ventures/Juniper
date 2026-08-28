@@ -12,6 +12,8 @@ export interface PartnerAccount { account_id: string; n: string; inst: string; v
 export interface PartnerData {
   connected: boolean;
   pending?: boolean;
+  // Set only for the member who accepted: the first name the inviter gave them.
+  me?: { invitedName: string | null };
   partner?: { name: string };
   prefs?: { me: PartnerPrefs; partner: PartnerPrefs };
   goals?: PartnerGoal[];
@@ -47,7 +49,7 @@ async function post(action: string, extra: Record<string, unknown> = {}): Promis
   } catch { return { ok: false, error: "Couldn't reach the server." }; }
 }
 
-export const invitePartner = () => post("invite");
+export const invitePartner = (partnerName?: string) => post("invite", partnerName?.trim() ? { partnerName: partnerName.trim() } : {});
 export const acceptInvite = (token: string) => post("accept", { token });
 export const disconnectPartner = () => post("disconnect");
 export const setSharingPrefs = (prefs: Partial<PartnerPrefs>) => post("set-prefs", prefs);
