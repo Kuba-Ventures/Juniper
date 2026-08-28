@@ -2,42 +2,52 @@ import { useState, type ReactNode } from "react";
 import { useWorkspace } from "@/lib/workspace";
 import { usePartner } from "@/lib/partner";
 import { InviteModal } from "@/components/juniper/invite-modal";
+import { ShareSheet } from "@/components/juniper/share-sheet";
 import { useSession } from "@/lib/use-session";
 import { Link, useLocation } from "wouter";
 
-// The shell for the shared pages. Two of the six are routed again as of Stage
-// 4d, Overview and Goals; Accounts, Bills, Activity and Sharing are not, and the
-// conditions below are what each of them still has to meet.
+// The shell for the shared pages.
 //
-// Why it is unreachable: the workspace could not honor the rule that only the
-// member's own real data may appear in the app. All six pages fall back to
-// lib/shared-data.ts, which is a seeded household, and goals.tsx has no live
-// branch at all. The signed-in member is named "Maya" and the partner "Devin",
-// including on the live branch (`you.initial` in the header band below, and the
-// SharedAccount `inst` labels). The gate was `partner.connected`, client-only
-// localStorage state a "Preview shared space" button flipped with no server
-// partnership behind it, so any signed-in member could walk into a stranger's
-// invented finances.
+// Stage 4e: the shared space opens as a near blank canvas and grows only what
+// the two of you put on it. Sharing is private by default (migration 0017), so
+// a partnership that was just accepted genuinely has nothing in it, and the
+// canvas below is the honest first screen rather than an empty-looking table.
 //
-// What has to be true to route the remaining four (Overview and Goals now meet
-// all four):
-//   1. Every page reads only /api/partner (and /api/partner/bills, /activity).
-//      No lib/shared-data.ts fallback anywhere, goals.tsx included. An active
-//      partnership with nothing in it shows an empty state, not a demo one.
+// The nav is derived from content, not declared: Overview is always there, and
+// Accounts appears once either member has shared an account, Goals once a goal
+// exists. Bills and Activity are deliberately absent, because their pages still
+// read lib/shared-data.ts, and a tab that opens onto a seeded household is the
+// thing Stage 4c unrouted them for.
+//
+// What each remaining page still has to meet to join the nav:
+//   1. It reads only /api/partner (and /api/partner/bills, /activity). No
+//      lib/shared-data.ts fallback. An active partnership with nothing in it
+//      shows an empty state, not a demo one.
 //   2. "You" and the partner are named from the session and user_profiles.name.
 //      No hardcoded "Maya" or "Devin" on any branch.
 //   3. The only thing that can connect a partner is /api/partner reporting an
-//      active partnership. No client-only flip, no preview mode.
-//   4. Migrations 0012 and 0013 are applied, so the endpoints have tables to
-//      read, and the accept flow lands somewhere a member can see.
+//      active partnership.
+//   4. Migrations 0012, 0013 and 0017 are applied.
 //
-// Kept, not deleted: the pages, this shell, lib/shared-data.ts (Stage 4d tears
-// the seeds down), and all the api/partner* endpoints and tables.
+// pages/app/shared/sharing.tsx is superseded rather than pending: the share
+// sheet replaced its coarse toggles with per-account scope, which is the grain
+// people think in. It can stay unrouted for good.
 
-// Couple header band for every shared sub-page. `live` distinguishes a real,
-// accepted partnership (both accounts linked) from the demo preview, so the
-// status pill tells the truth instead of always claiming "Both connected".
-function SharedHeader({ title, sub, name, initial }: { title: string; sub?: string; name: string; initial: string }) {
+// What the shared space can hold. Each kind names the surface it grows, so the
+// canvas and the nav cannot disagree about what exists.
+type Kind = "accounts" | "goals";
+
+const NAV: Record<Kind, { path: string; label: string }> = {
+  accounts: { path: "/app/shared/accounts", label: "Accounts" },
+  goals: { path: "/app/shared/goals", label: "Goals" },
+};
+
+// The Together band. Carries the share control once there is something to
+// weigh it against; on the empty canvas the button below is the only one, so
+// putting it here as well would be two calls to the same action on one screen.
+function SharedHeader({
+  title, sub, name, initial, onShare,
+}: { title: string; sub?: string; name: string; initial: string; onShare?: () => void }) {
   return (
     <div className="page-head shared-head">
       <div>
@@ -46,28 +56,50 @@ function SharedHeader({ title, sub, name, initial }: { title: string; sub?: stri
       </div>
       <div className="page-actions">
         <span className="duo-ava"><span className="d1">{initial}</span><span className="d2">{name.charAt(0).toUpperCase()}</span></span>
-        {/* One state now, because there is only one: a partnership the server
-            reported. The "Preview · demo data" pill went with the seeded
-            household it used to label. */}
         <span className="plaid-pill"><span className="dot" />Both connected</span>
+        {/* Only once there is content to weigh it against. On the empty canvas
+            the button below is the single call to action, and a second copy of
+            it up here would be two routes to one place on one screen. */}
+        {onShare && <button className="btn ghost" onClick={onShare}>Choose what to share</button>}
       </div>
     </div>
   );
 }
 
-// The two shared surfaces that are routed. Kept here so neither page repeats it.
-const SHARED_NAV = [
-  { path: "/app/shared", label: "Overview" },
-  { path: "/app/shared/goals", label: "Goals" },
-];
+// The first screen of a shared space with nothing in it. The tiles are the two
+// kinds that work end to end today; a tile for a bill or a plan would be an
+// offer the product cannot honour yet.
+function BlankCanvas({ onShare, onGoal }: { onShare: () => void; onGoal: () => void }) {
+  return (
+    <div className="card canvas-empty">
+      <h2>Just the two of you, so far</h2>
+      <p>Add the first thing you want to plan together.</p>
+      <div className="canvas-tiles">
+        <button className="canvas-tile" onClick={onShare}>
+          <span className="g" aria-hidden="true">&#127974;</span>
+          An account
+          <small>Share a balance, or the whole account</small>
+        </button>
+        <button className="canvas-tile" onClick={onGoal}>
+          <span className="g" aria-hidden="true">&#127919;</span>
+          A goal
+          <small>Fund it together, each contribution shown</small>
+        </button>
+      </div>
+      <button className="btn" onClick={onShare}>Choose what to share</button>
+    </div>
+  );
+}
 
-// Wraps a shared page: guards on partner-connected, renders the couple header.
-export function SharedPage({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
+export function SharedPage({
+  title, sub, children, onAddGoal,
+}: { title: string; sub?: string; children: ReactNode; onAddGoal?: () => void }) {
   const { partner } = useWorkspace();
-  const { data } = usePartner();
+  const { data, loading, refresh } = usePartner();
   const session = useSession();
-  const [loc] = useLocation();
+  const [loc, setLocation] = useLocation();
   const [invite, setInvite] = useState(false);
+  const [share, setShare] = useState(false);
 
   const meName =
     (session?.user.user_metadata as { name?: string } | undefined)?.name || session?.user.email || "";
@@ -80,12 +112,9 @@ export function SharedPage({ title, sub, children }: { title: string; sub?: stri
         <div className="card connect-empty">
           <div className="ce-mark">&#9825;</div>
           <h2>Plan together</h2>
-          {/* Promises exactly the two surfaces that exist. It used to offer
-              bills and a sharing panel as well, which are still unrouted. */}
           <p>
-            Invite your partner to open a shared space: your combined net worth, and goals you fund
-            together with each person's contribution shown. Your own accounts stay private unless you
-            share them.
+            Invite your partner to open a shared space. It starts empty: nothing of yours is visible
+            to them until you choose to share it, and you can take it back at any time.
           </p>
           <button className="btn" onClick={() => setInvite(true)}>Invite your partner</button>
         </div>
@@ -94,17 +123,58 @@ export function SharedPage({ title, sub, children }: { title: string; sub?: stri
     );
   }
 
+  // What the space actually holds. A shared account is one either member has
+  // moved off `private`; the scope is decided server-side, so a private account
+  // never reaches the client to be counted here in the first place.
+  const holds: Record<Kind, boolean> = {
+    accounts: (data?.accounts ?? []).some((a) => a.scope !== "private"),
+    goals: (data?.goals ?? []).length > 0,
+  };
+  const grown = (Object.keys(NAV) as Kind[]).filter((k) => holds[k]);
+  const empty = grown.length === 0;
+
   return (
     <div className="frame">
-      <SharedHeader title={title} sub={sub} name={name} initial={initial} />
-      <nav className="nav shared-nav" aria-label="Shared">
-        {SHARED_NAV.map((n) => (
-          <Link key={n.path} href={n.path} className={loc === n.path ? "on" : undefined}>
-            <span className="lbl">{n.label}</span>
+      <SharedHeader
+        title={empty ? "Together" : title}
+        sub={empty ? `Nothing of yours is visible to ${name} until you share it.` : sub}
+        name={name}
+        initial={initial}
+        onShare={empty ? undefined : () => setShare(true)}
+      />
+
+      {grown.length > 0 && (
+        <nav className="nav shared-nav" aria-label="Shared">
+          <Link href="/app/shared" className={loc === "/app/shared" ? "on" : undefined}>
+            <span className="lbl">Overview</span>
           </Link>
-        ))}
-      </nav>
-      {children}
+          {grown.map((k) => (
+            <Link key={k} href={NAV[k].path} className={loc === NAV[k].path ? "on" : undefined}>
+              <span className="lbl">{NAV[k].label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {/* `loading` matters here: usePartner starts at null, and without this the
+          canvas flashes on every navigation before the overview lands. */}
+      {empty && !loading ? (
+        <BlankCanvas
+          onShare={() => setShare(true)}
+          onGoal={() => (onAddGoal ? onAddGoal() : setLocation("/app/shared/goals"))}
+        />
+      ) : (
+        children
+      )}
+
+      {share && (
+        <ShareSheet
+          partnerName={name}
+          accounts={data?.accounts ?? []}
+          onChanged={refresh}
+          onClose={() => setShare(false)}
+        />
+      )}
     </div>
   );
 }
