@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
 import { syncFinancesUntilTransactions, layerEnabled, pollCashflowEstimate, normInstitutionName, fetchConnectionNames } from "@/lib/plaid";
+import { fetchPartner } from "@/lib/partner";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -56,9 +57,21 @@ export function FirstRunOnboarding({
   // an "I'll do this later" button, and the next step told them they had skipped
   // connecting and asked them to type an income Juniper already knows.
   const [already, setAlready] = useState<string[]>([]);
+  // Someone who arrives from a partner invite is not a stranger: the person who
+  // invited them already typed their first name, and the fact of the invite
+  // answers the household question. Both were being thrown away, so the invited
+  // partner met a blank "What should we call you?" as if nobody had.
+  const [invitedBy, setInvitedBy] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
+    void fetchPartner().then((d) => {
+      if (!live || !d?.connected) return;
+      setInvitedBy(d.partner?.name ?? null);
+      // Prefill, never overwrite: they may have started typing already.
+      if (d.me?.invitedName) setName((n) => n || d.me!.invitedName!);
+      setHousehold((h) => h ?? "partner");
+    });
     void fetchConnectionNames()
       .then((names) => {
         if (!live || names.length === 0) return;
@@ -147,8 +160,16 @@ export function FirstRunOnboarding({
 
             {step === "welcome" && (
               <>
-                <h2>Welcome to Juniper. What should we call you?</h2>
-                <p className="ob-help">Your first name or a nickname, we'll use it around the app.</p>
+                <h2>
+                  {name.trim() && invitedBy
+                    ? `Welcome to Juniper, ${name.trim()}.`
+                    : "Welcome to Juniper. What should we call you?"}
+                </h2>
+                <p className="ob-help">
+                  {invitedBy
+                    ? `${invitedBy} invited you to plan together. Change your name here if we got it wrong.`
+                    : "Your first name or a nickname, we'll use it around the app."}
+                </p>
                 <input
                   className="ob-input"
                   autoFocus

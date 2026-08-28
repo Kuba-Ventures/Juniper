@@ -27,7 +27,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-type Partnership = { id: string; inviter_id: string; partner_id: string | null; status: string; invite_token: string | null };
+type Partnership = { id: string; inviter_id: string; partner_id: string | null; status: string; invite_token: string | null; invited_name?: string | null };
 type Prefs = { user_id: string; share_balances: boolean; share_transactions: boolean; share_score: boolean };
 type Acct = { type: string | null; balance: number | null };
 type Goal = { id: string; title: string; icon: string; target_amount: number };
@@ -141,6 +141,9 @@ async function overview(uid: string): Promise<Response> {
 
   return json({
     connected: true,
+    // Only meaningful for the person who accepted: it is the name the inviter
+    // gave them. The inviter's own row says nothing about the inviter.
+    me: { invitedName: active.partner_id === uid ? firstName(active.invited_name) || null : null },
     partner: { name: partnerName },
     prefs: {
       me: { share_balances: mine.share_balances, share_transactions: mine.share_transactions, share_score: mine.share_score },
@@ -184,12 +187,26 @@ export default async function handler(req: Request): Promise<Response> {
     const { active, pending } = await loadPartnership(uid);
     if (active) return json({ error: "You're already connected with a partner" }, 409);
     const origin = new URL(req.url).origin;
-    if (pending?.invite_token) return json({ ok: true, token: pending.invite_token, url: `${origin}/invite/partner/${pending.invite_token}` });
+    // The name the inviter typed for their partner. Carried so the invited
+    // person is greeted by it instead of being asked who they are.
+    const invitedName = (body.partnerName || "").trim().slice(0, 60) || null;
+    if (pending?.invite_token) {
+      // Re-opening the modal and typing a name has to reach a link that already
+      // exists, otherwise the name is silently dropped a second time.
+      if (invitedName && invitedName !== pending.invited_name) {
+        await adminRest(`partnerships?id=eq.${pending.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ invited_name: invitedName }),
+        });
+      }
+      return json({ ok: true, token: pending.invite_token, url: `${origin}/invite/partner/${pending.invite_token}` });
+    }
     const newToken = crypto.randomUUID().replace(/-/g, "");
     const r = await adminRest("partnerships", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ inviter_id: uid, status: "pending", invite_token: newToken }),
+      body: JSON.stringify({ inviter_id: uid, status: "pending", invite_token: newToken, invited_name: invitedName }),
     });
     if (!r.ok) return json({ error: "Failed to create invite", detail: await r.text().catch(() => "") }, 500);
     return json({ ok: true, token: newToken, url: `${origin}/invite/partner/${newToken}` });

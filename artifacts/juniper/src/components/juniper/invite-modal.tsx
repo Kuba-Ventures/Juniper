@@ -27,7 +27,7 @@ export function InviteModal({ onClose }: { onClose: () => void }) {
 
   const createLink = async () => {
     setBusy(true); setError(null);
-    const res = await invitePartner();
+    const res = await invitePartner(name);
     setBusy(false);
     if (res.ok && res.url) setUrl(res.url);
     else setError(res.error || "We couldn't generate a live link yet, please try again.");
