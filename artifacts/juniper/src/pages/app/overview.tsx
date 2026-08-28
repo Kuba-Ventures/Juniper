@@ -225,16 +225,23 @@ function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"
       <NetWorthChart series={win} labels={winLabels} estimated={winEstimated} />
       {anyEstimated && (
         <div className="nw-legend">
-          <span><i className="est" />Rebuilt from your transactions</span>
+          {/* "Estimated" rather than "rebuilt from your transactions", because
+              two different things now set this flag: a point reconstructed
+              backward from transactions, and a day where one bank did not
+              answer and its last known balance was carried forward. The note
+              below names both. */}
+          <span><i className="est" />Estimated</span>
           <span><i />Recorded by Juniper</span>
         </div>
       )}
       {anyEstimated ? (
         <p className="nw-note">
-          The dashed stretch is rebuilt from your transactions, back to the oldest one your bank
-          shared. Cash and card balances there are exact. Invested balances count the money you
-          added but not how the market moved, because Plaid reports today's prices and not past
-          ones.
+          A dashed point is one Juniper worked out rather than read live. Points before you
+          joined are rebuilt from your transactions, back to the oldest one your bank shared: cash
+          and card balances there are exact, while invested balances count the money you added but
+          not how the market moved, because Plaid reports today's prices and not past ones. A
+          dashed point in recent days means a bank did not answer that day, so its last known
+          balance was carried forward.
         </p>
       ) : noRanges ? (
         <p className="nw-note">Ranges open up as history builds. Juniper saves one net worth point a day, and this is everything recorded so far.</p>
