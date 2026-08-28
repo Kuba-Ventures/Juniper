@@ -1000,9 +1000,25 @@
 .jnpr .sc-switch button{border:0;background:transparent;color:var(--jnpr-ink-2);font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
 .jnpr .sc-switch button.on{background:var(--jnpr-surface);color:var(--jnpr-accent);box-shadow:var(--jnpr-shadow)}
 
+/* Title and range on one row, the view switcher under it, both hard left. The
+   switcher used to sit at the far right of the card head, which put the control
+   and the label it acts on at opposite ends of a wide card. */
+/* align-items:flex-start, not the flex default of stretch: the switcher is an
+   inline-flex pill bar and a column parent would otherwise stretch its
+   background across the whole card. */
+.jnpr .tx-head{display:flex;flex-direction:column;align-items:flex-start;gap:11px;margin-bottom:16px}
+.jnpr .tx-head-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.jnpr .tx-head-row h3{margin:0}
+
 /* Chart on the left, legend or summary on the right. Option 1 from the agreed
-   mock: the chart owns its width and the list runs full width underneath. */
+   mock: the chart owns its width and the list runs full width underneath.
+   `wide` is for the trend and flow views, which need more room and are tall
+   enough that the side panel should sit at the top rather than be centred
+   against them. The panel stays on ALL five views: it carries the summary, and
+   losing it on the two whole-range views took the totals away exactly when a
+   member was asking a whole-range question. */
 .jnpr .sc-row{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;align-items:center}
+.jnpr .sc-row.wide{grid-template-columns:minmax(0,1fr) 260px;align-items:start;gap:22px}
 .jnpr .sc-chart{min-width:0;display:flex;justify-content:center}
 .jnpr .sc-side{min-width:0}
 .jnpr .sc-toggle{display:flex;width:100%;margin-bottom:10px}
@@ -1017,6 +1033,7 @@
    max-width made preserveAspectRatio letterbox the chart with dead space down
    both sides. Capping the width keeps the type at its designed size. */
 .jnpr .sc-wide{max-width:760px;margin:0 auto}
+.jnpr .sc-row.wide .sc-wide{max-width:100%}
 .jnpr .sc-pie{display:flex;justify-content:center}
 .jnpr .sc-pie .sc-svg{width:210px;flex:0 0 auto}
 .jnpr .sc-cv{fill:var(--jnpr-ink);font-size:23px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
@@ -1075,8 +1092,14 @@
 .jnpr .td-m .blogo,.jnpr .td-m .tile{width:26px;height:26px;flex:0 0 auto;border-radius:8px}
 .jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink)}
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.jnpr .ctag{display:inline-block;font-size:11.5px;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);
-  border:1px solid transparent;border-left-width:3px;border-radius:6px;padding:2px 8px;white-space:nowrap}
+/* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed
+   out, as though the category were disabled or uncertain rather than simply
+   secondary to the merchant. Full ink at 12px and semibold, with the group's
+   colour kept as the left edge, so the tag is legible on its own and still
+   colour-codes at a glance. */
+.jnpr .ctag{display:inline-block;font-size:12px;font-weight:600;color:var(--jnpr-ink);
+  background:var(--jnpr-surface-3);border:1px solid transparent;border-left-width:3px;
+  border-radius:6px;padding:3px 9px;white-space:nowrap}
 .jnpr .td-a{font-weight:650;color:var(--jnpr-ink);white-space:nowrap}
 .jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
 .jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;

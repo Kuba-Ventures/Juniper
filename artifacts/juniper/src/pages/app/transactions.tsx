@@ -95,23 +95,31 @@ export default function Transactions() {
 
   return (
     <div className="frame">
+      {/* No range pills up here. They used to sit in the page header, a long way
+         from the figure they change, so the connection between pressing "1Y"
+         and the donut redrawing had to be inferred. They now sit beside the
+         range label itself. */}
       <PageHeader
         title="Transactions"
         sub="Every transaction your banks have shared, as far back as they go."
-        actions={
-          <div className="pills">
-            {RANGES.map((r) => (
-              <button key={r} className={r === range ? "on" : undefined} onClick={() => setRange(r)}>{r}</button>
-            ))}
-          </div>
-        }
       />
 
       {failed && <div className="card" style={{ marginBottom: 16 }}>Could not load your transactions just now. Refresh to try again.</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <h3>{RANGE_LABEL[range]}</h3>
+        {/* Both control groups hang off the left edge, under the label they act
+           on, rather than one being pushed to the far right of a wide card.
+           Reading order matches cause and effect: which range, then which view
+           of it, then the view. */}
+        <div className="tx-head">
+          <div className="tx-head-row">
+            <h3>{RANGE_LABEL[range]}</h3>
+            <div className="pills">
+              {RANGES.map((r) => (
+                <button key={r} className={r === range ? "on" : undefined} onClick={() => setRange(r)}>{r}</button>
+              ))}
+            </div>
+          </div>
           <div className="sc-switch">
             {CHART_KINDS.map((c) => (
               <button key={c.k} className={c.k === chart ? "on" : undefined} title={c.hint}
@@ -130,28 +138,24 @@ export default function Transactions() {
                other is a two-sided diagram, and squeezing either next to a
                legend makes both unreadable. The three category views keep the
                side panel, which is where the legend/summary toggle lives. */}
-            {chart === "trend" ? (
-              <TrendView trend={head?.trend ?? []} />
-            ) : chart === "flow" ? (
-              <FlowView rows={breakdown} total={spent} income={summary?.income ?? 0} incomeRows={head?.incomeBreakdown ?? []} />
-            ) : (
-              <div className="sc-row">
-                <div className="sc-chart">
-                  {chart === "pie" && <PieView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                  {chart === "bars" && <BarsView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                  {chart === "treemap" && <TreemapView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                </div>
-                <div className="sc-side">
-                  <div className="pills sc-toggle">
-                    <button className={panel === "categories" ? "on" : undefined} onClick={() => setPanel("categories")}>Categories</button>
-                    <button className={panel === "summary" ? "on" : undefined} onClick={() => setPanel("summary")}>Summary</button>
-                  </div>
-                  {panel === "categories"
-                    ? <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />
-                    : <Summary s={summary} range={range} clipped={clipped} />}
-                </div>
+            <div className={`sc-row${chart === "trend" || chart === "flow" ? " wide" : ""}`}>
+              <div className="sc-chart">
+                {chart === "pie" && <PieView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                {chart === "bars" && <BarsView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                {chart === "treemap" && <TreemapView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                {chart === "trend" && <TrendView trend={head?.trend ?? []} />}
+                {chart === "flow" && <FlowView rows={breakdown} total={spent} income={summary?.income ?? 0} incomeRows={head?.incomeBreakdown ?? []} />}
               </div>
-            )}
+              <div className="sc-side">
+                <div className="pills sc-toggle">
+                  <button className={panel === "categories" ? "on" : undefined} onClick={() => setPanel("categories")}>Categories</button>
+                  <button className={panel === "summary" ? "on" : undefined} onClick={() => setPanel("summary")}>Summary</button>
+                </div>
+                {panel === "categories"
+                  ? <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />
+                  : <Summary s={summary} range={range} clipped={clipped} />}
+              </div>
+            </div>
             {head?.truncated && (
               <p className="sc-note">This range holds more transactions than Juniper totals in one pass, so the figures above cover the most recent 20,000.</p>
             )}
