@@ -26,7 +26,7 @@ export interface SyncState {
   tracked: boolean;
   connections: number;
   needsRelink: { institution: string; since: string | null }[];
-  canForceSync: boolean;
+  isDeveloper: boolean;
 }
 
 export function isStale(state: SyncState | undefined, now = Date.now()): boolean {
