@@ -114,7 +114,10 @@ export default async function handler(req: Request): Promise<Response> {
   const failures: ItemFailure[] = [];
   let refreshed = 0;
 
-  for (const item of items) {
+  // One item's balance refresh: a Plaid call, then the stored-snapshot write.
+  // Returns rather than mutating, so the batching below can run several at once
+  // without two items racing on the same totals.
+  const refreshItem = async (item: { item_id: string; access_token: string }) => {
     const bal = await plaidFetch<BalanceResp>("/accounts/balance/get", { access_token: item.access_token });
     if (!bal.ok) {
       const code = bal.data.error_code ?? null;
@@ -124,19 +127,23 @@ export default async function handler(req: Request): Promise<Response> {
       console.error(
         `[plaid] accounts/balance/get failed (${bal.status}) for item ${item.item_id}: ${code || "unknown"} ${bal.data.error_message || ""}`.trim(),
       );
-      failures.push({
-        item_id: item.item_id,
-        error_code: code,
-        error_message: bal.data.error_message ?? null,
-        needs_relink: !!code && DEAD_ITEM_CODES.has(code),
-      });
-      continue;
+      return {
+        assets: 0,
+        debts: 0,
+        failure: {
+          item_id: item.item_id,
+          error_code: code,
+          error_message: bal.data.error_message ?? null,
+          needs_relink: !!code && DEAD_ITEM_CODES.has(code),
+        } as ItemFailure,
+      };
     }
     const accts = bal.data.accounts ?? [];
-    for (const a of accts) {
-      const c = classify(a);
-      assets += c.assets;
-      debts += c.debts;
+    let a = 0, d = 0;
+    for (const acct of accts) {
+      const c = classify(acct);
+      a += c.assets;
+      d += c.debts;
     }
     // Refresh the stored snapshot so /api/plaid/accounts stays current too.
     await adminRest(`plaid_items?item_id=eq.${item.item_id}`, {
@@ -144,7 +151,32 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ accounts: sanitizeAccounts(accts), updated_at: new Date().toISOString() }),
     });
-    refreshed++;
+    return { assets: a, debts: d, failure: null };
+  };
+
+  // Items are refreshed in parallel batches rather than one after another. This
+  // was a serial loop, which is fine at three connections and fatal at twelve: a
+  // Plaid balance call plus a Supabase write is a second or two, and an edge
+  // function is killed if it has not returned an initial response within 25
+  // seconds. A member with twelve institutions hit that ceiling, so the whole
+  // refresh 504'd, no trend point was written for the day, and the legs that run
+  // after this one in syncFinances were left waiting on a function already dead.
+  //
+  // Bounded rather than unbounded: the Item cap on this tier is 200, and firing
+  // 200 concurrent balance calls would trade a timeout for a rate limit. Six at
+  // a time clears twelve institutions in two rounds.
+  const CONCURRENCY = 6;
+  for (let i = 0; i < items.length; i += CONCURRENCY) {
+    const batch = await Promise.all(items.slice(i, i + CONCURRENCY).map(refreshItem));
+    for (const r of batch) {
+      if (r.failure) {
+        failures.push(r.failure);
+        continue;
+      }
+      assets += r.assets;
+      debts += r.debts;
+      refreshed++;
+    }
   }
 
   // The only non-200 path: nothing at all resolved, so there is no snapshot to
