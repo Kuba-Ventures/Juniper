@@ -1188,3 +1188,17 @@
 .jnpr .relink-note .rt{flex:1;min-width:0}
 .jnpr .relink-note .rn{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
 .jnpr .relink-note .rs{font-size:11.5px;color:var(--jnpr-ink-2);margin-top:3px;line-height:1.55}
+
+/* ---------- developer tools in Settings ---------- */
+/* One row per tool: what it does, what it leaves alone, and the control. The
+   "what it leaves alone" half is the point, since two of the three look alike
+   from their names and only one of them destroys anything. */
+.jnpr .dev-tools{display:flex;flex-direction:column;margin-bottom:18px}
+.jnpr .dev-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .dev-row:first-child{border-top:0;padding-top:2px}
+.jnpr .dev-t{flex:1;min-width:0}
+.jnpr .dev-n{font-size:13.5px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .dev-s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px;line-height:1.55}
+.jnpr .dev-row .btn{flex:0 0 auto}
+.jnpr .btn.ghost.danger{color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+.jnpr .btn.ghost.danger:hover{background:var(--jnpr-bad-soft)}

@@ -106,7 +106,7 @@ export function ConnectionsView() {
   // the one failure a button appeared to address, a connection whose login has
   // expired, is not something a refresh can fix. That case gets its own prompt
   // below, pointing at the action that does work.
-  const canForce = import.meta.env.DEV || !!sync?.canForceSync;
+  const canForce = import.meta.env.DEV || !!sync?.isDeveloper;
   const [syncing, setSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
   // Whether the add-an-account panel is open. The search used to sit in a card

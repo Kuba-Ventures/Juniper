@@ -24,7 +24,7 @@ import { fetchScoreInput } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
 import { CATEGORY_GROUPS, groupOf, kindOf, isGroupLabel } from "./_categorize";
-import { isAdminEmail } from "./_admin";
+import { isDeveloperEmail } from "./_admin";
 
 export const config = { runtime: "edge" };
 
@@ -280,11 +280,12 @@ export default async function handler(req: Request): Promise<Response> {
       tracked: syncable.length > 0,
       connections: items.length,
       needsRelink,
-      // Server-side admin check, so the allowlist never reaches the bundle. The
-      // manual refresh control is gated on this (or on a dev build); the sync
-      // endpoints themselves are unchanged and still open to any signed-in
-      // caller, because this gates a control, not a capability.
-      canForceSync: isAdminEmail(payload.email),
+      // Server-side check, so the allowlist never reaches the bundle. Gates the
+      // manual refresh control and the developer section in Settings (a local
+      // dev build gets both regardless). The endpoints behind them are
+      // unchanged and still scoped to the caller by their own JWT, so this
+      // gates a control, not a capability.
+      isDeveloper: isDeveloperEmail(payload.email),
     },
     // Explicit so the client gates its transaction-dependent cards on a real
     // signal rather than inferring one from "a live payload arrived", which is
