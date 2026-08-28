@@ -85,12 +85,13 @@ type Txn = {
   account_id: string | null;
   item_id: string | null;
   iso_currency_code: string | null;
+  logo_url: string | null;
 };
 type RollupTxn = Pick<Txn, "name" | "merchant_name" | "amount" | "date" | "category">;
 type Acct = { account_id?: string; name?: string; mask?: string | null };
 type Item = { item_id: string; institution_name: string | null; accounts: Acct[] };
 
-const PAGE_COLS = "id,name,merchant_name,amount,date,category,pending,account_id,item_id,iso_currency_code";
+const PAGE_COLS = "id,name,merchant_name,amount,date,category,pending,account_id,item_id,iso_currency_code,logo_url";
 const ROLLUP_COLS = "name,merchant_name,amount,date,category";
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
@@ -195,6 +196,21 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
+  // Merchant art for the rows on this page. A row carries its own `logo_url`
+  // only if it was written after migration 0018, so anything older is filled
+  // from the merchant-level cache, which any later charge from the same shop
+  // populates. Scoped to the merchants actually on this page rather than
+  // reading the whole table.
+  const wanted = [...new Set(pageRows.map((t) => t.merchant_name).filter((m): m is string => !!m && m.length > 0))];
+  const logoOf = new Map<string, string>();
+  if (wanted.length) {
+    const list = wanted.map((m) => `"${m.replace(/["\\]/g, "")}"`).join(",");
+    const marks = await rows<{ merchant_name: string; logo_url: string | null }>(
+      `merchant_logos?merchant_name=in.(${list})&select=merchant_name,logo_url`,
+    );
+    for (const m of marks) if (m.logo_url) logoOf.set(m.merchant_name, m.logo_url);
+  }
+
   const transactions = pageRows.map((t) => {
     const acct = t.account_id ? accountOf.get(t.account_id) : undefined;
     return {
@@ -204,6 +220,9 @@ export default async function handler(req: Request): Promise<Response> {
       // and merchant art has to be resolved from the unmodified merchant name.
       m: t.merchant_name || t.name || "Transaction",
       merchant: t.merchant_name,
+      // The row's own art first, the merchant cache second, null last. Null is
+      // a real answer: the client draws a monogram rather than a broken image.
+      logo: t.logo_url ?? (t.merchant_name ? logoOf.get(t.merchant_name) ?? null : null),
       c: t.category || "Everything else",
       g: groupOf(t.category),
       k: kindOf(t.category),

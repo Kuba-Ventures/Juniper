@@ -17,6 +17,7 @@ export interface SubItem {
   id: string;
   name: string;
   merchant: string | null;
+  logo: string | null;
   c: string;
   g: string;
   direction: "outflow" | "inflow";

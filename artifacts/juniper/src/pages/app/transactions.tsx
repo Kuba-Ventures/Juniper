@@ -12,11 +12,12 @@
 // entry that was already there.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
-import { BrandTile, cssVar } from "@/components/juniper/primitives";
+import { cssVar } from "@/components/juniper/primitives";
+import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { colorOf } from "@/lib/category-color";
-import { fmtDay, money0, money2, merchantMark, initial } from "@/lib/txn-format";
+import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
   fetchTransactions,
   RANGES, rangeFrom, rangeIsClipped, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
@@ -196,7 +197,7 @@ export default function Transactions() {
                     <td className="td-d">{fmtDay(t.d)}{t.pending && <span className="td-pend">Pending</span>}</td>
                     <td>
                       <div className="td-m">
-                        <BrandTile name={merchantMark(t.merchant, t.m)} letter={initial(t.m)} k={colorOf(t.g)} />
+                        <MerchantMark logo={t.logo} merchant={t.merchant} name={t.m} k={colorOf(t.g)} />
                         <span className="td-mn">
                           {t.m}
                           {(t.institution || t.account) && (

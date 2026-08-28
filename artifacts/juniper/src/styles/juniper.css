@@ -1089,7 +1089,13 @@
 .jnpr .td-d{color:var(--jnpr-ink-3);white-space:nowrap;font-size:12.5px}
 .jnpr .td-pend{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-warn);margin-top:2px}
 .jnpr .td-m{display:flex;align-items:center;gap:10px;min-width:0}
+/* Sized here rather than on the image, so a remote logo, a bundled one, and a
+   monogram tile all occupy the same box and the column never reflows as art
+   loads in. object-fit keeps a non-square logo from stretching, and the tint
+   behind it keeps a transparent PNG legible on the dark surface. */
 .jnpr .td-m .blogo,.jnpr .td-m .tile{width:26px;height:26px;flex:0 0 auto;border-radius:8px}
+.jnpr .td-m img.blogo{object-fit:contain;background:var(--jnpr-surface-3);padding:2px}
+.jnpr .sub-row img.blogo{object-fit:contain;background:var(--jnpr-surface-3);padding:2px}
 .jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink)}
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed

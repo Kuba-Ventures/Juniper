@@ -16,9 +16,9 @@
 // the easy implementation, hides exactly the price rise a member opens this
 // screen to find.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { BrandTile } from "@/components/juniper/primitives";
+import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { colorOf } from "@/lib/category-color";
-import { fmtDay, money2, merchantMark, initial } from "@/lib/txn-format";
+import { fmtDay, money2 } from "@/lib/txn-format";
 import { fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
 
 const CONFIDENCE_NOTE: Record<string, string> = {
@@ -158,7 +158,7 @@ export function SubscriptionsPanel() {
 function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy: boolean; muted?: boolean }) {
   return (
     <div className={`sub-row${muted ? " muted" : ""}${busy ? " busy" : ""}`}>
-      <BrandTile name={merchantMark(i.merchant, i.name)} letter={initial(i.name)} k={colorOf(i.g)} />
+      <MerchantMark logo={i.logo} merchant={i.merchant} name={i.name} k={colorOf(i.g)} />
       <div className="sub-id">
         <span className="sub-n">{i.name}</span>
         <span className="sub-sub">

@@ -148,6 +148,21 @@ export default async function handler(req: Request): Promise<Response> {
   const overrides: OverrideRow[] = oRes.ok ? await oRes.json() : [];
   const byStream = new Map(overrides.map((o) => [o.stream_id, o]));
 
+  // Same merchant art the transactions list uses, so a subscription and the
+  // charges behind it show the same mark. Plaid's recurring streams carry a
+  // merchant name but no logo, so the cache filled by the transactions sync is
+  // the only source, and it is the right one: they are the same merchants.
+  const wanted = [...new Set(streams.map((x) => x.merchant_name).filter((m): m is string => !!m && m.length > 0))];
+  const logoOf = new Map<string, string>();
+  if (wanted.length) {
+    const list = wanted.map((m) => `"${m.replace(/["\\]/g, "")}"`).join(",");
+    const r = await adminRest(`merchant_logos?merchant_name=in.(${list})&select=merchant_name,logo_url`);
+    if (r.ok) {
+      const marks = (await r.json()) as { merchant_name: string; logo_url: string | null }[];
+      for (const m of marks) if (m.logo_url) logoOf.set(m.merchant_name, m.logo_url);
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
 
   const items = streams.map((s) => {
@@ -184,6 +199,7 @@ export default async function handler(req: Request): Promise<Response> {
       id: s.stream_id,
       name: o?.name || s.merchant_name || s.description || "Recurring charge",
       merchant: s.merchant_name,
+      logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,
       c: s.category || "Everything else",
       g: groupOf(s.category),
       direction: s.direction === "inflow" ? "inflow" : "outflow",
