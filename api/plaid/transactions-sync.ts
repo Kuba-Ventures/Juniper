@@ -41,6 +41,13 @@ type PlaidTxn = {
   merchant_name?: string | null;
   pending?: boolean;
   personal_finance_category?: { primary?: string; detailed?: string } | null;
+  // Plaid enrichment, already included with Transactions. `logo_url` is the
+  // merchant's mark; `counterparties` carries the same for the parties behind a
+  // charge, which is where the art lives when the top-level merchant is a
+  // payment processor rather than the shop.
+  logo_url?: string | null;
+  website?: string | null;
+  counterparties?: { name?: string | null; logo_url?: string | null; website?: string | null; type?: string | null }[];
 };
 type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
@@ -54,9 +61,20 @@ type SyncResp = {
   error_code?: string;
 };
 
+// Top-level first, then the first counterparty that has one. Plaid leaves the
+// top-level `logo_url` null on plenty of charges while still naming the
+// merchant underneath, so falling through to counterparties is what takes this
+// from "some rows have art" to "most rows do".
+function artOf(t: PlaidTxn): { logo_url: string | null; website: string | null } {
+  const logo = t.logo_url ?? t.counterparties?.find((c) => c.logo_url)?.logo_url ?? null;
+  const site = t.website ?? t.counterparties?.find((c) => c.website)?.website ?? null;
+  return { logo_url: logo, website: site };
+}
+
 function toRow(userId: string, itemId: string, t: PlaidTxn) {
   const pfc = t.personal_finance_category ?? {};
   const category = categorize(pfc.primary, pfc.detailed);
+  const art = artOf(t);
   return {
     user_id: userId,
     item_id: itemId,
@@ -71,6 +89,8 @@ function toRow(userId: string, itemId: string, t: PlaidTxn) {
     plaid_category: pfc.primary ?? null,
     category,
     category_source: "plaid",
+    logo_url: art.logo_url,
+    website: art.website,
     updated_at: new Date().toISOString(),
   };
 }
@@ -176,6 +196,28 @@ export default async function handler(req: Request): Promise<Response> {
         }
         added += d.added?.length ?? 0;
         modified += d.modified?.length ?? 0;
+        // Merchant-level cache, so art found on one charge covers every other
+        // charge from that merchant, including rows written before this column
+        // existed. This is what makes a full re-sync unnecessary: /transactions
+        // /sync never revisits old rows, so without it those rows would carry no
+        // art forever. Deduped per batch, since a page routinely holds several
+        // charges from the same shop.
+        const marks = new Map<string, { merchant_name: string; logo_url: string | null; website: string | null }>();
+        for (const r of upserts) {
+          if (!r.merchant_name || (!r.logo_url && !r.website)) continue;
+          if (!marks.has(r.merchant_name)) {
+            marks.set(r.merchant_name, { merchant_name: r.merchant_name, logo_url: r.logo_url, website: r.website });
+          }
+        }
+        if (marks.size) {
+          // Best effort. A missing logo is cosmetic and must never fail a sync
+          // that has already stored the member's transactions.
+          await adminRest("merchant_logos?on_conflict=merchant_name", {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify([...marks.values()]),
+          }).catch(() => undefined);
+        }
       }
       const removedIds = (d.removed ?? []).map((r) => r.transaction_id);
       if (removedIds.length) {

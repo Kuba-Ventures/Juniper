@@ -14,7 +14,8 @@ import { LOGO_KEY } from "@/lib/mock-data";
 export interface TxnRow {
   id: string;
   m: string;                 // display label (merchant, else the raw name)
-  merchant: string | null;   // Plaid's unmodified merchant string, for logo lookup
+  merchant: string | null;   // Plaid's unmodified merchant string
+  logo: string | null;       // Plaid's merchant art, or the merchant cache, else null
   c: string;                 // leaf category
   g: string;                 // group it rolls into
   k: "spend" | "income" | "transfer";
