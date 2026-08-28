@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Plus, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
-import { syncFinancesUntilTransactions, layerEnabled, pollCashflowEstimate, normInstitutionName } from "@/lib/plaid";
+import { syncFinancesUntilTransactions, layerEnabled, pollCashflowEstimate, normInstitutionName, fetchConnectionNames } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
@@ -49,6 +49,31 @@ export function FirstRunOnboarding({
   const [customGoals, setCustomGoals] = useState<string[]>([]);
   const [customGoal, setCustomGoal] = useState("");
   const [linked, setLinked] = useState(false);
+  // Institutions linked BEFORE this run. Onboarding is not only a new member's
+  // first five minutes: the developer reset replays it, and that reset leaves
+  // linked banks in place, so the member arriving here can already have a dozen
+  // connections. Without this the connect step showed them an empty picker and
+  // an "I'll do this later" button, and the next step told them they had skipped
+  // connecting and asked them to type an income Juniper already knows.
+  const [already, setAlready] = useState<string[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    void fetchConnectionNames()
+      .then((names) => {
+        if (!live || names.length === 0) return;
+        setAlready(names);
+        // Counts as linked for the rest of the flow: the income step polls for
+        // an estimate on the strength of this, and there is data to estimate
+        // from whether the link happened a minute ago or last month.
+        setLinked(true);
+      })
+      .catch(() => {
+        // A failed read means we simply do not know, and the flow behaves as it
+        // did before: connect from scratch, type the numbers by hand.
+      });
+    return () => { live = false; };
+  }, []);
 
   const addCustomGoal = () => {
     const g = customGoal.trim();
@@ -200,7 +225,7 @@ export function FirstRunOnboarding({
             )}
 
             {step === "connect" && (
-              <ConnectStep linked={linked} onLinked={() => setLinked(true)} />
+              <ConnectStep already={already} onLinked={() => setLinked(true)} />
             )}
 
             <div className="ob-nav">
@@ -378,7 +403,7 @@ function IncomeStep({
   );
 }
 
-function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => void }) {
+function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () => void }) {
   const [manual, setManual] = useState(false);
   // Institutions connected this session (via instant discovery, the Plaid link
   // queue, or manual add), normalized for matching. Passed to the picker, which
@@ -387,6 +412,25 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
   // on this screen, so a member who links two banks in a row needs to see both
   // names to know the first one took.
   const [connected, setConnected] = useState<Map<string, string>>(new Map());
+
+  // What the picker sees: this session's links on top of the ones the member
+  // already had. The picker lists these as Connected and drops them out of its
+  // search results, so a member cannot be offered a bank they linked last month
+  // and cannot be left wondering whether their existing connections survived a
+  // reset.
+  const known = useMemo(() => {
+    const m = new Map(connected);
+    for (const n of already) {
+      const key = normInstitutionName(n);
+      if (n && !m.has(key)) m.set(key, n);
+    }
+    return m;
+  }, [connected, already]);
+
+  // Linked in THIS run, which is a different question from whether anything is
+  // linked at all: the confirmation below reports what just happened, so a bank
+  // linked last month must not claim "Account added".
+  const linkedThisSession = connected.size > 0;
 
   const markConnected = useCallback(
     (institutions?: string[]) => {
@@ -430,9 +474,17 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
         always do this later.
       </p>
 
-      {linked && (
+      {linkedThisSession && (
         <div className="ob-connected">
           <Check size={18} strokeWidth={2.5} /> Account added. Search for another below, or continue.
+        </div>
+      )}
+      {!linkedThisSession && already.length > 0 && (
+        <div className="ob-connected">
+          <Check size={18} strokeWidth={2.5} />{" "}
+          {already.length === 1
+            ? "Your account is already connected. Add another below, or continue."
+            : `Your ${already.length} accounts are already connected. Add another below, or continue.`}
         </div>
       )}
       {notice && <div className="form-error" style={{ marginBottom: 12 }}>{notice}</div>}
@@ -456,7 +508,7 @@ function ConnectStep({ linked, onLinked }: { linked: boolean; onLinked: () => vo
           onCancel={() => setManual(false)}
         />
       ) : (
-        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} connected={connected} />
+        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} connected={known} />
       )}
 
       <p className="ob-secure">
