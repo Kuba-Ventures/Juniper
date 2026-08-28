@@ -1,6 +1,14 @@
 # Juniper Roadmap — Repositioning to a financial planning app
 
-*Owner: Finley · Started: 2026-08-03 · Status: Stage 0 decisions locked (2026-08-03) · build not started*
+*Owner: Finley · Started: 2026-08-03 · Status: shipping, Stages 2, 3, 4, 5, 7 and 13 substantially built · last re-verified against the code 2026-08-28*
+
+> **Re-verified 2026-08-28.** The checkboxes below had drifted from the repo in
+> three places, each corrected in place rather than left to be rediscovered:
+> Stage 3 carried two copies of sub-stages 3b to 3e (one done, one untouched)
+> from a merge, Stage 6's Plaid Production gate was still open months after it
+> cleared, and Stage 11's "Ask Juniper" was still marked deferred with the
+> surface routed and streaming in production. Stage 12 gained the one thing
+> nobody had written down: there is no password reset anywhere in the codebase.
 
 ## What this is
 
@@ -71,11 +79,10 @@ Shell is done; remaining screens and states:
 - **3d — Budgets** [x] `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions.
 - **3e — Net worth history** [x] `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line.
 - **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home, Spending, and the Accounts/Connections surface all read live data.** Sync trigger: `syncFinances()` (`src/lib/plaid.ts`) fires `POST /api/plaid/transactions-sync` + `POST /api/plaid/networth-snapshot` automatically on link, and on the manual **"Refresh data now"** button in Connections.
-- **3b — Transactions sync** [ ] Add `transactions` to `PLAID_PRODUCTS`; `api/plaid/transactions-sync.ts` pulling Plaid `/transactions/sync` by cursor into the table (service-role, user-scoped, dedup on `plaid_transaction_id`).
-- **3c — Categorization** [ ] Map Plaid `personal_finance_category.primary` → Juniper categories (Housing, Groceries & dining, …) + merchant rules + user overrides (`category` / `category_source`).
-- **3d — Budgets** [ ] CRUD + monthly rollups (spent per category from transactions) + over-budget logic.
-- **3e — Net worth history** [ ] Daily balance snapshots (Plaid returns current balances only) → the trend line.
-- **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home is wired.** Remaining polish: adopt the hook in Spending/Accounts too, and add a sync trigger (call `POST /api/plaid/transactions-sync`, e.g. on link / periodically).
+> **Deduplicated 2026-08-28.** This list appeared twice, once as above and once
+> with 3b to 3e unchecked and described as unbuilt, which made the most finished
+> part of the repo read as half-built. The stale copy is deleted; the state above
+> is the one that matches the code.
 
 ---
 
@@ -105,7 +112,7 @@ Shell is done; remaining screens and states:
 
 ## Stage 6 — Compliance & data gates **(compliance)**
 
-- [ ] Plaid **Production** access — application review, beneficial owners, billing; flip `PLAID_ENV=production`
+- [x] Plaid **Production** access — approved 2026-08-25 and proven end to end 2026-08-28 (real institutions linked on the production account, six items in that day's runtime logs). `PLAID_ENV=production` and the production secret are scoped to the Production environment only; Preview and Development stay on Sandbox. The five month stall was the wrong Plaid account, see PROJECT.md
 - [ ] Financial-data terms of service + privacy policy
 - [ ] Security review of the new data surfaces (transactions, balances, score inputs)
 - [ ] Configure Anthropic API spending limits *(open loop from PROJECT.md)*
@@ -137,7 +144,8 @@ Shell is done; remaining screens and states:
 
 See and manage every active subscription, and cancel with one click + an approval step. Detection builds on Stage 3 recurring-transaction data.
 
-- [ ] **(build)** Recurring/subscription detection from transactions — group by merchant + cadence, surface amount, next charge date, and price hikes ♻️ *(uses Stage 3 data spine)*
+- [~] **(build)** Recurring/subscription detection from transactions ♻️ *(uses Stage 3 data spine)*. Built and deployed in PR #155: Plaid's `/transactions/recurring/get` generates candidates, `recurring_streams` caches them, `recurring_overrides` holds the member's own confirmations, and nothing counts toward a total until the member confirms it. Design and rationale in docs/RECURRING_DETECTION.md. **Blocked on an entitlement, not on code:** production logs on 2026-08-28 show every item refused with `INVALID_PRODUCT client is not authorized to access the following products: ["recurring_transactions"]`. It is a separate Plaid add-on, requested and pending approval as of 2026-08-28. When it lands, add `recurring_transactions` to `additional_consented_products` in `api/plaid/link-token.ts` (naming an unentitled product there makes `/link/token/create` fail, so not before), and check whether items linked earlier need a relink to consent
+- [ ] **(build)** Price rise history per stream. The cache stores last and average amount, so a rise is visible the month it happens, but there is no per stream series behind it
 - [x] **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure") — in `design/juniper-app-mock.html`
 - [ ] **(build)** Cancellation mechanism — realistically an **assisted/concierge or partner-API flow**, not a universal one-click across all merchants. Options: generate a pre-filled cancellation request, hand off to a cancellation partner, or a Juniper-assisted queue. User's approval gates every action.
 - [ ] **(build)** Track cancellation status (requested → confirmed) and estimated savings; feed savings into the Juniper Score / "ways to improve"
@@ -157,7 +165,7 @@ Ongoing credit-score tracking and alerts on the Score/credit page (distinct from
 
 ## Stage 11 — Post-launch fast-follows **(build)**
 
-- [ ] **"Ask Juniper"** LLM advisor — money Q&A (investing, transaction structuring) with dashboard context; needs prompt safety + financial-advice disclaimers *(deferred from Stage 0)*
+- [x] **"Ask Juniper"** LLM advisor — shipped, not deferred. `/app/ask` is routed in `pages/juniper-app.tsx` and `pages/app/ask.tsx` runs threaded conversations that stream from `api/planner/chat.ts` grounded in the member's real figures, plus generated plan reports through `api/planner/report.ts`. The Stage 0 decision to defer it was overtaken by the build. **Still owed, and the reason this is not simply closed:** the prompt safety pass and the financial advice disclaimers named in the original line have not been done
 - [ ] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md)*
 - [ ] Cross-device sync for "accounts I use" *(open loop from PROJECT.md)*
 
@@ -169,11 +177,15 @@ The front door: a branded **log-in / sign-up** experience and the first-run path
 
 **Sequencing:** best done **alongside finalizing the page designs (Stage 1)** so the auth screens share the locked visual system, and **before launch (Stage 8)** since new users can't reach the product without it. It's split out as its own stage so the sign-up funnel gets deliberate design attention rather than being an afterthought.
 
-- [ ] **(design)** Sign-up / log-in / password-reset screens in the pine identity — mock first (matching `design/juniper-app-mock.html`), then port
-- [ ] **(design)** First-run onboarding sequence: create account → *(optional)* invite partner → **connect accounts** (reuse `connections.tsx`) → land on dashboard (mock fallback until synced)
-- [ ] **(build)** Wire screens to Supabase Auth (email/password + magic link; consider Google OAuth); session + `RequireAuth` already route `/app/*`
-- [ ] **(build)** Empty/first-run dashboard state — the "connect your first account" nudge that flips to live data once synced (ties into Stage 3f `useFinances`)
-- [ ] Account settings surface — profile, linked institutions (Connections), partner, sign-out
+*This stage read as entirely unstarted until 2026-08-28. Most of it is built and
+routed; what follows is what the code actually shows.*
+
+- [~] **(design)** Sign-up and log-in screens in the pine identity — built and routed (`pages/auth/sign-in.tsx`, `pages/auth/sign-up.tsx`, `/auth/sign-in` and `/auth/sign-up` in `App.tsx`). Sign-up is gated by `VITE_SIGNUP_INVITE_CODE` during private preview. **No password-reset screen exists**, see below
+- [x] **(design)** First-run onboarding sequence — `components/onboarding/first-run-onboarding.tsx`, mounted by the live shell: name and household, goals, connect accounts (the Stage 13 three-tier flow), money snapshot last so linked figures pre-fill it
+- [~] **(build)** Wire screens to Supabase Auth — email and password is wired (`signInWithPassword`, `signUp` with `emailRedirectTo` built from the current origin). Magic link and Google OAuth are not, and are optional
+- [ ] **(build) A member who forgets their password cannot get back in.** There is no `resetPasswordForEmail` call and no update-password screen anywhere in the repo, verified by grep on 2026-08-28. Supabase can send the mail, so this is one screen, one callback route, and one call. It gates any beta with real members, because the alternative is resetting people by hand in the Supabase dashboard
+- [~] **(build)** Empty/first-run dashboard state — the seam is real (`hasTransactions` from `/api/finances`, no demo fallback since #140), and Overview waits on real rows rather than showing zeroes. The deliberate nudge screen that ties it together is still the design item under Stage 1
+- [x] Account settings surface — `components/juniper/settings-modal.tsx` (account, appearance, developer tools under `DEVELOPER_EMAILS`), with linked institutions on `/app/connections`
 
 ---
 
