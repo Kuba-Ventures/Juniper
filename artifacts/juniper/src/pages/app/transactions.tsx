@@ -14,10 +14,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { BrandTile, cssVar } from "@/components/juniper/primitives";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
+import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { colorOf } from "@/lib/category-color";
-import { fmtDay, money0, money2 } from "@/lib/txn-format";
+import { fmtDay, money0, money2, merchantMark, initial } from "@/lib/txn-format";
 import {
-  fetchTransactions, merchantMark, initial,
+  fetchTransactions,
   RANGES, rangeFrom, rangeIsClipped, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
 } from "@/lib/transactions";
 
@@ -157,6 +158,11 @@ export default function Transactions() {
           </>
         )}
       </div>
+
+      {/* Between the chart and the table on purpose. A recurring charge is a
+         conclusion drawn from the same rows the table lists, so it reads as a
+         summary of them rather than as a separate feature. */}
+      <SubscriptionsPanel />
 
       <div className="card">
         <div className="card-head">

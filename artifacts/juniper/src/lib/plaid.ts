@@ -272,6 +272,12 @@ export async function syncFinances(): Promise<SyncResult> {
   // permanently unadjusted. Writes use ignore-duplicates, so a repeat run
   // rewrites nothing and a recorded day always beats a reconstructed one.
   void postOk("/api/plaid/networth-backfill");
+  // Recurring detection runs off the transactions Plaid has already returned,
+  // so it needs no extra product and no relink. Fire-and-forget alongside the
+  // backfill: the subscriptions panel reads its own cache and simply shows
+  // fewer rows until this lands, which is the right behaviour for a detector
+  // that needs a few months of history before it can say anything at all.
+  void postOk("/api/plaid/recurring-sync");
   const score = await postOk("/api/score/compute");
   const failures = [...txn.failures, ...snapshot.failures];
   const needsRelink = [
