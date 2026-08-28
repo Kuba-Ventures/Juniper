@@ -33,7 +33,10 @@ type Acct = { type: string | null; balance: number | null };
 type Goal = { id: string; title: string; icon: string; target_amount: number };
 type Contrib = { goal_id: string; user_id: string; amount: number };
 
-const DEFAULT_PREFS = { share_balances: true, share_transactions: false, share_score: false };
+// Private until said otherwise. This used to default share_balances to true,
+// which handed a new partner every account the moment they accepted. See
+// migration 0017, which flips the column default and closes existing rows.
+const DEFAULT_PREFS = { share_balances: false, share_transactions: false, share_score: false };
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
   try { const r = await adminRest(pathAndQuery); if (!r.ok) return []; return (await r.json()) as T[]; }

@@ -1,16 +1,22 @@
+// Every account either of you has shared, each shown only as far as its owner
+// allows. Live data only: the seeded household this used to fall back to went
+// with Stage 4e, along with the hardcoded "Maya" and "Devin" that named the two
+// sides even on the live branch.
 import { money } from "@/lib/mock-data";
 import { cssVar } from "@/components/juniper/primitives";
 import { SharedPage } from "@/components/juniper/shared-frame";
-import { sharedAccounts, you, partner as demoPartner, type Owner } from "@/lib/shared-data";
 import { useWorkspace } from "@/lib/workspace";
+import { useSession } from "@/lib/use-session";
 import { usePartner, setAccountShare, type AccountScope } from "@/lib/partner";
 import type { SeriesKey } from "@/lib/mock-data";
 
+type Owner = "shared" | "you" | "partner";
+
 const chipLabel = { shared: "Shared", balance: "Balance only", private: "Private" } as const;
 const NEXT: Record<AccountScope, AccountScope> = { shared: "balance", balance: "private", private: "shared" };
-const OWNER_K: Record<Owner, SeriesKey> = { shared: "--jnpr-c1", you: you.k, partner: demoPartner.k };
+const OWNER_K: Record<Owner, SeriesKey> = { shared: "--jnpr-c1", you: "--jnpr-c3", partner: "--jnpr-c5" };
 
-interface Row { account_id?: string; n: string; inst: string; v: number; owner: Owner; scope: AccountScope; k: SeriesKey; mine: boolean }
+interface Row { account_id: string; n: string; inst: string; v: number; owner: Owner; scope: AccountScope; k: SeriesKey; mine: boolean }
 
 function AcctRow({ a, onCycle }: { a: Row; onCycle?: (a: Row) => void }) {
   const priv = a.scope === "private";
@@ -31,22 +37,23 @@ function AcctRow({ a, onCycle }: { a: Row; onCycle?: (a: Row) => void }) {
 export function SharedAccounts() {
   const { partner } = useWorkspace();
   const { data, refresh } = usePartner();
-  const name = partner.name || demoPartner.name;
-  const live = data?.connected && data.accounts ? data.accounts : null;
+  const session = useSession();
+  const name = partner.name || data?.partner?.name || "your partner";
+  const meName =
+    (session?.user.user_metadata as { name?: string } | undefined)?.name?.trim().split(/\s+/)[0] || "Your";
 
-  const rows: Row[] = live
-    ? live.map((a) => ({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: a.owner, scope: a.scope, k: OWNER_K[a.owner], mine: a.mine }))
-    : sharedAccounts.map((a) => ({ n: a.n, inst: a.inst, v: a.v, owner: a.owner, scope: a.privacy, k: a.k, mine: a.owner === "you" }));
+  const rows: Row[] = (data?.accounts ?? []).map((a) => ({
+    account_id: a.account_id, n: a.n, inst: a.inst, v: a.v,
+    owner: a.owner, scope: a.scope, k: OWNER_K[a.owner], mine: a.mine,
+  }));
 
-  const cycle = live
-    ? (a: Row) => { if (a.account_id) void setAccountShare(a.account_id, NEXT[a.scope]).then(refresh); }
-    : undefined;
+  const cycle = (a: Row) => { void setAccountShare(a.account_id, NEXT[a.scope]).then(refresh); };
 
   const group = (owner: Owner) => rows.filter((a) => a.owner === owner);
   const sections: { label: string; dot: string; arr: Row[] }[] = [
     { label: "Shared & joint", dot: "var(--jnpr-good)", arr: group("shared") },
-    { label: `${you.name}'s accounts`, dot: cssVar(you.k), arr: group("you") },
-    { label: `${name}'s accounts`, dot: cssVar(demoPartner.k), arr: group("partner") },
+    { label: `${meName === "Your" ? "Your" : `${meName}'s`} accounts`, dot: cssVar(OWNER_K.you), arr: group("you") },
+    { label: `${name}'s accounts`, dot: cssVar(OWNER_K.partner), arr: group("partner") },
   ];
 
   return (
@@ -61,7 +68,7 @@ export function SharedAccounts() {
       </div>
       <p className="disc">
         “Balance only” shows the total but not the transactions; “Private” hides the account entirely.
-        {cycle ? " Tap a chip on your own account to change what your partner sees." : " The owner controls this on the Sharing tab."}
+        Tap a chip on your own account to change what {name} sees.
       </p>
     </SharedPage>
   );
