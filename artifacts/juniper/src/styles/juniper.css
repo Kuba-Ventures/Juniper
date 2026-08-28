@@ -400,6 +400,17 @@
 .jnpr .fg-tgt{font-size:13px;font-weight:650;color:var(--jnpr-ink-2);margin-left:auto}
 .jnpr .fg-u{font-size:11px;color:var(--jnpr-ink-3)}
 .jnpr .fg-detail{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:7px}
+/* A factor with no data. Since #146 an unmeasured factor is dropped from the
+   score rather than filled in, which is honest but silent, so these rows say
+   which parts were never seen. No score, no weight, no notch: an empty rail is
+   the shape of the other rows with nothing in it, which is the situation. */
+.jnpr .fg-row.gap .fg-lab{color:var(--jnpr-ink-2)}
+.jnpr .fg-rail.empty{margin-top:9px;border:1px dashed var(--jnpr-line);background:transparent;height:7px;border-radius:20px}
+.jnpr .fg-gap-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:9px}
+.jnpr .fg-gap-foot p{flex:1;min-width:200px;margin:0;font-size:12px;color:var(--jnpr-ink-3);line-height:1.5}
+.jnpr .fg-gap-foot .btn{flex:0 0 auto;text-decoration:none}
+.jnpr .fg-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin:13px 0 0;padding-top:12px;
+  border-top:1px solid var(--jnpr-line-2)}
 .jnpr .fg-headroom{font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600}
 .jnpr .fg-headroom b{color:var(--jnpr-accent);font-size:13.5px}
 @media(max-width:520px){

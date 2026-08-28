@@ -170,7 +170,64 @@ function FactorRail({ gauge, weak }: { gauge: ScoreGauge; weak: boolean }) {
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * Factors the engine could not measure.
+ *
+ * Since PR #146 an unmeasured factor is DROPPED from the score rather than
+ * filled with a plausible number, and the remaining weights renormalize. That
+ * is the honest arithmetic, but on its own it is also silent: the factor simply
+ * is not there, so a member cannot tell the difference between a part of their
+ * financial life Juniper judged fine and one it never saw.
+ *
+ * These rows say which. Deriving them by difference, rather than having the
+ * engine emit placeholder factors, keeps that fix intact: nothing here carries a
+ * score, a weight, or a target, because there is no data to give it one.
+ *
+ * The copy promises MEASUREMENT, never points. Connecting an account can just as
+ * easily lower the score as raise it, since it replaces nothing with a real
+ * reading, and promising points is the same shape of claim the flat-70 credit
+ * factor was making before #146 removed it.
+ * ------------------------------------------------------------------ */
+
+type FactorGap = { label: string; why: string; cta: string };
+
+const FACTOR_GAPS: Record<FactorKey, FactorGap> = {
+  credit: {
+    label: "Credit health",
+    why: "Juniper reads this from the credit limits your cards report through Plaid, and none are coming through yet.",
+    cta: "Connect a card",
+  },
+  // The four below cannot go missing today: their factors are always returned,
+  // and a member with no income gets a scored factor with a null gauge rather
+  // than no factor at all. They are here so that if one ever does start dropping
+  // out, it gets a row explaining itself instead of vanishing from the page.
+  savings: {
+    label: "Savings rate",
+    why: "Juniper reads this from the income and spending on your linked accounts.",
+    cta: "Connect an account",
+  },
+  emergency: {
+    label: "Emergency fund",
+    why: "Juniper reads this from your cash balances against your spending.",
+    cta: "Connect an account",
+  },
+  debt: {
+    label: "Debt load",
+    why: "Juniper reads this from the balances on your cards and loans.",
+    cta: "Connect an account",
+  },
+  investing: {
+    label: "Investing pace",
+    why: "Juniper reads this from your brokerage and retirement balances.",
+    cta: "Connect an account",
+  },
+};
+
+const FACTOR_ORDER: FactorKey[] = ["savings", "emergency", "debt", "investing", "credit"];
+
 function Factors({ items }: { items: ScoreFactor[] }) {
+  const measured = new Set(items.map((f) => f.key));
+  const gaps = FACTOR_ORDER.filter((k) => !measured.has(k));
   return (
     <div>
       {items.map((f) => (
@@ -190,6 +247,34 @@ function Factors({ items }: { items: ScoreFactor[] }) {
           )}
         </div>
       ))}
+
+      {gaps.map((key) => {
+        const gap = FACTOR_GAPS[key];
+        return (
+          <div className="fg-row gap" key={key}>
+            <div className="fg-top">
+              <span className="fg-lab">{gap.label}</span>
+              <span className="fg-w">not counted</span>
+            </div>
+            {/* An empty rail with no notch, because there is no target: a target
+                needs a measurement to sit against. It reads as the shape of the
+                other rows with nothing in it, which is exactly the situation. */}
+            <div className="fg-rail empty" />
+            <div className="fg-gap-foot">
+              <p>{gap.why}</p>
+              <Link href="/app/connections" className="btn ghost sm">{gap.cta}</Link>
+            </div>
+          </div>
+        );
+      })}
+
+      {gaps.length > 0 && (
+        <p className="fg-note">
+          Your score is built from the {items.length} {items.length === 1 ? "factor" : "factors"} above.
+          Adding {gaps.length === 1 ? "the missing one" : "the missing ones"} may read higher or lower than
+          where you stand today.
+        </p>
+      )}
     </div>
   );
 }

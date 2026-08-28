@@ -1,0 +1,173 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unmeasured factors: three nudges</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+  html,body{margin:0}
+  .vswitch{position:fixed;z-index:200;right:18px;bottom:18px;display:flex;gap:6px;align-items:center;
+    background:#0B0F0B;border:1px solid #2A332A;border-radius:12px;padding:7px 9px;
+    font:13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#717B6E}
+  .vswitch b{font-weight:600;color:#A6B0A2;margin-right:3px}
+  .vswitch button{font:inherit;font-weight:600;border:1px solid #2A332A;background:#171E17;color:#A6B0A2;
+    border-radius:8px;padding:6px 11px;cursor:pointer}
+  .vswitch button[aria-pressed="true"]{background:#213024;border-color:#6FB98C;color:#8ACFA4}
+  .wrap{max-width:760px;margin:0 auto;padding:22px}
+  .vhead{font:12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#717B6E;
+    letter-spacing:.09em;text-transform:uppercase;font-weight:700;margin:0 0 10px 2px}
+  .ctx{font:11px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#4E574C;
+    letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin:22px 0 8px 2px}
+  .tradeoff{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:18px 2px 0}
+  .tradeoff b{color:var(--jnpr-ink-2)}
+
+  /* A: an unmeasured row in the factor list. Same rhythm as .bud, but the bar
+     track is empty and the action sits where the detail line would be. */
+  .gap-row{padding:11px 0;border-top:1px solid var(--jnpr-line-2)}
+  .gap-row .t{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;margin-bottom:7px;gap:10px}
+  .gap-row .cr.none{color:var(--jnpr-ink-3);background:var(--jnpr-surface-3);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .gap-bar{height:6px;border-radius:20px;background:var(--jnpr-surface-3);border:1px dashed var(--jnpr-line)}
+  .gap-foot{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:7px;flex-wrap:wrap}
+  .gap-foot p{font-size:12px;color:var(--jnpr-ink-3);margin:0;line-height:1.5;flex:1;min-width:220px}
+
+  /* B: the gap line inside the Overview score strip. */
+  .st-gap{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--jnpr-warn);background:var(--jnpr-warn-soft);padding:2px 8px;border-radius:20px}
+
+  /* C: coverage meter on Connections. */
+  .cov-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .cov-head h3{font-size:15px}
+  .cov-count{font-size:12.5px;color:var(--jnpr-ink-3)}
+  .cov-seg{display:flex;gap:5px;margin-bottom:14px}
+  .cov-seg i{flex:1;height:7px;border-radius:20px;background:var(--jnpr-accent)}
+  .cov-seg i.off{background:var(--jnpr-surface-3);border:1px dashed var(--jnpr-line)}
+  .cov-chips{display:flex;flex-direction:column;gap:9px}
+  .cov-chip{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--jnpr-line);
+    border-radius:11px;background:var(--jnpr-surface-2)}
+  .cov-chip .cc-body{flex:1;min-width:0}
+  .cov-chip .cc-t{display:block;font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+  .cov-chip .cc-s{display:block;font-size:12px;color:var(--jnpr-ink-3);margin-top:2px;line-height:1.45}
+  .cov-mark{width:32px;height:32px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
+    background:var(--jnpr-surface-3);color:var(--jnpr-ink-3)}
+</style>
+</head>
+<body class="jnpr">
+<div class="wrap">
+  <p class="vhead" id="vhead"></p>
+  <div id="stage"></div>
+  <p class="tradeoff" id="tradeoff"></p>
+</div>
+
+<div class="vswitch">
+  <b>Nudge</b>
+  <button data-v="a" aria-pressed="true">A</button>
+  <button data-v="b" aria-pressed="false">B</button>
+  <button data-v="c" aria-pressed="false">C</button>
+</div>
+
+<script>
+const ICON = {
+  card:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+  chart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19V5M4 19h16"/><path d="M8 15l4-5 3 3 4-6"/></svg>',
+  plus:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  ring:'<svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="4"/><circle cx="23" cy="23" r="19" fill="none" stroke="var(--jnpr-accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="119.4" stroke-dashoffset="26" transform="rotate(-90 23 23)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="var(--jnpr-ink)">79</text></svg>',
+};
+
+// The four factors Juniper can measure from this member's linked accounts, and
+// the one it cannot. Real shape: after the score fix, an unmeasured factor is
+// simply absent from score.factors, so the client derives the gap by difference.
+const MEASURED = [
+  { label: "Savings rate",   weight: 29.4, score: 100, cls: "exc",  chip: "Excellent", detail: "You're saving about 62% of your income, great pace." },
+  { label: "Emergency fund", weight: 29.4, score: 29,  cls: "weak", chip: "Weak",      detail: "1.7 months of expenses saved, target is 6 months." },
+  { label: "Debt load",      weight: 23.5, score: 100, cls: "exc",  chip: "Excellent", detail: "Your debt is about 0.0x your annual income, very manageable." },
+  { label: "Investing pace", weight: 17.6, score: 100, cls: "exc",  chip: "Excellent", detail: "You've invested about 2.4x your annual income, ahead of pace." },
+];
+
+const GAPS = [
+  {
+    label: "Credit health",
+    weight: 15,
+    icon: ICON.card,
+    measures: "How much of your credit limits you are using, and eventually your credit score.",
+    connect: "Connect a credit card",
+    why: "None of your linked cards reported a credit limit, so there is nothing to measure utilization against.",
+  },
+];
+
+const bar = (score, cls) => '<div class="bar"><i style="width:' + score + '%;background:var(--jnpr-' +
+  (cls === "weak" ? "bad" : cls === "fair" ? "warn" : cls === "good" ? "accent" : "good") + ')"></i></div>';
+
+function factorRows() {
+  return MEASURED.map((f) =>
+    '<div class="bud"><div class="t"><span>' + f.label +
+    ' <span style="color:var(--jnpr-ink-3);font-weight:550">· ' + f.weight + '% of score</span></span>' +
+    '<span class="cr ' + f.cls + '"' + (f.cls === "weak" ? ' style="color:var(--jnpr-bad);background:var(--jnpr-bad-soft)"' : "") + '>' + f.chip + '</span></div>' +
+    bar(f.score, f.cls) +
+    '<div style="font-size:12px;color:var(--jnpr-ink-3);margin-top:6px">' + f.detail + '</div></div>'
+  ).join("");
+}
+
+const V = {
+  a: {
+    head: "Nudge A: an unmeasured row in the factor list",
+    ctx: "Score page · Where your score comes from",
+    stage: () =>
+      '<p class="ctx">Score page · where your score comes from</p>' +
+      '<div class="card">' + factorRows() +
+        GAPS.map((g) =>
+          '<div class="gap-row"><div class="t">' +
+            '<span>' + g.label + ' <span style="color:var(--jnpr-ink-3);font-weight:550">· not counted</span></span>' +
+            '<span class="cr none">No data</span></div>' +
+            '<div class="gap-bar"></div>' +
+            '<div class="gap-foot"><p>' + g.measures + " " + g.why + '</p>' +
+            '<button class="btn sm">' + ICON.plus + g.connect + '</button></div>' +
+          '</div>'
+        ).join("") +
+      '</div>' +
+      '<p class="nw-note" style="margin-top:12px">Your score is built from the four factors above. Connecting a card adds a fifth, which may read higher or lower than your current score.</p>',
+    tradeoff: "<b>Tradeoff.</b> The gap sits in the list that raises the question, so it needs no new copy explaining what a factor is, and it cannot be mistaken for a factor that scored zero. It only reaches people who open the Score page.",
+  },
+  b: {
+    head: "Nudge B: a gap chip in the Overview score strip",
+    stage: () =>
+      '<p class="ctx">Overview · top of the page</p>' +
+      '<div class="score-strip">' + ICON.ring +
+        '<div><div class="st-t">Juniper Score <span class="band">79 · Healthy</span>' +
+        '<span class="st-gap">4 of 5 measured</span></div>' +
+        '<div class="st-s">Biggest lever: <b>build your emergency fund</b> · credit health needs a card to measure</div></div>' +
+        '<a class="link" style="margin-left:auto;white-space:nowrap">See breakdown →</a>' +
+      '</div>',
+    tradeoff: "<b>Tradeoff.</b> Highest traffic by far, and the chip states the coverage honestly in three words. But it competes with the lever line for the same row, and a persistent nag on the home screen is the fastest way to teach someone to stop reading that row.",
+  },
+  c: {
+    head: "Nudge C: a coverage meter on Connections",
+    stage: () =>
+      '<p class="ctx">Connections · above the linked list</p>' +
+      '<div class="card">' +
+        '<div class="cov-head"><h3>What your score can see</h3><span class="cov-count">4 of 5 factors</span></div>' +
+        '<div class="cov-seg"><i></i><i></i><i></i><i></i><i class="off"></i></div>' +
+        '<div class="cov-chips">' +
+          GAPS.map((g) =>
+            '<div class="cov-chip"><span class="cov-mark">' + g.icon + '</span>' +
+            '<span class="cc-body"><span class="cc-t">' + g.label + '</span>' +
+            '<span class="cc-s">' + g.why + '</span></span>' +
+            '<button class="btn sm">' + ICON.plus + 'Add</button></div>'
+          ).join("") +
+        '</div>' +
+      '</div>',
+    tradeoff: "<b>Tradeoff.</b> The nudge and the action are in the same place, so there is no navigation between wanting to fix it and fixing it. It only reaches someone already heading to Connections, which is the page people visit once and forget.",
+  },
+};
+
+function show(k) {
+  document.getElementById("vhead").textContent = V[k].head;
+  document.getElementById("stage").innerHTML = V[k].stage();
+  document.getElementById("tradeoff").innerHTML = V[k].tradeoff;
+  document.querySelectorAll(".vswitch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === k)));
+}
+document.querySelectorAll(".vswitch button").forEach((b) => b.addEventListener("click", () => show(b.dataset.v)));
+show("a");
+</script>
+</body>
+</html>
