@@ -9,7 +9,7 @@ import { Link, useLocation } from "wouter";
 // The shell for the shared pages.
 //
 // Stage 4e: the shared space opens as a near blank canvas and grows only what
-// the two of you put on it. Sharing is private by default (migration 0017), so
+// the two of you put on it. Sharing is private by default (migration 0020), so
 // a partnership that was just accepted genuinely has nothing in it, and the
 // canvas below is the honest first screen rather than an empty-looking table.
 //
@@ -27,7 +27,7 @@ import { Link, useLocation } from "wouter";
 //      No hardcoded "Maya" or "Devin" on any branch.
 //   3. The only thing that can connect a partner is /api/partner reporting an
 //      active partnership.
-//   4. Migrations 0012, 0013 and 0017 are applied.
+//   4. Migrations 0012, 0013 and 0020 are applied.
 //
 // pages/app/shared/sharing.tsx is superseded rather than pending: the share
 // sheet replaced its coarse toggles with per-account scope, which is the grain

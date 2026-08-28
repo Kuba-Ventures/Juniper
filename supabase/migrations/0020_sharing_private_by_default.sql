@@ -11,6 +11,9 @@
 --   2. existing rows are set FALSE, closing the exposure on partnerships that
 --      were formed under the old default.
 --
+-- Numbered 0020, not 0017: 0016 to 0018 were already taken when this was
+-- written, and it briefly shipped as a duplicate 0017.
+--
 -- Members re-share deliberately through the share sheet, which writes
 -- account_shares rows and is unaffected by this. Idempotent, safe to re-run.
 ALTER TABLE public.partner_sharing_prefs
