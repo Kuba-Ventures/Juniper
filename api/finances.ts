@@ -52,7 +52,7 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
   catch { return []; }
 }
 
-type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null };
+type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null; logo_url: string | null };
 type Bud = { category: string; limit_amount: number };
 type Snap = { as_of: string; net_worth: number; estimated?: boolean };
 type ScoreRow = { as_of: string; value: number };
@@ -80,7 +80,7 @@ export default async function handler(req: Request): Promise<Response> {
   const uid = payload.sub;
 
   const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts,last_synced_at,last_error_code,last_error_at`);
-  const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category&order=date.desc&limit=400`);
+  const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category,logo_url&order=date.desc&limit=400`);
   // Manual accounts (tier 3) are a balance source in their own right, so they're
   // read up here with the other two: the "does this member have anything" test
   // below has to see all three. Balance-less entries are dropped (they still
@@ -154,8 +154,25 @@ export default async function handler(req: Request): Promise<Response> {
   const spent = spending.reduce((a, s) => a + s.v, 0);
   const income = Math.max(0, Math.round(incomeRaw));
 
-  const transactions = txns.slice(0, 8).map((t) => ({
+  // Merchant art for the eight rows this card shows, resolved exactly the way
+  // api/transactions.ts resolves it: the row's own logo first, then the
+  // merchant-level cache, which is what covers charges stored before the art
+  // existed. This card is the one most members actually look at, and it was
+  // rendering bundled art and monograms only, because it never asked for a logo.
+  const recent = txns.slice(0, 8);
+  const logoOf = new Map<string, string>();
+  const needed = [...new Set(recent.filter((t) => !t.logo_url && t.merchant_name).map((t) => t.merchant_name as string))];
+  if (needed.length) {
+    const list = needed.map((n) => `"${n.replace(/"/g, '""')}"`).join(",");
+    const marks = await rows<{ merchant_name: string; logo_url: string | null }>(
+      `merchant_logos?merchant_name=in.(${list})&select=merchant_name,logo_url`,
+    );
+    for (const m of marks) if (m.logo_url) logoOf.set(m.merchant_name, m.logo_url);
+  }
+
+  const transactions = recent.map((t) => ({
     m: t.merchant_name || t.name || "Transaction",
+    logo: t.logo_url ?? (t.merchant_name ? logoOf.get(t.merchant_name) ?? null : null),
     c: t.category || "Everything else",
     // The group rides along so the client can color a row from the same table
     // the rollup used, instead of keeping its own copy of the taxonomy.

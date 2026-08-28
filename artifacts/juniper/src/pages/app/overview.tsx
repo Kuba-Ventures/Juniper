@@ -7,6 +7,7 @@ import {
 import { useFinances, type FinanceData } from "@/lib/finances";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from "@/lib/plaid";
 import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
+import { MerchantMark } from "@/components/juniper/merchant-mark";
 import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON,
 } from "@/lib/plans";
@@ -119,7 +120,11 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
       <div className="rows">
         {rows.map((t, i) => (
           <div className="row" key={i}>
-            <BrandTile name={t.m} letter={t.m[0]} k={t.k} />
+            {/* The same three-source mark the Transactions page uses: Plaid's
+                own art, then bundled art, then a monogram. This used to be a
+                bare BrandTile, so the card could only ever show one of the two
+                dozen bundled brands however much art Plaid had. */}
+            <MerchantMark logo={t.logo ?? null} merchant={t.m} name={t.m} k={t.k} />
             <div><div className="nm">{t.m}</div><div className="mt">{t.c} · {t.d}</div></div>
             <div className={`amt ${t.inc ? "inc" : ""}`}>{money2(t.v)}</div>
           </div>

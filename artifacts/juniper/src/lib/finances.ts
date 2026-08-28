@@ -91,7 +91,7 @@ interface RawFinances {
   budgets?: Budget[];
   // `c` is the transaction's own leaf category (the granular label), `g` the
   // group it rolls up into, which is what colors the row.
-  transactions?: { m: string; c: string; g?: string; v: number; d: string; inc?: boolean }[];
+  transactions?: { m: string; c: string; g?: string; v: number; d: string; inc?: boolean; logo?: string | null }[];
   accounts?: { cash: Omit<Account, "k">[]; invest: Omit<Account, "k">[]; debt: Omit<Account, "k">[] };
   score?: FinanceData["score"];
   // Whether transaction rows exist for this member. The three transaction-derived
