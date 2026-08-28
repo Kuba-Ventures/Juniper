@@ -19,6 +19,10 @@ import { colorOf } from "@/lib/category-color";
 import { fmtDay, money0, money2, merchantMark, initial } from "@/lib/txn-format";
 import {
   fetchTransactions,
+import { colorOf } from "@/lib/category-color";
+import { fmtDay, money0, money2 } from "@/lib/txn-format";
+import {
+  fetchTransactions, merchantMark, initial,
   RANGES, rangeFrom, rangeIsClipped, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
 } from "@/lib/transactions";
 
