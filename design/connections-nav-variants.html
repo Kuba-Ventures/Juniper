@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Connections in the nav, three options</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+  body{margin:0;background:#EEF2EE;font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 18px 40px}
+  .opt{background:#fff;border:1px solid #D9E2D9;border-radius:14px;padding:14px 16px 16px;margin-bottom:16px}
+  .opt h2{margin:0 0 3px;font-size:15.5px;color:#1C4A31}
+  .opt .why{margin:0 0 2px;font-size:12.5px;color:#4A5A4C}
+  .opt .cost{margin:0 0 12px;font-size:11px;color:#6B7A6D;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .frame{border:1px solid #CBD8CB;border-radius:12px;overflow:hidden}
+  .opt .jnpr{min-height:0}
+  .jnpr .appbar{position:static}
+  .menu{margin-top:10px;display:flex;gap:10px;align-items:flex-start}
+  .menu .pop{position:static;width:230px}
+  .menu .note{font-size:12px;color:#6B7A6D;padding-top:6px;max-width:520px}
+  .pill-btn{cursor:pointer;border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2)}
+  .caret{margin-left:2px;opacity:.7}
+</style></head><body><div class="wrap">
+
+<div class="opt">
+  <h2>A. Sixth tab, at the end of the row</h2>
+  <p class="why">Reads in the order you use it: the money, then where the money comes from. Longest nav row of the three.</p>
+  <p class="cost">Label "Connections", matches the page it opens</p>
+  <div class="frame"><div class="jnpr"><div class="appbar"><div class="appbar-in">
+    <div class="appbar-top">
+      <a class="brand"><img src="../artifacts/juniper/public/logo.png" alt="">Juniper</a>
+      <div class="appbar-acct">
+        <span class="plaid-pill"><span class="dot"></span>12 linked</span>
+        <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/></svg></button>
+        <button class="avatar">F</button>
+      </div>
+    </div>
+    <nav class="nav"><a class="on"><span class="lbl">Overview</span></a><a><span class="lbl">Transactions</span></a><a><span class="lbl">Plans</span></a><a><span class="lbl">Ask Juniper</span></a><a><span class="lbl">Credit</span></a><a><span class="lbl">Connections</span></a></nav>
+  </div></div></div></div>
+  <div class="menu">
+    <div class="jnpr"><div class="pop acct-menu">
+      <div class="pop-head"><div class="avatar sm">F</div><div><b>Finley</b><small>finley@qsbsrollover.com</small></div></div>
+      <button class="pop-i flat">Settings</button><div class="pop-sep"></div><button class="pop-i flat">Sign out</button>
+    </div></div>
+    <p class="note">The account menu drops to Settings and Sign out, so there is exactly one way to Connections rather than two.</p>
+  </div>
+</div>
+
+<div class="opt">
+  <h2>B. Second tab, beside Overview, called Accounts</h2>
+  <p class="why">Groups the three surfaces about money you hold, and uses the word a member would use. Pushes Plans and Credit one place right.</p>
+  <p class="cost">Label "Accounts", so the page heading would change too</p>
+  <div class="frame"><div class="jnpr"><div class="appbar"><div class="appbar-in">
+    <div class="appbar-top">
+      <a class="brand"><img src="../artifacts/juniper/public/logo.png" alt="">Juniper</a>
+      <div class="appbar-acct">
+        <span class="plaid-pill"><span class="dot"></span>12 linked</span>
+        <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/></svg></button>
+        <button class="avatar">F</button>
+      </div>
+    </div>
+    <nav class="nav"><a class="on"><span class="lbl">Overview</span></a><a><span class="lbl">Accounts</span><span class="count">12</span></a><a><span class="lbl">Transactions</span></a><a><span class="lbl">Plans</span></a><a><span class="lbl">Ask Juniper</span></a><a><span class="lbl">Credit</span></a></nav>
+  </div></div></div></div>
+  <div class="menu"><p class="note">The nav already supports a count badge and nothing uses it. Putting the linked count on the tab lets the "12 linked" pill go, which is the same fact stated twice today.</p></div>
+</div>
+
+<div class="opt">
+  <h2>C. No new tab, the linked pill becomes the way in</h2>
+  <p class="why">The header already carries the connection count; this makes it the thing you press. Nav row stays at five.</p>
+  <p class="cost">Smallest change, one real catch below</p>
+  <div class="frame"><div class="jnpr"><div class="appbar"><div class="appbar-in">
+    <div class="appbar-top">
+      <a class="brand"><img src="../artifacts/juniper/public/logo.png" alt="">Juniper</a>
+      <div class="appbar-acct">
+        <button class="plaid-pill pill-btn"><span class="dot"></span>12 linked<span class="caret">&rsaquo;</span></button>
+        <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/></svg></button>
+        <button class="avatar">F</button>
+      </div>
+    </div>
+    <nav class="nav"><a class="on"><span class="lbl">Overview</span></a><a><span class="lbl">Transactions</span></a><a><span class="lbl">Plans</span></a><a><span class="lbl">Ask Juniper</span></a><a><span class="lbl">Credit</span></a></nav>
+  </div></div></div></div>
+  <div class="menu"><p class="note"><strong>The catch:</strong> juniper.css hides .plaid-pill below 720px, and it is hidden on a manual-only dashboard where linkedCount is 0. On a phone, or before the first bank is linked, this option leaves no way to reach Connections at all unless the account-menu item stays, which is the thing you asked to move.</p></div>
+</div>
+
+</div></body></html>
