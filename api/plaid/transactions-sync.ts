@@ -105,8 +105,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (!token) return json({ error: "Unauthorized" }, 401);
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
-  const userId = payload.sub;
+  return runTransactionsSync(payload.sub);
+}
 
+// The work, with the caller already established. Same split as
+// networth-snapshot.ts, and for the same reason: the daily cron runs this for
+// members who never open the app and so never present a JWT.
+export async function runTransactionsSync(userId: string): Promise<Response> {
   // Load the caller's linked items (server-only: access_token + cursor).
   const itemsRes = await adminRest(
     `plaid_items?user_id=eq.${userId}&select=item_id,access_token,transactions_cursor`,

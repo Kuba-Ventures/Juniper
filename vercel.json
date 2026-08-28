@@ -17,6 +17,9 @@
       "permanent": false
     }
   ],
+  "crons": [
+    { "path": "/api/cron/daily-sync", "schedule": "0 9 * * *" }
+  ],
   "rewrites": [
     { "source": "/((?!api/|.*\\..+).*)", "destination": "/index.html" }
   ]

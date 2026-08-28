@@ -33,8 +33,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (!token) return json({ error: "Unauthorized" }, 401);
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
-  const uid = payload.sub;
+  return runScoreCompute(payload.sub);
+}
 
+// The work, with the caller already established. Same split as
+// networth-snapshot.ts: the daily cron scores members who are not there to
+// authenticate, so this half must be reachable without a request.
+export async function runScoreCompute(uid: string): Promise<Response> {
   const { linked, input } = await fetchScoreInput(uid);
   if (!linked) return json({ linked: false, message: "No synced data to score yet" });
 
