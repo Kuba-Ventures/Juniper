@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useFinances } from "@/lib/finances";
 import { SettingsModal } from "@/components/juniper/settings-modal";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
+import { useWorkspace } from "@/lib/workspace";
 
 type NavItem = { path: string; label: string; count?: number };
 
@@ -13,6 +14,19 @@ type NavItem = { path: string; label: string; count?: number };
 // the individual-to-shared workspace switcher, and the account-menu partner
 // items, whose only destination was /app/shared. Nothing in this bar may point
 // at a surface that cannot show the member their own real data.
+// Switching space switches the whole product, so the bar's own tabs change with
+// it rather than a sub-nav appearing under a personal one. Derived from what the
+// shared space holds: on day one that is a single Together tab, because Accounts
+// and Goals would open onto nothing. Bills and Activity are absent until their
+// pages stop reading lib/shared-data.ts.
+function sharedNav(holds: { accounts: boolean; goals: boolean }): NavItem[] {
+  if (!holds.accounts && !holds.goals) return [{ path: "/app/shared", label: "Together" }];
+  const nav: NavItem[] = [{ path: "/app/shared", label: "Overview" }];
+  if (holds.accounts) nav.push({ path: "/app/shared/accounts", label: "Accounts" });
+  if (holds.goals) nav.push({ path: "/app/shared/goals", label: "Goals" });
+  return nav;
+}
+
 const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Overview" },
   // Transactions sits second, next to the dashboard it drills into. The compact
@@ -41,6 +55,8 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
   const { data: finances, source } = useFinances();
   const [open, setOpen] = useState<null | "account">(null);
   const [settings, setSettings] = useState(false);
+  const { workspace, holds } = useWorkspace();
+  const shared = workspace === "shared";
   const initial = (name || "You").trim().charAt(0).toUpperCase();
   // Only show a "linked" count when the member actually linked + synced Plaid;
   // a manual-only dashboard has no linked institutions.
@@ -104,8 +120,8 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
         </div>
 
         {/* Row 2, primary nav */}
-        <nav className="nav" aria-label="Primary">
-          {PERSONAL_NAV.map((n) => (
+        <nav className="nav" aria-label={shared ? "Shared" : "Primary"}>
+          {(shared ? sharedNav(holds) : PERSONAL_NAV).map((n) => (
             <Link key={n.path} href={n.path} className={isActive(loc, n.path) ? "on" : undefined}>
               <span className="lbl">{n.label}</span>
               {n.count != null && <span className="count">{n.count}</span>}

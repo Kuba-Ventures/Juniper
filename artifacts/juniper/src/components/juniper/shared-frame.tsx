@@ -4,7 +4,7 @@ import { usePartner } from "@/lib/partner";
 import { InviteModal } from "@/components/juniper/invite-modal";
 import { ShareSheet } from "@/components/juniper/share-sheet";
 import { useSession } from "@/lib/use-session";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 
 // The shell for the shared pages.
 //
@@ -37,10 +37,11 @@ import { Link, useLocation } from "wouter";
 // canvas and the nav cannot disagree about what exists.
 type Kind = "accounts" | "goals";
 
-const NAV: Record<Kind, { path: string; label: string }> = {
-  accounts: { path: "/app/shared/accounts", label: "Accounts" },
-  goals: { path: "/app/shared/goals", label: "Goals" },
-};
+// The tabs themselves live in the app bar now (app-frame.tsx, sharedNav),
+// because switching space switches the whole product rather than adding a
+// second nav under a personal one. This keeps only the set of kinds the canvas
+// has to reason about.
+const KINDS: Kind[] = ["accounts", "goals"];
 
 // The Together band. Carries the share control once there is something to
 // weigh it against; on the empty canvas the button below is the only one, so
@@ -94,10 +95,10 @@ function BlankCanvas({ onShare, onGoal }: { onShare: () => void; onGoal: () => v
 export function SharedPage({
   title, sub, children, onAddGoal,
 }: { title: string; sub?: string; children: ReactNode; onAddGoal?: () => void }) {
-  const { partner } = useWorkspace();
+  const { partner, holds, refresh: refreshWorkspace } = useWorkspace();
   const { data, loading, refresh } = usePartner();
   const session = useSession();
-  const [loc, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [invite, setInvite] = useState(false);
   const [share, setShare] = useState(false);
 
@@ -123,14 +124,10 @@ export function SharedPage({
     );
   }
 
-  // What the space actually holds. A shared account is one either member has
-  // moved off `private`; the scope is decided server-side, so a private account
-  // never reaches the client to be counted here in the first place.
-  const holds: Record<Kind, boolean> = {
-    accounts: (data?.accounts ?? []).some((a) => a.scope !== "private"),
-    goals: (data?.goals ?? []).length > 0,
-  };
-  const grown = (Object.keys(NAV) as Kind[]).filter((k) => holds[k]);
+  // `holds` comes from the workspace context, the same value the app bar builds
+  // its tabs from, so the band, the canvas and the nav cannot disagree about
+  // whether the space has anything in it.
+  const grown = KINDS.filter((k) => holds[k]);
   const empty = grown.length === 0;
 
   return (
@@ -142,19 +139,6 @@ export function SharedPage({
         initial={initial}
         onShare={empty ? undefined : () => setShare(true)}
       />
-
-      {grown.length > 0 && (
-        <nav className="nav shared-nav" aria-label="Shared">
-          <Link href="/app/shared" className={loc === "/app/shared" ? "on" : undefined}>
-            <span className="lbl">Overview</span>
-          </Link>
-          {grown.map((k) => (
-            <Link key={k} href={NAV[k].path} className={loc === NAV[k].path ? "on" : undefined}>
-              <span className="lbl">{NAV[k].label}</span>
-            </Link>
-          ))}
-        </nav>
-      )}
 
       {/* `loading` matters here: usePartner starts at null, and without this the
           canvas flashes on every navigation before the overview lands. */}
@@ -171,7 +155,10 @@ export function SharedPage({
         <ShareSheet
           partnerName={name}
           accounts={data?.accounts ?? []}
-          onChanged={refresh}
+          // Both, deliberately: usePartner backs this page's rows, the workspace
+          // context backs the app bar's tabs. Refreshing one alone leaves the
+          // other stale, and sharing the first account would not grow the nav.
+          onChanged={() => { refresh(); refreshWorkspace(); }}
           onClose={() => setShare(false)}
         />
       )}
