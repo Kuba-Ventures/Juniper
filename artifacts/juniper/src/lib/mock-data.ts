@@ -13,7 +13,7 @@ export type SeriesKey =
 
 export interface SpendCat { c: string; v: number; k: SeriesKey }
 export interface Budget { c: string; s: number; l: number }
-export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; inc?: boolean }
+export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; inc?: boolean; logo?: string | null }
 export interface Account { n: string; i: string; v: number; k: SeriesKey; apr?: string }
 export interface PlanIcon { }
 
