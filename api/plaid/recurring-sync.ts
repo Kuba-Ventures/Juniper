@@ -26,6 +26,7 @@ import { adminConfigured, adminRest } from "../_supabase-admin";
 // stamping last_synced_at from here would report data as fresher than it is.
 import { isDeadItemCode, markItemDead } from "../_item-sync-state";
 import { categorize } from "../_categorize";
+import { mapPool } from "../_pool";
 
 export const config = { runtime: "edge" };
 
@@ -43,7 +44,7 @@ function json(body: unknown, status = 200) {
 type ItemFailure = { item_id: string; error_code: string | null; error_message: string | null; needs_relink: boolean };
 
 // Six at a time, matching networth-snapshot.ts: enough to clear a dozen
-// institutions in two rounds, far short of a rate limit.
+// institutions quickly, far short of a rate limit.
 const CONCURRENCY = 6;
 
 type Amount = { amount?: number | null; iso_currency_code?: string | null };
@@ -148,13 +149,15 @@ export default async function handler(req: Request): Promise<Response> {
 
   const rows: ReturnType<typeof toRow>[] = [];
   let synced = 0;
-  for (let i = 0; i < items.length; i += CONCURRENCY) {
-    const batch = await Promise.all(items.slice(i, i + CONCURRENCY).map(pullItem));
-    for (const b of batch) {
-      if (b.failure) { failures.push(b.failure); continue; }
-      rows.push(...b.rows);
-      synced++;
-    }
+  // Six at a time with no barrier between them, same as networth-snapshot.ts:
+  // slicing the list into rounds means the next round waits on the slowest call
+  // in the current one, which is how one slow institution spends the whole 25
+  // second ceiling on behalf of eleven healthy ones.
+  const pulled = await mapPool(items, CONCURRENCY, pullItem);
+  for (const b of pulled) {
+    if (b.failure) { failures.push(b.failure); continue; }
+    rows.push(...b.rows);
+    synced++;
   }
 
   if (rows.length) {
