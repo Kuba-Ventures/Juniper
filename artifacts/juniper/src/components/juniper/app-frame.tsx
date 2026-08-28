@@ -21,6 +21,13 @@ const PERSONAL_NAV: NavItem[] = [
   { path: "/app/plans", label: "Plans" },
   { path: "/app/ask", label: "Ask Juniper" },
   { path: "/app/credit", label: "Credit" },
+  // Connections sits last, and it is in this list rather than in the account
+  // menu because it is a surface about the member's money, not about their
+  // Juniper account. Buried under the avatar it was two clicks from anywhere and
+  // sat beside Sign out, next to the two things that are genuinely account
+  // admin. It is also where a member goes after linking a bank, which is often,
+  // and the menu gave no hint that it was there.
+  { path: "/app/connections", label: "Connections" },
 ];
 
 function isActive(current: string, path: string) {
@@ -40,7 +47,6 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
     ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
     : 0;
 
-  const navTo = (path: string) => { setOpen(null); setLocation(path); };
   const signOut = async () => { setOpen(null); try { await supabase.auth.signOut(); } catch { /* ignore */ } setLocation("/"); };
 
   return (
@@ -71,10 +77,14 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
                   <div className="pop-scrim" onClick={() => setOpen(null)} />
                   <div className="pop acct-menu">
                     <div className="pop-head"><div className="avatar sm">{initial}</div><div><b>{name || "You"}</b><small>{email || "you@email.com"}</small></div></div>
-                    <button className="pop-i flat" onClick={() => navTo("/app/connections")}>Connections</button>
-                    {/* Invite partner, Manage partner, and Disconnect partner
-                        lived here. All three only led to /app/shared, which is
-                        unrouted, so they were an invitation into nothing. */}
+                    {/* Connections moved to the primary nav, so this menu is
+                        the member's Juniper account and nothing else. Two ways
+                        into one page would have left the nav tab looking like a
+                        different destination.
+
+                        Invite partner, Manage partner, and Disconnect partner
+                        lived here too. All three only led to /app/shared, which
+                        is unrouted, so they were an invitation into nothing. */}
                     <button className="pop-i flat" onClick={() => { setOpen(null); setSettings(true); }}>Settings</button>
                     <div className="pop-sep" />
                     <button className="pop-i flat" onClick={signOut}>Sign out</button>
