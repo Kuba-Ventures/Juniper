@@ -1093,3 +1093,48 @@
   .jnpr .sc-row{grid-template-columns:1fr;gap:18px}
   .jnpr .sc-side{max-width:420px;margin:0 auto;width:100%}
 }
+
+/* ---------- recurring / subscriptions panel ---------- */
+.jnpr .sub-total{font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .sub-total b{color:var(--jnpr-ink);font-size:15px}
+.jnpr .sub-total-s{color:var(--jnpr-ink-3)}
+
+/* The review queue is visually separated from the confirmed list, not merged
+   into it with a badge. A detection and a confirmed charge are different kinds
+   of claim, and putting them in one list is what makes a guess read as a fact. */
+.jnpr .sub-review{border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2);
+  border-radius:var(--jnpr-r-sm);padding:12px 14px;margin-bottom:14px}
+.jnpr .sub-review-h{margin-bottom:4px}
+.jnpr .sub-review-t{display:block;font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .sub-review-s{display:block;font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+
+.jnpr .sub-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .sub-row:first-child{border-top:0}
+.jnpr .sub-row.muted{opacity:.6}
+.jnpr .sub-row.busy{opacity:.5;pointer-events:none}
+.jnpr .sub-row .blogo,.jnpr .sub-row .tile{width:30px;height:30px;flex:0 0 auto;border-radius:9px}
+.jnpr .sub-id{flex:1;min-width:0}
+.jnpr .sub-n{display:block;font-size:13.5px;font-weight:650;color:var(--jnpr-ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .sub-sub{display:block;font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+.jnpr .sub-amt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto;text-align:right}
+.jnpr .sub-amt > span:first-child{font-size:13.5px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .sub-act{display:flex;gap:6px;flex:0 0 auto}
+
+/* Three states, three colors, and the amber one is the point: "paid, but not
+   the amount we expected" is its own answer, not a rounding of "paid". */
+.jnpr .sub-chip{font-size:10.5px;font-weight:600;color:var(--jnpr-ink-3);
+  background:var(--jnpr-surface-3);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.jnpr .sub-chip.good{color:var(--jnpr-good);background:var(--jnpr-good-soft)}
+.jnpr .sub-chip.warn{color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}
+.jnpr .sub-chip.bad{color:var(--jnpr-bad);background:var(--jnpr-bad-soft)}
+
+.jnpr .sub-note{margin:12px 0 0;font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6}
+.jnpr .sub-dismissed{margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .sub-toggle{background:none;border:0;padding:0;font-family:inherit;font-size:12px;cursor:pointer}
+
+@media(max-width:640px){
+  .jnpr .sub-row{flex-wrap:wrap}
+  .jnpr .sub-amt{align-items:flex-start;text-align:left}
+  .jnpr .sub-act{width:100%}
+}
