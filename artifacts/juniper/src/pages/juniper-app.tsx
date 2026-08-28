@@ -5,7 +5,7 @@ import { useProfile } from "@/lib/use-profile";
 import { FinancesProvider } from "@/lib/finances";
 import { AppBar } from "@/components/juniper/app-frame";
 import { FirstRunOnboarding } from "@/components/onboarding/first-run-onboarding";
-import { isOnboarded, markOnboarded, hasProfileData, type UserProfile } from "@/lib/profile";
+import { isOnboarded, markOnboarded, shouldShowOnboarding, takeOnboardingReplay, type UserProfile } from "@/lib/profile";
 import Overview from "@/pages/app/overview";
 import Transactions from "@/pages/app/transactions";
 import { Credit } from "@/pages/app/credit";
@@ -90,12 +90,16 @@ export default function JuniperApp() {
   }, [email]);
 
   const onboarded = isOnboarded(email);
+  // Read once, on mount, because reading it consumes it. A developer who starts
+  // the replay and then reloads halfway through lands on their dashboard, which
+  // is the right end to a flow they walked away from.
+  const [replay] = useState(() => takeOnboardingReplay());
 
   // Avoid flashing onboarding at a returning user whose profile lives only on
   // the server: wait for the remote hydration attempt before deciding.
-  if (email && !onboarded && !onboardingDone && !ready) return <LoadingShell />;
+  if (email && !replay && !onboarded && !onboardingDone && !ready) return <LoadingShell />;
 
-  const needsOnboarding = !!email && !onboardingDone && !onboarded && !hasProfileData(profile);
+  const needsOnboarding = shouldShowOnboarding({ email, replay, onboarded, onboardingDone, profile });
   if (needsOnboarding) {
     return (
       <FirstRunOnboarding

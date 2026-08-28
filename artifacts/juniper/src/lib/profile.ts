@@ -63,6 +63,53 @@ export function clearOnboarded(email?: string): void {
   }
 }
 
+// A one-shot request to replay first-run onboarding, written by the developer
+// tool and read once by the app shell.
+//
+// It exists because clearing the onboarded flag was not enough on its own. The
+// gate also skips onboarding for anyone whose profile already carries financial
+// data, which is everyone who has ever finished it, so "Restart onboarding" did
+// nothing at all for the only people who can press it. sessionStorage rather
+// than localStorage, and consumed on read, so abandoning the replay and
+// reloading returns to the dashboard instead of trapping the member in a flow
+// they cannot leave.
+const REPLAY_KEY = "juniper_replay_onboarding";
+
+export function requestOnboardingReplay(): void {
+  try {
+    sessionStorage.setItem(REPLAY_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function takeOnboardingReplay(): boolean {
+  try {
+    const wanted = sessionStorage.getItem(REPLAY_KEY) === "1";
+    if (wanted) sessionStorage.removeItem(REPLAY_KEY);
+    return wanted;
+  } catch {
+    return false;
+  }
+}
+
+// The whole rule for whether a member sees first-run onboarding, in one place
+// and free of React, so it can be reasoned about and tested on its own. A
+// replay beats everything: it is an explicit request, and the point of it is to
+// see the flow with an account that already has data.
+export function shouldShowOnboarding(opts: {
+  email: string;
+  replay: boolean;
+  onboarded: boolean;
+  onboardingDone: boolean;
+  profile: UserProfile | null;
+}): boolean {
+  if (!opts.email) return false;
+  if (opts.onboardingDone) return false;
+  if (opts.replay) return true;
+  return !opts.onboarded && !hasProfileData(opts.profile);
+}
+
 // True if the profile already carries meaningful financial data (so an
 // existing user isn't shown onboarding).
 export function hasProfileData(p: UserProfile | null): boolean {

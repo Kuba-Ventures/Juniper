@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteAllPlans } from "@/lib/plans";
-import { clearProfile, clearOnboarded, deleteRemoteProfile } from "@/lib/profile";
+import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay } from "@/lib/profile";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { useTheme } from "@/lib/theme";
 import { useFinances } from "@/lib/finances";
@@ -28,6 +28,10 @@ async function resetForTesting(email: string) {
 // difference from the reset below: this replays the first-run flow to see what a
 // new member sees, without destroying the account it is being tested on.
 function restartOnboarding(email: string) {
+  // The replay request is the part that actually works. Clearing the onboarded
+  // flag alone left the gate satisfied by hasProfileData(), so a developer with
+  // real numbers on their profile pressed Restart and got a page reload.
+  requestOnboardingReplay();
   if (email) {
     clearOnboarded(email);
     try {
@@ -144,7 +148,8 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
                   <div className="dev-t">
                     <div className="dev-n">Restart onboarding</div>
                     <div className="dev-s">
-                      Replays the first-run flow. Your profile, plans, and linked accounts are left alone.
+                      Replays the first-run flow. Your plans and linked accounts are left alone, and finishing it
+                      saves whatever you type over your profile.
                     </div>
                   </div>
                   <button className="btn ghost sm" onClick={() => restartOnboarding(email)}>Restart</button>
