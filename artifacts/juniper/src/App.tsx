@@ -9,6 +9,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import SignIn from "@/pages/auth/sign-in";
 import SignUp from "@/pages/auth/sign-up";
+import Forgot from "@/pages/auth/forgot";
+import Reset from "@/pages/auth/reset";
 import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
 import { RequireAuth } from "@/components/auth/require-auth";
@@ -21,6 +23,8 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/auth/sign-in" component={SignIn} />
       <Route path="/auth/sign-up" component={SignUp} />
+      <Route path="/auth/forgot" component={Forgot} />
+      <Route path="/auth/reset" component={Reset} />
       {/* /invite/partner/:token (src/pages/join-partner.tsx) is unrouted as of
           Stage 4c. Accepting activated the partnership and then sent the member
           straight to /app/shared, which no longer exists, so the whole flow

@@ -744,6 +744,15 @@
 .jnpr .auth-pw .pw-eye svg{width:15px;height:15px}
 .jnpr .auth-form .btn{justify-content:center;padding:12px 15px;font-size:14px;margin-top:2px}
 .jnpr .auth-msg{font-size:12px;text-align:center;margin:0}
+.jnpr .auth-forgot{display:flex;justify-content:flex-end;margin-top:-2px}
+.jnpr .auth-forgot a{font-size:12.5px;font-weight:650;color:var(--jnpr-accent);text-decoration:none}
+.jnpr .auth-forgot a:hover{text-decoration:underline}
+.jnpr .auth-sent{display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px}
+.jnpr .auth-sent .tick{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--jnpr-good) 16%,transparent);color:var(--jnpr-good)}
+.jnpr .auth-sent .tick svg{width:19px;height:19px}
+.jnpr .auth-sent p{font-size:13px;line-height:1.5;color:var(--jnpr-ink-3);margin:0}
+.jnpr .auth-sent strong{color:var(--jnpr-ink);font-weight:650}
 .jnpr .auth-msg.bad{color:var(--jnpr-bad)}.jnpr .auth-msg.good{color:var(--jnpr-good)}
 .jnpr .auth-alt{text-align:center;font-size:13px;color:var(--jnpr-ink-3);margin-top:18px}
 .jnpr .auth-alt a{color:var(--jnpr-accent);font-weight:650;text-decoration:none}

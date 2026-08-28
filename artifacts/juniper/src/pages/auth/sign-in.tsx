@@ -96,6 +96,9 @@ export default function SignIn() {
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          <div className="auth-forgot">
+            <Link href="/auth/forgot">Forgot password?</Link>
+          </div>
           {error && <p className="auth-msg bad">{error}</p>}
           <button type="submit" className="btn" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
