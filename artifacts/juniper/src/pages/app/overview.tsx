@@ -109,7 +109,9 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
   const [q, setQ] = useState("");
   const rows = items.filter((t) => (t.m + " " + t.c).toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="card">
+    // `fill-rows`: the list grows to the card's height rather than a fixed one,
+    // because the card's height comes from the Accounts column beside it.
+    <div className="card fill-rows">
       <div className="card-head">
         <h3>Transactions</h3>
         <span className="search" style={{ maxWidth: 220 }}>
