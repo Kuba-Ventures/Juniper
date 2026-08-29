@@ -1,7 +1,7 @@
 // Shared bills: what the two of you owe each month, who pays, and what is due
 // soon.
 //
-// Live data only, as of Stage 4f. This used to fall back to lib/shared-data's
+// Live data only, as of Stage 4f. This used to fall back to a seeded household's
 // seeded household whenever /api/partner/bills had nothing, so a couple with no
 // bills yet were shown somebody else's rent, and the "Add bill" control was
 // hidden on exactly the screen where they needed it. An empty partnership now

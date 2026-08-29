@@ -16,22 +16,22 @@ import { useLocation } from "wouter";
 // The nav is derived from content, not declared: Overview is always there, and
 // each of Accounts, Goals, Bills and Activity appears once the space holds one
 // of that kind. Stage 4f de-seeded the last two, so all five of the six shared
-// pages that a member can reach now read live data only. sharing.tsx is the
-// sixth and stays retired, superseded by the share sheet.
+// pages that a member can reach read live data only. The sixth, sharing.tsx,
+// is deleted: the share sheet superseded it, and it was the last thing in the
+// codebase importing the seeded household.
 //
 // What each remaining page still has to meet to join the nav:
 //   1. It reads only /api/partner (and /api/partner/bills, /activity). No
-//      lib/shared-data.ts fallback. An active partnership with nothing in it
-//      shows an empty state, not a demo one.
+//      seeded fallback. An active partnership with nothing in it shows an
+//      empty state, not a demo one.
 //   2. "You" and the partner are named from the session and user_profiles.name.
 //      No hardcoded "Maya" or "Devin" on any branch.
 //   3. The only thing that can connect a partner is /api/partner reporting an
 //      active partnership.
 //   4. Migrations 0012, 0013 and 0020 are applied.
 //
-// pages/app/shared/sharing.tsx is superseded rather than pending: the share
-// sheet replaced its coarse toggles with per-account scope, which is the grain
-// people think in. It can stay unrouted for good.
+// Nothing here falls back to seeded data any more, and there is no seeded data
+// to fall back to: lib/shared-data.ts is gone.
 
 // What the shared space can hold. Each kind names the surface it grows, so the
 // canvas and the nav cannot disagree about what exists.

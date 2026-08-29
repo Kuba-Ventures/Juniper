@@ -1,7 +1,9 @@
 // Client data layer for the shared workspace (Stage 7 partner data model).
 // Talks to /api/partner (server-only tables behind it). usePartner() returns the
 // live shared overview when a partnership is active; pages fall back to the demo
-// shared-data until then, so the UI keeps working before the ops gates clear.
+// live overview when a partnership is active. There is no demo fallback left:
+// the seeded household it used to fall back to is deleted, and every shared
+// surface shows an empty state rather than somebody else's finances.
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
