@@ -389,11 +389,28 @@ export function ConnectionsView() {
                       return st ? <span className={`ci-status ${st.tone}`}>{st.text}</span> : null;
                     })()}
                   </span>
+                  {itemNeedsRelink(item) && (
+                    // Repairs this item rather than adding a second one for the
+                    // same bank: passing item_id puts Plaid Link into update
+                    // mode against the existing access_token.
+                    <button
+                      className="btn sm"
+                      onClick={() => void start([{
+                        institution_id: item.institution_id ?? undefined,
+                        name: item.institution_name ?? undefined,
+                        item_id: item.item_id,
+                      }])}
+                      disabled={connecting}
+                      aria-label={`Reconnect ${item.institution_name || "this institution"}`}
+                    >
+                      <RefreshCw size={13} /> {connecting ? "Opening…" : "Reconnect"}
+                    </button>
+                  )}
                   <button
                     className="btn ghost sm"
                     onClick={() => handleRemove(item.item_id)}
                     disabled={removingId === item.item_id}
-                    aria-label="Disconnect institution"
+                    aria-label={`Disconnect ${item.institution_name || "this institution"}`}
                   >
                     <Trash2 size={13} /> {removingId === item.item_id ? "Removing…" : "Remove"}
                   </button>

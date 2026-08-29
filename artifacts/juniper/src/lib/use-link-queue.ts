@@ -140,7 +140,11 @@ export function useLinkQueue(opts?: {
       // A routing number, when the queue item came from Plaid's own search, asks
       // Link to highlight that bank in its list. Absent for "Search all banks"
       // and for institutions Plaid returns without one; Link then opens as usual.
-      const token = await createLinkToken({ routingNumber: q[at]?.routing_number ?? null });
+      const token = await createLinkToken({
+        routingNumber: q[at]?.routing_number ?? null,
+        // Present only for a repair. Turns the whole open into update mode.
+        itemId: q[at]?.item_id ?? null,
+      });
       if (!token) {
         setNotice("Account linking isn't enabled yet. You can add it later from Connections.");
         finish();
@@ -157,11 +161,31 @@ export function useLinkQueue(opts?: {
 
   const onSuccess = useCallback(
     async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
+      // Read from the QUEUE, not from Plaid's metadata: whether this was a
+      // repair is something we decided when the token was minted, and metadata
+      // describes the institution either way.
+      const queued = queueRef.current[indexRef.current];
+      const isUpdate = !!queued?.item_id;
       const institution: LinkInstitution | undefined = metadata.institution
         ? { institution_id: metadata.institution.institution_id, name: metadata.institution.name }
-        : queueRef.current[indexRef.current];
+        : queued;
       setLinkToken(null);
       setOauthReturnUri(null);
+
+      if (isUpdate) {
+        // NO EXCHANGE. In update mode the existing access_token is what was
+        // repaired and it keeps working; exchanging the public token would mint
+        // a SECOND item for the same institution, which is the duplicate this
+        // whole path exists to avoid. Counted as linked so the caller's onDone
+        // refreshes and resyncs exactly as it would for a new connection, which
+        // is also what clears the dead-item error off the row.
+        resultRef.current.linked += 1;
+        trackEngagement("connection_linked");
+        onItemLinkedRef.current?.(institution?.name);
+        void openAt(indexRef.current + 1);
+        return;
+      }
+
       const item = await exchangePublicToken(publicToken, institution);
       if (item) {
         resultRef.current.linked += 1;
