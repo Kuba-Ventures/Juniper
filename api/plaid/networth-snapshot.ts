@@ -10,7 +10,7 @@
 // The access_token is read server-side only (service-role) and never leaves here.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
-import { plaidConfigured, plaidFetch, sanitizeAccounts, PLAID_TIMEOUT_CODE } from "../_plaid";
+import { plaidConfigured, plaidFetch, sanitizeAccounts, PLAID_TIMEOUT_CODE, type SanitizedAccount } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
 import { fetchManualAccounts, sumManualAccounts } from "../_manual-accounts";
@@ -58,6 +58,19 @@ const DEBT_TYPES = new Set(["credit", "loan"]);
 
 // Assets add, debts subtract. Plaid reports credit/loan `current` as a positive
 // amount owed, so take its absolute value regardless of sign.
+type StoredItem = { item_id: string; access_token: string; accounts: SanitizedAccount[] | null };
+
+// The stored-snapshot twin of classify(). Same rule, different shape: a live
+// balance nests under `balances`, a sanitized one is already flattened onto
+// `balance`. Kept beside classify so the two cannot drift on what counts as a
+// debt, which is the one judgement either of them makes.
+function classifyStored(a: SanitizedAccount): { assets: number; debts: number } {
+  const bal = a.balance ?? 0;
+  if (!Number.isFinite(bal)) return { assets: 0, debts: 0 };
+  if (DEBT_TYPES.has((a.type ?? "").toLowerCase())) return { assets: 0, debts: Math.abs(bal) };
+  return { assets: bal, debts: 0 };
+}
+
 function classify(a: BalanceAccount): { assets: number; debts: number } {
   const bal = a.balances?.current ?? a.balances?.available ?? 0;
   if (!Number.isFinite(bal)) return { assets: 0, debts: 0 };
@@ -85,7 +98,10 @@ export default async function handler(req: Request): Promise<Response> {
 // callers run byte for byte the same code below.
 export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // Load the caller's linked items (server-only: access_token).
-  const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token`);
+  // `accounts` rides along with the token: it is the last balances Plaid gave
+  // us for this item, and it is what a refusing item contributes instead of
+  // collapsing the whole day's trend point. See the carry-forward below.
+  const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token,accounts`);
   if (!itemsRes.ok) {
     // Logged for the same reason as the per-item failures below: this endpoint
     // runs in the background and its body is not read by the UI. A non-2xx
@@ -94,7 +110,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     console.error(`[plaid] networth-snapshot could not read items (${itemsRes.status}): ${detail}`);
     return json({ error: "Failed to read items" }, 500);
   }
-  const items = (await itemsRes.json().catch(() => [])) as { item_id: string; access_token: string }[];
+  const items = (await itemsRes.json().catch(() => [])) as StoredItem[];
 
   // Manually-added accounts (tier 3) count toward the snapshotted net worth too,
   // so a hand-entered 401(k) or regional bank shows up on the trend line.
@@ -194,11 +210,21 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // rather than written from partial totals.
   const DEADLINE_MS = 18_000;
   const PER_ITEM_MS = 9_000;
+  // refreshItem is a Plaid call AND two Supabase writes, and only the Plaid call
+  // is covered by the budget below. Timing the calls right up to the deadline
+  // therefore overshot it by however long the writes took, which is how a run
+  // that stops itself at 18s was still killed at 25. Kept back for the tail:
+  // the per-item writes, the snapshot upsert, and serialising the response.
+  const WRITE_RESERVE_MS = 4_000;
+  // Below this there is no point starting: a bank that answers in under a second
+  // is not the one that puts a run in trouble, and a doomed call still costs the
+  // full wait before it fails.
+  const MIN_CALL_MS = 1_500;
   const startedAt = Date.now();
 
   const results = await mapPool(items, CONCURRENCY, async (item) => {
-    const budget = Math.min(PER_ITEM_MS, DEADLINE_MS - (Date.now() - startedAt));
-    if (budget <= 0) {
+    const budget = Math.min(PER_ITEM_MS, DEADLINE_MS - WRITE_RESERVE_MS - (Date.now() - startedAt));
+    if (budget < MIN_CALL_MS) {
       // Never reached, rather than tried and refused. Named as such, because
       // "we ran out of time" and "your bank said no" are different facts, and
       // the failures list is what a later page load reads to explain itself.
@@ -216,9 +242,35 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     return refreshItem(item, budget);
   });
 
+  // An item that did not answer contributes its LAST KNOWN balances rather than
+  // nothing. Dropping the day entirely was the old behaviour, and it is the
+  // right call only if the alternative is a wrong number: one chronically slow
+  // bank then means the trend never gets another point, which is not a gap the
+  // member can see or reason about. A balance from the last successful refresh
+  // is a real number that was true recently, and the row is marked `estimated`
+  // (migration 0015) so the chart draws it dashed and says so.
+  //
+  // The one case still worth skipping: an item that has never refreshed at all
+  // has no stored balance to carry, so including it would understate the total
+  // by that whole institution. That is the wrong-number case the old rule was
+  // written for.
+  let carried = 0;
+  let uncarryable = 0;
+  const byId = new Map(items.map((i) => [i.item_id, i]));
   for (const r of results) {
     if (r.failure) {
       failures.push(r.failure);
+      const stored = byId.get(r.failure.item_id)?.accounts;
+      if (stored && stored.length) {
+        for (const acct of stored) {
+          const c = classifyStored(acct);
+          assets += c.assets;
+          debts += c.debts;
+        }
+        carried++;
+      } else {
+        uncarryable++;
+      }
       continue;
     }
     assets += r.assets;
@@ -255,13 +307,25 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // invisible by comparison: the chart simply has no sample there. Per-item
   // snapshots were already refreshed above, so balances and credit limits are
   // still up to date for everything that answered.
-  const partial = failures.length > 0;
+  // Skipped only when an item could not be carried forward, so the totals would
+  // genuinely be missing an institution. Everything else writes a point.
+  const partial = uncarryable > 0;
+  const estimated = carried > 0;
   let snapshotRow: unknown = null;
   if (!partial) {
     const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
       method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth }),
+      headers: {
+        // A clean run overwrites whatever today holds, because a full set of
+        // live balances is the best answer available. A carried-forward run
+        // must not: if a clean point was already written today it is strictly
+        // better, and clobbering it would downgrade a real observation to an
+        // estimate on the strength of one bank being slow an hour later.
+        Prefer: estimated
+          ? "resolution=ignore-duplicates,return=representation"
+          : "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify({ user_id: userId, as_of: asOf, assets, debts, net_worth: netWorth, estimated }),
     });
     if (!up.ok) {
       const detail = await up.text().catch(() => "");
@@ -272,7 +336,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     snapshotRow = rows[0] ?? null;
   } else {
     console.error(
-      `[plaid] net_worth snapshot skipped for ${asOf}: ${failures.length} of ${items.length} items failed to refresh`,
+      `[plaid] net_worth snapshot skipped for ${asOf}: ${uncarryable} of ${items.length} items failed with no stored balance to carry forward`,
     );
   }
 
@@ -288,8 +352,12 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     net_worth: netWorth,
     snapshot: snapshotRow,
     snapshot_skipped: partial,
+    // `estimated` says the point was written but leans on a stale balance, which
+    // is a different fact from a clean refresh and from a skipped day.
+    estimated,
     items: items.length,
     refreshed,
+    carried_forward: carried,
     failed: failures.length,
     failures,
   });
