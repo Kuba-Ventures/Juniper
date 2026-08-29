@@ -58,7 +58,7 @@ const DEBT_TYPES = new Set(["credit", "loan"]);
 
 // Assets add, debts subtract. Plaid reports credit/loan `current` as a positive
 // amount owed, so take its absolute value regardless of sign.
-type StoredItem = { item_id: string; access_token: string; accounts: SanitizedAccount[] | null };
+type StoredItem = { item_id: string; access_token: string; accounts: SanitizedAccount[] | null; balances_refreshed_at?: string | null };
 
 // The stored-snapshot twin of classify(). Same rule, different shape: a live
 // balance nests under `balances`, a sanitized one is already flattened onto
@@ -101,7 +101,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // `accounts` rides along with the token: it is the last balances Plaid gave
   // us for this item, and it is what a refusing item contributes instead of
   // collapsing the whole day's trend point. See the carry-forward below.
-  const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token,accounts`);
+  const itemsRes = await adminRest(`plaid_items?user_id=eq.${userId}&select=item_id,access_token,accounts,balances_refreshed_at`);
   if (!itemsRes.ok) {
     // Logged for the same reason as the per-item failures below: this endpoint
     // runs in the background and its body is not read by the UI. A non-2xx
@@ -176,7 +176,15 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     await adminRest(`plaid_items?item_id=eq.${item.item_id}`, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ accounts: sanitizeAccounts(accts), updated_at: new Date().toISOString() }),
+      // balances_refreshed_at is written HERE and nowhere else, which is the
+      // whole point of it: it dates the snapshot on the next line rather than
+      // the row, so an item whose transactions sync fine and whose balance
+      // calls all fail cannot look fresh. See migration 0022.
+      body: JSON.stringify({
+        accounts: sanitizeAccounts(accts),
+        balances_refreshed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
     });
     await markItemSynced(item.item_id);
     return { assets: a, debts: d, failure: null };
@@ -254,22 +262,46 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // has no stored balance to carry, so including it would understate the total
   // by that whole institution. That is the wrong-number case the old rule was
   // written for.
+  // How long a failing item may be carried before it stops counting. Without a
+  // ceiling the carry-forward degrades silently: an item that never answers
+  // again contributes the same frozen number every day, forever, inside a total
+  // presented as today's, and the only signal is a dashed point that looks
+  // exactly like a legitimately reconstructed one. A week is long enough to ride
+  // out an outage and short enough that nobody is reading a month-old balance.
+  const CARRY_MAX_DAYS = 7;
+  const carryCutoff = Date.now() - CARRY_MAX_DAYS * 86_400_000;
+
   let carried = 0;
   let uncarryable = 0;
+  let expired = 0;
   const byId = new Map(items.map((i) => [i.item_id, i]));
   for (const r of results) {
     if (r.failure) {
       failures.push(r.failure);
-      const stored = byId.get(r.failure.item_id)?.accounts;
-      if (stored && stored.length) {
+      const item = byId.get(r.failure.item_id);
+      const stored = item?.accounts ?? [];
+      // A null timestamp means nothing has ever recorded a balance refresh for
+      // this item, so there is no evidence its stored figures are recent. Not
+      // carried, for the same reason a week-old one is not.
+      const at = item?.balances_refreshed_at ? Date.parse(item.balances_refreshed_at) : NaN;
+      const fresh = Number.isFinite(at) && at >= carryCutoff;
+
+      if (!stored.length) {
+        // Never refreshed at all, so there is nothing to carry and including it
+        // would silently drop a whole institution from the total.
+        uncarryable++;
+      } else if (!fresh) {
+        // Has balances, but too old to fold into a total presented as today's.
+        // Counted apart from the above so the log can say which happened.
+        expired++;
+        uncarryable++;
+      } else {
         for (const acct of stored) {
           const c = classifyStored(acct);
           assets += c.assets;
           debts += c.debts;
         }
         carried++;
-      } else {
-        uncarryable++;
       }
       continue;
     }
@@ -336,7 +368,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     snapshotRow = rows[0] ?? null;
   } else {
     console.error(
-      `[plaid] net_worth snapshot skipped for ${asOf}: ${uncarryable} of ${items.length} items failed with no stored balance to carry forward`,
+      `[plaid] net_worth snapshot skipped for ${asOf}: ${uncarryable} of ${items.length} items could not be carried forward (${expired} stale beyond ${CARRY_MAX_DAYS} days, ${uncarryable - expired} never refreshed)`,
     );
   }
 
@@ -358,6 +390,9 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     items: items.length,
     refreshed,
     carried_forward: carried,
+    // Stated separately so a trend that stops getting points has a reason in the
+    // response rather than only in a log line.
+    carry_expired: expired,
     failed: failures.length,
     failures,
   });
