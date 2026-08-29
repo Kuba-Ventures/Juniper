@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   money, moneyK, money2,
@@ -9,7 +9,7 @@ import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from
 import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
 import {
-  useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON,
+  useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
 } from "@/lib/plans";
 import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing,
@@ -263,15 +263,21 @@ function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"
 // page uses so the two surfaces cannot disagree about what exists. Example plans
 // live only on the Plans page: they are illustration, so they must never appear
 // here, where everything on the screen is the member's own money.
-function YourPlansCard() {
+function YourPlansCard({ goals, goalsReady }: { goals: string[]; goalsReady: boolean }) {
   const { plans, loading } = useMemberPlans();
   const active = plans.filter((p) => p.status !== "completed");
+  // Goals picked at signup that no plan covers yet. They are listed under the
+  // real plans, reading "No target yet" rather than a number, because no plan
+  // row exists for them until the member sets one. Without this the card said
+  // "No plans yet" to somebody who had just told onboarding three of them.
+  const waiting = useMemo(() => unplannedGoals(goals, plans), [goals, plans]);
+  const hasAnything = active.length > 0 || waiting.length > 0;
   return (
     <div className="card">
       <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
       {loading ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>Loading your plans…</div>
-      ) : active.length ? (
+      ) : hasAnything ? (
         <div className="plans-col">
           {active.map((p) => {
             const shape = planShape(p);
@@ -295,23 +301,42 @@ function YourPlansCard() {
               </Link>
             );
           })}
+          {waiting.map((g) => (
+            <Link href="/app/plans" className="plan-row waiting" key={g.goal}>
+              <div className="track" style={{ background: cssVar(g.color) }}><PlanIcon name="target" /></div>
+              <div className="pr-body">
+                <div className="pr-top"><span className="pt">{g.goal}</span></div>
+                <div className="bar"><i style={{ width: "0%", background: cssVar(g.color) }} /></div>
+                <div className="pr-bot">
+                  <span>No target yet</span>
+                  <span className="status setup">Set a target</span>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
-      ) : (
+      ) : goalsReady ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
           No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
           <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 export default function Overview({
   name,
+  goals = [],
+  goalsReady = false,
   showWelcome,
   onDismissWelcome,
 }: {
   name: string;
+  goals?: string[];
+  // False until the profile has resolved. The card waits on it rather than
+  // rendering "No plans yet" for a beat at somebody who has goals.
+  goalsReady?: boolean;
   showWelcome?: boolean;
   onDismissWelcome?: () => void;
 }) {
@@ -404,7 +429,7 @@ export default function Overview({
 
       <div className="grid hero" style={{ marginBottom: 16 }}>
         <NetWorthCard netWorth={netWorth} cashflow={cashflow} />
-        <YourPlansCard />
+        <YourPlansCard goals={goals} goalsReady={goalsReady} />
       </div>
 
       {hasTxns && (

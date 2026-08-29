@@ -1254,3 +1254,14 @@
    visible, the rest reachable, so the card stays a summary while its search has
    a useful set to match against. */
 .jnpr .rows.rows-scroll{max-height:520px;overflow-y:auto;overscroll-behavior:contain}
+
+/* A signup goal shown at plan size before it is a plan. Dashed and unfilled so
+   the difference from a tracked plan reads without needing the label, and no
+   figure on it is a number the member did not give. */
+.jnpr .plan-lg.unstarted{border-style:dashed;background:transparent;cursor:pointer}
+.jnpr .plan-lg.unstarted:hover{border-color:var(--jnpr-accent);border-style:solid}
+.jnpr .plan-lg.unstarted:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+.jnpr .plan-lg.unstarted .big{color:var(--jnpr-ink-3);font-weight:650}
+.jnpr .plan-lg.unstarted .bar{opacity:.35}
+/* The Overview row equivalent, same restraint. */
+.jnpr .plan-row.waiting .bar{opacity:.35}
