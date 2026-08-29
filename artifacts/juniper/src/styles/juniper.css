@@ -233,8 +233,17 @@
 .jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
 .jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
 .jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
-.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;opacity:0;transition:opacity .15s}
-.jnpr .plan-lg:hover .edit-hint{opacity:1}
+/* A real button, not a hint. It was a span at opacity 0 revealed on hover, so
+   opening a plan was mouse-only: nothing to tab to, and nothing announced. It
+   still fades in on hover, and now also whenever it has focus, because a
+   control that takes focus while invisible is worse than one that never
+   takes it. */
+.jnpr .edit-hint{font-size:11px;color:var(--jnpr-ink-3);font-weight:600;opacity:0;transition:opacity .15s;
+  font-family:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.jnpr .plan-lg:hover .edit-hint,
+.jnpr .plan-lg:focus-within .edit-hint{opacity:1}
+.jnpr .edit-hint:focus-visible{opacity:1;outline:2px solid var(--jnpr-accent);outline-offset:3px;border-radius:4px}
+.jnpr .edit-hint:hover{color:var(--jnpr-ink)}
 .jnpr .plan-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
 .jnpr .plan-ask{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent-deep);background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
 .jnpr .plan-ask:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}

@@ -238,6 +238,10 @@ function viewOf(plan: Plan): PlanView {
 function PlanCard({ v, onOpen, onAsk, chatCount }: { v: PlanView; onOpen: () => void; onAsk: () => void; chatCount: number }) {
   const copy = SHAPE_COPY[v.shape];
   return (
+    // Deliberately NOT role="button". A plan card contains a button already
+    // (Ask Juniper), and interactive content nested inside a button is invalid
+    // and announces badly. The click here is a mouse shortcut layered over the
+    // real control in the footer, which is a button, focusable, and labelled.
     <div className={`card plan-lg ${v.done ? "done" : ""}`} onClick={onOpen}>
       <div className="ph">
         <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={SHAPE_ICON[v.shape]} /></div>
@@ -259,7 +263,15 @@ function PlanCard({ v, onOpen, onAsk, chatCount }: { v: PlanView; onOpen: () => 
         </div>
         <div className="next"><b>{v.done ? "Outcome:" : "Next:"}</b> {v.next}</div>
         <div className="plan-foot">
-          <span className="edit-hint">Click to view and edit</span>
+          <button
+            className="edit-hint"
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            // Named for the plan, because a list of these all reading "View and
+            // edit" tells a screen reader user nothing about which one.
+            aria-label={`View and edit ${v.title}`}
+          >
+            View and edit
+          </button>
           <button className="plan-ask" onClick={(e) => { e.stopPropagation(); onAsk(); }}>
             <ChatIcon />Ask Juniper{chatCount > 0 && <span className="pa-badge">{chatCount}</span>}
           </button>
@@ -349,8 +361,9 @@ function offerFor(goal: string, i: number): GoalOffer {
 // member never gave, which is the dishonesty that rule exists to prevent.
 function UnstartedCard({ goal, color, onStart }: { goal: string; color: PlanColor; onStart: () => void }) {
   return (
-    <div className="card plan-lg unstarted" onClick={onStart} role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStart(); } }}>
+    // Same shape as PlanCard: the card is a mouse shortcut, the footer button
+    // is the control. It used to be role="button" with a button inside it.
+    <div className="card plan-lg unstarted" onClick={onStart}>
       <div className="ph">
         <div className="track" style={{ background: cssVar(color) }}><PlanIcon name="target" /></div>
         <div style={{ flex: 1 }}>
@@ -367,7 +380,8 @@ function UnstartedCard({ goal, color, onStart }: { goal: string; color: PlanColo
         <div className="bar"><i style={{ width: "0%", background: cssVar(color) }} /></div>
         <div className="next"><b>Next:</b> set a target and Juniper starts tracking it</div>
         <div className="plan-foot">
-          <button className="btn sm" onClick={(e) => { e.stopPropagation(); onStart(); }}>Set a target</button>
+          <button className="btn sm" onClick={(e) => { e.stopPropagation(); onStart(); }}
+            aria-label={`Set a target for ${goal}`}>Set a target</button>
         </div>
       </div>
     </div>
