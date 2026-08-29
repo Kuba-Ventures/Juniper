@@ -14,10 +14,10 @@ import { useLocation } from "wouter";
 // canvas below is the honest first screen rather than an empty-looking table.
 //
 // The nav is derived from content, not declared: Overview is always there, and
-// Accounts appears once either member has shared an account, Goals once a goal
-// exists. Bills and Activity are deliberately absent, because their pages still
-// read lib/shared-data.ts, and a tab that opens onto a seeded household is the
-// thing Stage 4c unrouted them for.
+// each of Accounts, Goals, Bills and Activity appears once the space holds one
+// of that kind. Stage 4f de-seeded the last two, so all five of the six shared
+// pages that a member can reach now read live data only. sharing.tsx is the
+// sixth and stays retired, superseded by the share sheet.
 //
 // What each remaining page still has to meet to join the nav:
 //   1. It reads only /api/partner (and /api/partner/bills, /activity). No
@@ -35,13 +35,13 @@ import { useLocation } from "wouter";
 
 // What the shared space can hold. Each kind names the surface it grows, so the
 // canvas and the nav cannot disagree about what exists.
-type Kind = "accounts" | "goals";
+type Kind = "accounts" | "goals" | "bills" | "activity";
 
 // The tabs themselves live in the app bar now (app-frame.tsx, sharedNav),
 // because switching space switches the whole product rather than adding a
 // second nav under a personal one. This keeps only the set of kinds the canvas
 // has to reason about.
-const KINDS: Kind[] = ["accounts", "goals"];
+const KINDS: Kind[] = ["accounts", "goals", "bills", "activity"];
 
 // The Together band. Carries the share control once there is something to
 // weigh it against; on the empty canvas the button below is the only one, so
@@ -67,10 +67,14 @@ function SharedHeader({
   );
 }
 
-// The first screen of a shared space with nothing in it. The tiles are the two
-// kinds that work end to end today; a tile for a bill or a plan would be an
-// offer the product cannot honour yet.
-function BlankCanvas({ onShare, onGoal }: { onShare: () => void; onGoal: () => void }) {
+// The first screen of a shared space with nothing in it. One tile per kind the
+// space can hold, and each one is the only way to reach that surface before it
+// has anything: the app bar grows a tab off content, so without these a member
+// could not add the first bill because the Bills tab does not exist until a
+// bill does.
+function BlankCanvas({ onShare, onGoal, onBill, onMessage }: {
+  onShare: () => void; onGoal: () => void; onBill: () => void; onMessage: () => void;
+}) {
   return (
     <div className="card canvas-empty">
       <h2>Just the two of you, so far</h2>
@@ -86,6 +90,16 @@ function BlankCanvas({ onShare, onGoal }: { onShare: () => void; onGoal: () => v
           A goal
           <small>Fund it together, each contribution shown</small>
         </button>
+        <button className="canvas-tile" onClick={onBill}>
+          <span className="g" aria-hidden="true">&#129534;</span>
+          A bill
+          <small>Who pays what, and when it is due</small>
+        </button>
+        <button className="canvas-tile" onClick={onMessage}>
+          <span className="g" aria-hidden="true">&#128172;</span>
+          A message
+          <small>A thread only the two of you can see</small>
+        </button>
       </div>
       <button className="btn" onClick={onShare}>Choose what to share</button>
     </div>
@@ -98,7 +112,7 @@ export function SharedPage({
   const { partner, holds, refresh: refreshWorkspace } = useWorkspace();
   const { data, loading, refresh } = usePartner();
   const session = useSession();
-  const [, setLocation] = useLocation();
+  const [loc, setLocation] = useLocation();
   const [invite, setInvite] = useState(false);
   const [share, setShare] = useState(false);
 
@@ -129,6 +143,7 @@ export function SharedPage({
   // whether the space has anything in it.
   const grown = KINDS.filter((k) => holds[k]);
   const empty = grown.length === 0;
+  const isOverview = loc === "/app/shared";
 
   return (
     <div className="frame">
@@ -140,12 +155,21 @@ export function SharedPage({
         onShare={empty ? undefined : () => setShare(true)}
       />
 
-      {/* `loading` matters here: usePartner starts at null, and without this the
+      {/* The canvas belongs to the shared Overview and nowhere else. It used to
+          replace the children of EVERY shared page while the space was empty,
+          which made the sub-pages unreachable at exactly the moment they were
+          needed: a member following the "A bill" tile landed on Bills and was
+          shown the canvas again. Each sub-page has its own empty state now, and
+          says the honest thing for its own kind.
+
+          `loading` still matters: usePartner starts at null, and without it the
           canvas flashes on every navigation before the overview lands. */}
-      {empty && !loading ? (
+      {empty && isOverview && !loading ? (
         <BlankCanvas
           onShare={() => setShare(true)}
           onGoal={() => (onAddGoal ? onAddGoal() : setLocation("/app/shared/goals"))}
+          onBill={() => setLocation("/app/shared/bills")}
+          onMessage={() => setLocation("/app/shared/activity")}
         />
       ) : (
         children

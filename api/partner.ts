@@ -142,8 +142,18 @@ async function overview(uid: string): Promise<Response> {
     accounts.push({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: scope === "shared" ? "shared" : "partner", scope, mine: false });
   }
 
+  // Whether the shared space holds bills or messages. The app bar grows a tab
+  // per kind and both live behind their own endpoints, so without this the bar
+  // would have to call all three on every load just to decide what to render.
+  // Head requests: only the presence matters, never the rows.
+  const [billRows, msgRows] = await Promise.all([
+    rows<{ id: string }>(`shared_bills?partnership_id=eq.${active.id}&select=id&limit=1`),
+    rows<{ id: string }>(`shared_messages?partnership_id=eq.${active.id}&select=id&limit=1`),
+  ]);
+
   return json({
     connected: true,
+    holds: { bills: billRows.length > 0, activity: msgRows.length > 0 },
     // Only meaningful for the person who accepted: it is the name the inviter
     // gave them. The inviter's own row says nothing about the inviter.
     me: { invitedName: active.partner_id === uid ? firstName(active.invited_name) || null : null },

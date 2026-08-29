@@ -19,11 +19,14 @@ type NavItem = { path: string; label: string; count?: number };
 // shared space holds: on day one that is a single Together tab, because Accounts
 // and Goals would open onto nothing. Bills and Activity are absent until their
 // pages stop reading lib/shared-data.ts.
-function sharedNav(holds: { accounts: boolean; goals: boolean }): NavItem[] {
-  if (!holds.accounts && !holds.goals) return [{ path: "/app/shared", label: "Together" }];
+function sharedNav(holds: { accounts: boolean; goals: boolean; bills: boolean; activity: boolean }): NavItem[] {
+  const any = holds.accounts || holds.goals || holds.bills || holds.activity;
+  if (!any) return [{ path: "/app/shared", label: "Together" }];
   const nav: NavItem[] = [{ path: "/app/shared", label: "Overview" }];
   if (holds.accounts) nav.push({ path: "/app/shared/accounts", label: "Accounts" });
   if (holds.goals) nav.push({ path: "/app/shared/goals", label: "Goals" });
+  if (holds.bills) nav.push({ path: "/app/shared/bills", label: "Bills" });
+  if (holds.activity) nav.push({ path: "/app/shared/activity", label: "Activity" });
   return nav;
 }
 

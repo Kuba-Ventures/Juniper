@@ -18,6 +18,8 @@ import { ConnectionsView } from "@/pages/connections";
 import { SharedOverview } from "@/pages/app/shared/overview";
 import { SharedGoals } from "@/pages/app/shared/goals";
 import { SharedAccounts } from "@/pages/app/shared/accounts";
+import { SharedBills } from "@/pages/app/shared/bills";
+import { SharedActivity } from "@/pages/app/shared/activity";
 import "@/styles/juniper.css";
 
 // Two surfaces are deliberately absent from this Switch (Stage 4c). Only the
@@ -157,6 +159,8 @@ export default function JuniperApp() {
           <Route path="/app/shared" component={SharedOverview} />
           <Route path="/app/shared/goals" component={SharedGoals} />
           <Route path="/app/shared/accounts" component={SharedAccounts} />
+          <Route path="/app/shared/bills" component={SharedBills} />
+          <Route path="/app/shared/activity" component={SharedActivity} />
           <Route>
             <div className="frame">
               <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 40 }}>Page not found.</div>
