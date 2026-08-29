@@ -37,6 +37,8 @@ export interface PartnerState {
 export interface SharedHolds {
   accounts: boolean;
   goals: boolean;
+  bills: boolean;
+  activity: boolean;
 }
 
 interface WorkspaceCtx {
@@ -67,7 +69,7 @@ const Ctx = createContext<WorkspaceCtx | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspaceState] = useState<Workspace>(loadWorkspace);
   const [partner, setPartner] = useState<PartnerState>({ name: "", connected: false });
-  const [holds, setHolds] = useState<SharedHolds>({ accounts: false, goals: false });
+  const [holds, setHolds] = useState<SharedHolds>({ accounts: false, goals: false, bills: false, activity: false });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -95,6 +97,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setHolds({
         accounts: (d?.accounts ?? []).some((a) => a.scope !== "private"),
         goals: (d?.goals ?? []).length > 0,
+        // Decided server-side: these two live behind their own endpoints, and
+        // the bar should not have to call them to know whether to show a tab.
+        bills: d?.holds?.bills === true,
+        activity: d?.holds?.activity === true,
       });
       setReady(true);
     });

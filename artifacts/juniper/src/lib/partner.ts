@@ -14,6 +14,9 @@ export interface PartnerData {
   pending?: boolean;
   // Set only for the member who accepted: the first name the inviter gave them.
   me?: { invitedName: string | null };
+  // Whether the space holds bills or messages, decided server-side so the app
+  // bar does not have to call three endpoints to build its tabs.
+  holds?: { bills: boolean; activity: boolean };
   partner?: { name: string };
   prefs?: { me: PartnerPrefs; partner: PartnerPrefs };
   goals?: PartnerGoal[];
