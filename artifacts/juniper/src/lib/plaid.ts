@@ -25,7 +25,26 @@ export type PlaidItem = {
   institution_name: string | null;
   accounts: PlaidAccount[];
   created_at?: string;
+  // Per-item health. All optional: /api/plaid/accounts drops these rather than
+  // fail the whole request if a migration has not landed yet, so every consumer
+  // has to cope with them being absent rather than assume a shape.
+  last_synced_at?: string | null;
+  // Only ever a code that means the connection is finished and needs relinking.
+  // Transient Plaid errors are deliberately not recorded, see _item-sync-state.
+  last_error_code?: string | null;
+  last_error_at?: string | null;
+  balances_refreshed_at?: string | null;
+  balances_from_cache?: boolean | null;
 };
+
+// Mirrors DEAD_ITEM_CODES in api/_item-sync-state.ts. Duplicated rather than
+// imported because the client cannot reach into api/, and kept to two values
+// that are checked against that file whenever either changes.
+const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"]);
+
+export function itemNeedsRelink(item: PlaidItem): boolean {
+  return !!item.last_error_code && DEAD_ITEM_CODES.has(item.last_error_code);
+}
 
 // Brand metadata for one institution, mirroring InstitutionBrand in
 // api/plaid/institution-logos.ts. Both fields are optional on Plaid's side: a

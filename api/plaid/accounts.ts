@@ -42,14 +42,33 @@ export default async function handler(req: Request): Promise<Response> {
 
   // service-role bypasses RLS, so we MUST filter by user_id ourselves. Never
   // select access_token.
-  const res = await adminRest(
-    `plaid_items?user_id=eq.${encodeURIComponent(payload.sub)}` +
-      `&select=item_id,institution_id,institution_name,accounts,created_at&order=created_at.asc`,
-  );
+  const scope = `plaid_items?user_id=eq.${encodeURIComponent(payload.sub)}`;
+  const order = "&order=created_at.asc";
+  // Columns the page has always had.
+  const BASE = "item_id,institution_id,institution_name,accounts,created_at";
+  // Per-item health, so Connections can say how current each connection is and
+  // whether one needs reconnecting, without calling Plaid. Written by
+  // _item-sync-state.ts (0017), networth-snapshot (0022, 0023).
+  const STATE = "last_synced_at,last_error_code,last_error_at,balances_refreshed_at,balances_from_cache";
+
+  // Asked for together, and retried without the health columns if that fails.
+  // PostgREST rejects the whole select on an unknown column, so a deploy that
+  // lands before its migration would otherwise take the entire Connections page
+  // down rather than degrade to the list it has always shown. Costs one extra
+  // round trip in a case that should never happen and is free otherwise.
+  let res = await adminRest(`${scope}&select=${BASE},${STATE}${order}`);
+  let degraded = false;
+  if (!res.ok) {
+    res = await adminRest(`${scope}&select=${BASE}${order}`);
+    degraded = res.ok;
+    if (degraded) {
+      console.warn("[plaid] accounts: per-item health columns unavailable, is migration 0023 applied?");
+    }
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     return json({ error: "Failed to load connections", detail }, 500);
   }
   const items = (await res.json()) as unknown[];
-  return json({ items: Array.isArray(items) ? items : [] });
+  return json({ items: Array.isArray(items) ? items : [], ...(degraded ? { health_unavailable: true } : {}) });
 }
