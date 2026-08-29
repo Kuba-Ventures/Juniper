@@ -12,6 +12,7 @@ import {
   syncFinancesUntilTransactions,
   layerEnabled,
   normInstitutionName,
+  itemNeedsRelink,
   type InstitutionBrand,
   type InstitutionBrandMap,
   type PlaidItem,
@@ -86,6 +87,40 @@ function Freshness({ syncedAt, busy }: { syncedAt: string | null; busy: boolean 
   // nothing beats "Updated never".
   if (!ago) return null;
   return <span className="fresh"><span className="dot" />Updated {ago}</span>;
+}
+
+// "4 minutes ago", and so on. Rounded down at every step, because a connection
+// refreshed 119 seconds ago is better described as a minute old than as two.
+function agoLabel(iso?: string | null): string | null {
+  if (!iso) return null;
+  const then = Date.parse(iso);
+  if (!Number.isFinite(then)) return null;
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+// The line under an institution's name. A healthy connection says only when it
+// last updated, which is the common case and should be quiet. Anything else is
+// something the member may need to act on, so it is stated plainly and first.
+function connectionStatus(item: PlaidItem): { text: string; tone: "ok" | "warn" | "bad" } | null {
+  const ago = agoLabel(item.last_synced_at);
+  if (itemNeedsRelink(item)) {
+    return { text: ago ? `Needs reconnecting \u00b7 last updated ${ago}` : "Needs reconnecting", tone: "bad" };
+  }
+  if (item.balances_from_cache) {
+    // Worth saying out loud: this bank is slow enough that a live balance check
+    // times out, so the figure comes from Plaid's own copy. It is Plaid's
+    // number and usually hours old at most, but it is not a live read.
+    return { text: ago ? `Balance from Plaid's cache \u00b7 updated ${ago}` : "Balance from Plaid's cache", tone: "warn" };
+  }
+  if (!ago) return null;
+  return { text: `Updated ${ago}`, tone: "ok" };
 }
 
 export function ConnectionsView() {
@@ -347,7 +382,13 @@ export function ConnectionsView() {
                     brand={item.institution_id ? brands[item.institution_id] : undefined}
                     glyph={<Building2 size={19} />}
                   />
-                  <span className="ci-name">{item.institution_name || "Linked institution"}</span>
+                  <span className="ci-name">
+                    {item.institution_name || "Linked institution"}
+                    {(() => {
+                      const st = connectionStatus(item);
+                      return st ? <span className={`ci-status ${st.tone}`}>{st.text}</span> : null;
+                    })()}
+                  </span>
                   <button
                     className="btn ghost sm"
                     onClick={() => handleRemove(item.item_id)}

@@ -199,6 +199,10 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
       body: JSON.stringify({
         accounts: sanitizeAccounts(accts),
         balances_refreshed_at: new Date().toISOString(),
+        // Always written, not only when true, so it describes the MOST RECENT
+        // refresh. A bank that answered from cache yesterday and live today
+        // must not still be labelled cached. See migration 0023.
+        balances_from_cache: fromCache,
         updated_at: new Date().toISOString(),
       }),
     });

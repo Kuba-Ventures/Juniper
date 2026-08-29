@@ -1282,3 +1282,12 @@
 .jnpr .plan-lg.unstarted .bar{opacity:.35}
 /* The Overview row equivalent, same restraint. */
 .jnpr .plan-row.waiting .bar{opacity:.35}
+
+/* The line under an institution's name on Connections. Every fact on it has
+   been recorded since migration 0017 and simply was not asked for: the page
+   selected five columns and none of them said how current anything was. Quiet
+   by default, because a healthy connection reporting a timestamp should not
+   look like a warning. */
+.jnpr .ci-status{display:block;font-size:11.5px;font-weight:600;margin-top:2px;color:var(--jnpr-ink-3)}
+.jnpr .ci-status.warn{color:var(--jnpr-warn)}
+.jnpr .ci-status.bad{color:var(--jnpr-bad)}
