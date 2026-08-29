@@ -9,7 +9,13 @@ import { getAccessToken } from "@/lib/supabase";
 
 export interface PartnerPrefs { share_balances: boolean; share_transactions: boolean; share_score: boolean }
 export interface PartnerGoal { id: string; t: string; icon: string; target: number; you: number; partner: number }
+// What a member has chosen to expose for one account. Two states are written:
+// shared, or private. "balance" is only ever READ, from rows written before the
+// three-way control was retired, and it always meant the same as shared: it
+// withheld nothing, because transactions are not shared at all.
 export type AccountScope = "shared" | "balance" | "private";
+export type WritableScope = "shared" | "private";
+export const isShared = (s: AccountScope): boolean => s !== "private";
 export interface PartnerAccount { account_id: string; n: string; inst: string; v: number; owner: "you" | "partner" | "shared"; scope: AccountScope; mine: boolean }
 export interface PartnerData {
   connected: boolean;
@@ -58,7 +64,7 @@ export const invitePartner = (partnerName?: string) => post("invite", partnerNam
 export const acceptInvite = (token: string) => post("accept", { token });
 export const disconnectPartner = () => post("disconnect");
 export const setSharingPrefs = (prefs: Partial<PartnerPrefs>) => post("set-prefs", prefs);
-export const setAccountShare = (accountId: string, scope: AccountScope) => post("set-account-share", { accountId, scope });
+export const setAccountShare = (accountId: string, scope: WritableScope) => post("set-account-share", { accountId, scope });
 export const addSharedGoal = (title: string, icon: string, target: number) => post("add-goal", { title, icon, target });
 export const addContribution = (goalId: string, amount: number) => post("add-contribution", { goalId, amount });
 
