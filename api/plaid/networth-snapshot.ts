@@ -134,6 +134,78 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   const failures: ItemFailure[] = [];
   let refreshed = 0;
 
+  // ── Timing ────────────────────────────────────────────────────────────────
+  // Declared above the functions that read them. They used to sit below, which
+  // worked only because nothing called those functions until execution had
+  // passed the declarations: a call moved earlier would have failed at runtime
+  // on a temporal dead zone rather than at compile time.
+  // Whole-run ceiling. Vercel kills an edge function that has not answered in
+  // 25 seconds, and being killed means no response at all, which throws away
+  // every per-item snapshot that DID refresh. Stopping at 18 gives a real
+  // answer about what resolved. See the batching note further down.
+  const DEADLINE_MS = 18_000;
+  // 12s, not the 9 it was. Carter Bank & Trust timed out at 9 on every attempt
+  // for two days, and a small regional bank being slow through Plaid is
+  // ordinary rather than broken. Raising this does NOT starve the items behind
+  // it: mapPool's workers pull from a shared cursor, so the queue advances when
+  // the FIRST worker frees up, which is a fast bank at a second or two, not the
+  // slow one holding its own worker.
+  const PER_ITEM_MS = 12_000;
+  // refreshItem is a Plaid call AND two Supabase writes, and only the Plaid call
+  // is covered by the budget below. Timing the calls right up to the deadline
+  // therefore overshot it by however long the writes took, which is how a run
+  // that stops itself at 18s was still killed at 25. Kept back for the tail:
+  // the per-item writes, the snapshot upsert, and serialising the response.
+  const WRITE_RESERVE_MS = 4_000;
+  // Below this there is no point starting: a bank that answers in under a second
+  // is not the one that puts a run in trouble, and a doomed call still costs the
+  // full wait before it fails.
+  const MIN_CALL_MS = 1_500;
+  const startedAt = Date.now();
+
+  // How long Plaid gets to hand back the balances it already holds. Short on
+  // purpose: /accounts/get makes no round trip to the bank, so a second is
+  // generous, and a slow answer here means Plaid itself is struggling rather
+  // than the institution.
+  const CACHED_FALLBACK_MS = 4_000;
+
+  // The success tail, shared by the live path and the cached fallback so the two
+  // cannot drift on what they store or how they classify it.
+  //
+  // balances_refreshed_at is written HERE and nowhere else, which is the whole
+  // point of it: it dates the snapshot rather than the row, so an item whose
+  // transactions sync fine and whose balance calls all fail cannot look fresh.
+  // See migration 0022.
+  //
+  // The fallback writes it too, deliberately. The number came from Plaid this
+  // minute, not from our own copy, so the staleness ceiling in the carry-forward
+  // has nothing to protect against here. The ceiling exists for an item Plaid
+  // cannot serve AT ALL, and one answering /accounts/get is not that.
+  const storeAndSum = async (
+    item: { item_id: string; access_token: string },
+    accts: BalanceAccount[],
+    fromCache: boolean,
+  ) => {
+    let a = 0, d = 0;
+    for (const acct of accts) {
+      const c = classify(acct);
+      a += c.assets;
+      d += c.debts;
+    }
+    // Refresh the stored snapshot so /api/plaid/accounts stays current too.
+    await adminRest(`plaid_items?item_id=eq.${item.item_id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        accounts: sanitizeAccounts(accts),
+        balances_refreshed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    await markItemSynced(item.item_id);
+    return { assets: a, debts: d, failure: null, fromCache };
+  };
+
   // One item's balance refresh: a Plaid call, then the stored-snapshot write.
   // Returns rather than mutating, so the batching below can run several at once
   // without two items racing on the same totals.
@@ -154,6 +226,36 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
       // Recorded so a later page load can name this connection without calling
       // Plaid again. Only dead-item codes are stored, see _item-sync-state.ts.
       if (isDeadItemCode(code)) await markItemDead(item.item_id, code!);
+
+      // A TIMEOUT is not a refusal. /accounts/balance/get asks Plaid to go and
+      // ask the bank right now, which is what a slow bank cannot answer inside
+      // any sane budget. /accounts/get returns the balance Plaid already holds:
+      // no round trip to the bank, so it answers in about a second, and it is
+      // still Plaid's number rather than a copy of our own from days ago.
+      //
+      // Only on a timeout. A dead item, a permissions error or a relink prompt
+      // are all real answers and must not be papered over with cached figures.
+      // Budgeted from what is LEFT of the run, not from the call that just
+      // timed out. Reusing that budget would let a 12s timeout be followed by a
+      // 4s retry and push the run past the deadline it sets for itself.
+      const leftForFallback = Math.min(
+        CACHED_FALLBACK_MS,
+        DEADLINE_MS - WRITE_RESERVE_MS - (Date.now() - startedAt),
+      );
+      if (code === PLAID_TIMEOUT_CODE && !isDeadItemCode(code) && leftForFallback >= 1_000) {
+        const cached = await plaidFetch<BalanceResp>(
+          "/accounts/get",
+          { access_token: item.access_token },
+          { timeoutMs: leftForFallback },
+        );
+        if (cached.ok && (cached.data.accounts ?? []).length) {
+          console.warn(
+            `[plaid] accounts/balance/get timed out for item ${item.item_id}, used Plaid's cached balances from /accounts/get instead`,
+          );
+          return await storeAndSum(item, cached.data.accounts ?? [], true);
+        }
+      }
+
       return {
         assets: 0,
         debts: 0,
@@ -165,29 +267,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
         } as ItemFailure,
       };
     }
-    const accts = bal.data.accounts ?? [];
-    let a = 0, d = 0;
-    for (const acct of accts) {
-      const c = classify(acct);
-      a += c.assets;
-      d += c.debts;
-    }
-    // Refresh the stored snapshot so /api/plaid/accounts stays current too.
-    await adminRest(`plaid_items?item_id=eq.${item.item_id}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      // balances_refreshed_at is written HERE and nowhere else, which is the
-      // whole point of it: it dates the snapshot on the next line rather than
-      // the row, so an item whose transactions sync fine and whose balance
-      // calls all fail cannot look fresh. See migration 0022.
-      body: JSON.stringify({
-        accounts: sanitizeAccounts(accts),
-        balances_refreshed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-    });
-    await markItemSynced(item.item_id);
-    return { assets: a, debts: d, failure: null };
+    return await storeAndSum(item, bal.data.accounts ?? [], false);
   };
 
   // Items are refreshed several at a time rather than one after another, because
@@ -215,20 +295,8 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   // and leaves the legs running after this one in syncFinances waiting on a dead
   // function. Stopping at 18 gives a real answer about what resolved, and a
   // connection that did not is already handled: the day's trend point is skipped
-  // rather than written from partial totals.
-  const DEADLINE_MS = 18_000;
-  const PER_ITEM_MS = 9_000;
-  // refreshItem is a Plaid call AND two Supabase writes, and only the Plaid call
-  // is covered by the budget below. Timing the calls right up to the deadline
-  // therefore overshot it by however long the writes took, which is how a run
-  // that stops itself at 18s was still killed at 25. Kept back for the tail:
-  // the per-item writes, the snapshot upsert, and serialising the response.
-  const WRITE_RESERVE_MS = 4_000;
-  // Below this there is no point starting: a bank that answers in under a second
-  // is not the one that puts a run in trouble, and a doomed call still costs the
-  // full wait before it fails.
-  const MIN_CALL_MS = 1_500;
-  const startedAt = Date.now();
+  // rather than written from partial totals. Declared with the other timing
+  // constants above, since refreshItem reads it.
 
   const results = await mapPool(items, CONCURRENCY, async (item) => {
     const budget = Math.min(PER_ITEM_MS, DEADLINE_MS - WRITE_RESERVE_MS - (Date.now() - startedAt));
@@ -274,6 +342,10 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
   let carried = 0;
   let uncarryable = 0;
   let expired = 0;
+  // Items that answered only from Plaid's cache. Reported because a bank that
+  // lives here permanently is a real fact about the member's data, and it is
+  // the difference between "refreshed" meaning what it says and not.
+  let cached = 0;
   const byId = new Map(items.map((i) => [i.item_id, i]));
   for (const r of results) {
     if (r.failure) {
@@ -308,6 +380,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     assets += r.assets;
     debts += r.debts;
     refreshed++;
+    if ((r as { fromCache?: boolean }).fromCache) cached++;
   }
 
   // The only non-200 path: nothing at all resolved, so there is no snapshot to
@@ -390,6 +463,7 @@ export async function runNetworthSnapshot(userId: string): Promise<Response> {
     items: items.length,
     refreshed,
     carried_forward: carried,
+    from_cache: cached,
     // Stated separately so a trend that stops getting points has a reason in the
     // response rather than only in a log line.
     carry_expired: expired,
