@@ -9,7 +9,7 @@ import { setAccountShare, type AccountScope, type PartnerAccount } from "@/lib/p
 // It exists because sharing is private by default (migration 0020). Before that
 // the answer was "everything, from the moment they accepted", so there was
 // nothing to decide and nowhere to decide it. This supersedes the unrouted
-// pages/app/shared/sharing.tsx, which drove a set of coarse toggles off seeded
+// the deleted pages/app/shared/sharing.tsx, which drove coarse toggles off seeded
 // data; scope lives per account, which is the grain people actually think in.
 //
 // Only your own accounts appear. `mine` comes from /api/partner, which decides

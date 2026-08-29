@@ -18,7 +18,7 @@ type NavItem = { path: string; label: string; count?: number };
 // it rather than a sub-nav appearing under a personal one. Derived from what the
 // shared space holds: on day one that is a single Together tab, because Accounts
 // and Goals would open onto nothing. Bills and Activity are absent until their
-// pages stop reading lib/shared-data.ts.
+// pages stopped reading the seeded household, which is now deleted.
 function sharedNav(holds: { accounts: boolean; goals: boolean; bills: boolean; activity: boolean }): NavItem[] {
   const any = holds.accounts || holds.goals || holds.bills || holds.activity;
   if (!any) return [{ path: "/app/shared", label: "Together" }];
