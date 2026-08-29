@@ -1249,3 +1249,8 @@
   .jnpr .share-row{flex-wrap:wrap}
   .jnpr .share-scopes{width:100%;padding-left:45px}
 }
+
+/* A rows list that holds more than the card has height for. Roughly nine rows
+   visible, the rest reachable, so the card stays a summary while its search has
+   a useful set to match against. */
+.jnpr .rows.rows-scroll{max-height:520px;overflow-y:auto;overscroll-behavior:contain}

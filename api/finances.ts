@@ -159,7 +159,10 @@ export default async function handler(req: Request): Promise<Response> {
   // merchant-level cache, which is what covers charges stored before the art
   // existed. This card is the one most members actually look at, and it was
   // rendering bundled art and monograms only, because it never asked for a logo.
-  const recent = txns.slice(0, 8);
+  // Fifteen, not eight. Eight was short enough that four new charges in a day
+  // pushed half the list off and it read as history going missing, and the
+  // card's own search box could only ever match within what it held.
+  const recent = txns.slice(0, 15);
   const logoOf = new Map<string, string>();
   const needed = [...new Set(recent.filter((t) => !t.logo_url && t.merchant_name).map((t) => t.merchant_name as string))];
   if (needed.length) {
