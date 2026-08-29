@@ -1250,23 +1250,18 @@
   .jnpr .share-scopes{width:100%;padding-left:45px}
 }
 
-/* A rows list that fills the card it is in and scrolls only past the bottom of
-   it. The card sits in a two-column grid beside Accounts, and grid children
-   stretch, so its height is whatever the taller column happens to be. A fixed
-   max-height on the list therefore capped it well short of the card and left
-   dead space underneath, with a scrollbar above the gap.
-   `min-height:0` is what actually lets it scroll: a flex child's default
-   min-height is auto, so it refuses to shrink below its content and the
-   overflow moves to the page instead. */
+/* A rows list that fills the card it is in, and does NOT scroll inside it.
+   The card sits in a two-column grid beside Accounts and grid children stretch,
+   so its height is whatever the taller column happens to be, and the list grows
+   into that rather than to a number of pixels.
+   No inner scrolling on purpose. It had `overflow-y:auto` with
+   `overscroll-behavior:contain`, and real rows wrap where fixture rows do not,
+   so the list overflowed by a line or two, captured the wheel whenever the
+   cursor was over the card, and refused to hand the scroll back to the page.
+   A list this size is not worth a scroll region: the page scrolls, and the
+   card is as tall as it needs to be. */
 .jnpr .card.fill-rows{display:flex;flex-direction:column}
-.jnpr .card.fill-rows .rows-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-/* Nothing to fill on a phone, where the columns stack and the card is only as
-   tall as its own content. Scrolling a list inside a scrolling page is the
-   worse of the two. */
-@media(max-width:860px){
-  .jnpr .card.fill-rows{display:block}
-  .jnpr .card.fill-rows .rows-scroll{overflow-y:visible}
-}
+.jnpr .card.fill-rows .rows-fill{flex:1 1 auto;min-height:0}
 
 /* A signup goal shown at plan size before it is a plan. Dashed and unfilled so
    the difference from a tracked plan reads without needing the label, and no
