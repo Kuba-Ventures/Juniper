@@ -121,9 +121,9 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
           <input placeholder="Search recent" value={q} onChange={(e) => setQ(e.target.value)} />
         </span>
       </div>
-      {/* Its own scroll, so fifteen rows cannot run the card far past the
-          Accounts card beside it in the grid. */}
-      <div className="rows rows-scroll">
+      {/* Fills the card's height rather than scrolling inside it: the wheel
+          belongs to the page. */}
+      <div className="rows rows-fill">
         {rows.map((t, i) => (
           <div className="row" key={i}>
             {/* The same three-source mark the Transactions page uses: Plaid's
