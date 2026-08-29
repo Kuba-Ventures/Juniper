@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>What sharing an account means, three options</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+  body{margin:0;background:#EEF2EE;font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:18px 18px 48px}
+  .lede{max-width:820px;margin:0 0 18px;font-size:13px;color:#4A5A4C}
+  .opt{background:#fff;border:1px solid #D9E2D9;border-radius:14px;padding:14px 16px 18px;margin-bottom:18px}
+  .opt h2{margin:0 0 3px;font-size:15.5px;color:#1C4A31}
+  .opt .why{margin:0 0 2px;font-size:12.5px;color:#4A5A4C}
+  .opt .cost{margin:0 0 12px;font-size:11px;color:#6B7A6D;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .frame{border:1px solid #CBD8CB;border-radius:12px;overflow:hidden}
+  .stage{padding:16px;background:var(--jnpr-bg)}
+  .row2{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--jnpr-line)}
+  .row2:last-of-type{border-bottom:0}
+  .row2 .id{flex:1;min-width:0}
+  .row2 .nm{font-weight:650;font-size:13.5px}
+  .row2 .mt{font-size:11.5px;color:var(--jnpr-ink-3)}
+  .chips{display:flex;gap:5px;flex:0 0 auto}
+  .sc{border:1px solid var(--jnpr-line);background:transparent;color:var(--jnpr-ink-3);font-family:inherit;
+    font-size:11.5px;font-weight:650;padding:5px 10px;border-radius:20px;white-space:nowrap}
+  .sc.on{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-color:transparent}
+  .sw{position:relative;width:38px;height:22px;border-radius:20px;background:var(--jnpr-line);flex:0 0 auto;border:0}
+  .sw.on{background:var(--jnpr-accent)}
+  .sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+  .sw.on i{left:19px}
+  .joint{font-size:11px;font-weight:650;color:var(--jnpr-ink-3);display:flex;align-items:center;gap:6px}
+  .note{font-size:12px;color:var(--jnpr-ink-3);margin-top:12px}
+  .cap{font-size:11.5px;color:#6B7A6D;margin:10px 0 0;font-style:italic}
+</style></head><body><div class="wrap">
+
+<p class="lede">Today "Balance only" and "Shared" do the same thing: both expose the account and its balance, and neither shares transactions, because transactions are not shared at all. The question is what the choice should actually mean.</p>
+
+<div class="opt">
+  <h2>A. Two states: private or shared</h2>
+  <p class="why">Drops the middle, because it is not real. One switch per account, and the sentence under the list says exactly what sharing exposes. Honest to what the code does today and to what a member is actually deciding.</p>
+  <p class="cost">Loses the idea that an account could be shown at less than full detail, if that is ever built</p>
+  <div class="frame"><div class="jnpr"><div class="stage"><div class="card" style="padding:14px 16px">
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">C</span>
+      <span class="id"><span class="nm">Checking</span><span class="mt">Carter Bank &amp; Trust &middot; $783</span></span>
+      <button class="sw on"><i></i></button></div>
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">I</span>
+      <span class="id"><span class="nm">Individual</span><span class="mt">Charles Schwab &middot; $28,670</span></span>
+      <button class="sw"><i></i></button></div>
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">E</span>
+      <span class="id"><span class="nm">Emergency Saving</span><span class="mt">Marcus &middot; $8,086</span></span>
+      <button class="sw"><i></i></button></div>
+    <p class="note">Finley sees the name and balance of anything you share, and it counts toward your total together. They never see its transactions.</p>
+  </div></div></div></div>
+  <p class="cap">One decision per account, and the note carries the detail once instead of three times.</p>
+</div>
+
+<div class="opt">
+  <h2>B. Keep three, and make the middle mean something</h2>
+  <p class="why">Private, Balance only, Full detail, where full detail also puts that account's transactions in the shared space. The label finally describes a real difference.</p>
+  <p class="cost">Needs shared transactions built first, which does not exist. Until then the middle option is still a label</p>
+  <div class="frame"><div class="jnpr"><div class="stage"><div class="card" style="padding:14px 16px">
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">C</span>
+      <span class="id"><span class="nm">Checking</span><span class="mt">Carter Bank &amp; Trust &middot; $783</span></span>
+      <span class="chips"><span class="sc">Private</span><span class="sc on">Balance</span><span class="sc">Full detail</span></span></div>
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">I</span>
+      <span class="id"><span class="nm">Individual</span><span class="mt">Charles Schwab &middot; $28,670</span></span>
+      <span class="chips"><span class="sc on">Private</span><span class="sc">Balance</span><span class="sc">Full detail</span></span></div>
+    <p class="note">Balance shows the total only. Full detail also shares that account's transactions into your shared activity.</p>
+  </div></div></div></div>
+  <p class="cap">The most capable, and the only one that needs new machinery behind it.</p>
+</div>
+
+<div class="opt">
+  <h2>C. Two states, plus marking an account joint</h2>
+  <p class="why">Shared or not, and separately whether the account belongs to both of you. Joint is the distinction "Shared" was reaching for, and it is the one that changes arithmetic: an account you both linked must count once, not twice.</p>
+  <p class="cost">A second decision per account, and only some people have joint accounts at all</p>
+  <div class="frame"><div class="jnpr"><div class="stage"><div class="card" style="padding:14px 16px">
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">C</span>
+      <span class="id"><span class="nm">Checking</span><span class="mt">Carter Bank &amp; Trust &middot; $783</span></span>
+      <span class="joint"><input type="checkbox" checked readonly> Joint</span>
+      <button class="sw on"><i></i></button></div>
+    <div class="row2"><span class="tile sm" style="background:var(--jnpr-c3)">I</span>
+      <span class="id"><span class="nm">Individual</span><span class="mt">Charles Schwab &middot; $28,670</span></span>
+      <span class="joint"><input type="checkbox" readonly> Joint</span>
+      <button class="sw"><i></i></button></div>
+    <p class="note">A joint account is counted once in your total together, even if you have both linked it.</p>
+  </div></div></div></div>
+  <p class="cap">Solves a real double counting problem the other two leave open.</p>
+</div>
+
+</div></body></html>

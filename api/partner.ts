@@ -45,17 +45,6 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
 
 const firstName = (n?: string | null) => (n || "").trim().split(/\s+/)[0] || "";
 
-async function memberNetWorth(uid: string): Promise<number> {
-  const items = await rows<{ accounts: Acct[] }>(`plaid_items?user_id=eq.${uid}&select=accounts`);
-  let assets = 0, debts = 0;
-  for (const it of items) for (const a of it.accounts || []) {
-    const bal = a.balance || 0;
-    const type = (a.type || "").toLowerCase();
-    if (type === "credit" || type === "loan") debts += Math.abs(bal);
-    else assets += bal;
-  }
-  return Math.round(assets - debts);
-}
 
 type PAcct = { account_id: string; name?: string; type?: string | null; subtype?: string | null; balance?: number | null };
 type PItem = { institution_name?: string | null; accounts: PAcct[] };
@@ -118,8 +107,19 @@ async function overview(uid: string): Promise<Response> {
 
   // Combined net worth: the caller always sees their own in full; the partner's
   // is included only if the partner shares balances.
-  const youNW = await memberNetWorth(uid);
-  const partnerNW = theirs.share_balances ? await memberNetWorth(partnerId) : 0;
+  // Deliberately NOT memberNetWorth here any more. That summed every account a
+  // member had and gated the lot on the coarse share_balances flag, which is
+  // wrong in both directions: since migration 0020 set that flag false the
+  // partner contributed exactly 0 however many accounts they shared, and if it
+  // were ever true the total would have included accounts explicitly marked
+  // private. The totals are now summed from the same per-account scopes the
+  // list below is built from, so the number cannot disagree with the rows.
+  //
+  // Both members see the SAME figure: what each has put into the shared space.
+  // Summing the caller's own accounts in full would give the two of them
+  // different totals for one shared page.
+  let youNW = 0;
+  let partnerNW = 0;
 
   // Per-account view, honoring each member's per-account scope (default from the
   // coarse share_balances pref). The caller sees their own accounts in full; the
@@ -134,13 +134,26 @@ async function overview(uid: string): Promise<Response> {
   const accounts: { account_id: string; n: string; inst: string; v: number; owner: "you" | "partner" | "shared"; scope: string; mine: boolean }[] = [];
   for (const a of await memberAccounts(uid)) {
     const scope = scopeFor(uid, a.account_id, mine.share_balances);
+    // The caller always sees their own rows, including the private ones, so
+    // they can change their mind. Only the shared ones count toward the total.
+    if (scope !== "private") youNW += a.v;
     accounts.push({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: scope === "shared" ? "shared" : "you", scope, mine: true });
   }
   for (const a of await memberAccounts(partnerId)) {
     const scope = scopeFor(partnerId, a.account_id, theirs.share_balances);
-    if (scope === "private") continue; // hidden from the caller
+    if (scope === "private") continue; // hidden from the caller entirely
+    partnerNW += a.v;
     accounts.push({ account_id: a.account_id, n: a.n, inst: a.inst, v: a.v, owner: scope === "shared" ? "shared" : "partner", scope, mine: false });
   }
+  youNW = Math.round(youNW);
+  partnerNW = Math.round(partnerNW);
+
+  // FUTURE, and worth knowing before anyone trusts this number: an account both
+  // members have linked separately is counted twice here, once on each side.
+  // Fixing that needs a joint designation per account, which is a decision the
+  // member has to make because two accounts at one bank with the same balance
+  // are not necessarily the same account. Until then this total is "what the
+  // two of you have put in", not "what the two of you are worth".
 
   // Whether the shared space holds bills or messages. The app bar grows a tab
   // per kind and both live behind their own endpoints, so without this the bar
@@ -274,6 +287,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (body.action === "set-account-share") {
     const accountId = (body.accountId || "").trim();
+    // Two states are written now, "shared" and "private". "balance" is still
+    // accepted because rows predate the change and because it always behaved
+    // identically to "shared": nothing withheld transactions, since transactions
+    // were never shared at all. The three-way control it existed for made a
+    // distinction the data did not.
     const scope = body.scope;
     if (!accountId || (scope !== "shared" && scope !== "balance" && scope !== "private")) {
       return json({ error: "accountId and a valid scope are required" }, 400);

@@ -7,13 +7,15 @@ import { cssVar } from "@/components/juniper/primitives";
 import { SharedPage } from "@/components/juniper/shared-frame";
 import { useWorkspace } from "@/lib/workspace";
 import { useSession } from "@/lib/use-session";
-import { usePartner, setAccountShare, type AccountScope } from "@/lib/partner";
+import { usePartner, setAccountShare, isShared, type AccountScope } from "@/lib/partner";
 import type { SeriesKey } from "@/lib/mock-data";
 
 type Owner = "shared" | "you" | "partner";
 
-const chipLabel = { shared: "Shared", balance: "Balance only", private: "Private" } as const;
-const NEXT: Record<AccountScope, AccountScope> = { shared: "balance", balance: "private", private: "shared" };
+// Two states. "balance" is only ever read, from rows written before the
+// three-way control was retired, and it always behaved as "shared": nothing
+// withheld transactions, because transactions are not shared at all.
+const chipLabel = (scope: AccountScope) => (isShared(scope) ? "Shared" : "Private");
 const OWNER_K: Record<Owner, SeriesKey> = { shared: "--jnpr-c1", you: "--jnpr-c3", partner: "--jnpr-c5" };
 
 interface Row { account_id: string; n: string; inst: string; v: number; owner: Owner; scope: AccountScope; k: SeriesKey; mine: boolean }
@@ -27,8 +29,13 @@ function AcctRow({ a, onCycle }: { a: Row; onCycle?: (a: Row) => void }) {
       <div className="amt">
         {priv ? <span style={{ color: "var(--jnpr-ink-3)" }}>••••</span> : <span className={a.v < 0 ? "neg tnum" : "tnum"}>{money(a.v)}</span>}
         {onCycle && a.mine
-          ? <button className={`chip ${a.scope}`} onClick={() => onCycle(a)} title="Change what your partner sees">{chipLabel[a.scope]} ▾</button>
-          : <span className={`chip ${a.scope}`}>{chipLabel[a.scope]}</span>}
+          ? <button
+              className={`chip ${isShared(a.scope) ? "shared" : "private"}`}
+              onClick={() => onCycle(a)}
+              aria-pressed={isShared(a.scope)}
+              aria-label={`${isShared(a.scope) ? "Stop sharing" : "Share"} ${a.n}`}
+            >{chipLabel(a.scope)} ▾</button>
+          : <span className={`chip ${isShared(a.scope) ? "shared" : "private"}`}>{chipLabel(a.scope)}</span>}
       </div>
     </div>
   );
@@ -47,7 +54,9 @@ export function SharedAccounts() {
     owner: a.owner, scope: a.scope, k: OWNER_K[a.owner], mine: a.mine,
   }));
 
-  const cycle = (a: Row) => { void setAccountShare(a.account_id, NEXT[a.scope]).then(refresh); };
+  const cycle = (a: Row) => {
+    void setAccountShare(a.account_id, isShared(a.scope) ? "private" : "shared").then(refresh);
+  };
 
   const group = (owner: Owner) => rows.filter((a) => a.owner === owner);
   const sections: { label: string; dot: string; arr: Row[] }[] = [
@@ -67,8 +76,9 @@ export function SharedAccounts() {
         ))}
       </div>
       <p className="disc">
-        “Balance only” shows the total but not the transactions; “Private” hides the account entirely.
-        Tap a chip on your own account to change what {name} sees.
+        A shared account shows its name and balance to {name} and counts toward your total
+        together, never its transactions. Private hides it entirely. Tap a chip on your own account
+        to change what {name} sees.
       </p>
     </SharedPage>
   );

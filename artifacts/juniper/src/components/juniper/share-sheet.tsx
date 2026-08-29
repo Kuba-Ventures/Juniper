@@ -2,7 +2,7 @@ import { useState } from "react";
 import { money } from "@/lib/mock-data";
 import { cssVar } from "@/components/juniper/primitives";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
-import { setAccountShare, type AccountScope, type PartnerAccount } from "@/lib/partner";
+import { setAccountShare, isShared, type WritableScope, type PartnerAccount } from "@/lib/partner";
 
 // The one place a member decides what the other person can see.
 //
@@ -15,15 +15,15 @@ import { setAccountShare, type AccountScope, type PartnerAccount } from "@/lib/p
 // Only your own accounts appear. `mine` comes from /api/partner, which decides
 // ownership server-side, so the sheet cannot offer to change someone else's.
 
-const SCOPES: { k: AccountScope; label: string; help: string }[] = [
-  { k: "private", label: "Private", help: "Hidden entirely. They will not know it exists." },
-  { k: "balance", label: "Balance only", help: "They see the total, never the transactions." },
-  { k: "shared", label: "Shared", help: "Counts as joint, and both of you see it in full." },
-];
-
 const YOU_COLOR = "--jnpr-c3";
 
-function ScopeRow({ a, busy, onPick }: { a: PartnerAccount; busy: boolean; onPick: (s: AccountScope) => void }) {
+// One switch, not three chips. The three-way control offered Private, Balance
+// only and Shared, and the last two did the same thing: both exposed the account
+// and its balance, and neither shared transactions, because transactions are not
+// shared at all. "Balance only" therefore implied something was being withheld
+// that was not, and made the choice read as harder than it is.
+function ScopeRow({ a, busy, onToggle }: { a: PartnerAccount; busy: boolean; onToggle: (next: WritableScope) => void }) {
+  const on = isShared(a.scope);
   return (
     <div className="share-row">
       <div className="tile sm" style={{ background: cssVar(YOU_COLOR) }}>{a.n.charAt(0)}</div>
@@ -31,20 +31,16 @@ function ScopeRow({ a, busy, onPick }: { a: PartnerAccount; busy: boolean; onPic
         <div className="nm">{a.n}</div>
         <div className="mt">{a.inst} &middot; {a.v < 0 ? <span className="neg">{money(a.v)}</span> : money(a.v)}</div>
       </div>
-      <div className="share-scopes" role="group" aria-label={`What ${a.n} shows`}>
-        {SCOPES.map((s) => (
-          <button
-            key={s.k}
-            className={a.scope === s.k ? "scope on" : "scope"}
-            disabled={busy}
-            aria-pressed={a.scope === s.k}
-            title={s.help}
-            onClick={() => onPick(s.k)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <button
+        className={on ? "share-toggle on" : "share-toggle"}
+        role="switch"
+        aria-checked={on}
+        aria-label={`Share ${a.n} with your partner`}
+        disabled={busy}
+        onClick={() => onToggle(on ? "private" : "shared")}
+      >
+        <i />
+      </button>
     </div>
   );
 }
@@ -64,10 +60,9 @@ export function ShareSheet({
 
   const mine = accounts.filter((a) => a.mine);
 
-  const pick = (a: PartnerAccount, scope: AccountScope) => {
-    if (scope === a.scope) return;
+  const toggle = (a: PartnerAccount, next: WritableScope) => {
     setBusy({ id: a.account_id });
-    void setAccountShare(a.account_id, scope).then(() => {
+    void setAccountShare(a.account_id, next).then(() => {
       onChanged();
       setBusy({ id: null });
     });
@@ -85,14 +80,18 @@ export function ShareSheet({
       {mine.length > 0 && (
         <div className="share-list">
           {mine.map((a) => (
-            <ScopeRow key={a.account_id} a={a} busy={busy.id === a.account_id} onPick={(s) => pick(a, s)} />
+            <ScopeRow key={a.account_id} a={a} busy={busy.id === a.account_id} onToggle={(next) => toggle(a, next)} />
           ))}
         </div>
       )}
 
+      {/* Said once, here, rather than three times as a label on every row. It is
+          also the only place that states what sharing does NOT expose, which is
+          the question a member actually has. */}
       <p className="disc">
-        {partnerName} decides the same for their own accounts, so a total you both see counts only
-        what each of you has shared.
+        {partnerName} sees the name and balance of anything you share, and it counts toward your
+        total together. They never see its transactions. {partnerName} decides the same for their
+        own accounts, so that total counts only what each of you has shared.
       </p>
       <div className="modal-actions">
         <button className="btn" onClick={onClose}>Done</button>
