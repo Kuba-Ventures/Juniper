@@ -114,10 +114,14 @@ function TransactionsPanel({ items }: { items: Txn[] }) {
         <h3>Transactions</h3>
         <span className="search" style={{ maxWidth: 220 }}>
           <SearchIcon />
-          <input placeholder="Search transactions" value={q} onChange={(e) => setQ(e.target.value)} />
+          {/* "recent", because this searches the rows the card holds and not
+              the full history. The Transactions tab searches everything. */}
+          <input placeholder="Search recent" value={q} onChange={(e) => setQ(e.target.value)} />
         </span>
       </div>
-      <div className="rows">
+      {/* Its own scroll, so fifteen rows cannot run the card far past the
+          Accounts card beside it in the grid. */}
+      <div className="rows rows-scroll">
         {rows.map((t, i) => (
           <div className="row" key={i}>
             {/* The same three-source mark the Transactions page uses: Plaid's
