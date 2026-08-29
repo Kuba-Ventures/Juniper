@@ -13,6 +13,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch, plaidProducts, plaidCountryCodes } from "../_plaid";
+import { adminRest } from "../_supabase-admin";
 
 export const config = { runtime: "edge" };
 
@@ -48,7 +49,32 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
 
   const redirectUri = readEnv("PLAID_REDIRECT_URI");
-  const body = (await req.json().catch(() => ({}))) as { routing_number?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { routing_number?: unknown; item_id?: unknown };
+
+  // UPDATE MODE. An item Plaid has finished with (ITEM_LOGIN_REQUIRED) is
+  // repaired by reopening Link against the SAME access_token, not by linking the
+  // bank again: a fresh link creates a second item for one institution, and the
+  // dead one lingers with its own stale balances.
+  //
+  // The item id is looked up scoped to the caller, never trusted as given. A
+  // client handing over somebody else's item id gets nothing back, and the
+  // access_token is read server-side and never leaves this function.
+  const wantedItem = typeof body.item_id === "string" && body.item_id.trim() ? body.item_id.trim() : null;
+  let updateToken: string | null = null;
+  if (wantedItem) {
+    const r = await adminRest(
+      `plaid_items?user_id=eq.${encodeURIComponent(payload.sub)}&item_id=eq.${encodeURIComponent(wantedItem)}&select=access_token&limit=1`,
+    );
+    if (r.ok) {
+      const rows = (await r.json().catch(() => [])) as { access_token?: string }[];
+      updateToken = rows[0]?.access_token ?? null;
+    }
+    if (!updateToken) {
+      // Named rather than silently falling through to a normal link, which would
+      // quietly create the duplicate item this exists to avoid.
+      return json({ error: "That connection could not be found" }, 404);
+    }
+  }
   // Client-supplied, so validated to the only shape Plaid accepts (9 digits)
   // rather than forwarded as-is. Worst case for a wrong-but-valid value is that
   // Link highlights nothing.
@@ -61,7 +87,9 @@ export default async function handler(req: Request): Promise<Response> {
     {
       user: { client_user_id: payload.sub },
       client_name: "Juniper",
-      products: plaidProducts(),
+      // Plaid rejects `products` in update mode: the item already has them, and
+      // naming them again asks for a new link rather than a repair.
+      ...(updateToken ? { access_token: updateToken } : { products: plaidProducts() }),
       // Consent for investments now, so it can be called later. Plaid's Data
       // Transparency Messaging (default on for US Link sessions since October
       // 2024) only allows a product to be added to an existing item if it was

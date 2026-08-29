@@ -77,6 +77,10 @@ export function institutionLogoSrc(logo: string | null | undefined): string | nu
 export type LinkInstitution = {
   institution_id?: string;
   name?: string;
+  // Set to repair an existing connection instead of adding one. Its presence is
+  // what makes the whole flow update mode, including skipping the token
+  // exchange on the way back, see use-link-queue.
+  item_id?: string;
   // Carried from an /institutions/search result so link-token can ask Plaid to
   // highlight this bank in Link's list. Best-effort, see api/plaid/link-token.ts.
   routing_number?: string | null;
@@ -122,11 +126,17 @@ async function authedFetch(input: string, init?: RequestInit): Promise<Response>
 // Fetch a short-lived link_token to open Plaid Link. Returns null if linking
 // isn't configured yet (503) or on any error, so callers can show a friendly
 // "not turned on" state.
-export async function createLinkToken(opts?: { routingNumber?: string | null }): Promise<string | null> {
+// `itemId` puts Link into update mode against that existing item, which is how
+// a dead connection is repaired rather than duplicated. Server-side the id is
+// re-checked against the caller's own rows.
+export async function createLinkToken(opts?: { routingNumber?: string | null; itemId?: string | null }): Promise<string | null> {
   try {
     const res = await authedFetch("/api/plaid/link-token", {
       method: "POST",
-      body: JSON.stringify(opts?.routingNumber ? { routing_number: opts.routingNumber } : {}),
+      body: JSON.stringify({
+        ...(opts?.routingNumber ? { routing_number: opts.routingNumber } : {}),
+        ...(opts?.itemId ? { item_id: opts.itemId } : {}),
+      }),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { link_token?: string };
