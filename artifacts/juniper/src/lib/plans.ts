@@ -482,3 +482,80 @@ export function useMemberPlans(): MemberPlans {
 
   return { plans, loading, refresh, upsertLocal, removeLocal };
 }
+
+/* ------------------------------------------------------------------ *
+ * Signup goals that are not plans yet.
+ *
+ * Lives here rather than on the Plans page because two surfaces answer the
+ * same question now: Plans renders each one as an unstarted card, and the
+ * Overview's "Your plans" card lists them under the real ones. A second copy
+ * of "is this goal already a plan" would drift, and the two surfaces would
+ * disagree about whether a member has anything.
+ * ------------------------------------------------------------------ */
+
+export type GoalRoute = {
+  // Plan domains that ALREADY cover this goal, so we never offer a duplicate.
+  // The seven presets overlap the five scripted plan domains and this page's
+  // own templates under different words: a member who built the scripted
+  // `home-buying` plan has answered "Buy a home", and slug equality alone would
+  // miss that and offer them a second one. Listed explicitly rather than guessed
+  // by keyword, because a wrong guess here either hides a goal the member still
+  // wants or duplicates a plan they already have.
+  domains: string[];
+  // The create-modal template to open. A template carries an explicit shape,
+  // color and real-balance prefill, all better signals than a keyword scan of
+  // the goal text (same reasoning as CreateForm's `shapePinned`).
+  template?: string;
+  // An explicit shape for a preset with no template, where `suggestShape` would
+  // otherwise fall through to its "save" default and start the member on the
+  // wrong framing.
+  shape?: PlanShape;
+};
+
+export const GOAL_ROUTES: Record<string, GoalRoute> = {
+  "buy-a-home": { domains: ["home-buying"], template: "Buy a home" },
+  "pay-off-debt": { domains: ["debt-paydown"], template: "Pay off debt" },
+  "build-an-emergency-fund": { domains: ["emergency-fund"], template: "Emergency fund" },
+  "save-for-a-family": { domains: ["baby-planning", "baby-and-family"], template: "Baby and family" },
+  "invest-for-retirement": { domains: [], template: "Invest for retirement" },
+  // No template and no scripted domain. "Plan a big purchase" contains none of
+  // the keywords in `suggestShape`'s buy list, so it needs the shape stated here
+  // rather than a new keyword added to a table the whole app reads.
+  "plan-a-big-purchase": { domains: [], shape: "buy" },
+  "increase-my-income": { domains: [] },
+};
+
+// Whether a goal is already represented by a plan. Two ways to match, both
+// through Stage 3's helpers so this cannot drift from how plans are named and
+// keyed: the goal's slug against the plan's `domain` (which is `domainFromName`
+// of whatever it was created from), and against the slug of the plan's current
+// title (which catches a renamed plan, and a plan whose key got a `-2` suffix
+// from `uniqueDomain`).
+export function isAlreadyPlanned(goal: string, plans: Plan[]): boolean {
+  const slug = domainFromName(goal);
+  const claimed = new Set<string>([slug, ...(GOAL_ROUTES[slug]?.domains ?? [])]);
+  return plans.some((p) => claimed.has(p.domain) || claimed.has(domainFromName(planTitle(p))));
+}
+
+
+export type UnplannedGoal = { goal: string; color: PlanColor };
+
+// The member's signup goals that no plan covers yet, deduped on slug and in the
+// order they were picked. Colour is assigned by list position for the same
+// reason offerFor does it: a goal has no `domain` to hash yet, and this colour
+// is what the created plan inherits, so the placeholder and the plan match.
+export function unplannedGoals(goals: unknown, plans: Plan[]): UnplannedGoal[] {
+  const list = Array.isArray(goals) ? goals : [];
+  const seen = new Set<string>();
+  const out: UnplannedGoal[] = [];
+  for (const raw of list) {
+    const goal = typeof raw === "string" ? raw.trim() : "";
+    if (!goal) continue;
+    const slug = domainFromName(goal);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    if (isAlreadyPlanned(goal, plans)) continue;
+    out.push({ goal, color: PLAN_COLORS[out.length % PLAN_COLORS.length] });
+  }
+  return out;
+}

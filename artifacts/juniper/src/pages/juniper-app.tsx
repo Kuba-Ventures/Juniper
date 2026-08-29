@@ -123,6 +123,12 @@ export default function JuniperApp() {
             {() => (
               <Overview
                 name={displayName}
+                // The goals picked at signup, so the "Your plans" card can list
+                // the ones that are not plans yet instead of claiming there is
+                // nothing. Passed rather than re-read: the profile is already
+                // resolved here, and a second useProfile would flash empty.
+                goals={Array.isArray(profile?.goals) ? profile.goals : []}
+                goalsReady={ready}
                 showWelcome={showWelcome}
                 onDismissWelcome={dismissWelcome}
               />
