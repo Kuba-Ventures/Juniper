@@ -649,6 +649,12 @@ export default function Plans({ profile = null, profileReady = false }: {
   // into a plan keeps the colour and shape it was shown with. An income goal
   // still goes to the planner instead: all three plan shapes are fictions for
   // it, and offerFor is where that judgement already lives.
+  // Whether unstarted goal cards are on screen. Named once because two places
+  // ask: the empty state has to stand down for them, and the grid has to render
+  // them. When #184 first shipped only the grid knew, so a member with goals and
+  // no plans hit the `views.length === 0` branch above and never reached it.
+  const showsGoalCards = filter === "active" && profileReady === true && waitingGoals.length > 0;
+
   const startGoal = (g: UnplannedGoal, i: number) => {
     const o = offerFor(g.goal, i);
     if (o.kind === "talk") {
@@ -747,12 +753,16 @@ export default function Plans({ profile = null, profileReady = false }: {
           still no surface that shows the partner's answers or where the two of
           them align. Bring it back with that view, not before. */}
 
-      {loading ? (
+      {/* The skeleton also covers "plans have landed and they are empty, but the
+          profile has not". Without that, a member whose goals are still in
+          flight is told "No plans yet" for a beat and then shown a goal card,
+          which is the flash the goal section was always gated against. */}
+      {loading || (views.length === 0 && profileReady !== true) ? (
         <div className="grid plan-grid">
           <div className="card plan-skel" aria-busy="true">Loading your plans…</div>
           <div className="card plan-skel" aria-hidden="true" />
         </div>
-      ) : views.length === 0 ? (
+      ) : views.length === 0 && !showsGoalCards ? (
         // A genuine empty state. Nothing stands in for the member's plans, and
         // the examples further down the page are labelled as not theirs.
         <div className="card plan-empty">
@@ -781,7 +791,7 @@ export default function Plans({ profile = null, profileReady = false }: {
               for a goal that already has a plan and then yank it, and rendering
               before the profile resolves would miss goals that live only on the
               server (see use-profile.ts on local-then-remote hydration). */}
-          {filter === "active" && !loading && profileReady && waitingGoals.map((g, i) => (
+          {showsGoalCards && waitingGoals.map((g, i) => (
             <UnstartedCard
               key={g.goal}
               goal={g.goal}
@@ -789,7 +799,7 @@ export default function Plans({ profile = null, profileReady = false }: {
               onStart={() => startGoal(g, i)}
             />
           ))}
-          {!shown.length && !(filter === "active" && waitingGoals.length) ? (
+          {!shown.length && !showsGoalCards ? (
             <div className="card" style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>
               No {filter} plans.
             </div>
