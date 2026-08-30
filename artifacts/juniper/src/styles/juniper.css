@@ -1187,6 +1187,17 @@
   background:var(--jnpr-accent);margin-left:6px;vertical-align:middle}
 .jnpr .cat-cell{position:relative}
 .jnpr .cat-err{display:block;font-size:11px;color:var(--jnpr-bad);margin-top:4px}
+/* The rule offer, on the row that was just corrected. Quiet: it is a suggestion
+   after an action the member already completed, not a thing they have to answer. */
+.jnpr .cat-rule{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:11px}
+.jnpr .cat-rule-go{border:0;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font:inherit;
+  font-size:11px;font-weight:650;padding:3px 9px;border-radius:7px;cursor:pointer;text-align:left}
+.jnpr .cat-rule-go:hover:not(:disabled){background:var(--jnpr-good-soft)}
+.jnpr .cat-rule-go:disabled{opacity:.6;cursor:default}
+.jnpr .cat-rule-no{border:0;background:transparent;color:var(--jnpr-ink-3);font:inherit;font-size:11px;
+  cursor:pointer;padding:0;text-decoration:underline}
+.jnpr .cat-rule-no:hover{color:var(--jnpr-ink-2)}
+.jnpr .cat-rule.done{color:var(--jnpr-ink-3)}
 
 /* Category picker */
 /* Fixed and portalled to <body>: the table wrapper is `overflow-x:auto`, which

@@ -165,12 +165,23 @@ than deferrable.
 Monarch allows both. Recommendation is to ship leaves first and treat groups as
 a second stage, but this is a product call.
 
-### Open: merchant rules
+### ~~Open~~ Built: merchant rules
 
-`category_source` accepts `'rule'` and nothing writes it. "Always categorize
-Blue Bottle as Coffee shops" is the feature members actually want after their
-third manual correction, and it is a separate build from this one. Worth naming
-here so the `categories` schema does not make it awkward later.
+> **Built 2026-08-30.** `merchant_rules` (migration 0028), `/api/merchant-rules`,
+> and the offer that appears on a row the member has just corrected. The
+> precedence it introduced is the part worth knowing: **user, then rule, then
+> plaid**, decided in `api/_category-precedence.ts` and covered by
+> `scripts/check-category-precedence.ts`. A rule is a statement about a
+> merchant and a correction is a statement about one charge, so the more
+> specific one wins: a member who rules "Amazon is Shopping" and then files a
+> single Amazon charge under Groceries keeps that charge under Groceries
+> through every sync.
+>
+> One thing the endpoint deliberately does not do: **deleting a rule does not
+> undo it.** Reverting the charges it set would mean restoring Plaid's original
+> classification, and that is not kept. `plaid_category` holds Plaid's PRIMARY
+> only, which is exactly the level that cannot tell a card payment from a car
+> payment.
 
 ---
 
