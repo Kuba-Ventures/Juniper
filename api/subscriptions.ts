@@ -19,7 +19,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { groupOf } from "./_categorize";
+import { taxonomyFor } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -165,6 +165,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // One resolve for the whole response, not one per stream. Stage 2 of
+  // docs/CUSTOM_CATEGORIES.md.
+  const tax = await taxonomyFor(uid);
   const items = streams.map((s) => {
     const o = byStream.get(s.stream_id);
     const review: "confirmed" | "dismissed" | "unreviewed" =
@@ -201,7 +204,7 @@ export default async function handler(req: Request): Promise<Response> {
       merchant: s.merchant_name,
       logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,
       c: s.category || "Everything else",
-      g: groupOf(s.category),
+      g: tax.groupOf(s.category),
       direction: s.direction === "inflow" ? "inflow" : "outflow",
       review,
       confidence,

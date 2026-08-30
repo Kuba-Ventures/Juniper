@@ -29,7 +29,7 @@ import { adminConfigured, adminRest } from "../_supabase-admin";
 // deliver. A recurring detection run succeeding says nothing about either, so
 // stamping last_synced_at from here would report data as fresher than it is.
 import { isDeadItemCode, markItemDead } from "../_item-sync-state";
-import { categorize, categoryIdOf } from "../_categorize";
+import { taxonomyFor, type Taxonomy } from "../_categorize";
 import { mapPool } from "../_pool";
 
 export const config = { runtime: "edge" };
@@ -83,8 +83,8 @@ type RecurringResp = {
 };
 type Item = { item_id: string; access_token: string };
 
-function toRow(userId: string, itemId: string, s: Stream, direction: "inflow" | "outflow") {
-  const cat = categorize(s.personal_finance_category?.primary, s.personal_finance_category?.detailed);
+function toRow(tax: Taxonomy, userId: string, itemId: string, s: Stream, direction: "inflow" | "outflow") {
+  const cat = tax.categorize(s.personal_finance_category?.primary, s.personal_finance_category?.detailed);
   return {
     user_id: userId,
     stream_id: s.stream_id,
@@ -97,7 +97,7 @@ function toRow(userId: string, itemId: string, s: Stream, direction: "inflow" | 
     category: cat,
     // Beside the label and read by nothing yet, stage 1 of
     // docs/CUSTOM_CATEGORIES.md.
-    category_id: categoryIdOf(cat),
+    category_id: tax.categoryIdOf(cat),
     plaid_status: s.status ?? "UNKNOWN",
     frequency: s.frequency ?? "UNKNOWN",
     direction,
@@ -125,6 +125,11 @@ export default async function handler(req: Request): Promise<Response> {
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
   const uid = payload.sub;
+
+  // Resolved once for the run and handed to every row builder, so streams from
+  // different items classify identically. Stage 2 of
+  // docs/CUSTOM_CATEGORIES.md.
+  const tax = await taxonomyFor(uid);
 
   const itemsRes = await adminRest(`plaid_items?user_id=eq.${uid}&select=item_id,access_token`);
   if (!itemsRes.ok) return json({ error: "Failed to read connections" }, 500);
@@ -175,8 +180,8 @@ export default async function handler(req: Request): Promise<Response> {
     }
     return {
       rows: [
-        ...(r.data.outflow_streams ?? []).map((s) => toRow(uid, item.item_id, s, "outflow")),
-        ...(r.data.inflow_streams ?? []).map((s) => toRow(uid, item.item_id, s, "inflow")),
+        ...(r.data.outflow_streams ?? []).map((s) => toRow(tax, uid, item.item_id, s, "outflow")),
+        ...(r.data.inflow_streams ?? []).map((s) => toRow(tax, uid, item.item_id, s, "inflow")),
       ],
       failure: null,
     };

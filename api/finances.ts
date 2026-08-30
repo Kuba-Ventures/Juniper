@@ -23,7 +23,7 @@ import { adminConfigured, adminRest } from "./_supabase-admin";
 import { fetchScoreInput } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
-import { CATEGORY_GROUPS, groupOf, kindOf, isGroupLabel } from "./_categorize";
+import { taxonomyFor } from "./_categorize";
 import { isDeveloperEmail } from "./_admin";
 
 export const config = { runtime: "edge" };
@@ -44,7 +44,10 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 // (api/_categorize.ts), so there is no second list of category names here to
 // drift out of sync with the one that actually classifies transactions. The old
 // hand-kept CAT_ORDER is what this replaces.
-const SPEND_GROUPS = CATEGORY_GROUPS.filter((g) => g.kind === "spend").map((g) => g.label);
+// SPEND_GROUPS used to be a module constant derived from CATEGORY_GROUPS. It is
+// read off the member's resolved taxonomy now (`tax.spendGroups`), because in a
+// later stage the set of groups is a fact about the member, and a constant here
+// would be a second answer to a question the resolver already owns.
 const fmtDay = (d: string) => { const [, m, day] = d.split("-"); return `${MONTHS[+m - 1]} ${+day}`; };
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
@@ -125,15 +128,19 @@ export default async function handler(req: Request): Promise<Response> {
   //                category) reduces income rather than becoming spending
   //   spend     -> summed SIGNED, so a refund nets against the category it came
   //                back to instead of masquerading as income
+  // Resolved once for this member and used for every classification below, so
+  // the donut, the budgets and the recent rows on one response cannot disagree
+  // about what a category is. Stage 2 of docs/CUSTOM_CATEGORIES.md.
+  const tax = await taxonomyFor(uid);
   const byCat = new Map<string, number>();   // leaf category -> net spend, for budgets
   const byGroup = new Map<string, number>(); // group -> net spend, for the donut
   let incomeRaw = 0;
   for (const t of thisMonth) {
     const cat = t.category || "Everything else";
-    const kind = kindOf(cat);
+    const kind = tax.kindOf(cat);
     if (kind === "transfer") continue;
     if (kind === "income") { incomeRaw -= t.amount; continue; }
-    const g = groupOf(cat);
+    const g = tax.groupOf(cat);
     byCat.set(cat, (byCat.get(cat) || 0) + t.amount);
     byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
   }
@@ -147,7 +154,7 @@ export default async function handler(req: Request): Promise<Response> {
   // the sum of what the breakdown shows. That keeps the card header, the donut
   // center, and the "Spent" figure in the cashflow strip identical by
   // construction, which matters more than the fraction of a dollar it rounds off.
-  const spending = SPEND_GROUPS
+  const spending = tax.spendGroups
     .map((c) => ({ c, v: Math.round(byGroup.get(c) || 0) }))
     .filter((s) => s.v > 0);
 
@@ -179,10 +186,10 @@ export default async function handler(req: Request): Promise<Response> {
     c: t.category || "Everything else",
     // The group rides along so the client can color a row from the same table
     // the rollup used, instead of keeping its own copy of the taxonomy.
-    g: groupOf(t.category),
+    g: tax.groupOf(t.category),
     v: -t.amount, // flip Plaid's +out convention to the UI's -spend / +income
     d: fmtDay(t.date),
-    inc: kindOf(t.category) === "income",
+    inc: tax.kindOf(t.category) === "income",
   }));
 
   // Budgets with this-month spent. A budget is stored by label, and every label
@@ -192,7 +199,7 @@ export default async function handler(req: Request): Promise<Response> {
   // every budget the member already had. Clamped at zero so a refund-heavy month
   // cannot render a negative bar.
   const budgetSpent = (label: string) =>
-    Math.max(0, Math.round((isGroupLabel(label) ? byGroup.get(label) : byCat.get(label)) || 0));
+    Math.max(0, Math.round((tax.isGroupLabel(label) ? byGroup.get(label) : byCat.get(label)) || 0));
   const budgetsOut = budgets.map((b) => ({ c: b.category, s: budgetSpent(b.category), l: Math.round(b.limit_amount) }));
 
   // Accounts grouped from the linked snapshots

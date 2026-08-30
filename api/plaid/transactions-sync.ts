@@ -15,7 +15,7 @@ import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
-import { categorize, categoryIdOf } from "../_categorize";
+import { taxonomyFor, type Taxonomy } from "../_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -71,9 +71,9 @@ function artOf(t: PlaidTxn): { logo_url: string | null; website: string | null }
   return { logo_url: logo, website: site };
 }
 
-function toRow(userId: string, itemId: string, t: PlaidTxn) {
+function toRow(tax: Taxonomy, userId: string, itemId: string, t: PlaidTxn) {
   const pfc = t.personal_finance_category ?? {};
-  const category = categorize(pfc.primary, pfc.detailed);
+  const category = tax.categorize(pfc.primary, pfc.detailed);
   const art = artOf(t);
   return {
     user_id: userId,
@@ -90,7 +90,7 @@ function toRow(userId: string, itemId: string, t: PlaidTxn) {
     category,
     // Written beside the label, read by nothing yet: stage 1 of
     // docs/CUSTOM_CATEGORIES.md. Null for a label outside the taxonomy.
-    category_id: categoryIdOf(category),
+    category_id: tax.categoryIdOf(category),
     category_source: "plaid",
     logo_url: art.logo_url,
     website: art.website,
@@ -134,6 +134,11 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
     item_id: string; access_token: string; transactions_cursor: string | null;
   }[];
   if (!items.length) return json({ added: 0, modified: 0, removed: 0, items: 0, synced: 0, failed: 0, failures: [] });
+
+  // Resolved once for the whole run, then handed to every row builder, so a
+  // sync that spans several items classifies all of them the same way. Stage 2
+  // of docs/CUSTOM_CATEGORIES.md.
+  const tax = await taxonomyFor(userId);
 
   // Categories the member set BY HAND, keyed by Plaid's transaction id. The
   // upsert below is `resolution=merge-duplicates`, which replaces the whole row,
@@ -204,14 +209,14 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
       }
       const d = sync.data;
       const upserts = [...(d.added ?? []), ...(d.modified ?? [])]
-        .map((t) => toRow(userId, item.item_id, t))
+        .map((t) => toRow(tax, userId, item.item_id, t))
         .map((row) => {
           // The member's own answer wins over Plaid's. Kept as `user` so it
           // keeps winning on every future sync, rather than being written back
           // as `plaid` and reverting the next time round.
           const mine = overrides.get(row.plaid_transaction_id);
           return mine
-            ? { ...row, category: mine, category_id: categoryIdOf(mine), category_source: "user" }
+            ? { ...row, category: mine, category_id: tax.categoryIdOf(mine), category_source: "user" }
             : row;
         });
       if (upserts.length) {

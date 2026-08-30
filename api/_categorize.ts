@@ -78,7 +78,7 @@ for (const g of CATEGORY_GROUPS) {
 // stored by label, and every label a member could have budgeted before this
 // stage is now a group, so /api/finances measures a group-labelled budget
 // against the whole group and a leaf-labelled one against just that category.
-export function isGroupLabel(label?: string | null): boolean {
+function isGroupLabel(label?: string | null): boolean {
   return !!label && !!GROUP_KIND[label.trim()];
 }
 
@@ -86,14 +86,14 @@ export function isGroupLabel(label?: string | null): boolean {
 // budget keep working: they were already stored at group precision. Anything
 // unrecognized (a hand-edited label, a category we retire later) falls to
 // Everything else, spend, so money out is never silently dropped from a total.
-export function groupOf(category?: string | null): string {
+function groupOf(category?: string | null): string {
   const c = (category || "").trim();
   if (!c) return "Everything else";
   if (GROUP_KIND[c]) return c;
   return CATEGORY_GROUP[c] ?? "Everything else";
 }
 
-export function kindOf(category?: string | null): CategoryKind {
+function kindOf(category?: string | null): CategoryKind {
   return GROUP_KIND[groupOf(category)] ?? "spend";
 }
 
@@ -116,8 +116,8 @@ export function kindOf(category?: string | null): CategoryKind {
 const slug = (label: string) =>
   label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
-export const groupId = (label: string) => `g_${slug(label)}`;
-export const leafId = (label: string) => `c_${slug(label)}`;
+const groupId = (label: string) => `g_${slug(label)}`;
+const leafId = (label: string) => `c_${slug(label)}`;
 
 // Label -> id, built the same way the classification maps are: once, at module
 // load, from the one table. A group label resolves to its GROUP id and a leaf to
@@ -138,7 +138,7 @@ for (const g of CATEGORY_GROUPS) {
 // rather than a fallback to Everything else: this is written beside the text
 // column, and inventing an id for a value we do not recognize would silently
 // assert a classification that groupOf() never made.
-export function categoryIdOf(category?: string | null): string | null {
+function categoryIdOf(category?: string | null): string | null {
   const c = (category || "").trim();
   if (!c) return null;
   return LABEL_ID[c] ?? null;
@@ -272,8 +272,90 @@ const PRIMARY_MAP: Record<string, string> = {
   RENT_AND_UTILITIES: "Utilities & bills",
 };
 
-export function categorize(primary?: string, detailed?: string): string {
+function categorize(primary?: string, detailed?: string): string {
   const d = (detailed || "").toUpperCase();
   const p = (primary || "").toUpperCase();
   return DETAILED_MAP[d] ?? PRIMARY_MAP[p] ?? "Everything else";
+}
+
+// ── The resolver (Stage 2 of docs/CUSTOM_CATEGORIES.md) ─────────────────────
+//
+// The four functions above answer from one table fixed at build time. Custom
+// categories mean the answers become a fact about a MEMBER, so classification
+// has to move behind an object a caller resolves once per request rather than a
+// module-level lookup a caller can reach from anywhere.
+//
+// This stage introduces the seam and nothing else. `taxonomyFor()` is async and
+// takes a user id, which is the shape stage 3 needs, but it returns the built-in
+// taxonomy for everybody, so every answer is identical to the one the free
+// functions gave. That is asserted, not assumed: scripts/check-category-
+// resolver.ts replays the whole input domain against a fixture captured from the
+// pre-refactor module. The reason for the care is api/_finance-snapshot.ts,
+// which feeds the Juniper Score: a classification that shifts is a member's
+// visible score history shifting, and score_history is keyed by (user, day), so
+// a wrong row cannot be quietly recomputed later.
+export interface Taxonomy {
+  /** Ordered, display order, exactly as CATEGORY_GROUPS is. */
+  readonly groups: CategoryGroup[];
+  /** Spend groups only, in display order. What a donut and a legend read. */
+  readonly spendGroups: string[];
+  /** Every label that may be stored: both levels, because a group label is a
+      legitimate stored value on rows categorized at group precision. */
+  readonly writableLabels: ReadonlySet<string>;
+  groupOf(category?: string | null): string;
+  kindOf(category?: string | null): CategoryKind;
+  isGroupLabel(label?: string | null): boolean;
+  categoryIdOf(category?: string | null): string | null;
+  /** Plaid's category to a leaf label. Deliberately NOT per member: a member's
+      own category can never be something Plaid maps onto, and the built-ins a
+      member has archived must still resolve, or their history changes. */
+  categorize(primary?: string, detailed?: string): string;
+}
+
+export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
+  const kindByGroup: Record<string, CategoryKind> = {};
+  const groupByLeaf: Record<string, string> = {};
+  const idByLabel: Record<string, string> = {};
+  const writable = new Set<string>();
+  for (const g of groups) {
+    kindByGroup[g.label] = g.kind;
+    idByLabel[g.label] = groupId(g.label);
+    writable.add(g.label);
+    for (const c of g.categories) {
+      groupByLeaf[c] = g.label;
+      // Leaves after groups, so where a label names both, the LEAF id wins.
+      // Same order as LABEL_ID above, and the migration's mapping.
+      idByLabel[c] = leafId(c);
+      writable.add(c);
+    }
+  }
+  const group = (category?: string | null): string => {
+    const c = (category || "").trim();
+    if (!c) return "Everything else";
+    if (kindByGroup[c]) return c;
+    return groupByLeaf[c] ?? "Everything else";
+  };
+  return {
+    groups,
+    spendGroups: groups.filter((g) => g.kind === "spend").map((g) => g.label),
+    writableLabels: writable,
+    groupOf: group,
+    kindOf: (category) => kindByGroup[group(category)] ?? "spend",
+    isGroupLabel: (label) => !!label && !!kindByGroup[label.trim()],
+    categoryIdOf: (category) => {
+      const c = (category || "").trim();
+      if (!c) return null;
+      return idByLabel[c] ?? null;
+    },
+    categorize,
+  };
+}
+
+export const BUILTIN_TAXONOMY: Taxonomy = buildTaxonomy(CATEGORY_GROUPS);
+
+// One resolve per request. Async and user-scoped from the start, so stage 3
+// adds a read here and touches nothing else; today every member gets the same
+// object, and no caller can tell the difference.
+export async function taxonomyFor(_userId: string): Promise<Taxonomy> {
+  return BUILTIN_TAXONOMY;
 }

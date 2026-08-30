@@ -24,7 +24,11 @@ import { dirname, resolve } from "node:path";
 // Dynamic import: this workspace is `"type": "module"` and api/ is authored for
 // the edge runtime without extensions, so a static specifier resolves but its
 // named exports do not survive the interop. Awaiting the import does.
-const { CATEGORY_GROUPS, categoryIdOf } = await import("../../api/_categorize.ts");
+const { BUILTIN_TAXONOMY } = await import("../../api/_categorize.ts");
+// Through the resolver, which is the path the endpoints take since stage 2. The
+// built-in taxonomy is the right one here: the migration's mapping covers the
+// built-ins and nothing else.
+const { groups: CATEGORY_GROUPS, categoryIdOf } = BUILTIN_TAXONOMY;
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const sql = readFileSync(resolve(repo, "supabase/migrations/0024_category_ids.sql"), "utf8");
