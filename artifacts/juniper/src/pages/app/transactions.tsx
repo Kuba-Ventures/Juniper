@@ -16,6 +16,7 @@ import { cssVar } from "@/components/juniper/primitives";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
+import { BudgetsPanel } from "@/components/juniper/budgets-panel";
 import { colorOf } from "@/lib/category-color";
 import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
@@ -40,7 +41,12 @@ export default function Transactions() {
   // all-time is a slower first paint for a question most visits are not asking.
   const [range, setRange] = useState<RangeKey>("3M");
   const [chart, setChart] = useState<ChartKind>("pie");
-  const [panel, setPanel] = useState<"categories" | "summary">("categories");
+  // Budgets opens directly when the Overview's empty state sent them here to set
+  // one, so that nudge lands on the control it advertised rather than on a page
+  // where the member has to find it.
+  const [panel, setPanel] = useState<"categories" | "summary" | "budgets">(
+    () => (new URLSearchParams(window.location.search).get("panel") === "budgets" ? "budgets" : "categories"),
+  );
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
 
@@ -151,10 +157,11 @@ export default function Transactions() {
                 <div className="pills sc-toggle">
                   <button className={panel === "categories" ? "on" : undefined} onClick={() => setPanel("categories")}>Categories</button>
                   <button className={panel === "summary" ? "on" : undefined} onClick={() => setPanel("summary")}>Summary</button>
+                  <button className={panel === "budgets" ? "on" : undefined} onClick={() => setPanel("budgets")}>Budgets</button>
                 </div>
-                {panel === "categories"
-                  ? <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />
-                  : <Summary s={summary} range={range} clipped={clipped} />}
+                {panel === "categories" && <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                {panel === "summary" && <Summary s={summary} range={range} clipped={clipped} />}
+                {panel === "budgets" && <BudgetsPanel />}
               </div>
             </div>
             {head?.truncated && (

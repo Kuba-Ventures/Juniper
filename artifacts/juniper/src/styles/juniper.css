@@ -171,6 +171,33 @@
 .jnpr .bud-empty p{margin:0;font-size:12.5px;line-height:1.6;color:var(--jnpr-ink-2);max-width:44ch}
 .jnpr .bud-empty p b{color:var(--jnpr-head);font-weight:650}
 
+/* Budgets panel, the third tab of the Transactions side rail. Rows are denser
+   than the legend's because each can carry a bar and a caption under it. */
+.jnpr .bp{display:flex;flex-direction:column}
+.jnpr .bp-note{font-size:11px;color:var(--jnpr-ink-3);line-height:1.5;margin:0 0 8px}
+.jnpr .bp-note b{color:var(--jnpr-ink-2);font-weight:650}
+.jnpr .bp-row{padding:9px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .bp-row:first-of-type{border-top:0}
+.jnpr .bp-top{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.jnpr .bp-set{margin-left:auto;border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2);color:var(--jnpr-ink-2);
+  font:inherit;font-size:11.5px;font-weight:650;padding:3px 9px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.jnpr .bp-set:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.jnpr .bp-bar{padding:0;border-top:0}
+.jnpr .bp-cap{display:block;font-size:11px;color:var(--jnpr-ink-3);margin-top:5px}
+.jnpr .bp-cap.dim{opacity:.75}
+.jnpr .bp-cap.err{color:var(--jnpr-bad)}
+.jnpr .bp-x{border:0;background:transparent;color:var(--jnpr-ink-3);font:inherit;font-size:11px;
+  cursor:pointer;padding:0 0 0 8px;text-decoration:underline}
+.jnpr .bp-x:hover:not(:disabled){color:var(--jnpr-bad)}
+.jnpr .bp-x:disabled{cursor:default;opacity:.6}
+.jnpr .bp-form{display:flex;align-items:center;gap:6px;margin-top:2px}
+.jnpr .bp-cur{font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .bp-form input{font:inherit;font-size:12.5px;width:100%;min-width:0;padding:5px 8px;border:1px solid var(--jnpr-line);
+  border-radius:7px;background:var(--jnpr-surface-2);color:var(--jnpr-ink);outline:none}
+.jnpr .bp-form input:focus{border-color:var(--jnpr-accent)}
+.jnpr .bp-form .btn.sm{padding:5px 10px;font-size:11.5px}
+.jnpr .bp-form .btn:disabled{opacity:.55;cursor:default}
+
 /* ---------- plans (compact rows on Home) ---------- */
 .jnpr .plans-col{display:flex;flex-direction:column;gap:10px}
 .jnpr .plan-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);cursor:pointer;transition:border-color .15s,transform .15s}

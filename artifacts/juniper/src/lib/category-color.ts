@@ -31,3 +31,25 @@ export const categoryColor = (label: string, group?: string): SeriesKey =>
 
 // A group label is its own group, so the two arguments collapse.
 export const colorOf = (group: string): SeriesKey => categoryColor(group, group);
+
+// The nine SPENDING groups, in the display order api/_categorize.ts walks, which
+// is the order the donut and the legend already read in. Income and
+// "Transfers & payments" are deliberately absent: neither is consumption, and a
+// limit on either would measure nothing a member can act on.
+//
+// This mirrors CATEGORY_GROUPS in api/_categorize.ts, which stays the source of
+// truth. The client needs the list to offer a budget for a group the member has
+// not spent in this month, and /api/finances only ever sends the groups with
+// spending in them, so there is nothing to derive it from at runtime.
+export const SPEND_GROUPS: string[] = [
+  "Housing",
+  "Groceries & dining",
+  "Transportation",
+  "Debt payments",
+  "Shopping",
+  "Fun & travel",
+  "Utilities & bills",
+  "Kids & health",
+  "Everything else",
+];
+
