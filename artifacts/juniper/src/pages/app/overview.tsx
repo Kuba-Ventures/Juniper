@@ -54,9 +54,9 @@ function ConnectNudge() {
 // writes to /api/budgets yet, so this is the common case, not the edge one. The
 // card used to map an empty array and leave a titled box with nothing under it.
 // The copy names a real starting category off this month's own spending rather
-// than telling anyone to press a control that does not exist; the limits
-// themselves will be configured on Transactions, next to the spending they
-// bound, and this card stays on the Overview for review.
+// than sending anyone somewhere vague; the link lands on the Budgets panel of
+// the Transactions page, which is where limits are configured, next to the
+// spending they bound. This card stays on the Overview for review.
 function BudgetsEmpty({ top }: { top?: SpendCat }) {
   return (
     <div className="bud-empty">
@@ -64,7 +64,7 @@ function BudgetsEmpty({ top }: { top?: SpendCat }) {
         No budgets yet. A budget puts a monthly limit on one category, and Juniper flags it the moment you go over.
         {top && <> <b>{top.c}</b> is your biggest this month at {money(top.v)}, a fair place to start.</>}
       </p>
-      <Link href="/app/transactions" className="link">See your spending →</Link>
+      <Link href="/app/transactions?panel=budgets" className="link">Set a budget →</Link>
     </div>
   );
 }
