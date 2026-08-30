@@ -34,7 +34,13 @@ export interface TxnRow {
 // The category picker's options, shipped with the first page rather than kept
 // as a second copy of ~50 leaf labels in the client. api/_categorize.ts stays
 // the source of truth.
-export interface CategoryGroupOption { g: string; kind: "spend" | "income" | "transfer"; cats: string[] }
+export interface CategoryOption { id: string; label: string; custom: boolean }
+export interface CategoryGroupOption {
+  id: string;
+  g: string;
+  kind: "spend" | "income" | "transfer";
+  cats: CategoryOption[];
+}
 export interface BreakdownRow {
   c: string; v: number; n: number; pct: number;
   categories: { c: string; v: number; n: number }[];

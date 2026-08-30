@@ -1204,6 +1204,37 @@
 .jnpr .cp-i.on{color:var(--jnpr-accent);font-weight:650}
 .jnpr .cp-i:disabled{cursor:default;opacity:.6}
 .jnpr .cp-none{font-size:12px;color:var(--jnpr-ink-3);padding:10px 4px}
+/* Managing categories from inside the picker (stage 3b). A row is a chooser
+   plus a quiet Rename; the Rename only shows on hover or keyboard focus, so the
+   list still reads as a list of choices rather than a settings screen. */
+.jnpr .cp-row{display:flex;align-items:center;gap:4px}
+.jnpr .cp-row .cp-i{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .cp-edit{border:0;background:transparent;color:var(--jnpr-ink-3);font:inherit;font-size:10.5px;
+  cursor:pointer;padding:2px 6px;border-radius:6px;opacity:0;transition:opacity .12s;white-space:nowrap}
+.jnpr .cp-row:hover .cp-edit,.jnpr .cp-edit:focus-visible{opacity:1}
+.jnpr .cp-edit:hover{color:var(--jnpr-accent);background:var(--jnpr-surface-3)}
+.jnpr .cp-edit:disabled{cursor:default}
+.jnpr .cp-kind{margin-left:auto;font-size:9.5px;font-weight:650;letter-spacing:0;text-transform:none;
+  color:var(--jnpr-ink-3);background:var(--jnpr-surface-3);padding:1px 6px;border-radius:20px}
+.jnpr .cp-form{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 4px 7px}
+.jnpr .cp-form input{flex:1;min-width:100px;font:inherit;font-size:12.5px;padding:5px 8px;
+  border:1px solid var(--jnpr-line);border-radius:7px;background:var(--jnpr-surface-2);
+  color:var(--jnpr-ink);outline:none}
+.jnpr .cp-form input:focus{border-color:var(--jnpr-accent)}
+.jnpr .cp-form .btn.sm{padding:4px 9px;font-size:11px}
+.jnpr .cp-form .btn:disabled{opacity:.55;cursor:default}
+.jnpr .cp-del{border:0;background:transparent;color:var(--jnpr-ink-3);font:inherit;font-size:11px;
+  cursor:pointer;padding:0 2px;text-decoration:underline}
+.jnpr .cp-del:hover:not(:disabled){color:var(--jnpr-bad)}
+.jnpr .cp-err{flex-basis:100%;font-size:11px;color:var(--jnpr-bad);line-height:1.4}
+/* The create affordance sits ABOVE the list, because it only appears when the
+   search matched nothing, and a member who typed a name nothing matches is
+   looking for exactly this. */
+.jnpr .cp-create{border-bottom:1px solid var(--jnpr-line-2);padding-bottom:7px;margin-bottom:4px}
+.jnpr .cp-create-h{font-size:11px;font-weight:650;color:var(--jnpr-ink-2);padding:6px 4px 4px}
+.jnpr .cp-create-i{display:flex;align-items:center;gap:8px}
+.jnpr .cp-create-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .cp-create-i .cp-kind{margin-left:0}
 .jnpr .td-a{font-weight:650;color:var(--jnpr-ink);white-space:nowrap}
 .jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
 .jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
