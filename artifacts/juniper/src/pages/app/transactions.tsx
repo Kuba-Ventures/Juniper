@@ -17,12 +17,14 @@ import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { BudgetsPanel } from "@/components/juniper/budgets-panel";
+import { CategoryPicker } from "@/components/juniper/category-picker";
 import { colorOf } from "@/lib/category-color";
 import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
-  fetchTransactions,
+  fetchTransactions, setTransactionCategory,
   RANGES, rangeFrom, rangeIsClipped, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
 } from "@/lib/transactions";
+import { useFinances } from "@/lib/finances";
 
 const PAGE_SIZE = 100;
 const RANGE_LABEL: Record<RangeKey, string> = {
@@ -57,6 +59,19 @@ export default function Transactions() {
   const [paging, setPaging] = useState(false);
   const [failed, setFailed] = useState(false);
   const [hi, setHi] = useState<number | null>(null);
+  // Re-categorization: which row's picker is open, which row is mid-write, and
+  // which row's write just failed. Keyed by row id rather than held as one flag,
+  // so a failure marks the row it belongs to.
+  // Holds the anchor element as well as the id: the picker portals to <body>
+  // (the table wrapper clips it otherwise) and takes its position from the tag
+  // that opened it.
+  const [editing, setEditing] = useState<{ id: string; el: HTMLElement } | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState<string | null>(null);
+  // The Budgets panel and the Overview both read /api/finances, and moving a
+  // charge between groups changes this month's spend, so the rollup that owns
+  // that figure is asked to catch up rather than left to disagree.
+  const { refresh: refreshFinances } = useFinances();
 
   // Guards a late response from an abandoned range: switching 1M -> All -> 1M
   // quickly can land the All payload last and leave the view showing a year
@@ -83,6 +98,26 @@ export default function Transactions() {
     if (mine !== req.current) return;   // range changed while this was in flight
     if (page) { setRows((r) => [...r, ...page.transactions]); setCursor(page.nextCursor); }
     setPaging(false);
+  };
+
+  // Save, then bring the figures with it. The row is updated from what the
+  // server stored rather than from what was clicked, and the rollup (donut,
+  // legend, summary) is re-read, because it is computed from a walk over the
+  // whole range and cannot be patched correctly here. That re-read asks for one
+  // row: the rollup rides on any first page, so there is no need to re-download
+  // the hundred rows already on screen, and `rows` is left alone so paging and
+  // scroll position survive.
+  const recategorize = async (row: TxnRow, category: string) => {
+    if (category === row.c) { setEditing(null); return; }
+    setSaving(row.id); setSaveFailed(null);
+    const saved = await setTransactionCategory(row.id, category);
+    if (!saved) { setSaveFailed(row.id); setSaving(null); return; }
+    setRows((rs) => rs.map((t) => (t.id === row.id ? { ...t, c: saved.c, g: saved.g, k: saved.k, userSet: true } : t)));
+    setEditing(null); setSaving(null);
+    const mine = req.current;
+    const fresh = await fetchTransactions({ from: rangeFrom(range), limit: 1 });
+    if (fresh && mine === req.current) setHead((h) => (h ? { ...h, ...fresh, transactions: h.transactions } : fresh));
+    void refreshFinances();
   };
 
   const breakdown: BreakdownRow[] = head?.breakdown ?? [];
@@ -213,7 +248,45 @@ export default function Transactions() {
                         </span>
                       </div>
                     </td>
-                    <td className="td-c"><span className="ctag" style={{ borderColor: cssVar(colorOf(t.g)) }}>{t.c}</span></td>
+                    <td className="td-c cat-cell">
+                      {/* The tag already names the category, so it is the
+                          control that changes it: no second affordance on the
+                          row, and the target is where the eye already is. The
+                          picker needs the server's taxonomy, so with no first
+                          page in hand the tag stays a plain label. */}
+                      {head?.taxonomy?.length ? (
+                        <button
+                          type="button"
+                          className="ctag ctag-btn"
+                          style={{ borderColor: cssVar(colorOf(t.g)) }}
+                          aria-haspopup="dialog"
+                          aria-expanded={editing?.id === t.id}
+                          title={t.userSet ? "You set this category" : "Change category"}
+                          disabled={saving === t.id}
+                          onClick={(e) => {
+                            const el = e.currentTarget;
+                            setEditing((cur) => (cur?.id === t.id ? null : { id: t.id, el }));
+                            setSaveFailed(null);
+                          }}
+                        >
+                          {saving === t.id ? "Saving…" : t.c}
+                          {t.userSet && saving !== t.id && <span className="ctag-dot" aria-hidden />}
+                        </button>
+                      ) : (
+                        <span className="ctag" style={{ borderColor: cssVar(colorOf(t.g)) }}>{t.c}</span>
+                      )}
+                      {editing?.id === t.id && head?.taxonomy && (
+                        <CategoryPicker
+                          anchor={editing.el}
+                          taxonomy={head.taxonomy}
+                          value={t.c}
+                          busy={saving === t.id}
+                          onPick={(c) => void recategorize(t, c)}
+                          onClose={() => setEditing(null)}
+                        />
+                      )}
+                      {saveFailed === t.id && <span className="cat-err">Did not save. Try again.</span>}
+                    </td>
                     <td className={`td-a ta-r tnum${t.v > 0 ? " inc" : ""}`}>{t.v > 0 ? `+${money2(t.v)}` : money2(t.v)}</td>
                   </tr>
                 ))}
