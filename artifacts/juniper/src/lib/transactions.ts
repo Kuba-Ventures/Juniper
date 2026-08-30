@@ -157,7 +157,7 @@ export const initial = (s: string) => (s.trim()[0] || "?").toUpperCase();
 export async function setTransactionCategory(
   id: string,
   category: string,
-): Promise<{ id: string; c: string; g: string; k: TxnRow["k"] } | null> {
+): Promise<{ id: string; c: string; g: string; k: TxnRow["k"]; e: string; hue: number | null } | null> {
   try {
     const token = await getAccessToken();
     if (!token) return null;
@@ -167,7 +167,7 @@ export async function setTransactionCategory(
       body: JSON.stringify({ id, category }),
     });
     if (!res.ok) return null;
-    return (await res.json()) as { id: string; c: string; g: string; k: TxnRow["k"] };
+    return (await res.json()) as { id: string; c: string; g: string; k: TxnRow["k"]; e: string; hue: number | null };
   } catch {
     return null;
   }

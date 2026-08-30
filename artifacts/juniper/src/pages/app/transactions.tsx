@@ -144,7 +144,14 @@ export default function Transactions() {
     setSaving(row.id); setSaveFailed(null);
     const saved = await setTransactionCategory(row.id, category);
     if (!saved) { setSaveFailed(row.id); setSaving(null); return; }
-    setRows((rs) => rs.map((t) => (t.id === row.id ? { ...t, c: saved.c, g: saved.g, k: saved.k, userSet: true } : t)));
+    // `e` and `hue` as well as the labels. Without the icon the row showed its
+    // NEW category name beside its OLD icon, so a charge moved to Coffee shops
+    // sat there wearing a shopping bag until the next page load. Everything the
+    // row paints itself from comes back on the response, so everything the
+    // response carries is applied.
+    setRows((rs) => rs.map((t) => (t.id === row.id
+      ? { ...t, c: saved.c, g: saved.g, k: saved.k, e: saved.e, hue: saved.hue ?? null, userSet: true }
+      : t)));
     setEditing(null); setSaving(null);
     // Only where Plaid actually named a merchant: a rule keys on that name, so
     // offering one for a charge that has none would be a button that cannot

@@ -170,13 +170,12 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
   // keyed the way merchantKey normalizes, so the lookup below is a map hit
   // rather than a scan per transaction.
   const rules = new Map<string, string>();
-  const ruleRes = await adminRest(`merchant_rules?user_id=eq.${userId}&select=merchant,category`);
+  const ruleRes = await adminRest(`merchant_rules?user_id=eq.${userId}&select=merchant_key,category`);
   if (ruleRes.ok) {
-    const rows = (await ruleRes.json().catch(() => [])) as { merchant: string; category: string }[];
-    for (const r of rows) {
-      const k = merchantKey(r.merchant);
-      if (k && r.category) rules.set(k, r.category);
-    }
+    const rows = (await ruleRes.json().catch(() => [])) as { merchant_key: string; category: string }[];
+    // The key is stored (migration 0029) rather than derived here, so the value
+    // matched against and the value the unique index enforces are the same one.
+    for (const r of rows) if (r.merchant_key && r.category) rules.set(r.merchant_key, r.category);
   } else {
     // Same trade as the overrides above, and the same reason for saying so:
     // proceeding means new charges land on Plaid's guess rather than the

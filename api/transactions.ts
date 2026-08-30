@@ -226,7 +226,11 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   // Through classify, like every read, so the row the client swaps in is
   // labelled exactly as the next page load will label it.
   const row = tax.classify(tax.categoryIdOf(stored), stored);
-  return json({ id, c: row.c, g: row.g, k: row.k, e: row.e, userSet: true });
+  // Everything the row paints itself from, so the client can apply the whole
+  // answer rather than half of it: a row that took the new label and kept the
+  // old icon is what shipped before this.
+  const hue = tax.groups.find((g) => g.label === row.g)?.hue ?? null;
+  return json({ id, c: row.c, g: row.g, k: row.k, e: row.e, hue, userSet: true });
 }
 
 export default async function handler(req: Request): Promise<Response> {
