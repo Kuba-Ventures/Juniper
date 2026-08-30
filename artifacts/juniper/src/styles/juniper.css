@@ -1235,6 +1235,15 @@
 .jnpr .cp-create-i{display:flex;align-items:center;gap:8px}
 .jnpr .cp-create-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jnpr .cp-create-i .cp-kind{margin-left:0}
+/* Hidden categories, behind a count. Muted rather than struck through: they
+   are not deleted, they are just not on offer. */
+.jnpr .cp-hidden{border-top:1px solid var(--jnpr-line-2);margin-top:6px;padding-top:5px}
+.jnpr .cp-hidden-t{width:100%;text-align:left;border:0;background:transparent;font:inherit;font-size:11px;
+  font-weight:650;color:var(--jnpr-ink-3);cursor:pointer;padding:5px 9px;border-radius:7px}
+.jnpr .cp-hidden-t:hover{background:var(--jnpr-surface-3);color:var(--jnpr-ink-2)}
+.jnpr .cp-off{display:block;padding:6px 9px;font-size:12.5px;color:var(--jnpr-ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .cp-edit.cp-always{opacity:1;color:var(--jnpr-accent)}
 .jnpr .td-a{font-weight:650;color:var(--jnpr-ink);white-space:nowrap}
 .jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
 .jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;

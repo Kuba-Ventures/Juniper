@@ -48,6 +48,15 @@ export async function renameCategory(categoryId: string, name: string) {
   return authed("/api/categories", { method: "PATCH", body: JSON.stringify({ categoryId, name }) });
 }
 
+/** Stop offering a category, or offer it again. Hiding takes nothing away: the
+ *  category keeps resolving, so history, groups and budgets are untouched. It
+ *  is the only version of "get this out of my way" that survives the Plaid
+ *  sync, which maps Plaid's categories onto built-in labels and knows nothing
+ *  about what a member has hidden. */
+export async function setCategoryHidden(categoryId: string, hidden: boolean) {
+  return authed("/api/categories", { method: "PATCH", body: JSON.stringify({ categoryId, hidden }) });
+}
+
 /** Delete a leaf the member created. Refused by the server, with a count, while
  *  transactions or a budget still use it. Built-ins cannot be deleted at all:
  *  the Plaid sync maps onto their labels, so a deleted one would come back as a

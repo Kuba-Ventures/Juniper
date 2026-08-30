@@ -300,7 +300,24 @@ function categorize(primary?: string, detailed?: string): string {
 // the id `c_coffee_shops`, which is the whole point of having one, and a
 // category they created has an id that never had a slug behind it.
 export interface ResolvedLeaf { id: string; label: string }
-export interface ResolvedGroup { id: string; label: string; kind: CategoryKind; leaves: ResolvedLeaf[] }
+export interface ResolvedGroup {
+  id: string;
+  label: string;
+  kind: CategoryKind;
+  /** Offered: what a picker lists and what may be stored. */
+  leaves: ResolvedLeaf[];
+  /**
+   * Hidden: NOT offered, still resolved.
+   *
+   * A member who hides "Childcare" wants it out of a 46-item list, not out of
+   * their history. Every charge already filed there must keep naming it, keep
+   * landing in this group, and keep counting toward a budget on it, so these
+   * take part in every lookup below except `writableLabels`. The Plaid sync can
+   * also still produce one: api/_categorize.ts maps Plaid's categories onto
+   * built-in labels, and that mapping does not care what a member has hidden.
+   */
+  hidden?: ResolvedLeaf[];
+}
 
 export interface Taxonomy {
   /** Ordered, display order, exactly as CATEGORY_GROUPS is. */
@@ -368,6 +385,14 @@ export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
       writable.add(leaf.label);
       byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind };
     }
+    // Hidden leaves join every lookup EXCEPT `writable`. That single omission
+    // is what "hidden" means: it cannot be chosen, and everything else about it
+    // still works.
+    for (const leaf of g.hidden ?? []) {
+      groupByLeaf[leaf.label] = g.label;
+      idByLabel[leaf.label] = leaf.id;
+      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind };
+    }
   }
   const group = (category?: string | null): string => {
     const c = (category || "").trim();
@@ -417,8 +442,10 @@ export const BUILTIN_TAXONOMY: Taxonomy = buildTaxonomy(BUILTIN_GROUPS);
 // they added or changed is stored, so this is usually zero rows.
 export interface MemberCategoryRow {
   category_id: string;
-  name: string;
+  /** NULL on a row that only hides a built-in: there is no new name to give it. */
+  name: string | null;
   group_id: string | null;
+  archived?: boolean;
 }
 
 // Built-ins plus the member's own, in the resolver's shape.
@@ -444,18 +471,24 @@ export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategor
   }
 
   const renames = new Map<string, string>();          // leaf id -> new label
+  const archived = new Set<string>();                 // leaf ids to stop offering
   const created: MemberCategoryRow[] = [];
   for (const r of rows) {
     const name = (r.name || "").trim();
-    if (!name) continue;
-    if (groupIds.has(r.category_id)) continue;        // groups are not renameable yet
+    if (groupIds.has(r.category_id)) continue;        // groups are neither renameable nor hideable yet
+    if (r.archived) archived.add(r.category_id);
+    if (!name) continue;                              // a hide-only row carries no name
     if (builtinLeaf.has(r.category_id)) renames.set(r.category_id, name);
     else if (r.group_id && groupIds.has(r.group_id)) created.push({ ...r, name });
   }
 
   return base.map((g) => {
-    const leaves = g.leaves.map((l) => (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)! } : l));
-    for (const c of created) if (c.group_id === g.id) leaves.push({ id: c.category_id, label: c.name });
-    return { ...g, leaves };
+    const named = (l: ResolvedLeaf) => (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)! } : l);
+    const all = g.leaves.map(named);
+    for (const c of created) if (c.group_id === g.id) all.push({ id: c.category_id, label: c.name! });
+    // Split, rather than filtered: the hidden ones still have to resolve.
+    const leaves = all.filter((l) => !archived.has(l.id));
+    const hidden = all.filter((l) => archived.has(l.id));
+    return hidden.length ? { ...g, leaves, hidden } : { ...g, leaves };
   });
 }
