@@ -1090,8 +1090,14 @@
    both sides. Capping the width keeps the type at its designed size. */
 .jnpr .sc-wide{max-width:760px;margin:0 auto}
 .jnpr .sc-row.wide .sc-wide{max-width:100%}
-.jnpr .sc-pie{display:flex;justify-content:center}
-.jnpr .sc-pie .sc-svg{width:210px;flex:0 0 auto}
+.jnpr .sc-pie{display:flex;justify-content:center;width:100%}
+/* Fluid, not a fixed 210px. The donut used to be pinned, which balanced against
+   a short legend and looked stranded once the side rail grew: the Budgets panel
+   is nine rows, so the row got tall and the circle stayed the same. It now takes
+   the width its column gives it, capped so a wide dashboard does not draw a
+   dinner plate. Everything inside is in viewBox units, so the centre figure
+   scales with it. */
+.jnpr .sc-pie .sc-svg{width:100%;max-width:360px;flex:0 1 auto}
 .jnpr .sc-cv{fill:var(--jnpr-ink);font-size:23px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .jnpr .sc-cl{fill:var(--jnpr-ink-3);font-size:10.5px;font-weight:600}
 .jnpr .sc-empty{padding:34px 2px;text-align:center;color:var(--jnpr-ink-3);font-size:13px}
