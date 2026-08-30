@@ -1240,6 +1240,10 @@
 .jnpr .cp-create-i{display:flex;align-items:center;gap:8px}
 .jnpr .cp-create-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jnpr .cp-create-i .cp-kind{margin-left:0}
+.jnpr .cp-create-g{border-top:1px solid var(--jnpr-line-2);margin-top:3px;padding-top:7px;color:var(--jnpr-ink-2)}
+.jnpr .cp-create-g .cat-em{color:var(--jnpr-ink-3);font-weight:700}
+.jnpr .cp-g .cp-edit-g{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600}
+.jnpr .cp-g:hover .cp-edit-g,.jnpr .cp-edit-g:focus-visible{opacity:1}
 /* Hidden categories, behind a count. Muted rather than struck through: they
    are not deleted, they are just not on offer. */
 .jnpr .cp-hidden{border-top:1px solid var(--jnpr-line-2);margin-top:6px;padding-top:5px}

@@ -42,7 +42,14 @@ export async function createCategory(name: string, group: string) {
   return authed("/api/categories", { method: "POST", body: JSON.stringify({ name, group }) });
 }
 
-/** Rename a leaf, built-in or the member's own. The id is unchanged, which is
+/** Create a group of the member's own. It always counts as spending: a group
+ *  decides whether its money is spending at all, and letting that be chosen
+ *  would move the member's Juniper Score with no visible cause. */
+export async function createGroup(name: string) {
+  return authed("/api/categories", { method: "POST", body: JSON.stringify({ name, type: "group" }) });
+}
+
+/** Rename a leaf or a group the member made, built-in leaves included. The id is unchanged, which is
  *  what keeps every transaction already filed there pointing at it. */
 export async function renameCategory(categoryId: string, name: string) {
   return authed("/api/categories", { method: "PATCH", body: JSON.stringify({ categoryId, name }) });

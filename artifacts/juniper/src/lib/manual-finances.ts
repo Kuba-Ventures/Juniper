@@ -116,6 +116,11 @@ export function buildManualFinances(p: UserProfile | null): FinanceData | null {
     cashflow: { income, spent, saved: income - spent, month: monthLabel() },
     // Transaction-derived surfaces are empty until an account is linked.
     spending: [],
+    // A manual dashboard has no transaction feed, so it has no spending groups
+    // to offer either: the budgets panel already refuses to draw without a live
+    // source, and inventing the nine built-ins here would be a vocabulary the
+    // member has no data behind.
+    groups: [],
     budgets: [],
     transactions: [],
     accounts,

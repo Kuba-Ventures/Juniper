@@ -15,7 +15,7 @@
 import { useState } from "react";
 import { useFinances } from "@/lib/finances";
 import { saveBudget, removeBudget } from "@/lib/budgets";
-import { SPEND_GROUPS, paint } from "@/lib/category-color";
+import { paint } from "@/lib/category-color";
 import { money0 } from "@/lib/txn-format";
 
 interface Row {
@@ -64,10 +64,12 @@ export function BudgetsPanel() {
   // in them this month, so a group with nothing spent falls back to the budget's
   // own icon and then to nothing rather than borrowing another group's.
   const hueOf = new Map<string, number | null>([
+    ...data.groups.map((g) => [g.c, g.hue ?? null] as [string, number | null]),
     ...data.spending.map((s) => [s.c, s.hue ?? null] as [string, number | null]),
     ...data.budgets.map((b) => [b.c, b.hue ?? null] as [string, number | null]),
   ]);
   const emojiOf = new Map<string, string>([
+    ...data.groups.map((g) => [g.c, g.e ?? ""] as [string, string]),
     ...data.spending.map((s) => [s.c, s.e ?? ""] as [string, string]),
     ...data.budgets.map((b) => [b.c, b.e ?? ""] as [string, string]),
   ]);
@@ -76,7 +78,10 @@ export function BudgetsPanel() {
   // Fixed order, sorted once by this month's spend. It does NOT re-sort when a
   // limit is saved: a row jumping out from under the cursor in a 300px rail is
   // worse than a list that reads slightly out of priority.
-  const rows: Row[] = SPEND_GROUPS
+  // The member's own spending groups, from the server. This was a fixed list of
+  // nine in lib/category-color.ts until members could create groups of their
+  // own, at which point a constant here is simply a wrong answer.
+  const rows: Row[] = data.groups.map((g) => g.c)
     .map((c) => ({ c, e: emojiOf.get(c) ?? "", hue: hueOf.get(c) ?? null, spent: spentOf.get(c) ?? 0, limit: limitOf.get(c) ?? null }))
     .sort((a, b) => b.spent - a.spent || a.c.localeCompare(b.c));
 

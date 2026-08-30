@@ -160,6 +160,54 @@ ok("unhiding is the absence of the row, so nothing lingers", () => {
   strictEqual(t.writableLabels.has("Coffee shops"), true);
 });
 
+// ── Custom groups (stage 5b) ────────────────────────────────────────────────
+const GROUP_ID = "g_aabbccdd";
+const withGroup = build([{ category_id: GROUP_ID, name: "Side business", group_id: null }]);
+ok("a group the member made is offered, and is spending", () => {
+  const g = withGroup.groups.find((x) => x.id === GROUP_ID);
+  strictEqual(g?.label, "Side business");
+  strictEqual(g?.kind, "spend");
+  strictEqual(withGroup.spendGroups.includes("Side business"), true);
+});
+ok("it gets a generated hue, where a built-in has none", () => {
+  strictEqual(typeof withGroup.groups.find((x) => x.id === GROUP_ID)!.hue, "number");
+  strictEqual(withGroup.groups.find((x) => x.label === "Housing")!.hue, null);
+});
+ok("it sits before Everything else, not after the catch-all or the transfers", () => {
+  const order = withGroup.spendGroups;
+  strictEqual(order.indexOf("Side business") < order.indexOf("Everything else"), true);
+  // And the built-in order either side of it is untouched.
+  strictEqual(order[0], "Housing");
+  strictEqual(order[order.length - 1], "Everything else");
+});
+ok("a leaf can be created inside a group the member made", () => {
+  const t = build([
+    { category_id: GROUP_ID, name: "Side business", group_id: null },
+    { category_id: "c_66666666", name: "Invoicing software", group_id: GROUP_ID },
+  ]);
+  strictEqual(t.groupOf("Invoicing software"), "Side business");
+  strictEqual(t.kindOf("Invoicing software"), "spend");
+  strictEqual(t.writableLabels.has("Invoicing software"), true);
+});
+ok("a leaf pointing at a group that is not there is dropped, not orphaned", () => {
+  const t = build([{ category_id: "c_77777777", name: "Ghost", group_id: "g_missing" }]);
+  strictEqual(t.writableLabels.has("Ghost"), false);
+});
+ok("a member's group can be renamed and re-iconed, a built-in group cannot", () => {
+  const t = build([
+    { category_id: GROUP_ID, name: "Freelance", group_id: null, emoji: "\uD83D\uDCBC" },
+    { category_id: "g_housing", name: "Shelter", group_id: null },
+  ]);
+  strictEqual(t.groups.find((x) => x.id === GROUP_ID)!.label, "Freelance");
+  strictEqual(t.groups.find((x) => x.id === GROUP_ID)!.emoji, "\uD83D\uDCBC");
+  strictEqual(t.groups.find((x) => x.id === "g_housing")!.label, "Housing");
+});
+ok("history in a member's group resolves by id after they rename it", () => {
+  const t = build([{ category_id: GROUP_ID, name: "Freelance", group_id: null }]);
+  deepStrictEqual(t.classify(GROUP_ID, "Side business"),
+    { c: "Freelance", g: "Freelance", k: "spend", e: "\uD83C\uDFF7\uFE0F" });
+});
+
 // ── The base is never mutated ───────────────────────────────────────────────
 ok("the built-in groups are not mutated by a merge", () => {
   strictEqual(groceries().leaves.some((l) => l.label === "Coffee shops"), true);

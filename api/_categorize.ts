@@ -550,32 +550,70 @@ export interface MemberCategoryRow {
 // direction: an unknown row appearing as a category the member never made would
 // be worse than one of their renames quietly not applying, and the row survives
 // for a later release to interpret.
+// A member's own GROUP is told from their own LEAF by the id prefix, which the
+// API is the only writer of: `g_` for a group, `c_` for a category. The same
+// convention the built-in ids follow, and the reason those ids are prefixed at
+// all (five labels name both a group and a leaf inside it).
+const isGroupId = (id: string) => id.startsWith("g_");
+
 export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategoryRow[]): ResolvedGroup[] {
   if (!rows.length) return base;
 
   const builtinLeaf = new Set<string>();
-  const groupIds = new Set<string>();
+  const builtinGroup = new Set<string>();
   for (const g of base) {
-    groupIds.add(g.id);
+    builtinGroup.add(g.id);
     for (const l of g.leaves) builtinLeaf.add(l.id);
   }
 
-  const renames = new Map<string, string>();          // leaf id -> new label
-  const icons = new Map<string, string>();            // leaf id -> chosen emoji
+  const renames = new Map<string, string>();          // id -> new label, leaf or custom group
+  const icons = new Map<string, string>();            // id -> chosen emoji
   const archived = new Set<string>();                 // leaf ids to stop offering
   const created: MemberCategoryRow[] = [];
+  const madeGroups: MemberCategoryRow[] = [];
   for (const r of rows) {
     const name = (r.name || "").trim();
     const emoji = (r.emoji || "").trim();
-    if (groupIds.has(r.category_id)) continue;        // groups are neither renameable nor hideable yet
+    // A built-in GROUP can be neither renamed nor hidden: its label is what
+    // every stored row categorized at group precision resolves through.
+    if (builtinGroup.has(r.category_id)) continue;
     if (r.archived) archived.add(r.category_id);
     if (emoji) icons.set(r.category_id, emoji);
     if (!name) continue;                              // a hide-only or icon-only row carries no name
-    if (builtinLeaf.has(r.category_id)) renames.set(r.category_id, name);
-    else if (r.group_id && groupIds.has(r.group_id)) created.push({ ...r, name });
+    if (isGroupId(r.category_id)) madeGroups.push({ ...r, name });
+    else if (builtinLeaf.has(r.category_id)) renames.set(r.category_id, name);
+    else created.push({ ...r, name });
   }
 
-  return base.map((g) => {
+  // Groups first, so a leaf created inside one can find it. A member's group is
+  // always `spend`: a group decides whether its money counts as spending at all,
+  // and letting that be chosen would move the member's Juniper Score with no
+  // visible cause (see api/categories.ts). Income and transfers stay built-in.
+  const withMade: ResolvedGroup[] = madeGroups.map((r) => ({
+    id: r.category_id,
+    label: r.name!,
+    emoji: icons.get(r.category_id) ?? NEW_CATEGORY_EMOJI,
+    hue: hueFor(r.category_id),
+    kind: "spend" as CategoryKind,
+    leaves: [],
+  }));
+
+  // Slotted in before "Everything else", not appended. Everything else is the
+  // catch-all and reads last on a donut; a group the member made is a real
+  // category of spending and belongs among the others, not after the bucket for
+  // things that fit nowhere, and certainly not after Income and Transfers.
+  const all: ResolvedGroup[] = [];
+  const catchAll = base.findIndex((g) => g.label === "Everything else");
+  base.forEach((g, i) => {
+    if (i === catchAll) all.push(...withMade);
+    all.push(g);
+  });
+  if (catchAll === -1) all.push(...withMade);
+
+  const groupIds = new Set(all.map((g) => g.id));
+  const placeable = created.filter((c) => c.group_id && groupIds.has(c.group_id));
+
+  return all.map((g) => {
     // A rename keeps the leaf's icon: renaming "Coffee shops" to "Coffee" does
     // not make it stop being coffee.
     // A rename keeps the leaf's icon unless the member also chose one:
@@ -585,15 +623,20 @@ export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategor
       label: renames.get(l.id) ?? l.label,
       emoji: icons.get(l.id) ?? l.emoji,
     });
-    const all = g.leaves.map(named);
-    for (const c of created) {
+    const leavesAll = g.leaves.map(named);
+    for (const c of placeable) {
       if (c.group_id === g.id) {
-        all.push({ id: c.category_id, label: c.name!, emoji: icons.get(c.category_id) ?? NEW_CATEGORY_EMOJI });
+        leavesAll.push({ id: c.category_id, label: c.name!, emoji: icons.get(c.category_id) ?? NEW_CATEGORY_EMOJI });
       }
     }
+    // A member's own group can be renamed and re-iconed like any leaf.
+    const label = renames.get(g.id) ?? g.label;
+    const emoji = icons.get(g.id) ?? g.emoji;
     // Split, rather than filtered: the hidden ones still have to resolve.
-    const leaves = all.filter((l) => !archived.has(l.id));
-    const hidden = all.filter((l) => archived.has(l.id));
-    return hidden.length ? { ...g, leaves, hidden } : { ...g, leaves };
+    const leaves = leavesAll.filter((l) => !archived.has(l.id));
+    const hidden = leavesAll.filter((l) => archived.has(l.id));
+    return hidden.length
+      ? { ...g, label, emoji, leaves, hidden }
+      : { ...g, label, emoji, leaves };
   });
 }
