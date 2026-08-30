@@ -40,7 +40,9 @@ import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
-import type { Taxonomy } from "./_categorize";
+import { BUILTIN_GROUPS, type Taxonomy } from "./_categorize";
+
+const BUILTIN_LEAF_IDS = new Set(BUILTIN_GROUPS.flatMap((g) => g.leaves.map((l) => l.id)));
 
 export const config = { runtime: "edge" };
 
@@ -159,8 +161,17 @@ function cursorFilter(cursor: string | null): string | null {
 // Built from the member's own taxonomy since stage 2, so when a member has
 // categories of their own the picker offers exactly what they can store, by
 // construction rather than by two lists happening to match.
+// Carries ids, not just labels, since stage 3b: the picker renames and deletes
+// through them, and a label is exactly the thing that stops being stable once a
+// member can rename. `custom` decides whether Delete is offered, answered from
+// the built-in table rather than guessed from the id's shape.
 const pickerOptions = (tax: Taxonomy) =>
-  tax.groups.map((g) => ({ g: g.label, kind: g.kind, cats: g.leaves.map((l) => l.label) }));
+  tax.groups.map((g) => ({
+    id: g.id,
+    g: g.label,
+    kind: g.kind,
+    cats: g.leaves.map((l) => ({ id: l.id, label: l.label, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
+  }));
 
 // PATCH /api/transactions  { id, category }
 // Re-categorizes one of the caller's own transactions. Scoped by user_id in the

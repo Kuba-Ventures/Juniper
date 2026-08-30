@@ -107,6 +107,16 @@ export default function Transactions() {
   // row: the rollup rides on any first page, so there is no need to re-download
   // the hundred rows already on screen, and `rows` is left alone so paging and
   // scroll position survive.
+  // Re-reads the FIRST page, which is where the rollup and the category
+  // taxonomy ride (see api/transactions.ts). One row is asked for, because the
+  // hundred already on screen do not need re-downloading and `rows` is left
+  // alone so paging and scroll position survive.
+  const refreshHead = async () => {
+    const mine = req.current;
+    const fresh = await fetchTransactions({ from: rangeFrom(range), limit: 1 });
+    if (fresh && mine === req.current) setHead((h) => (h ? { ...h, ...fresh, transactions: h.transactions } : fresh));
+  };
+
   const recategorize = async (row: TxnRow, category: string) => {
     if (category === row.c) { setEditing(null); return; }
     setSaving(row.id); setSaveFailed(null);
@@ -114,9 +124,7 @@ export default function Transactions() {
     if (!saved) { setSaveFailed(row.id); setSaving(null); return; }
     setRows((rs) => rs.map((t) => (t.id === row.id ? { ...t, c: saved.c, g: saved.g, k: saved.k, userSet: true } : t)));
     setEditing(null); setSaving(null);
-    const mine = req.current;
-    const fresh = await fetchTransactions({ from: rangeFrom(range), limit: 1 });
-    if (fresh && mine === req.current) setHead((h) => (h ? { ...h, ...fresh, transactions: h.transactions } : fresh));
+    await refreshHead();
     void refreshFinances();
   };
 
@@ -283,6 +291,7 @@ export default function Transactions() {
                           busy={saving === t.id}
                           onPick={(c) => void recategorize(t, c)}
                           onClose={() => setEditing(null)}
+                          onTaxonomyChanged={refreshHead}
                         />
                       )}
                       {saveFailed === t.id && <span className="cat-err">Did not save. Try again.</span>}
