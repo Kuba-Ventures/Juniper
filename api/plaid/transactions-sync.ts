@@ -16,6 +16,7 @@ import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
 import { taxonomyFor } from "../_taxonomy";
+import { decideCategory, merchantKey } from "../_category-precedence";
 import type { Taxonomy } from "../_categorize";
 
 export const config = { runtime: "edge" };
@@ -165,6 +166,25 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
     console.error(`[plaid] could not read category overrides for ${userId} (${ovRes.status}); a sync now may revert them`);
   }
 
+  // "Always categorize this merchant as this category." Read once per run,
+  // keyed the way merchantKey normalizes, so the lookup below is a map hit
+  // rather than a scan per transaction.
+  const rules = new Map<string, string>();
+  const ruleRes = await adminRest(`merchant_rules?user_id=eq.${userId}&select=merchant,category`);
+  if (ruleRes.ok) {
+    const rows = (await ruleRes.json().catch(() => [])) as { merchant: string; category: string }[];
+    for (const r of rows) {
+      const k = merchantKey(r.merchant);
+      if (k && r.category) rules.set(k, r.category);
+    }
+  } else {
+    // Same trade as the overrides above, and the same reason for saying so:
+    // proceeding means new charges land on Plaid's guess rather than the
+    // member's rule, which is wrong but recoverable, where skipping the sync
+    // strands the whole feed.
+    console.error(`[plaid] could not read merchant rules for ${userId} (${ruleRes.status}); new charges will not follow them`);
+  }
+
   let added = 0, modified = 0, removed = 0;
   // Items are isolated from each other, same reasoning as networth-snapshot.ts:
   // this loop used to return on the first item Plaid refused, so one dead
@@ -212,13 +232,25 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
       const upserts = [...(d.added ?? []), ...(d.modified ?? [])]
         .map((t) => toRow(tax, userId, item.item_id, t))
         .map((row) => {
-          // The member's own answer wins over Plaid's. Kept as `user` so it
-          // keeps winning on every future sync, rather than being written back
-          // as `plaid` and reverting the next time round.
-          const mine = overrides.get(row.plaid_transaction_id);
-          return mine
-            ? { ...row, category: mine, category_id: tax.categoryIdOf(mine), category_source: "user" }
-            : row;
+          // user, then rule, then Plaid. The decision itself is pure and lives
+          // in _category-precedence.ts, with every combination covered by
+          // scripts/check-category-precedence.ts, because this is the code that
+          // silently reverts a member's work when it is wrong.
+          const key = merchantKey(row.merchant_name);
+          const decided = decideCategory({
+            plaid: row.category,
+            rule: key ? rules.get(key) : null,
+            override: overrides.get(row.plaid_transaction_id),
+          });
+          if (decided.source === "plaid") return row;
+          return {
+            ...row,
+            category: decided.category,
+            category_id: tax.categoryIdOf(decided.category),
+            // The source is carried, not flattened: it is what makes the same
+            // answer win again on the next sync.
+            category_source: decided.source,
+          };
         });
       if (upserts.length) {
         const up = await adminRest("transactions?on_conflict=plaid_transaction_id", {

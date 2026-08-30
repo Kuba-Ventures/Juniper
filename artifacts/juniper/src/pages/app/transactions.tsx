@@ -17,6 +17,7 @@ import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type 
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { BudgetsPanel } from "@/components/juniper/budgets-panel";
 import { CategoryPicker } from "@/components/juniper/category-picker";
+import { createMerchantRule } from "@/lib/merchant-rules";
 import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
@@ -67,6 +68,13 @@ export default function Transactions() {
   const [editing, setEditing] = useState<{ id: string; el: HTMLElement } | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState<string | null>(null);
+  // Offered on the row a member has just corrected, and nowhere else: this is
+  // the moment they are looking at the merchant they would otherwise correct
+  // again next month. `applied` is how many existing charges the rule moved.
+  const [offer, setOffer] = useState<{ id: string; merchant: string; category: string } | null>(null);
+  const [ruleBusy, setRuleBusy] = useState(false);
+  const [ruleDone, setRuleDone] = useState<{ id: string; applied: number | null } | null>(null);
+  const [ruleFailed, setRuleFailed] = useState<string | null>(null);
   // The Budgets panel and the Overview both read /api/finances, and moving a
   // charge between groups changes this month's spend, so the rollup that owns
   // that figure is asked to catch up rather than left to disagree.
@@ -116,6 +124,21 @@ export default function Transactions() {
     if (fresh && mine === req.current) setHead((h) => (h ? { ...h, ...fresh, transactions: h.transactions } : fresh));
   };
 
+  const makeRule = async () => {
+    if (!offer) return;
+    setRuleBusy(true); setRuleFailed(null);
+    const r = await createMerchantRule(offer.merchant, offer.category);
+    setRuleBusy(false);
+    if (!r.ok) { setRuleFailed(r.error); return; }
+    const applied = typeof r.data.applied === "number" ? (r.data.applied as number) : null;
+    setRuleDone({ id: offer.id, applied });
+    setOffer(null);
+    // The rule may have moved charges elsewhere in the range, so the rollup and
+    // the rows both have to catch up rather than only this one row.
+    await load(range);
+    void refreshFinances();
+  };
+
   const recategorize = async (row: TxnRow, category: string) => {
     if (category === row.c) { setEditing(null); return; }
     setSaving(row.id); setSaveFailed(null);
@@ -123,6 +146,12 @@ export default function Transactions() {
     if (!saved) { setSaveFailed(row.id); setSaving(null); return; }
     setRows((rs) => rs.map((t) => (t.id === row.id ? { ...t, c: saved.c, g: saved.g, k: saved.k, userSet: true } : t)));
     setEditing(null); setSaving(null);
+    // Only where Plaid actually named a merchant: a rule keys on that name, so
+    // offering one for a charge that has none would be a button that cannot
+    // work. `merchant` is Plaid's unmodified string, which is what the rule
+    // matches on; `m` is the display label and can be the raw bank text.
+    setRuleDone(null); setRuleFailed(null);
+    setOffer(row.merchant ? { id: row.id, merchant: row.merchant, category: saved.c } : null);
     await refreshHead();
     void refreshFinances();
   };
@@ -296,6 +325,26 @@ export default function Transactions() {
                         />
                       )}
                       {saveFailed === t.id && <span className="cat-err">Did not save. Try again.</span>}
+                      {offer?.id === t.id && (
+                        <span className="cat-rule">
+                          <button type="button" className="cat-rule-go" disabled={ruleBusy} onClick={() => void makeRule()}>
+                            {ruleBusy ? "Applying…" : `Always use ${offer.category} for ${offer.merchant}`}
+                          </button>
+                          <button type="button" className="cat-rule-no" onClick={() => setOffer(null)} aria-label="No thanks">
+                            Not now
+                          </button>
+                        </span>
+                      )}
+                      {ruleDone?.id === t.id && (
+                        <span className="cat-rule done">
+                          {ruleDone.applied === null
+                            ? "Rule saved. It will apply as charges arrive."
+                            : ruleDone.applied === 1
+                              ? "Rule saved, and 1 charge moved."
+                              : `Rule saved, and ${ruleDone.applied} charges moved.`}
+                        </span>
+                      )}
+                      {ruleFailed && offer?.id === t.id && <span className="cat-err">{ruleFailed}</span>}
                     </td>
                     <td className={`td-a ta-r tnum${t.v > 0 ? " inc" : ""}`}>{t.v > 0 ? `+${money2(t.v)}` : money2(t.v)}</td>
                   </tr>
