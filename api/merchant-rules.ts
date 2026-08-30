@@ -44,10 +44,14 @@ function json(body: unknown, status = 200) {
 const MAX_MERCHANT = 120;
 const enc = encodeURIComponent;
 const norm = (v: unknown) => String(v ?? "").trim();
+// `%` and `_` are wildcards to LIKE and ILIKE. A merchant name carrying either
+// would match rows it should not, so they are escaped before the value is used
+// as a pattern. `\` is escaped first, or it would escape the escapes.
+const likeLiteral = (v: string) => v.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
 
 async function list(uid: string): Promise<Response> {
   const r = await adminRest(
-    `merchant_rules?user_id=eq.${uid}&select=merchant,category,category_id,created_at&order=created_at.desc`,
+    `merchant_rules?user_id=eq.${uid}&select=merchant,merchant_key,category,category_id,created_at&order=created_at.desc`,
   );
   if (!r.ok) {
     console.error(`[rules] read failed (${r.status})`);
@@ -70,11 +74,18 @@ async function create(uid: string, body: Record<string, unknown>): Promise<Respo
   if (!tax.writableLabels.has(category)) return json({ error: "Unknown category" }, 400);
   const categoryId = tax.categoryIdOf(category);
 
-  const saved = await adminRest("merchant_rules?on_conflict=user_id,merchant", {
+  // Conflicts on `merchant_key`, a real column, not on an expression. 0028's
+  // unique index was on `lower(btrim(merchant))`, and Postgres requires the ON
+  // CONFLICT target to name an index over exactly those columns, so every
+  // insert raised 42P10 and the member saw "Could not save that rule".
+  // Migration 0029 moves the normalization into the column.
+  const key = merchantKey(merchant)!;
+  const saved = await adminRest("merchant_rules?on_conflict=user_id,merchant_key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=representation" },
     body: JSON.stringify({
-      user_id: uid, merchant, category, category_id: categoryId, updated_at: new Date().toISOString(),
+      user_id: uid, merchant, merchant_key: key, category, category_id: categoryId,
+      updated_at: new Date().toISOString(),
     }),
   });
   if (!saved.ok) {
@@ -90,10 +101,12 @@ async function create(uid: string, body: Record<string, unknown>): Promise<Respo
   // charges the member corrected by hand are theirs, and a rule about the
   // merchant does not get to overrule a statement about one charge.
   //
-  // Matched with `ilike` on the exact string, which is how the unique index
-  // treats it too: case-insensitive, and nothing cleverer.
+  // `ilike` for the case-insensitive match, with % and _ escaped first. Those
+  // are wildcards to ilike, so a merchant like "PAYPAL *INST_XFER" would match
+  // more than itself, and a rule that files somebody else's charges is worse
+  // than one that misses.
   const applied = await adminRest(
-    `transactions?user_id=eq.${uid}&merchant_name=ilike.${enc(merchant)}&category_source=neq.user&select=id`,
+    `transactions?user_id=eq.${uid}&merchant_name=ilike.${enc(likeLiteral(merchant))}&category_source=neq.user&select=id`,
     {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
@@ -115,8 +128,13 @@ async function create(uid: string, body: Record<string, unknown>): Promise<Respo
 async function remove(uid: string, url: URL): Promise<Response> {
   const merchant = norm(url.searchParams.get("merchant"));
   if (!merchant) return json({ error: "A merchant is required" }, 400);
+  // By key, the same way the index and the sync see it: a member removing a
+  // rule they made for "AMAZON" must not be told there is nothing to remove
+  // because the row says "Amazon".
+  const key = merchantKey(merchant);
+  if (!key) return json({ error: "A merchant is required" }, 400);
   const r = await adminRest(
-    `merchant_rules?user_id=eq.${uid}&merchant=ilike.${enc(merchant)}`,
+    `merchant_rules?user_id=eq.${uid}&merchant_key=eq.${enc(key)}`,
     { method: "DELETE" },
   );
   if (!r.ok) {

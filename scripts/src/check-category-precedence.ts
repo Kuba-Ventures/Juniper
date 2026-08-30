@@ -75,5 +75,17 @@ ok("store numbers and processor prefixes are NOT stripped", () => {
   strictEqual(merchantKey("SQ *BLUE BOTTLE #241") === merchantKey("Blue Bottle"), false);
 });
 
+// ── LIKE wildcards ──────────────────────────────────────────────────────────
+// The retroactive apply matches with ilike, where % and _ are wildcards. A
+// merchant carrying either would catch rows it should not, and a rule that
+// files somebody else's charges is worse than one that misses.
+const likeLiteral = (v: string) => v.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
+ok("percent and underscore are escaped before being used as a pattern", () => {
+  strictEqual(likeLiteral("PAYPAL *INST_XFER"), "PAYPAL *INST\\_XFER");
+  strictEqual(likeLiteral("100% CHARGE"), "100\\% CHARGE");
+  strictEqual(likeLiteral("A\\B"), "A\\\\B");
+  strictEqual(likeLiteral("Blue Bottle"), "Blue Bottle");
+});
+
 console.log(`${n} precedence cases passed`);
 console.log("PASS: a correction beats a rule beats Plaid, and a source is never downgraded");
