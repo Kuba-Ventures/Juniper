@@ -17,7 +17,7 @@
 // screen to find.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
-import { colorOf } from "@/lib/category-color";
+import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money2 } from "@/lib/txn-format";
 import { fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
 
@@ -158,7 +158,7 @@ export function SubscriptionsPanel() {
 function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy: boolean; muted?: boolean }) {
   return (
     <div className={`sub-row${muted ? " muted" : ""}${busy ? " busy" : ""}`}>
-      <MerchantMark logo={i.logo} merchant={i.merchant} name={i.name} k={colorOf(i.g)} />
+      <MerchantMark logo={i.logo} merchant={i.merchant} name={i.name} k={colorOf(i.g)} paint={paint(i.g, i.hue)} />
       <div className="sub-id">
         <span className="sub-n">{i.name}</span>
         <span className="sub-sub">

@@ -15,13 +15,13 @@
 import { useState } from "react";
 import { useFinances } from "@/lib/finances";
 import { saveBudget, removeBudget } from "@/lib/budgets";
-import { SPEND_GROUPS, colorOf } from "@/lib/category-color";
-import { cssVar } from "@/components/juniper/primitives";
+import { SPEND_GROUPS, paint } from "@/lib/category-color";
 import { money0 } from "@/lib/txn-format";
 
 interface Row {
   c: string;
   e: string;            // the group's icon, for this list
+  hue: number | null;   // set only for a group the member created
   spent: number;        // this calendar month, not the page's range
   limit: number | null;
 }
@@ -63,6 +63,10 @@ export function BudgetsPanel() {
   // Icons ride on the spending rollup, which only carries the groups with money
   // in them this month, so a group with nothing spent falls back to the budget's
   // own icon and then to nothing rather than borrowing another group's.
+  const hueOf = new Map<string, number | null>([
+    ...data.spending.map((s) => [s.c, s.hue ?? null] as [string, number | null]),
+    ...data.budgets.map((b) => [b.c, b.hue ?? null] as [string, number | null]),
+  ]);
   const emojiOf = new Map<string, string>([
     ...data.spending.map((s) => [s.c, s.e ?? ""] as [string, string]),
     ...data.budgets.map((b) => [b.c, b.e ?? ""] as [string, string]),
@@ -73,7 +77,7 @@ export function BudgetsPanel() {
   // limit is saved: a row jumping out from under the cursor in a 300px rail is
   // worse than a list that reads slightly out of priority.
   const rows: Row[] = SPEND_GROUPS
-    .map((c) => ({ c, e: emojiOf.get(c) ?? "", spent: spentOf.get(c) ?? 0, limit: limitOf.get(c) ?? null }))
+    .map((c) => ({ c, e: emojiOf.get(c) ?? "", hue: hueOf.get(c) ?? null, spent: spentOf.get(c) ?? 0, limit: limitOf.get(c) ?? null }))
     .sort((a, b) => b.spent - a.spent || a.c.localeCompare(b.c));
 
   const write = async (c: string, run: () => Promise<boolean>) => {
@@ -104,7 +108,7 @@ export function BudgetsPanel() {
         return (
           <div className="bp-row" key={r.c}>
             <div className="bp-top">
-              <span className="sw" style={{ background: cssVar(colorOf(r.c)) }} />
+              <span className="sw" style={{ background: paint(r.c, r.hue) }} />
               <span className="ln"><span className="cat-em" aria-hidden>{r.e}</span>{r.c}</span>
               {editing !== r.c && (
                 <button className="bp-set" onClick={() => { setEditing(r.c); setFailed(null); }}>

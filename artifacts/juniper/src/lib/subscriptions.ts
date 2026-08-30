@@ -20,6 +20,8 @@ export interface SubItem {
   logo: string | null;
   c: string;
   g: string;
+  /** Set only for a group the member created; see lib/category-color paint(). */
+  hue?: number | null;
   direction: "outflow" | "inflow";
   review: Review;
   confidence: Confidence;

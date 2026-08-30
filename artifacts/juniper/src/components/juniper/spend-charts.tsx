@@ -16,7 +16,7 @@
 // that happen to agree.
 import { useState, type ReactNode } from "react";
 import { cssVar } from "@/components/juniper/primitives";
-import { colorOf } from "@/lib/category-color";
+import { colorOf, paint } from "@/lib/category-color";
 import { fmtMonth, money0 } from "@/lib/txn-format";
 import type { BreakdownRow } from "@/lib/transactions";
 
@@ -59,7 +59,7 @@ export function PieView({ rows, total, hi, onHi }: ViewProps) {
     <div className="sc-pie">
       <svg viewBox={`0 0 ${S} ${S}`} width={S} height={S} className="sc-svg" role="img" aria-label="Spending by category">
         {slices.map((s, i) => (
-          <path key={s.d.c} d={s.path} fill={cssVar(colorOf(s.d.c))} fillRule="evenodd"
+          <path key={s.d.c} d={s.path} fill={paint(s.d.c, s.d.hue)} fillRule="evenodd"
             style={{ opacity: hi == null || hi === i ? 1 : 0.35, cursor: "pointer" }}
             onPointerEnter={() => onHi(i)} onPointerLeave={() => onHi(null)} />
         ))}
@@ -87,7 +87,7 @@ export function BarsView({ rows, total, hi, onHi }: ViewProps) {
              shape of the ranking stays readable when one category dominates.
              The percentage beside it is against the total, which is the figure
              that answers "how much of my month was this". */}
-          <div className="sc-bar-t"><div className="sc-bar-f" style={{ width: `${(r.v / max) * 100}%`, background: cssVar(colorOf(r.c)) }} /></div>
+          <div className="sc-bar-t"><div className="sc-bar-f" style={{ width: `${(r.v / max) * 100}%`, background: paint(r.c, r.hue) }} /></div>
         </div>
       ))}
     </div>
@@ -160,7 +160,7 @@ export function TreemapView({ rows, total, hi, onHi }: ViewProps) {
         return (
           <g key={r.c} onPointerEnter={() => onHi(i)} onPointerLeave={() => onHi(null)} style={{ cursor: "pointer" }}>
             <rect x={b.x + 1} y={b.y + 1} width={Math.max(0, b.w - 2)} height={Math.max(0, b.h - 2)} rx={6}
-              fill={cssVar(colorOf(r.c))} style={{ opacity: hi == null || hi === i ? 1 : 0.35 }} />
+              fill={paint(r.c, r.hue)} style={{ opacity: hi == null || hi === i ? 1 : 0.35 }} />
             {room && <text className="sc-tm-n" x={b.x + 10} y={b.y + 21}>{r.c}</text>}
             {room && <text className="sc-tm-v" x={b.x + 10} y={b.y + 37}>{money0(r.v)} · {pct(r.v, total).toFixed(0)}%</text>}
             {!room && tight && <text className="sc-tm-v" x={b.x + 8} y={b.y + 16}>{money0(r.v)}</text>}
@@ -225,8 +225,16 @@ export function FlowView({ rows, total, income, incomeRows }: {
   const drawn = Math.max(income, total, 1);
   const fromSavings = Math.max(0, total - income);
 
-  const ins = [...incomeRows.map((r) => ({ c: r.c, v: r.v, k: colorOf("Income") })), ...(fromSavings > 0 ? [{ c: "From savings", v: fromSavings, k: colorOf("Transfers & payments") }] : [])];
-  const outs = [...rows.map((r) => ({ c: r.c, v: r.v, k: colorOf(r.c) })), ...(leftOver > 0 ? [{ c: "Left over", v: leftOver, k: colorOf("Income") }] : [])];
+  // `paint` rather than a token: an outflow node can be a group the member
+  // created, which has a generated hue and no palette token to name.
+  const ins = [
+    ...incomeRows.map((r) => ({ c: r.c, v: r.v, paint: paint("Income") })),
+    ...(fromSavings > 0 ? [{ c: "From savings", v: fromSavings, paint: paint("Transfers & payments") }] : []),
+  ];
+  const outs = [
+    ...rows.map((r) => ({ c: r.c, v: r.v, paint: paint(r.c, r.hue) })),
+    ...(leftOver > 0 ? [{ c: "Left over", v: leftOver, paint: paint("Income") }] : []),
+  ];
   if (!ins.length && !outs.length) return <Empty>Nothing to chart in this range yet.</Empty>;
 
   // Tall enough for the node stack AND for one decluttered label per node.
@@ -235,7 +243,7 @@ export function FlowView({ rows, total, income, incomeRows }: {
   const scale = (bodyH - gap * Math.max(0, Math.max(ins.length, outs.length) - 1)) / drawn;
   const nodeW = 11, hubX = W / 2 - nodeW / 2, leftX = 0, rightX = W - nodeW;
 
-  const stack = (arr: { c: string; v: number; k: string }[]) => {
+  const stack = (arr: { c: string; v: number; paint: string }[]) => {
     let y = padT;
     return arr.map((n) => { const h = Math.max(3, n.v * scale); const r = { ...n, y, h }; y += h + gap; return r; });
   };
@@ -271,21 +279,21 @@ export function FlowView({ rows, total, income, incomeRows }: {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ aspectRatio: `${W} / ${H}` }} className="sc-svg sc-wide sc-flow" role="img" aria-label="Money in and where it went">
       {L.map((n, i) => (
-        <path key={`li${n.c}`} className="sc-rib" d={ribbon(leftX + nodeW, n.y, n.h, hubX, hubIn[i].y, hubIn[i].h)} fill={cssVar(n.k)} />
+        <path key={`li${n.c}`} className="sc-rib" d={ribbon(leftX + nodeW, n.y, n.h, hubX, hubIn[i].y, hubIn[i].h)} fill={n.paint} />
       ))}
       {R.map((n, i) => (
-        <path key={`ro${n.c}`} className="sc-rib" d={ribbon(hubX + nodeW, hubOut[i].y, hubOut[i].h, rightX, n.y, n.h)} fill={cssVar(n.k)} />
+        <path key={`ro${n.c}`} className="sc-rib" d={ribbon(hubX + nodeW, hubOut[i].y, hubOut[i].h, rightX, n.y, n.h)} fill={n.paint} />
       ))}
       <rect x={hubX} y={padT} width={nodeW} height={Math.max(2, hubH)} rx={3} className="sc-hub" />
       {L.map((n, i) => (
         <g key={`ln${n.c}`}>
-          <rect x={leftX} y={n.y} width={nodeW} height={n.h} rx={3} fill={cssVar(n.k)} />
+          <rect x={leftX} y={n.y} width={nodeW} height={n.h} rx={3} fill={n.paint} />
           <text className="sc-fl-n" x={leftX + nodeW + 8} y={LY[i]}>{n.c} · {money0(n.v)}</text>
         </g>
       ))}
       {R.map((n, i) => (
         <g key={`rn${n.c}`}>
-          <rect x={rightX} y={n.y} width={nodeW} height={n.h} rx={3} fill={cssVar(n.k)} />
+          <rect x={rightX} y={n.y} width={nodeW} height={n.h} rx={3} fill={n.paint} />
           <text className="sc-fl-n" x={rightX - 8} y={RY[i]} textAnchor="end">{n.c} · {money0(n.v)}</text>
         </g>
       ))}

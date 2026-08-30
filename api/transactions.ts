@@ -171,6 +171,7 @@ const pickerOptions = (tax: Taxonomy) =>
     g: g.label,
     kind: g.kind,
     emoji: g.emoji,
+    hue: g.hue,
     cats: g.leaves.map((l) => ({ id: l.id, label: l.label, emoji: l.emoji, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
     // Hidden categories ride along so the picker can offer to unhide them. A
     // hidden category the UI never mentions is indistinguishable from a deleted
@@ -259,6 +260,9 @@ export default async function handler(req: Request): Promise<Response> {
   // category and the wedge it lands in cannot disagree. Stage 2 of
   // docs/CUSTOM_CATEGORIES.md.
   const tax = await taxonomyFor(uid);
+  // Group label -> hue, for the row list. Built alongside the taxonomy rather
+  // than per row: a page is 100 rows over at most a dozen groups.
+  const hueOfRow = new Map(tax.groups.map((g) => [g.label, g.hue]));
 
   const scope = `transactions?user_id=eq.${uid}${rangeFilter(from, to)}`;
   const order = "&order=date.desc,id.desc";
@@ -325,6 +329,7 @@ export default async function handler(req: Request): Promise<Response> {
       g: row.g,
       k: row.k,
       e: row.e,
+      hue: hueOfRow.get(row.g) ?? null,
       // True when the member set this category themselves rather than Plaid.
       // The row marks it, so a category somebody corrected by hand is
       // distinguishable from one that was guessed.
@@ -423,6 +428,7 @@ export default async function handler(req: Request): Promise<Response> {
   // breakdown shows. That keeps the donut center, the legend total, and the
   // summary's Spent identical by construction. Same choice /api/finances makes.
   const emojiOfGroup = new Map(tax.groups.map((g) => [g.label, g.emoji]));
+  const hueOfGroup = new Map(tax.groups.map((g) => [g.label, g.hue]));
   const breakdown = tax.spendGroups
     .map((label) => {
       const v = Math.round(byGroup.get(label) || 0);
@@ -431,7 +437,10 @@ export default async function handler(req: Request): Promise<Response> {
         .map(([cat, amt]) => ({ c: cat, v: Math.round(amt), n: countByCat.get(cat) || 0 }))
         .filter((c) => c.v > 0)
         .sort((a, b) => b.v - a.v);
-      return { c: label, v, e: emojiOfGroup.get(label) ?? "", n: countByGroup.get(label) || 0, categories };
+      return {
+        c: label, v, e: emojiOfGroup.get(label) ?? "", hue: hueOfGroup.get(label) ?? null,
+        n: countByGroup.get(label) || 0, categories,
+      };
     })
     .filter((g) => g.v > 0);
 

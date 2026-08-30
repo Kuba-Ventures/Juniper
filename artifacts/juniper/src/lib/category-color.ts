@@ -32,6 +32,22 @@ export const categoryColor = (label: string, group?: string): SeriesKey =>
 // A group label is its own group, so the two arguments collapse.
 export const colorOf = (group: string): SeriesKey => categoryColor(group, group);
 
+// What to actually paint a wedge, a swatch or a border with.
+//
+// A built-in group has a palette token and `hue` is null, so this is exactly
+// `cssVar(colorOf(label))` and nothing changes. A group the member created has
+// no token, and there is no twelfth slot in the palette that stays legible
+// beside the others, so its colour is generated from its id (see hueFor in
+// api/_categorize.ts) and arrives as a hue.
+//
+// Only the hue travels. Lightness and saturation are CSS variables, so a
+// generated colour follows light and dark mode the same way every token does:
+// they are the one thing a server cannot know.
+export const paint = (group: string, hue?: number | null): string =>
+  hue == null
+    ? `var(${colorOf(group)})`
+    : `hsl(${hue} var(--jnpr-gen-s) var(--jnpr-gen-l))`;
+
 // The nine SPENDING groups, in the display order api/_categorize.ts walks, which
 // is the order the donut and the legend already read in. Income and
 // "Transfers & payments" are deliberately absent: neither is consumption, and a

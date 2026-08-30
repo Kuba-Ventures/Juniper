@@ -5,11 +5,16 @@ import { LOGO_KEY, money, type SeriesKey } from "@/lib/mock-data";
 export const cssVar = (k: string) => `var(${k})`;
 
 /* ---------- brand logo tile (falls back to a colored monogram) ---------- */
-export function BrandTile({ name, letter, k, big }: { name: string; letter: string; k: SeriesKey | string; big?: boolean }) {
+// `k` is a palette token; `paint` is a ready-made colour and wins when given.
+// A group the member created has no token, only a generated hue, so the tile
+// has to be able to take the finished colour rather than a name to look up.
+export function BrandTile({ name, letter, k, paint, big }: {
+  name: string; letter: string; k: SeriesKey | string; paint?: string; big?: boolean;
+}) {
   const key = LOGO_KEY[name];
   const cls = big ? "blogo-lg" : "blogo";
   if (key && LOGOS[key]) return <img className={cls} src={LOGOS[key]} alt="" />;
-  return <div className="tile" style={{ background: cssVar(k) }}>{letter}</div>;
+  return <div className="tile" style={{ background: paint ?? cssVar(k) }}>{letter}</div>;
 }
 
 /* ---------- plan icons ---------- */
@@ -155,10 +160,15 @@ export function NetWorthChart({
 }
 
 /* ---------- spending donut + legend with hover ---------- */
+// A group the member created has no palette token, only a generated hue, so a
+// wedge is painted from whichever the row carries.
+const paintOf = (d: { k: SeriesKey; hue?: number | null }) =>
+  d.hue == null ? cssVar(d.k) : `hsl(${d.hue} var(--jnpr-gen-s) var(--jnpr-gen-l))`;
+
 // The wedges take `k`, the colour, because that is what an arc can be filled
 // with. The legend beside them takes `e`, the icon, because that is what reads
 // in a list. Both, not one instead of the other.
-export function SpendingDonut({ data }: { data: { c: string; v: number; k: SeriesKey; e?: string }[] }) {
+export function SpendingDonut({ data }: { data: { c: string; v: number; k: SeriesKey; e?: string; hue?: number | null }[] }) {
   const total = data.reduce((a, b) => a + b.v, 0);
   const S = 170, cx = S / 2, cy = S / 2, rO = 78, rI = 50;
   const pol = (r: number, a: number): [number, number] => [cx + r * Math.cos((a * Math.PI) / 180), cy + r * Math.sin((a * Math.PI) / 180)];
@@ -175,7 +185,7 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
       <div className="chart" style={{ position: "relative" }}>
         <svg viewBox={`0 0 ${S} ${S}`} width={170} height={170} style={{ display: "block" }}>
           {slices.map((s, i) => (
-            <path key={i} className="slice" d={s.path} fill={cssVar(s.d.k)}
+            <path key={i} className="slice" d={s.path} fill={paintOf(s.d)}
               style={{ opacity: hi == null || hi === i ? 1 : 0.4 }}
               onPointerEnter={() => setHi(i)} onPointerLeave={() => setHi(null)} />
           ))}
@@ -185,7 +195,7 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
       <div className="legend">
         {data.map((d, i) => (
           <div className="lg" key={i} onPointerEnter={() => setHi(i)} onPointerLeave={() => setHi(null)}>
-            <span className="sw" style={{ background: cssVar(d.k) }} />
+            <span className="sw" style={{ background: paintOf(d) }} />
             <span className="ln"><span className="cat-em" aria-hidden>{d.e}</span>{d.c}</span>
             <span className="lv tnum">{money(d.v)}</span>
             <span className="lp tnum">{Math.round((d.v / total) * 100)}%</span>

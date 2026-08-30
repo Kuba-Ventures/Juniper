@@ -119,6 +119,16 @@ const CATEGORY_EMOJI: Record<string, string> = {
 // which would make a new category look like a duplicate of the group.
 export const NEW_CATEGORY_EMOJI = "🏷️";
 
+// A stable hue for a member-created group, from its id. Not random: the same
+// group is the same colour on every load, on every device, forever, with
+// nothing stored. The multiplier is a small prime so ids differing by one
+// character land far apart rather than adjacent.
+export function hueFor(id: string): number {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % 360;
+}
+
 // The five labels that name both a group and a leaf inside it take the group's
 // icon, which is what the map above already gives them.
 export const defaultEmoji = (label: string): string => CATEGORY_EMOJI[label.trim()] ?? "📦";
@@ -360,6 +370,21 @@ export interface ResolvedGroup {
   id: string;
   label: string;
   emoji: string;
+  /**
+   * A hue for a group the member made, or null for a built-in.
+   *
+   * The nine built-in groups have hand-picked palette tokens, which no
+   * generator would improve on. A group a member creates has no token to take,
+   * and there is no twelfth slot in the palette that stays legible beside the
+   * others on a donut, so its colour is derived from its id instead: stable for
+   * that group forever, distinct from its neighbours by construction, and
+   * needing no picker.
+   *
+   * Only the HUE travels. Lightness and saturation are CSS variables on the
+   * client, so a generated colour follows light and dark mode the way every
+   * built-in token already does.
+   */
+  hue: number | null;
   kind: CategoryKind;
   /** Offered: what a picker lists and what may be stored. */
   leaves: ResolvedLeaf[];
@@ -492,6 +517,9 @@ export const BUILTIN_GROUPS: ResolvedGroup[] = CATEGORY_GROUPS.map((g) => ({
   id: groupId(g.label),
   label: g.label,
   emoji: defaultEmoji(g.label),
+  // Null, not a generated hue: these have palette tokens, and a token is what
+  // ties a wedge to the rest of the brand.
+  hue: null,
   kind: g.kind,
   leaves: g.categories.map((c) => ({ id: leafId(c), label: c, emoji: defaultEmoji(c) })),
 }));

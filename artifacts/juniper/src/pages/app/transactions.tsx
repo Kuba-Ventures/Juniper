@@ -12,13 +12,12 @@
 // entry that was already there.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/juniper/app-frame";
-import { cssVar } from "@/components/juniper/primitives";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { BudgetsPanel } from "@/components/juniper/budgets-panel";
 import { CategoryPicker } from "@/components/juniper/category-picker";
-import { colorOf } from "@/lib/category-color";
+import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
   fetchTransactions, setTransactionCategory,
@@ -247,7 +246,7 @@ export default function Transactions() {
                     <td className="td-d">{fmtDay(t.d)}{t.pending && <span className="td-pend">Pending</span>}</td>
                     <td>
                       <div className="td-m">
-                        <MerchantMark logo={t.logo} merchant={t.merchant} name={t.m} k={colorOf(t.g)} />
+                        <MerchantMark logo={t.logo} merchant={t.merchant} name={t.m} k={colorOf(t.g)} paint={paint(t.g, t.hue)} />
                         <span className="td-mn">
                           {t.m}
                           {(t.institution || t.account) && (
@@ -266,7 +265,7 @@ export default function Transactions() {
                         <button
                           type="button"
                           className="ctag ctag-btn"
-                          style={{ borderColor: cssVar(colorOf(t.g)) }}
+                          style={{ borderColor: paint(t.g, t.hue) }}
                           aria-haspopup="dialog"
                           aria-expanded={editing?.id === t.id}
                           title={t.userSet ? "You set this category" : "Change category"}
@@ -281,7 +280,7 @@ export default function Transactions() {
                           {t.userSet && saving !== t.id && <span className="ctag-dot" aria-hidden />}
                         </button>
                       ) : (
-                        <span className="ctag" style={{ borderColor: cssVar(colorOf(t.g)) }}>
+                        <span className="ctag" style={{ borderColor: paint(t.g, t.hue) }}>
                           <span className="cat-em" aria-hidden>{t.e}</span>{t.c}
                         </span>
                       )}
@@ -333,7 +332,7 @@ function Legend({ rows, total, hi, onHi }: { rows: BreakdownRow[]; total: number
           style={{ opacity: hi == null || hi === i ? 1 : 0.5 }}>
           {/* Swatch AND icon: the swatch is what ties this row to its wedge on
               the donut, so it cannot be replaced by an emoji here. */}
-          <span className="sw" style={{ background: cssVar(colorOf(r.c)) }} />
+          <span className="sw" style={{ background: paint(r.c, r.hue) }} />
           <span className="ln"><span className="cat-em" aria-hidden>{r.e}</span>{r.c}</span>
           <span className="lv tnum">{money0(r.v)}</span>
           <span className="lp tnum">{total > 0 ? Math.round((r.v / total) * 100) : 0}%</span>
