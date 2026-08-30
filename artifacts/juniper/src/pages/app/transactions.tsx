@@ -277,11 +277,13 @@ export default function Transactions() {
                             setSaveFailed(null);
                           }}
                         >
-                          {saving === t.id ? "Saving…" : t.c}
+                          {saving === t.id ? "Saving…" : <><span className="cat-em" aria-hidden>{t.e}</span>{t.c}</>}
                           {t.userSet && saving !== t.id && <span className="ctag-dot" aria-hidden />}
                         </button>
                       ) : (
-                        <span className="ctag" style={{ borderColor: cssVar(colorOf(t.g)) }}>{t.c}</span>
+                        <span className="ctag" style={{ borderColor: cssVar(colorOf(t.g)) }}>
+                          <span className="cat-em" aria-hidden>{t.e}</span>{t.c}
+                        </span>
                       )}
                       {editing?.id === t.id && head?.taxonomy && (
                         <CategoryPicker
@@ -329,8 +331,10 @@ function Legend({ rows, total, hi, onHi }: { rows: BreakdownRow[]; total: number
       {rows.map((r, i) => (
         <div className="lg" key={r.c} onPointerEnter={() => onHi(i)} onPointerLeave={() => onHi(null)}
           style={{ opacity: hi == null || hi === i ? 1 : 0.5 }}>
+          {/* Swatch AND icon: the swatch is what ties this row to its wedge on
+              the donut, so it cannot be replaced by an emoji here. */}
           <span className="sw" style={{ background: cssVar(colorOf(r.c)) }} />
-          <span className="ln">{r.c}</span>
+          <span className="ln"><span className="cat-em" aria-hidden>{r.e}</span>{r.c}</span>
           <span className="lv tnum">{money0(r.v)}</span>
           <span className="lp tnum">{total > 0 ? Math.round((r.v / total) * 100) : 0}%</span>
         </div>

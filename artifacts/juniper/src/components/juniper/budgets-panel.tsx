@@ -21,6 +21,7 @@ import { money0 } from "@/lib/txn-format";
 
 interface Row {
   c: string;
+  e: string;            // the group's icon, for this list
   spent: number;        // this calendar month, not the page's range
   limit: number | null;
 }
@@ -59,13 +60,20 @@ export function BudgetsPanel() {
   const [failed, setFailed] = useState<string | null>(null);
 
   const spentOf = new Map(data.spending.map((s) => [s.c, s.v]));
+  // Icons ride on the spending rollup, which only carries the groups with money
+  // in them this month, so a group with nothing spent falls back to the budget's
+  // own icon and then to nothing rather than borrowing another group's.
+  const emojiOf = new Map<string, string>([
+    ...data.spending.map((s) => [s.c, s.e ?? ""] as [string, string]),
+    ...data.budgets.map((b) => [b.c, b.e ?? ""] as [string, string]),
+  ]);
   const limitOf = new Map(data.budgets.map((b) => [b.c, b.l]));
 
   // Fixed order, sorted once by this month's spend. It does NOT re-sort when a
   // limit is saved: a row jumping out from under the cursor in a 300px rail is
   // worse than a list that reads slightly out of priority.
   const rows: Row[] = SPEND_GROUPS
-    .map((c) => ({ c, spent: spentOf.get(c) ?? 0, limit: limitOf.get(c) ?? null }))
+    .map((c) => ({ c, e: emojiOf.get(c) ?? "", spent: spentOf.get(c) ?? 0, limit: limitOf.get(c) ?? null }))
     .sort((a, b) => b.spent - a.spent || a.c.localeCompare(b.c));
 
   const write = async (c: string, run: () => Promise<boolean>) => {
@@ -97,7 +105,7 @@ export function BudgetsPanel() {
           <div className="bp-row" key={r.c}>
             <div className="bp-top">
               <span className="sw" style={{ background: cssVar(colorOf(r.c)) }} />
-              <span className="ln">{r.c}</span>
+              <span className="ln"><span className="cat-em" aria-hidden>{r.e}</span>{r.c}</span>
               {editing !== r.c && (
                 <button className="bp-set" onClick={() => { setEditing(r.c); setFailed(null); }}>
                   {r.limit != null ? money0(r.limit) : "Set"}

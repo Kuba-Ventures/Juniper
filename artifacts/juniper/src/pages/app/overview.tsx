@@ -62,7 +62,7 @@ function BudgetsEmpty({ top }: { top?: SpendCat }) {
     <div className="bud-empty">
       <p>
         No budgets yet. A budget puts a monthly limit on one category, and Juniper flags it the moment you go over.
-        {top && <> <b>{top.c}</b> is your biggest this month at {money(top.v)}, a fair place to start.</>}
+        {top && <> <b><span className="cat-em" aria-hidden>{top.e}</span>{top.c}</b> is your biggest this month at {money(top.v)}, a fair place to start.</>}
       </p>
       <Link href="/app/transactions?panel=budgets" className="link">Set a budget →</Link>
     </div>
@@ -82,7 +82,7 @@ function Budgets({ items, spending }: { items: Budget[]; spending: SpendCat[] })
         return (
           <div className={`bud ${over ? "over" : "ok"}`} key={i}>
             <div className="t">
-              <span>{b.c}</span>
+              <span><span className="cat-em" aria-hidden>{b.e}</span>{b.c}</span>
               <span className="r"><b className="tnum">{money(b.s)}</b> of {money(b.l)}{over && <> · <span className="flag">{money(b.s - b.l)} over</span></>}</span>
             </div>
             <div className="bar"><i style={{ width: `${pct}%` }} /></div>

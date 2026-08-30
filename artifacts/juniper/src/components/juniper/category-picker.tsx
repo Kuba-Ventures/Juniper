@@ -37,8 +37,6 @@
 // coordinates taken from the anchor keep the panel on the row it belongs to.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cssVar } from "@/components/juniper/primitives";
-import { colorOf } from "@/lib/category-color";
 import { createCategory, renameCategory, deleteCategory, setCategoryHidden } from "@/lib/categories";
 import type { CategoryGroupOption } from "@/lib/transactions";
 
@@ -235,7 +233,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
               {createTargets.map((g) => (
                 <button key={g.id} type="button" className="cp-i cp-create-i"
                   onClick={() => void run(() => createCategory(q.trim(), g.id))} disabled={saving}>
-                  <span className="sw" style={{ background: cssVar(colorOf(g.g)) }} />
+                  <span className="cat-em" aria-hidden>{g.emoji}</span>
                   <span className="cp-create-n">{g.g}</span>
                   {g.kind !== "spend" && <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>}
                 </button>
@@ -247,7 +245,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
           {groups.map((g) => (
             <div key={g.id}>
               <div className="cp-g">
-                <span className="sw" style={{ background: cssVar(colorOf(g.g)) }} />
+                <span className="cat-em" aria-hidden>{g.emoji}</span>
                 {g.g}
                 {g.kind !== "spend" && <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>}
               </div>
@@ -268,6 +266,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
                       className={`cp-i${c.label === value ? " on" : ""}`}
                       onClick={() => onPick(c.label)}
                     >
+                      <span className="cat-em" aria-hidden>{c.emoji}</span>
                       {c.label}
                     </button>
                     <button
@@ -293,7 +292,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
               </button>
               {showHidden && hidden.map((c) => (
                 <div className="cp-row" key={c.id}>
-                  <span className="cp-i cp-off">{c.label}</span>
+                  <span className="cp-i cp-off"><span className="cat-em" aria-hidden>{c.emoji}</span>{c.label}</span>
                   <button type="button" className="cp-edit cp-always" disabled={busy || saving}
                     onClick={() => void run(() => setCategoryHidden(c.id, false))}>
                     Unhide

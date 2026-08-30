@@ -155,7 +155,10 @@ export function NetWorthChart({
 }
 
 /* ---------- spending donut + legend with hover ---------- */
-export function SpendingDonut({ data }: { data: { c: string; v: number; k: SeriesKey }[] }) {
+// The wedges take `k`, the colour, because that is what an arc can be filled
+// with. The legend beside them takes `e`, the icon, because that is what reads
+// in a list. Both, not one instead of the other.
+export function SpendingDonut({ data }: { data: { c: string; v: number; k: SeriesKey; e?: string }[] }) {
   const total = data.reduce((a, b) => a + b.v, 0);
   const S = 170, cx = S / 2, cy = S / 2, rO = 78, rI = 50;
   const pol = (r: number, a: number): [number, number] => [cx + r * Math.cos((a * Math.PI) / 180), cy + r * Math.sin((a * Math.PI) / 180)];
@@ -183,7 +186,7 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
         {data.map((d, i) => (
           <div className="lg" key={i} onPointerEnter={() => setHi(i)} onPointerLeave={() => setHi(null)}>
             <span className="sw" style={{ background: cssVar(d.k) }} />
-            <span className="ln">{d.c}</span>
+            <span className="ln"><span className="cat-em" aria-hidden>{d.e}</span>{d.c}</span>
             <span className="lv tnum">{money(d.v)}</span>
             <span className="lp tnum">{Math.round((d.v / total) * 100)}%</span>
           </div>

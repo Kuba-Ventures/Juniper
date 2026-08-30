@@ -67,6 +67,62 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
   { label: "Transfers & payments", kind: "transfer", categories: ["Credit card payment", "Transfer to savings", "Transfer to investments", "Transfer out", "Transfer in"] },
 ];
 
+// ── Default emoji, one per label ────────────────────────────────────────────
+//
+// A separate map rather than a field on CATEGORY_GROUPS, so the table that
+// decides classification and the ids derived from it are untouched: an emoji is
+// decoration, and it should not be able to break a category's identity.
+// scripts/check-category-emoji.ts asserts every label has exactly one, so a
+// category added later cannot quietly ship without an icon.
+//
+// CHOSEN FOR RENDERING, NOT FOR CHARM. Every one of these is Unicode 11 (2018)
+// or older, which is what Windows 10 1809 and macOS 10.14 shipped, so none of
+// them can land as an empty box on a machine that is a few years behind. That
+// rules out some obviously better icons (a stethoscope for Medical is Unicode
+// 12, a nest egg for Retirement is Unicode 14), and the second-best emoji that
+// definitely draws beats the best one that might not.
+const CATEGORY_EMOJI: Record<string, string> = {
+  // Groups
+  "Housing": "🏠", "Groceries & dining": "🍽️", "Transportation": "🚗",
+  "Debt payments": "💳", "Shopping": "🛍️", "Fun & travel": "✈️",
+  "Utilities & bills": "💡", "Kids & health": "🏥", "Everything else": "📦",
+  "Income": "💰", "Transfers & payments": "🔁",
+  // Housing
+  "Rent": "🏠", "Mortgage": "🏦", "Home & repairs": "🔨",
+  // Groceries & dining
+  "Groceries": "🛒", "Restaurants & bars": "🍽️", "Coffee shops": "☕",
+  // Transportation
+  "Gas": "⛽", "Car payment": "🚙", "Auto & parking": "🅿️", "Rides & transit": "🚕",
+  // Debt payments
+  "Student loans": "🎓", "Loan payment": "🏦",
+  // Shopping
+  "Clothing": "👕", "Electronics": "💻", "Gifts & donations": "🎁",
+  // Fun & travel
+  "Entertainment": "🎬", "Streaming & music": "🎵", "Travel": "✈️",
+  // Utilities & bills
+  "Utilities": "💡", "Phone & internet": "📱", "Insurance": "🛡️",
+  // Kids & health
+  "Medical": "🏥", "Dental & vision": "🦷", "Pharmacy": "💊",
+  "Fitness": "🏋️", "Personal care": "💇", "Childcare": "👶",
+  // Everything else
+  "Bank fees": "🏦", "Taxes & government": "🏛️", "Education": "📚", "Services": "🔧",
+  // Income
+  "Paycheck": "💵", "Interest & dividends": "📈", "Retirement income": "🏖️",
+  "Tax refund": "🧾", "Other income": "💰",
+  // Transfers & payments
+  "Credit card payment": "💳", "Transfer to savings": "🏦",
+  "Transfer to investments": "📈", "Transfer out": "↗️", "Transfer in": "↘️",
+};
+
+// A category a member made has no default worth guessing, so it gets a label
+// tag: honest about being theirs, and better than borrowing its group's icon,
+// which would make a new category look like a duplicate of the group.
+export const NEW_CATEGORY_EMOJI = "🏷️";
+
+// The five labels that name both a group and a leaf inside it take the group's
+// icon, which is what the map above already gives them.
+export const defaultEmoji = (label: string): string => CATEGORY_EMOJI[label.trim()] ?? "📦";
+
 const GROUP_KIND: Record<string, CategoryKind> = {};
 const CATEGORY_GROUP: Record<string, string> = {};
 for (const g of CATEGORY_GROUPS) {
@@ -299,10 +355,11 @@ function categorize(primary?: string, detailed?: string): string {
 // derived from a label: a member who renames "Coffee shops" to "Coffee" keeps
 // the id `c_coffee_shops`, which is the whole point of having one, and a
 // category they created has an id that never had a slug behind it.
-export interface ResolvedLeaf { id: string; label: string }
+export interface ResolvedLeaf { id: string; label: string; emoji: string }
 export interface ResolvedGroup {
   id: string;
   label: string;
+  emoji: string;
   kind: CategoryKind;
   /** Offered: what a picker lists and what may be stored. */
   leaves: ResolvedLeaf[];
@@ -361,7 +418,7 @@ export interface Taxonomy {
    * written before migration 0024 backfilled the ids, and for a value outside
    * the taxonomy, where the stored text is still the most honest thing to show.
    */
-  classify(categoryId?: string | null, label?: string | null): { c: string; g: string; k: CategoryKind };
+  classify(categoryId?: string | null, label?: string | null): { c: string; g: string; k: CategoryKind; e: string };
 }
 
 export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
@@ -371,19 +428,19 @@ export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
   const writable = new Set<string>();
   // id -> what that category currently is. Groups and leaves cannot collide
   // here even where they share a name, because their ids differ by prefix.
-  const byId: Record<string, { label: string; group: string; kind: CategoryKind }> = {};
+  const byId: Record<string, { label: string; group: string; kind: CategoryKind; emoji: string }> = {};
   for (const g of groups) {
     kindByGroup[g.label] = g.kind;
     idByLabel[g.label] = g.id;
     writable.add(g.label);
-    byId[g.id] = { label: g.label, group: g.label, kind: g.kind };
+    byId[g.id] = { label: g.label, group: g.label, kind: g.kind, emoji: g.emoji };
     for (const leaf of g.leaves) {
       groupByLeaf[leaf.label] = g.label;
       // Leaves after groups, so where a label names both, the LEAF id wins.
       // Same order the migration's mapping was generated in.
       idByLabel[leaf.label] = leaf.id;
       writable.add(leaf.label);
-      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind };
+      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind, emoji: leaf.emoji };
     }
     // Hidden leaves join every lookup EXCEPT `writable`. That single omission
     // is what "hidden" means: it cannot be chosen, and everything else about it
@@ -391,7 +448,7 @@ export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
     for (const leaf of g.hidden ?? []) {
       groupByLeaf[leaf.label] = g.label;
       idByLabel[leaf.label] = leaf.id;
-      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind };
+      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind, emoji: leaf.emoji };
     }
   }
   const group = (category?: string | null): string => {
@@ -416,12 +473,14 @@ export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
     classify: (categoryId, label) => {
       const id = (categoryId || "").trim();
       const hit = id ? byId[id] : undefined;
-      if (hit) return { c: hit.label, g: hit.group, k: hit.kind };
+      if (hit) return { c: hit.label, g: hit.group, k: hit.kind, e: hit.emoji };
       // No id, or an id this member's taxonomy does not know. Fall back to the
       // stored text, which is exactly what every read did before this existed.
       const c = (label || "").trim() || "Everything else";
       const g = group(c);
-      return { c, g, k: kindByGroup[g] ?? "spend" };
+      // The label's own default, not the group's: an unrecognized label still
+      // gets the fallback icon rather than borrowing its group's.
+      return { c, g, k: kindByGroup[g] ?? "spend", e: idByLabel[c] ? defaultEmoji(c) : defaultEmoji(g) };
     },
   };
 }
@@ -432,8 +491,9 @@ export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
 export const BUILTIN_GROUPS: ResolvedGroup[] = CATEGORY_GROUPS.map((g) => ({
   id: groupId(g.label),
   label: g.label,
+  emoji: defaultEmoji(g.label),
   kind: g.kind,
-  leaves: g.categories.map((c) => ({ id: leafId(c), label: c })),
+  leaves: g.categories.map((c) => ({ id: leafId(c), label: c, emoji: defaultEmoji(c) })),
 }));
 
 export const BUILTIN_TAXONOMY: Taxonomy = buildTaxonomy(BUILTIN_GROUPS);
@@ -483,9 +543,14 @@ export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategor
   }
 
   return base.map((g) => {
-    const named = (l: ResolvedLeaf) => (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)! } : l);
+    // A rename keeps the leaf's icon: renaming "Coffee shops" to "Coffee" does
+    // not make it stop being coffee.
+    const named = (l: ResolvedLeaf) =>
+      (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)!, emoji: l.emoji } : l);
     const all = g.leaves.map(named);
-    for (const c of created) if (c.group_id === g.id) all.push({ id: c.category_id, label: c.name! });
+    for (const c of created) {
+      if (c.group_id === g.id) all.push({ id: c.category_id, label: c.name!, emoji: NEW_CATEGORY_EMOJI });
+    }
     // Split, rather than filtered: the hidden ones still have to resolve.
     const leaves = all.filter((l) => !archived.has(l.id));
     const hidden = all.filter((l) => archived.has(l.id));

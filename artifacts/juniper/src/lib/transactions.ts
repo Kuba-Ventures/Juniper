@@ -17,6 +17,7 @@ export interface TxnRow {
   merchant: string | null;   // Plaid's unmodified merchant string
   logo: string | null;       // Plaid's merchant art, or the merchant cache, else null
   c: string;                 // leaf category
+  e: string;                 // the category's icon, for lists (a chart needs the colour)
   g: string;                 // group it rolls into
   k: "spend" | "income" | "transfer";
   v: number;                 // UI sign: negative is spending, positive is money in
@@ -34,10 +35,11 @@ export interface TxnRow {
 // The category picker's options, shipped with the first page rather than kept
 // as a second copy of ~50 leaf labels in the client. api/_categorize.ts stays
 // the source of truth.
-export interface CategoryOption { id: string; label: string; custom: boolean }
+export interface CategoryOption { id: string; label: string; emoji: string; custom: boolean }
 export interface CategoryGroupOption {
   id: string;
   g: string;
+  emoji: string;
   kind: "spend" | "income" | "transfer";
   /** Offered. */
   cats: CategoryOption[];
@@ -45,7 +47,7 @@ export interface CategoryGroupOption {
   hidden?: CategoryOption[];
 }
 export interface BreakdownRow {
-  c: string; v: number; n: number; pct: number;
+  c: string; e: string; v: number; n: number; pct: number;
   categories: { c: string; v: number; n: number }[];
 }
 export interface TxnSummary {

@@ -170,11 +170,12 @@ const pickerOptions = (tax: Taxonomy) =>
     id: g.id,
     g: g.label,
     kind: g.kind,
-    cats: g.leaves.map((l) => ({ id: l.id, label: l.label, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
+    emoji: g.emoji,
+    cats: g.leaves.map((l) => ({ id: l.id, label: l.label, emoji: l.emoji, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
     // Hidden categories ride along so the picker can offer to unhide them. A
     // hidden category the UI never mentions is indistinguishable from a deleted
     // one, which is the distinction the whole feature turns on.
-    hidden: (g.hidden ?? []).map((l) => ({ id: l.id, label: l.label, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
+    hidden: (g.hidden ?? []).map((l) => ({ id: l.id, label: l.label, emoji: l.emoji, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
   }));
 
 // PATCH /api/transactions  { id, category }
@@ -224,7 +225,7 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   // Through classify, like every read, so the row the client swaps in is
   // labelled exactly as the next page load will label it.
   const row = tax.classify(tax.categoryIdOf(stored), stored);
-  return json({ id, c: row.c, g: row.g, k: row.k, userSet: true });
+  return json({ id, c: row.c, g: row.g, k: row.k, e: row.e, userSet: true });
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -323,6 +324,7 @@ export default async function handler(req: Request): Promise<Response> {
       c: row.c,
       g: row.g,
       k: row.k,
+      e: row.e,
       // True when the member set this category themselves rather than Plaid.
       // The row marks it, so a category somebody corrected by hand is
       // distinguishable from one that was guessed.
@@ -420,6 +422,7 @@ export default async function handler(req: Request): Promise<Response> {
   // cannot draw, so it is dropped and `spent` is DEFINED as the sum of what the
   // breakdown shows. That keeps the donut center, the legend total, and the
   // summary's Spent identical by construction. Same choice /api/finances makes.
+  const emojiOfGroup = new Map(tax.groups.map((g) => [g.label, g.emoji]));
   const breakdown = tax.spendGroups
     .map((label) => {
       const v = Math.round(byGroup.get(label) || 0);
@@ -428,7 +431,7 @@ export default async function handler(req: Request): Promise<Response> {
         .map(([cat, amt]) => ({ c: cat, v: Math.round(amt), n: countByCat.get(cat) || 0 }))
         .filter((c) => c.v > 0)
         .sort((a, b) => b.v - a.v);
-      return { c: label, v, n: countByGroup.get(label) || 0, categories };
+      return { c: label, v, e: emojiOfGroup.get(label) ?? "", n: countByGroup.get(label) || 0, categories };
     })
     .filter((g) => g.v > 0);
 
