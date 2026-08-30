@@ -1,0 +1,571 @@
+{
+  "labelAnswers": {
+    "Housing": {
+      "g": "Housing",
+      "k": "spend",
+      "isGroup": true,
+      "id": "g_housing"
+    },
+    "Rent": {
+      "g": "Housing",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_rent"
+    },
+    "Mortgage": {
+      "g": "Housing",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_mortgage"
+    },
+    "Home & repairs": {
+      "g": "Housing",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_home_repairs"
+    },
+    "Groceries & dining": {
+      "g": "Groceries & dining",
+      "k": "spend",
+      "isGroup": true,
+      "id": "c_groceries_dining"
+    },
+    "Groceries": {
+      "g": "Groceries & dining",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_groceries"
+    },
+    "Restaurants & bars": {
+      "g": "Groceries & dining",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_restaurants_bars"
+    },
+    "Coffee shops": {
+      "g": "Groceries & dining",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_coffee_shops"
+    },
+    "Transportation": {
+      "g": "Transportation",
+      "k": "spend",
+      "isGroup": true,
+      "id": "c_transportation"
+    },
+    "Gas": {
+      "g": "Transportation",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_gas"
+    },
+    "Car payment": {
+      "g": "Transportation",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_car_payment"
+    },
+    "Auto & parking": {
+      "g": "Transportation",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_auto_parking"
+    },
+    "Rides & transit": {
+      "g": "Transportation",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_rides_transit"
+    },
+    "Debt payments": {
+      "g": "Debt payments",
+      "k": "spend",
+      "isGroup": true,
+      "id": "g_debt_payments"
+    },
+    "Student loans": {
+      "g": "Debt payments",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_student_loans"
+    },
+    "Loan payment": {
+      "g": "Debt payments",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_loan_payment"
+    },
+    "Shopping": {
+      "g": "Shopping",
+      "k": "spend",
+      "isGroup": true,
+      "id": "c_shopping"
+    },
+    "Clothing": {
+      "g": "Shopping",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_clothing"
+    },
+    "Electronics": {
+      "g": "Shopping",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_electronics"
+    },
+    "Gifts & donations": {
+      "g": "Shopping",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_gifts_donations"
+    },
+    "Fun & travel": {
+      "g": "Fun & travel",
+      "k": "spend",
+      "isGroup": true,
+      "id": "g_fun_travel"
+    },
+    "Entertainment": {
+      "g": "Fun & travel",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_entertainment"
+    },
+    "Streaming & music": {
+      "g": "Fun & travel",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_streaming_music"
+    },
+    "Travel": {
+      "g": "Fun & travel",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_travel"
+    },
+    "Utilities & bills": {
+      "g": "Utilities & bills",
+      "k": "spend",
+      "isGroup": true,
+      "id": "c_utilities_bills"
+    },
+    "Utilities": {
+      "g": "Utilities & bills",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_utilities"
+    },
+    "Phone & internet": {
+      "g": "Utilities & bills",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_phone_internet"
+    },
+    "Insurance": {
+      "g": "Utilities & bills",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_insurance"
+    },
+    "Kids & health": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": true,
+      "id": "g_kids_health"
+    },
+    "Medical": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_medical"
+    },
+    "Dental & vision": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_dental_vision"
+    },
+    "Pharmacy": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_pharmacy"
+    },
+    "Fitness": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_fitness"
+    },
+    "Personal care": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_personal_care"
+    },
+    "Childcare": {
+      "g": "Kids & health",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_childcare"
+    },
+    "Everything else": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": true,
+      "id": "c_everything_else"
+    },
+    "Bank fees": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_bank_fees"
+    },
+    "Taxes & government": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_taxes_government"
+    },
+    "Education": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_education"
+    },
+    "Services": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_services"
+    },
+    "Income": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": true,
+      "id": "g_income"
+    },
+    "Paycheck": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": false,
+      "id": "c_paycheck"
+    },
+    "Interest & dividends": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": false,
+      "id": "c_interest_dividends"
+    },
+    "Retirement income": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": false,
+      "id": "c_retirement_income"
+    },
+    "Tax refund": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": false,
+      "id": "c_tax_refund"
+    },
+    "Other income": {
+      "g": "Income",
+      "k": "income",
+      "isGroup": false,
+      "id": "c_other_income"
+    },
+    "Transfers & payments": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": true,
+      "id": "g_transfers_payments"
+    },
+    "Credit card payment": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": false,
+      "id": "c_credit_card_payment"
+    },
+    "Transfer to savings": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": false,
+      "id": "c_transfer_to_savings"
+    },
+    "Transfer to investments": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": false,
+      "id": "c_transfer_to_investments"
+    },
+    "Transfer out": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": false,
+      "id": "c_transfer_out"
+    },
+    "Transfer in": {
+      "g": "Transfers & payments",
+      "k": "transfer",
+      "isGroup": false,
+      "id": "c_transfer_in"
+    },
+    "": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": null
+    },
+    "   ": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": null
+    },
+    "Unknown Category": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": null
+    },
+    "housing": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": null
+    },
+    "HOUSING": {
+      "g": "Everything else",
+      "k": "spend",
+      "isGroup": false,
+      "id": null
+    },
+    " Rent ": {
+      "g": "Housing",
+      "k": "spend",
+      "isGroup": false,
+      "id": "c_rent"
+    }
+  },
+  "categorizeAnswers": {
+    "D:INCOME_WAGES": "Paycheck",
+    "D:INCOME_INTEREST_EARNED": "Interest & dividends",
+    "D:INCOME_DIVIDENDS": "Interest & dividends",
+    "D:INCOME_RETIREMENT_PENSION": "Retirement income",
+    "D:INCOME_TAX_REFUND": "Tax refund",
+    "D:INCOME_UNEMPLOYMENT": "Other income",
+    "D:INCOME_OTHER_INCOME": "Other income",
+    "D:TRANSFER_IN_DEPOSIT": "Transfer in",
+    "D:TRANSFER_IN_ACCOUNT_TRANSFER": "Transfer in",
+    "D:TRANSFER_IN_SAVINGS": "Transfer in",
+    "D:TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS": "Transfer in",
+    "D:TRANSFER_IN_CASH_ADVANCES_AND_LOANS": "Transfer in",
+    "D:TRANSFER_IN_OTHER_TRANSFER_IN": "Transfer in",
+    "D:TRANSFER_OUT_SAVINGS": "Transfer to savings",
+    "D:TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS": "Transfer to investments",
+    "D:TRANSFER_OUT_ACCOUNT_TRANSFER": "Transfer out",
+    "D:TRANSFER_OUT_WITHDRAWAL": "Transfer out",
+    "D:TRANSFER_OUT_OTHER_TRANSFER_OUT": "Transfer out",
+    "D:LOAN_PAYMENTS_CREDIT_CARD_PAYMENT": "Credit card payment",
+    "D:LOAN_PAYMENTS_MORTGAGE_PAYMENT": "Mortgage",
+    "D:LOAN_PAYMENTS_CAR_PAYMENT": "Car payment",
+    "D:LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT": "Student loans",
+    "D:LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT": "Loan payment",
+    "D:LOAN_PAYMENTS_OTHER_PAYMENT": "Loan payment",
+    "D:RENT_AND_UTILITIES_RENT": "Rent",
+    "D:RENT_AND_UTILITIES_GAS_AND_ELECTRICITY": "Utilities",
+    "D:RENT_AND_UTILITIES_WATER": "Utilities",
+    "D:RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT": "Utilities",
+    "D:RENT_AND_UTILITIES_OTHER_UTILITIES": "Utilities",
+    "D:RENT_AND_UTILITIES_TELEPHONE": "Phone & internet",
+    "D:RENT_AND_UTILITIES_INTERNET_AND_CABLE": "Phone & internet",
+    "D:FOOD_AND_DRINK_GROCERIES": "Groceries",
+    "D:FOOD_AND_DRINK_COFFEE": "Coffee shops",
+    "D:FOOD_AND_DRINK_RESTAURANT": "Restaurants & bars",
+    "D:FOOD_AND_DRINK_FAST_FOOD": "Restaurants & bars",
+    "D:FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR": "Restaurants & bars",
+    "D:FOOD_AND_DRINK_VENDING_MACHINES": "Restaurants & bars",
+    "D:TRANSPORTATION_GAS": "Gas",
+    "D:TRANSPORTATION_PARKING": "Auto & parking",
+    "D:TRANSPORTATION_TOLLS": "Auto & parking",
+    "D:TRANSPORTATION_TAXIS_AND_RIDE_SHARES": "Rides & transit",
+    "D:TRANSPORTATION_PUBLIC_TRANSIT": "Rides & transit",
+    "D:TRANSPORTATION_BIKES_AND_SCOOTERS": "Rides & transit",
+    "D:TRAVEL_FLIGHTS": "Travel",
+    "D:TRAVEL_LODGING": "Travel",
+    "D:TRAVEL_RENTAL_CARS": "Travel",
+    "D:TRAVEL_OTHER_TRAVEL": "Travel",
+    "D:GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES": "Clothing",
+    "D:GENERAL_MERCHANDISE_ELECTRONICS": "Electronics",
+    "D:GENERAL_MERCHANDISE_GIFTS_AND_NOVELTIES": "Gifts & donations",
+    "D:ENTERTAINMENT_TV_AND_MOVIES": "Streaming & music",
+    "D:ENTERTAINMENT_MUSIC_AND_AUDIO": "Streaming & music",
+    "D:MEDICAL_DENTAL_CARE": "Dental & vision",
+    "D:MEDICAL_EYE_CARE": "Dental & vision",
+    "D:MEDICAL_PHARMACIES_AND_SUPPLEMENTS": "Pharmacy",
+    "D:PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS": "Fitness",
+    "D:GENERAL_SERVICES_INSURANCE": "Insurance",
+    "D:GENERAL_SERVICES_CHILDCARE": "Childcare",
+    "D:GENERAL_SERVICES_EDUCATION": "Education",
+    "D:GENERAL_SERVICES_AUTOMOTIVE": "Auto & parking",
+    "D:GOVERNMENT_AND_NON_PROFIT_DONATIONS": "Gifts & donations",
+    "D:GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT": "Taxes & government",
+    "P:INCOME": "Other income",
+    "P:TRANSFER_IN": "Transfer in",
+    "P:TRANSFER_OUT": "Transfer out",
+    "P:LOAN_PAYMENTS": "Loan payment",
+    "P:BANK_FEES": "Bank fees",
+    "P:ENTERTAINMENT": "Entertainment",
+    "P:FOOD_AND_DRINK": "Groceries & dining",
+    "P:GENERAL_MERCHANDISE": "Shopping",
+    "P:HOME_IMPROVEMENT": "Home & repairs",
+    "P:MEDICAL": "Medical",
+    "P:PERSONAL_CARE": "Personal care",
+    "P:GENERAL_SERVICES": "Services",
+    "P:GOVERNMENT_AND_NON_PROFIT": "Taxes & government",
+    "P:TRANSPORTATION": "Transportation",
+    "P:TRAVEL": "Travel",
+    "P:RENT_AND_UTILITIES": "Utilities & bills",
+    "INCOME|INCOME_WAGES": "Paycheck",
+    "INCOME|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "INCOME|INCOME_DIVIDENDS": "Interest & dividends",
+    "INCOME|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "INCOME|INCOME_TAX_REFUND": "Tax refund",
+    "INCOME|INCOME_UNEMPLOYMENT": "Other income",
+    "INCOME|INCOME_OTHER_INCOME": "Other income",
+    "INCOME|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "TRANSFER_IN|INCOME_WAGES": "Paycheck",
+    "TRANSFER_IN|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "TRANSFER_IN|INCOME_DIVIDENDS": "Interest & dividends",
+    "TRANSFER_IN|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "TRANSFER_IN|INCOME_TAX_REFUND": "Tax refund",
+    "TRANSFER_IN|INCOME_UNEMPLOYMENT": "Other income",
+    "TRANSFER_IN|INCOME_OTHER_INCOME": "Other income",
+    "TRANSFER_IN|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "TRANSFER_OUT|INCOME_WAGES": "Paycheck",
+    "TRANSFER_OUT|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "TRANSFER_OUT|INCOME_DIVIDENDS": "Interest & dividends",
+    "TRANSFER_OUT|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "TRANSFER_OUT|INCOME_TAX_REFUND": "Tax refund",
+    "TRANSFER_OUT|INCOME_UNEMPLOYMENT": "Other income",
+    "TRANSFER_OUT|INCOME_OTHER_INCOME": "Other income",
+    "TRANSFER_OUT|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "LOAN_PAYMENTS|INCOME_WAGES": "Paycheck",
+    "LOAN_PAYMENTS|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "LOAN_PAYMENTS|INCOME_DIVIDENDS": "Interest & dividends",
+    "LOAN_PAYMENTS|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "LOAN_PAYMENTS|INCOME_TAX_REFUND": "Tax refund",
+    "LOAN_PAYMENTS|INCOME_UNEMPLOYMENT": "Other income",
+    "LOAN_PAYMENTS|INCOME_OTHER_INCOME": "Other income",
+    "LOAN_PAYMENTS|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "BANK_FEES|INCOME_WAGES": "Paycheck",
+    "BANK_FEES|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "BANK_FEES|INCOME_DIVIDENDS": "Interest & dividends",
+    "BANK_FEES|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "BANK_FEES|INCOME_TAX_REFUND": "Tax refund",
+    "BANK_FEES|INCOME_UNEMPLOYMENT": "Other income",
+    "BANK_FEES|INCOME_OTHER_INCOME": "Other income",
+    "BANK_FEES|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "ENTERTAINMENT|INCOME_WAGES": "Paycheck",
+    "ENTERTAINMENT|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "ENTERTAINMENT|INCOME_DIVIDENDS": "Interest & dividends",
+    "ENTERTAINMENT|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "ENTERTAINMENT|INCOME_TAX_REFUND": "Tax refund",
+    "ENTERTAINMENT|INCOME_UNEMPLOYMENT": "Other income",
+    "ENTERTAINMENT|INCOME_OTHER_INCOME": "Other income",
+    "ENTERTAINMENT|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "FOOD_AND_DRINK|INCOME_WAGES": "Paycheck",
+    "FOOD_AND_DRINK|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "FOOD_AND_DRINK|INCOME_DIVIDENDS": "Interest & dividends",
+    "FOOD_AND_DRINK|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "FOOD_AND_DRINK|INCOME_TAX_REFUND": "Tax refund",
+    "FOOD_AND_DRINK|INCOME_UNEMPLOYMENT": "Other income",
+    "FOOD_AND_DRINK|INCOME_OTHER_INCOME": "Other income",
+    "FOOD_AND_DRINK|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "GENERAL_MERCHANDISE|INCOME_WAGES": "Paycheck",
+    "GENERAL_MERCHANDISE|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "GENERAL_MERCHANDISE|INCOME_DIVIDENDS": "Interest & dividends",
+    "GENERAL_MERCHANDISE|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "GENERAL_MERCHANDISE|INCOME_TAX_REFUND": "Tax refund",
+    "GENERAL_MERCHANDISE|INCOME_UNEMPLOYMENT": "Other income",
+    "GENERAL_MERCHANDISE|INCOME_OTHER_INCOME": "Other income",
+    "GENERAL_MERCHANDISE|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "HOME_IMPROVEMENT|INCOME_WAGES": "Paycheck",
+    "HOME_IMPROVEMENT|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "HOME_IMPROVEMENT|INCOME_DIVIDENDS": "Interest & dividends",
+    "HOME_IMPROVEMENT|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "HOME_IMPROVEMENT|INCOME_TAX_REFUND": "Tax refund",
+    "HOME_IMPROVEMENT|INCOME_UNEMPLOYMENT": "Other income",
+    "HOME_IMPROVEMENT|INCOME_OTHER_INCOME": "Other income",
+    "HOME_IMPROVEMENT|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "MEDICAL|INCOME_WAGES": "Paycheck",
+    "MEDICAL|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "MEDICAL|INCOME_DIVIDENDS": "Interest & dividends",
+    "MEDICAL|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "MEDICAL|INCOME_TAX_REFUND": "Tax refund",
+    "MEDICAL|INCOME_UNEMPLOYMENT": "Other income",
+    "MEDICAL|INCOME_OTHER_INCOME": "Other income",
+    "MEDICAL|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "PERSONAL_CARE|INCOME_WAGES": "Paycheck",
+    "PERSONAL_CARE|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "PERSONAL_CARE|INCOME_DIVIDENDS": "Interest & dividends",
+    "PERSONAL_CARE|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "PERSONAL_CARE|INCOME_TAX_REFUND": "Tax refund",
+    "PERSONAL_CARE|INCOME_UNEMPLOYMENT": "Other income",
+    "PERSONAL_CARE|INCOME_OTHER_INCOME": "Other income",
+    "PERSONAL_CARE|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "GENERAL_SERVICES|INCOME_WAGES": "Paycheck",
+    "GENERAL_SERVICES|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "GENERAL_SERVICES|INCOME_DIVIDENDS": "Interest & dividends",
+    "GENERAL_SERVICES|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "GENERAL_SERVICES|INCOME_TAX_REFUND": "Tax refund",
+    "GENERAL_SERVICES|INCOME_UNEMPLOYMENT": "Other income",
+    "GENERAL_SERVICES|INCOME_OTHER_INCOME": "Other income",
+    "GENERAL_SERVICES|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_WAGES": "Paycheck",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_DIVIDENDS": "Interest & dividends",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_TAX_REFUND": "Tax refund",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_UNEMPLOYMENT": "Other income",
+    "GOVERNMENT_AND_NON_PROFIT|INCOME_OTHER_INCOME": "Other income",
+    "GOVERNMENT_AND_NON_PROFIT|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "TRANSPORTATION|INCOME_WAGES": "Paycheck",
+    "TRANSPORTATION|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "TRANSPORTATION|INCOME_DIVIDENDS": "Interest & dividends",
+    "TRANSPORTATION|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "TRANSPORTATION|INCOME_TAX_REFUND": "Tax refund",
+    "TRANSPORTATION|INCOME_UNEMPLOYMENT": "Other income",
+    "TRANSPORTATION|INCOME_OTHER_INCOME": "Other income",
+    "TRANSPORTATION|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "TRAVEL|INCOME_WAGES": "Paycheck",
+    "TRAVEL|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "TRAVEL|INCOME_DIVIDENDS": "Interest & dividends",
+    "TRAVEL|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "TRAVEL|INCOME_TAX_REFUND": "Tax refund",
+    "TRAVEL|INCOME_UNEMPLOYMENT": "Other income",
+    "TRAVEL|INCOME_OTHER_INCOME": "Other income",
+    "TRAVEL|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "RENT_AND_UTILITIES|INCOME_WAGES": "Paycheck",
+    "RENT_AND_UTILITIES|INCOME_INTEREST_EARNED": "Interest & dividends",
+    "RENT_AND_UTILITIES|INCOME_DIVIDENDS": "Interest & dividends",
+    "RENT_AND_UTILITIES|INCOME_RETIREMENT_PENSION": "Retirement income",
+    "RENT_AND_UTILITIES|INCOME_TAX_REFUND": "Tax refund",
+    "RENT_AND_UTILITIES|INCOME_UNEMPLOYMENT": "Other income",
+    "RENT_AND_UTILITIES|INCOME_OTHER_INCOME": "Other income",
+    "RENT_AND_UTILITIES|TRANSFER_IN_DEPOSIT": "Transfer in",
+    "P:NOPE|D:NOPE": "Everything else",
+    "lowercase": "Paycheck"
+  },
+  "nullish": {
+    "groupOfNull": "Everything else",
+    "groupOfUndef": "Everything else",
+    "kindOfNull": "spend",
+    "kindOfUndef": "spend",
+    "isGroupNull": false,
+    "idNull": null,
+    "categorizeEmpty": "Everything else"
+  }
+}

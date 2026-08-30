@@ -8,7 +8,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { categoryIdOf } from "./_categorize";
+import { taxonomyFor } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -45,6 +45,7 @@ export default async function handler(req: Request): Promise<Response> {
     const category = (body.category || "").trim();
     const limit = Number(body.limit ?? body.limit_amount);
     if (!category || !Number.isFinite(limit) || limit < 0) return json({ error: "category and a non-negative limit are required" }, 400);
+    const tax = await taxonomyFor(uid);
     const r = await adminRest("budgets?on_conflict=user_id,category,period", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=representation" },
@@ -53,7 +54,7 @@ export default async function handler(req: Request): Promise<Response> {
       // since the unique index is on (user_id, category, period) and a rename
       // would otherwise orphan the member's own limit with no error.
       body: JSON.stringify({
-        user_id: uid, category, category_id: categoryIdOf(category),
+        user_id: uid, category, category_id: tax.categoryIdOf(category),
         limit_amount: limit, period: "monthly", updated_at: new Date().toISOString(),
       }),
     });

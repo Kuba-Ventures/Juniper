@@ -4,7 +4,7 @@
 // scopes by user_id itself (RLS is bypassed here, see _supabase-admin).
 import { adminRest } from "./_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
-import { kindOf } from "./_categorize";
+import { taxonomyFor } from "./_categorize";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null };
@@ -96,9 +96,14 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // the emergency-fund factor: counting transfers to savings as spending both
   // inflated the fund the member needs and hid the saving they were doing.
   const months = coveredDays(txns.map((t) => t.date)) / 30;
+  // Resolved once for this member, not per row. Stage 2 of
+  // docs/CUSTOM_CATEGORIES.md: these two numbers drive the score's savings rate
+  // and emergency-fund factor, so the classification behind them is now the
+  // member's own taxonomy rather than a module-level table.
+  const tax = await taxonomyFor(uid);
   let outflow = 0, inflow = 0;
   for (const t of txns) {
-    const kind = kindOf(t.category);
+    const kind = tax.kindOf(t.category);
     if (kind === "transfer") continue;
     if (kind === "income") inflow -= t.amount;
     else outflow += t.amount;

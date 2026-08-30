@@ -39,7 +39,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { CATEGORY_GROUPS, groupOf, kindOf, categoryIdOf } from "./_categorize";
+import { taxonomyFor, type Taxonomy } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -54,10 +54,11 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-// Display order for the rollup comes from the taxonomy itself, so there is no
-// second list of category names here to drift out of sync with the one that
-// classifies. Same source /api/finances uses.
-const SPEND_GROUPS = CATEGORY_GROUPS.filter((g) => g.kind === "spend").map((g) => g.label);
+// Display order for the rollup comes from the member's resolved taxonomy
+// (`tax.spendGroups`), so there is no second list of category names here to
+// drift out of sync with the one that classifies. Same source /api/finances
+// uses. It was a module constant until stage 2 of docs/CUSTOM_CATEGORIES.md;
+// the set of groups becomes a fact about the member, so it cannot be one.
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -146,23 +147,18 @@ function cursorFilter(cursor: string | null): string | null {
   return `&or=(date.lt.${date},and(date.eq.${date},id.lt.${id}))`;
 }
 
-// Every label a member is allowed to store, built from the one taxonomy table
-// rather than from a second list here. Both levels are accepted: a leaf is the
-// normal case, and a group label is what a row categorized at group precision
-// already carries (see groupOf's note in _categorize.ts), so refusing groups
-// would make some existing values unwritable.
-const WRITABLE_LABELS = new Set<string>([
-  ...CATEGORY_GROUPS.map((g) => g.label),
-  ...CATEGORY_GROUPS.flatMap((g) => g.categories),
-]);
-
 // The picker's options, shipped with the first page the way `breakdown` and
 // `summary` are. The alternative was a copy of ~50 leaf labels in the client,
 // which is exactly the second stored vocabulary _categorize.ts exists to avoid.
 // Transfers ride along: moving a charge to "Credit card payment" is one of the
 // corrections most worth making, since a card payment counted as spending bills
 // the member twice for the same coffee.
-const TAXONOMY = CATEGORY_GROUPS.map((g) => ({ g: g.label, kind: g.kind, cats: g.categories }));
+//
+// Built from the member's own taxonomy since stage 2, so when a member has
+// categories of their own the picker offers exactly what they can store, by
+// construction rather than by two lists happening to match.
+const pickerOptions = (tax: Taxonomy) =>
+  tax.groups.map((g) => ({ g: g.label, kind: g.kind, cats: g.categories }));
 
 // PATCH /api/transactions  { id, category }
 // Re-categorizes one of the caller's own transactions. Scoped by user_id in the
@@ -175,7 +171,12 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   const id = (body.id || "").trim();
   const category = (body.category || "").trim();
   if (!UUID.test(id)) return json({ error: "Invalid `id`" }, 400);
-  if (!WRITABLE_LABELS.has(category)) return json({ error: "Unknown category" }, 400);
+  // Validated against THIS member's taxonomy. Both levels are accepted: a leaf
+  // is the normal case, and a group label is what a row categorized at group
+  // precision already carries (see groupOf's note in _categorize.ts), so
+  // refusing groups would make some existing values unwritable.
+  const tax = await taxonomyFor(uid);
+  if (!tax.writableLabels.has(category)) return json({ error: "Unknown category" }, 400);
 
   const res = await adminRest(`transactions?id=eq.${id}&user_id=eq.${uid}`, {
     method: "PATCH",
@@ -184,7 +185,7 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
       category,
       // Beside the label, not instead of it: stage 1 of the custom-categories
       // plan writes both and reads only the label.
-      category_id: categoryIdOf(category),
+      category_id: tax.categoryIdOf(category),
       // What stops the next Plaid sync overwriting this. transactions-sync.ts
       // reads these rows before its upsert and carries the member's choice
       // through, because the upsert is merge-duplicates over the whole row.
@@ -203,7 +204,7 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   if (!updated.length) return json({ error: "Not found" }, 404);
 
   const stored = updated[0].category ?? category;
-  return json({ id, c: stored, g: groupOf(stored), k: kindOf(stored), userSet: true });
+  return json({ id, c: stored, g: tax.groupOf(stored), k: tax.kindOf(stored), userSet: true });
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -232,6 +233,11 @@ export default async function handler(req: Request): Promise<Response> {
   const cursor = url.searchParams.get("cursor");
   const keyset = cursorFilter(cursor);
   if (keyset === null) return json({ error: "Invalid `cursor`" }, 400);
+
+  // One resolve for the whole response, page rows and rollup alike, so a row's
+  // category and the wedge it lands in cannot disagree. Stage 2 of
+  // docs/CUSTOM_CATEGORIES.md.
+  const tax = await taxonomyFor(uid);
 
   const scope = `transactions?user_id=eq.${uid}${rangeFilter(from, to)}`;
   const order = "&order=date.desc,id.desc";
@@ -292,8 +298,8 @@ export default async function handler(req: Request): Promise<Response> {
       // a real answer: the client draws a monogram rather than a broken image.
       logo: t.logo_url ?? (t.merchant_name ? logoOf.get(t.merchant_name) ?? null : null),
       c: t.category || "Everything else",
-      g: groupOf(t.category),
-      k: kindOf(t.category),
+      g: tax.groupOf(t.category),
+      k: tax.kindOf(t.category),
       // True when the member set this category themselves rather than Plaid.
       // The row marks it, so a category somebody corrected by hand is
       // distinguishable from one that was guessed.
@@ -362,7 +368,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (!Number.isNaN(ts)) { if (ts < oldest) oldest = ts; if (ts > newest) newest = ts; }
     const ym = t.date.slice(0, 7);
     const cat = t.category || "Everything else";
-    const kind = kindOf(cat);
+    const kind = tax.kindOf(cat);
     if (kind === "transfer") { transfersRaw += Math.abs(t.amount); continue; }
     if (kind === "income") {
       incomeRaw -= t.amount;
@@ -371,7 +377,7 @@ export default async function handler(req: Request): Promise<Response> {
       countByIncomeCat.set(cat, (countByIncomeCat.get(cat) || 0) + 1);
       continue;
     }
-    const g = groupOf(cat);
+    const g = tax.groupOf(cat);
     bumpMonth(ym, "spent", t.amount);
     byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
     byCat.set(cat, (byCat.get(cat) || 0) + t.amount);
@@ -391,7 +397,7 @@ export default async function handler(req: Request): Promise<Response> {
   // cannot draw, so it is dropped and `spent` is DEFINED as the sum of what the
   // breakdown shows. That keeps the donut center, the legend total, and the
   // summary's Spent identical by construction. Same choice /api/finances makes.
-  const breakdown = SPEND_GROUPS
+  const breakdown = tax.spendGroups
     .map((label) => {
       const v = Math.round(byGroup.get(label) || 0);
       const categories = [...byCat.entries()]
@@ -467,7 +473,7 @@ export default async function handler(req: Request): Promise<Response> {
   // The category picker's options. First page only, like everything else in
   // this block: it is a constant per deploy, and the client holds it while it
   // pages.
-  body.taxonomy = TAXONOMY;
+  body.taxonomy = pickerOptions(tax);
 
   return json(body);
 }
