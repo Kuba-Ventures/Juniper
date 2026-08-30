@@ -15,7 +15,7 @@ import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
-import { categorize } from "../_categorize";
+import { categorize, categoryIdOf } from "../_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -88,6 +88,9 @@ function toRow(userId: string, itemId: string, t: PlaidTxn) {
     pending: !!t.pending,
     plaid_category: pfc.primary ?? null,
     category,
+    // Written beside the label, read by nothing yet: stage 1 of
+    // docs/CUSTOM_CATEGORIES.md. Null for a label outside the taxonomy.
+    category_id: categoryIdOf(category),
     category_source: "plaid",
     logo_url: art.logo_url,
     website: art.website,
@@ -207,7 +210,9 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
           // keeps winning on every future sync, rather than being written back
           // as `plaid` and reverting the next time round.
           const mine = overrides.get(row.plaid_transaction_id);
-          return mine ? { ...row, category: mine, category_source: "user" } : row;
+          return mine
+            ? { ...row, category: mine, category_id: categoryIdOf(mine), category_source: "user" }
+            : row;
         });
       if (upserts.length) {
         const up = await adminRest("transactions?on_conflict=plaid_transaction_id", {

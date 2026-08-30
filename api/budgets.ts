@@ -8,6 +8,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
+import { categoryIdOf } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -47,7 +48,14 @@ export default async function handler(req: Request): Promise<Response> {
     const r = await adminRest("budgets?on_conflict=user_id,category,period", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ user_id: uid, category, limit_amount: limit, period: "monthly", updated_at: new Date().toISOString() }),
+      // `category_id` rides along, read by nothing yet: stage 1 of
+      // docs/CUSTOM_CATEGORIES.md. Budgets are the reason the id exists at all,
+      // since the unique index is on (user_id, category, period) and a rename
+      // would otherwise orphan the member's own limit with no error.
+      body: JSON.stringify({
+        user_id: uid, category, category_id: categoryIdOf(category),
+        limit_amount: limit, period: "monthly", updated_at: new Date().toISOString(),
+      }),
     });
     if (!r.ok) return json({ error: "Failed to save budget", detail: await r.text().catch(() => "") }, 500);
     const rowsOut = (await r.json().catch(() => [])) as unknown[];

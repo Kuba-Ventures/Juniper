@@ -29,7 +29,7 @@ import { adminConfigured, adminRest } from "../_supabase-admin";
 // deliver. A recurring detection run succeeding says nothing about either, so
 // stamping last_synced_at from here would report data as fresher than it is.
 import { isDeadItemCode, markItemDead } from "../_item-sync-state";
-import { categorize } from "../_categorize";
+import { categorize, categoryIdOf } from "../_categorize";
 import { mapPool } from "../_pool";
 
 export const config = { runtime: "edge" };
@@ -84,6 +84,7 @@ type RecurringResp = {
 type Item = { item_id: string; access_token: string };
 
 function toRow(userId: string, itemId: string, s: Stream, direction: "inflow" | "outflow") {
+  const cat = categorize(s.personal_finance_category?.primary, s.personal_finance_category?.detailed);
   return {
     user_id: userId,
     stream_id: s.stream_id,
@@ -93,7 +94,10 @@ function toRow(userId: string, itemId: string, s: Stream, direction: "inflow" | 
     merchant_name: s.merchant_name ?? null,
     // Same taxonomy the transactions feed uses, so a stream's category and the
     // category of the charges behind it cannot disagree.
-    category: categorize(s.personal_finance_category?.primary, s.personal_finance_category?.detailed),
+    category: cat,
+    // Beside the label and read by nothing yet, stage 1 of
+    // docs/CUSTOM_CATEGORIES.md.
+    category_id: categoryIdOf(cat),
     plaid_status: s.status ?? "UNKNOWN",
     frequency: s.frequency ?? "UNKNOWN",
     direction,
