@@ -39,7 +39,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { CATEGORY_GROUPS, groupOf, kindOf } from "./_categorize";
+import { CATEGORY_GROUPS, groupOf, kindOf, categoryIdOf } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -182,6 +182,9 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({
       category,
+      // Beside the label, not instead of it: stage 1 of the custom-categories
+      // plan writes both and reads only the label.
+      category_id: categoryIdOf(category),
       // What stops the next Plaid sync overwriting this. transactions-sync.ts
       // reads these rows before its upsert and carries the member's choice
       // through, because the upsert is merge-duplicates over the whole row.

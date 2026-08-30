@@ -97,6 +97,53 @@ export function kindOf(category?: string | null): CategoryKind {
   return GROUP_KIND[groupOf(category)] ?? "spend";
 }
 
+// ── Stable ids (Stage 1 of docs/CUSTOM_CATEGORIES.md) ───────────────────────
+//
+// Every built-in group and leaf gets an id that never changes, so a label can
+// later be renamed without orphaning the rows that point at it. Nothing READS
+// these yet: this stage only writes them alongside the existing text column, so
+// the two can be compared on real data before anything depends on the id.
+//
+// Slugs rather than UUIDs, because a category id is read by a human far more
+// often than by a machine: `c_coffee_shops` in a failing query says what it is,
+// `f47ac10b-...` does not. Prefixed `g_` / `c_` because five labels ("Shopping",
+// "Transportation", "Utilities & bills", "Groceries & dining", "Everything
+// else") name BOTH a group and a leaf inside it, so an unprefixed slug would
+// collide on exactly the rows that are hardest to debug.
+//
+// Member-created categories will use `c_<uuid>` in a later stage, which cannot
+// collide with a slug derived from a built-in label.
+const slug = (label: string) =>
+  label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+export const groupId = (label: string) => `g_${slug(label)}`;
+export const leafId = (label: string) => `c_${slug(label)}`;
+
+// Label -> id, built the same way the classification maps are: once, at module
+// load, from the one table. A group label resolves to its GROUP id and a leaf to
+// its LEAF id, which mirrors groupOf's rule that a group label is a legitimate
+// stored value (rows written before #136 are categorized at group precision).
+const LABEL_ID: Record<string, string> = {};
+for (const g of CATEGORY_GROUPS) {
+  LABEL_ID[g.label] = groupId(g.label);
+  // Leaves are written after groups on purpose. Where a leaf shares its name
+  // with its group, the LEAF id wins: `transactions.category = "Shopping"` on a
+  // row Plaid could only place at the primary level is the leaf catch-all, and
+  // groupOf() resolves it to the group either way.
+  for (const c of g.categories) LABEL_ID[c] = leafId(c);
+}
+
+// The id for a stored label, or null when the label is not in the taxonomy at
+// all (a hand-edited value, or a category retired in a later release). Null
+// rather than a fallback to Everything else: this is written beside the text
+// column, and inventing an id for a value we do not recognize would silently
+// assert a classification that groupOf() never made.
+export function categoryIdOf(category?: string | null): string | null {
+  const c = (category || "").trim();
+  if (!c) return null;
+  return LABEL_ID[c] ?? null;
+}
+
 // ── Plaid personal_finance_category -> Juniper leaf category ────────────────
 //
 // Detailed first, primary as the floor. Plaid's detailed taxonomy is where the
