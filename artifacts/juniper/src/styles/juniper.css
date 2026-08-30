@@ -164,6 +164,12 @@
 .jnpr .bud .t .r{color:var(--jnpr-ink-3);font-weight:550}
 .jnpr .bar{height:8px;border-radius:6px;background:var(--jnpr-surface-3);overflow:hidden}.jnpr .bar > i{display:block;height:100%;border-radius:6px}
 .jnpr .bud.ok .bar > i{background:var(--jnpr-accent)}.jnpr .bud.over .bar > i{background:var(--jnpr-warn)}.jnpr .bud .flag{color:var(--jnpr-warn);font-weight:650}
+/* Empty state: the card carries its own head, so this is body copy and a link
+   rather than a second heading, and it drops the row rule so an empty card
+   never reads as a row that failed to load. */
+.jnpr .bud-empty{padding:14px 0 2px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.jnpr .bud-empty p{margin:0;font-size:12.5px;line-height:1.6;color:var(--jnpr-ink-2);max-width:44ch}
+.jnpr .bud-empty p b{color:var(--jnpr-head);font-weight:650}
 
 /* ---------- plans (compact rows on Home) ---------- */
 .jnpr .plans-col{display:flex;flex-direction:column;gap:10px}
