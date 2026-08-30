@@ -39,6 +39,10 @@ export interface FinanceData {
   netWorth: typeof M.netWorth;
   cashflow: typeof M.cashflow;
   spending: SpendCat[];
+  // Every spending group this member has, spent or not. Server-sent since
+  // custom groups: with groups a member can create, the list is a fact about
+  // them and a constant in the client would be a second, wrong vocabulary.
+  groups: SpendCat[];
   budgets: Budget[];
   transactions: Txn[];
   accounts: { cash: Account[]; invest: Account[]; debt: Account[] };
@@ -88,6 +92,7 @@ interface RawFinances {
   // (nine coherent wedges) rather than by leaf category (dozens of slivers), and
   // excludes transfers and card payments so the total matches `cashflow.spent`.
   spending?: { c: string; v: number }[];
+  groups?: { c: string; e?: string; hue?: number | null }[];
   budgets?: Budget[];
   // `c` is the transaction's own leaf category (the granular label), `g` the
   // group it rolls up into, which is what colors the row.
@@ -117,6 +122,7 @@ function mergeLive(raw: RawFinances, base: FinanceData): FinanceData {
     netWorth: raw.netWorth ?? base.netWorth,
     cashflow: raw.cashflow ?? base.cashflow,
     spending: raw.spending ? raw.spending.map((s) => ({ ...s, k: catColor(s.c) })) : base.spending,
+    groups: raw.groups ? raw.groups.map((g) => ({ ...g, v: 0, k: catColor(g.c) })) : base.groups,
     budgets: raw.budgets ?? base.budgets,
     transactions: raw.transactions
       ? raw.transactions.map((t) => ({ ...t, k: t.inc ? "--jnpr-good" : catColor(t.c, t.g) }))

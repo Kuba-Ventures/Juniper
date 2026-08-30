@@ -7,7 +7,7 @@ import { getAccessToken } from "@/lib/supabase";
 // half; the Budgets panel on Transactions is its only caller.
 //
 // A limit is stored against a LABEL, and the label this app writes is always a
-// spending GROUP (see SPEND_GROUPS). /api/finances resolves a group-labelled
+// spending GROUP, built-in or one the member made. /api/finances resolves a group-labelled
 // budget against the whole group and a leaf-labelled one against just that
 // category, so leaf budgets still read correctly if they were ever written by
 // something else; nothing here creates one.

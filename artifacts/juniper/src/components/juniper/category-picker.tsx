@@ -37,7 +37,9 @@
 // coordinates taken from the anchor keep the panel on the row it belongs to.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createCategory, renameCategory, deleteCategory, setCategoryHidden, setCategoryEmoji } from "@/lib/categories";
+import {
+  createCategory, createGroup, renameCategory, deleteCategory, setCategoryHidden, setCategoryEmoji,
+} from "@/lib/categories";
 import { EmojiPicker } from "@/components/juniper/emoji-picker";
 import type { CategoryGroupOption } from "@/lib/transactions";
 
@@ -50,13 +52,17 @@ const MAX_NAME = 40;
 // management sits in the picker rather than in a settings surface.
 type Editing = { kind: "rename"; id: string; label: string } | null;
 
-function NameForm({ initial, emoji, cta, busy, error, canDelete, onSave, onDelete, onHide, onIcon, onCancel, taken }: {
+function NameForm({ initial, emoji, cta, busy, error, canDelete, canHide = true, onSave, onDelete, onHide, onIcon, onCancel, taken }: {
   initial: string;
   emoji: string;
   cta: string;
   busy: boolean;
   error: string | null;
   canDelete: boolean;
+  /** False for a group. Hiding is a leaf-level idea: a hidden group would take
+      its categories out of the picker with it and there would be no way back
+      to them, so it is not offered rather than offered and ignored. */
+  canHide?: boolean;
   onSave: (name: string) => void;
   onDelete: () => void;
   onHide: () => void;
@@ -85,7 +91,7 @@ function NameForm({ initial, emoji, cta, busy, error, canDelete, onSave, onDelet
       />
       <button type="submit" className="btn sm" disabled={!valid || busy}>{busy ? "Saving…" : cta}</button>
       <button type="button" className="btn ghost sm" onClick={onCancel} disabled={busy}>Cancel</button>
-      <button type="button" className="cp-del" onClick={onHide} disabled={busy}>Hide</button>
+      {canHide && <button type="button" className="cp-del" onClick={onHide} disabled={busy}>Hide</button>}
       {canDelete && (
         <button type="button" className="cp-del" onClick={onDelete} disabled={busy}>Delete</button>
       )}
@@ -187,7 +193,12 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
             ? g.cats.filter((c) => c.label.toLowerCase().includes(needle))
             : g.cats,
         }))
-        .filter((g) => g.cats.length),
+        // An empty group is dropped only while SEARCHING, where a bare header
+        // matching nothing is noise. With no search it stays: a group the
+        // member has just made has no categories yet by definition, and
+        // hiding it would make creating one look like it silently failed,
+        // with no way to put anything in it.
+        .filter((g) => g.cats.length || !needle),
     [taxonomy, needle],
   );
 
@@ -247,17 +258,55 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
                   {g.kind !== "spend" && <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>}
                 </button>
               ))}
+              {/* Last, because putting a charge in an existing group is the
+                  common answer and making a whole group is the rare one. A
+                  member's group always counts as spending, which the row says
+                  rather than leaving to be discovered. */}
+              <button type="button" className="cp-i cp-create-i cp-create-g"
+                onClick={() => void run(() => createGroup(q.trim()))} disabled={saving}>
+                <span className="cat-em" aria-hidden>＋</span>
+                <span className="cp-create-n">a new group</span>
+                <span className="cp-kind">spending</span>
+              </button>
               {error && <span className="cp-err">{error}</span>}
             </div>
           )}
 
           {groups.map((g) => (
             <div key={g.id}>
+              {editing?.kind === "rename" && editing.id === g.id ? (
+                <NameForm
+                  initial={g.g} emoji={g.emoji} cta="Save" busy={saving} error={error}
+                  canDelete canHide={false} taken={takenNames}
+                  onSave={(name) => void run(() => renameCategory(g.id, name))}
+                  onDelete={() => void run(() => deleteCategory(g.id))}
+                  onHide={() => {}}
+                  onIcon={() => { setPicking(g.id); setError(null); }}
+                  onCancel={() => { setEditing(null); setError(null); }}
+                />
+              ) : picking === g.id ? (
+                <EmojiPicker
+                  current={g.emoji}
+                  onPick={(e) => { setPicking(null); void run(() => setCategoryEmoji(g.id, e)); }}
+                  onReset={() => { setPicking(null); void run(() => setCategoryEmoji(g.id, null)); }}
+                  onCancel={() => setPicking(null)}
+                />
+              ) : (
               <div className="cp-g">
                 <span className="cat-em" aria-hidden>{g.emoji}</span>
                 {g.g}
                 {g.kind !== "spend" && <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>}
+                {/* Only a group the member made: a built-in group's label is
+                    what every row stored at group precision resolves through. */}
+                {g.hue != null && (
+                  <button type="button" className="cp-edit cp-edit-g" disabled={busy || saving}
+                    aria-label={`Rename ${g.g}`} title={`Rename ${g.g}`}
+                    onClick={() => { setEditing({ kind: "rename", id: g.id, label: g.g }); setError(null); }}>
+                    Rename
+                  </button>
+                )}
               </div>
+              )}
               {g.cats.map((c) => (
                 editing?.kind === "rename" && editing.id === c.id ? (
                   picking === c.id ? (

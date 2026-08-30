@@ -2,16 +2,23 @@
 // docs/CUSTOM_CATEGORIES.md).
 //
 //   GET                                  -> the member's whole resolved taxonomy
-//   POST   { name, group }               -> create a leaf in that built-in group
+//   POST   { name, group }               -> create a leaf in that group
+//   POST   { name, type: "group" }       -> create a group of their own
 //   PATCH  { categoryId, name }          -> rename a leaf, built-in or their own
 //   PATCH  { categoryId, hidden: bool }  -> stop offering it, or offer it again
 //   PATCH  { categoryId, emoji }         -> set its icon, or null for the default
 //   DELETE ?categoryId=c_...             -> remove a leaf they created
 //
-// Groups are built-in only at this stage: a member can add and rename leaves,
-// not groups. Custom groups are stage 5 and carry the colour question, because
-// GROUP_COLOR maps eleven fixed labels onto seven palette tokens and a twelfth
-// wedge has no slot that stays legible beside the others.
+// A member's own group is always `spend`. A group decides whether its money
+// counts as spending at all, and letting that be chosen would move the member's
+// Juniper Score with no visible cause: api/_finance-snapshot.ts feeds the score
+// from exactly that classification. Income and Transfers & payments stay
+// built-in, and creating a leaf inside either is the visible route to a
+// category that is not spending.
+//
+// A member's group takes a generated colour rather than a palette token, since
+// there is no twelfth slot in the palette that stays legible beside the others
+// on a donut. See hueFor in _categorize.ts.
 //
 // TWO RULES THIS ENDPOINT EXISTS TO ENFORCE, both about not moving money
 // silently:
@@ -116,24 +123,36 @@ async function nameTaken(uid: string, name: string, exceptId?: string): Promise<
 async function create(uid: string, body: Record<string, unknown>): Promise<Response> {
   const name = norm(body.name);
   const group = norm(body.group);
+  const asGroup = norm(body.type) === "group";
   if (!name || name.length > MAX_NAME) return json({ error: `A name is required, up to ${MAX_NAME} characters` }, 400);
   if (!NAME_OK.test(name)) return json({ error: "A name can use letters, numbers, spaces and ' & + . / -" }, 400);
-  if (!BUILTIN_GROUP_IDS.has(group)) return json({ error: "Unknown group" }, 400);
+
+  // A leaf needs a group to live in, and it may be one of the member's own, so
+  // this is checked against their resolved taxonomy rather than the built-ins.
+  const tax = await taxonomyFor(uid);
+  if (!asGroup && !tax.groups.some((g) => g.id === group)) return json({ error: "Unknown group" }, 400);
   if (await nameTaken(uid, name)) return json({ error: `You already have a category called "${name}"` }, 409);
 
-  // `c_` keeps the convention every leaf id follows, and the random half cannot
-  // collide with a slug derived from a built-in label.
-  const categoryId = `c_${crypto.randomUUID().replace(/-/g, "")}`;
+  // The prefix is what tells a group from a leaf when the row is read back
+  // (see isGroupId in _categorize.ts), and this endpoint is its only writer.
+  // The random half cannot collide with a slug derived from a built-in label.
+  const categoryId = `${asGroup ? "g" : "c"}_${crypto.randomUUID().replace(/-/g, "")}`;
   const r = await adminRest("categories", {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ user_id: uid, category_id: categoryId, name, group_id: group }),
+    body: JSON.stringify({
+      user_id: uid,
+      category_id: categoryId,
+      name,
+      // A group belongs to nothing; a leaf belongs to the group it was made in.
+      group_id: asGroup ? null : group,
+    }),
   });
   if (!r.ok) {
     console.error(`[categories] create failed (${r.status}): ${await r.text().catch(() => "")}`);
-    return json({ error: "Could not save that category" }, 500);
+    return json({ error: `Could not save that ${asGroup ? "group" : "category"}` }, 500);
   }
-  return json({ id: categoryId, label: name, group, custom: true }, 201);
+  return json({ id: categoryId, label: name, group: asGroup ? null : group, custom: true }, 201);
 }
 
 /** One PATCH covers renaming and hiding, because both are the same row: an
@@ -165,15 +184,18 @@ async function update(uid: string, body: Record<string, unknown>): Promise<Respo
     if (!name || name.length > MAX_NAME) return json({ error: `A name is required, up to ${MAX_NAME} characters` }, 400);
     if (!NAME_OK.test(name)) return json({ error: "A name can use letters, numbers, spaces and ' & + . / -" }, 400);
   }
-  // Groups can be neither renamed nor hidden yet, and a request to do either is
-  // a bug in the caller rather than something to half-apply.
-  if (BUILTIN_GROUP_IDS.has(categoryId)) return json({ error: "Groups cannot be changed yet" }, 400);
+  // A BUILT-IN group cannot be renamed or hidden: its label is what every row
+  // stored at group precision resolves through, and every budget set against a
+  // group is keyed by it. A member's own group has neither problem.
+  if (BUILTIN_GROUP_IDS.has(categoryId)) return json({ error: "Built-in groups cannot be renamed" }, 400);
 
   const tax = await taxonomyFor(uid);
   // Hidden categories count as known here: unhiding one is a request about a
   // category the member can no longer see in the offered list.
   const known = tax.groups.some((g) =>
-    g.leaves.some((l) => l.id === categoryId) || (g.hidden ?? []).some((l) => l.id === categoryId));
+    g.id === categoryId
+    || g.leaves.some((l) => l.id === categoryId)
+    || (g.hidden ?? []).some((l) => l.id === categoryId));
   if (!known) return json({ error: "Unknown category" }, 404);
   if (wantsName && await nameTaken(uid, name, categoryId)) {
     return json({ error: `You already have a category called "${name}"` }, 409);
@@ -236,6 +258,24 @@ async function remove(uid: string, url: URL): Promise<Response> {
   if (!CATEGORY_ID.test(categoryId)) return json({ error: "Invalid `categoryId`" }, 400);
   if (BUILTIN_LEAF_IDS.has(categoryId) || BUILTIN_GROUP_IDS.has(categoryId)) {
     return json({ error: "Built-in categories cannot be deleted" }, 400);
+  }
+
+  // A group still holding categories cannot go. Deleting it would leave every
+  // leaf inside pointing at a group that no longer exists, so those categories
+  // would vanish from the picker and their charges would resolve into
+  // "Everything else". The refusal names the count, the same way the in-use
+  // refusal below does, because "move these first" is only actionable if the
+  // member knows how many there are.
+  const taxNow = await taxonomyFor(uid);
+  const asGroup = taxNow.groups.find((g) => g.id === categoryId);
+  if (asGroup) {
+    const held = asGroup.leaves.length + (asGroup.hidden?.length ?? 0);
+    if (held > 0) {
+      return json({
+        error: `This group still holds ${held} categor${held === 1 ? "y" : "ies"}. Move or delete them first.`,
+        inUse: held,
+      }, 409);
+    }
   }
 
   // In use means the id is still on a row. Counted before deleting, because

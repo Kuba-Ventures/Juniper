@@ -161,6 +161,14 @@ export default async function handler(req: Request): Promise<Response> {
   // A member-created group has no palette token, so its hue travels with it.
   // Null for the nine built-ins, which keep their tokens.
   const hueOfGroup = new Map(tax.groups.map((g) => [g.label, g.hue]));
+  // Every spending group this member has, spent or not. The budgets panel used
+  // a fixed list of nine in the client; with groups a member can create, that
+  // list is a fact about them and can only come from here.
+  const groupsOut = tax.spendGroups.map((c) => ({
+    c,
+    e: emojiOfGroup.get(c) ?? "",
+    hue: hueOfGroup.get(c) ?? null,
+  }));
   const spending = tax.spendGroups
     .map((c) => ({ c, v: Math.round(byGroup.get(c) || 0), e: emojiOfGroup.get(c) ?? "", hue: hueOfGroup.get(c) ?? null }))
     .filter((s) => s.v > 0);
@@ -352,6 +360,7 @@ export default async function handler(req: Request): Promise<Response> {
           // savings twice over.
           cashflow: { income, spent, saved: income - spent, month: MONTHS[now.getUTCMonth()] },
           spending,
+          groups: groupsOut,
           budgets: budgetsOut,
           transactions,
         }
