@@ -39,7 +39,10 @@ export interface CategoryGroupOption {
   id: string;
   g: string;
   kind: "spend" | "income" | "transfer";
+  /** Offered. */
   cats: CategoryOption[];
+  /** Hidden: not offered, still resolving. Sent so they can be un-hidden. */
+  hidden?: CategoryOption[];
 }
 export interface BreakdownRow {
   c: string; v: number; n: number; pct: number;

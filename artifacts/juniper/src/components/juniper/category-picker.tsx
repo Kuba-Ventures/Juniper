@@ -22,8 +22,11 @@
 // WHAT IS DELIBERATELY NOT OFFERED. Deleting a built-in. api/_categorize.ts
 // maps Plaid's categories onto built-in labels, so a deleted one does not stay
 // deleted: the next sync writes that label again and the charge lands on a
-// category nothing resolves, dropping it into "Everything else". Hiding a
-// built-in is the honest version of that, and it is its own piece of work.
+// category nothing resolves, dropping it into "Everything else". HIDING is the
+// honest version, and it is what this list offers instead: a hidden category
+// leaves the picker and keeps resolving, so nothing already filed there moves.
+// The count of hidden ones is stated at the foot of the list, because a hidden
+// category nothing mentions is indistinguishable from a deleted one.
 //
 // WHY THIS PORTALS TO <body> AND POSITIONS ITSELF FIXED. The transactions table
 // sits in `.tx-tablewrap`, which is `overflow-x: auto`. Per the overflow spec a
@@ -36,7 +39,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { cssVar } from "@/components/juniper/primitives";
 import { colorOf } from "@/lib/category-color";
-import { createCategory, renameCategory, deleteCategory } from "@/lib/categories";
+import { createCategory, renameCategory, deleteCategory, setCategoryHidden } from "@/lib/categories";
 import type { CategoryGroupOption } from "@/lib/transactions";
 
 const GAP = 6;      // between the anchor and the panel
@@ -48,7 +51,7 @@ const MAX_NAME = 40;
 // management sits in the picker rather than in a settings surface.
 type Editing = { kind: "rename"; id: string; label: string } | null;
 
-function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onCancel, taken }: {
+function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onHide, onCancel, taken }: {
   initial: string;
   cta: string;
   busy: boolean;
@@ -56,6 +59,7 @@ function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onCa
   canDelete: boolean;
   onSave: (name: string) => void;
   onDelete: () => void;
+  onHide: () => void;
   onCancel: () => void;
   taken: Set<string>;
 }) {
@@ -76,6 +80,7 @@ function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onCa
       />
       <button type="submit" className="btn sm" disabled={!valid || busy}>{busy ? "Saving…" : cta}</button>
       <button type="button" className="btn ghost sm" onClick={onCancel} disabled={busy}>Cancel</button>
+      <button type="button" className="cp-del" onClick={onHide} disabled={busy}>Hide</button>
       {canDelete && (
         <button type="button" className="cp-del" onClick={onDelete} disabled={busy}>Delete</button>
       )}
@@ -98,6 +103,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
   onTaxonomyChanged: () => void | Promise<void>;
 }) {
   const [q, setQ] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +129,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
   useLayoutEffect(place, [place]);
   // Re-placed when a form opens or closes too: the panel's height changes, and a
   // flipped panel that keeps its old top would drift off the anchor.
-  useLayoutEffect(place, [editing, place]);
+  useLayoutEffect(place, [editing, showHidden, place]);
 
   useEffect(() => {
     // `true` on scroll: the row sits inside a scrollable wrapper, and a scroll
@@ -206,6 +212,9 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
   // kind is labelled on the row, so choosing it is a decision rather than a
   // surprise.
   const createTargets = taxonomy;
+  // Flattened across groups: a member hides individual categories, and grouping
+  // the handful they hid would be more chrome than the list it sits under.
+  const hidden = useMemo(() => taxonomy.flatMap((g) => g.hidden ?? []), [taxonomy]);
 
   return createPortal(
     // `display: contents` so the wrapper carries the `.jnpr` token scope without
@@ -249,6 +258,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
                     canDelete={c.custom} taken={takenNames}
                     onSave={(name) => void run(() => renameCategory(c.id, name))}
                     onDelete={() => void run(() => deleteCategory(c.id))}
+                    onHide={() => void run(() => setCategoryHidden(c.id, true))}
                     onCancel={() => { setEditing(null); setError(null); }}
                   />
                 ) : (
@@ -273,6 +283,25 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
             </div>
           ))}
           {!groups.length && !offerCreate && <div className="cp-none">Nothing matches that.</div>}
+
+          {/* Hidden categories, behind a count rather than always open: the
+              whole reason to hide one is to shorten this list. */}
+          {!!hidden.length && !needle && (
+            <div className="cp-hidden">
+              <button type="button" className="cp-hidden-t" onClick={() => setShowHidden((v) => !v)}>
+                {showHidden ? "Hide" : "Show"} {hidden.length} hidden
+              </button>
+              {showHidden && hidden.map((c) => (
+                <div className="cp-row" key={c.id}>
+                  <span className="cp-i cp-off">{c.label}</span>
+                  <button type="button" className="cp-edit cp-always" disabled={busy || saving}
+                    onClick={() => void run(() => setCategoryHidden(c.id, false))}>
+                    Unhide
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>,

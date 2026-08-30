@@ -171,6 +171,10 @@ const pickerOptions = (tax: Taxonomy) =>
     g: g.label,
     kind: g.kind,
     cats: g.leaves.map((l) => ({ id: l.id, label: l.label, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
+    // Hidden categories ride along so the picker can offer to unhide them. A
+    // hidden category the UI never mentions is indistinguishable from a deleted
+    // one, which is the distinction the whole feature turns on.
+    hidden: (g.hidden ?? []).map((l) => ({ id: l.id, label: l.label, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
   }));
 
 // PATCH /api/transactions  { id, category }

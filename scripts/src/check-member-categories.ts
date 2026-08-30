@@ -98,6 +98,62 @@ ok("names are trimmed", () => {
   strictEqual(t.categoryIdOf("Coffee"), COFFEE_ID);
 });
 
+// ── Hiding (stage 4) ────────────────────────────────────────────────────────
+//
+// The point of the whole feature is the gap between "not offered" and "does not
+// exist". Every assertion here is one half of that gap.
+const hiddenTax = build([{ category_id: COFFEE_ID, name: null, group_id: null, archived: true }]);
+ok("a hidden category leaves the offered list", () => {
+  const offered = hiddenTax.groups.find((g) => g.label === "Groceries & dining")!.leaves.map((l) => l.label);
+  strictEqual(offered.includes("Coffee shops"), false);
+});
+ok("a hidden category cannot be chosen", () => {
+  strictEqual(hiddenTax.writableLabels.has("Coffee shops"), false);
+});
+// THE ONE THAT MATTERS. Hiding must not touch a single existing charge.
+ok("history in a hidden category still resolves, by id and by label", () => {
+  deepStrictEqual(hiddenTax.classify(COFFEE_ID, "Coffee shops"), {
+    c: "Coffee shops", g: "Groceries & dining", k: "spend",
+  });
+  strictEqual(hiddenTax.groupOf("Coffee shops"), "Groceries & dining");
+  strictEqual(hiddenTax.kindOf("Coffee shops"), "spend");
+  strictEqual(hiddenTax.categoryIdOf("Coffee shops"), COFFEE_ID);
+});
+ok("what the Plaid sync produces for a hidden category still lands in the right group", () => {
+  // categorize() knows nothing about what a member has hidden, by design.
+  const label = hiddenTax.categorize("FOOD_AND_DRINK", "FOOD_AND_DRINK_COFFEE");
+  strictEqual(label, "Coffee shops");
+  strictEqual(hiddenTax.classify(hiddenTax.categoryIdOf(label), label).g, "Groceries & dining");
+});
+ok("hiding and renaming at once keeps both", () => {
+  const t = build([{ category_id: COFFEE_ID, name: "Coffee", group_id: null, archived: true }]);
+  strictEqual(t.writableLabels.has("Coffee"), false);
+  deepStrictEqual(t.classify(COFFEE_ID, "Coffee shops"), { c: "Coffee", g: "Groceries & dining", k: "spend" });
+});
+ok("a member's own category can be hidden too", () => {
+  const t = build([
+    { category_id: "c_55555555", name: "Bike repairs", group_id: DINING_GROUP },
+    { category_id: "c_55555555", name: null, group_id: null, archived: true },
+  ]);
+  strictEqual(t.writableLabels.has("Bike repairs"), false);
+  strictEqual(t.classify("c_55555555", "Bike repairs").g, "Groceries & dining");
+});
+ok("unhiding puts a category back where it was, not at the end", () => {
+  // The merge filters a fixed base order rather than removing and re-appending,
+  // so a category returns to its own slot. Worth asserting: a naive
+  // implementation puts it last, and a list that reshuffles when you unhide is
+  // a list you stop trusting.
+  const before = groceries().leaves.map((l) => l.label);
+  const hiddenThen = build([{ category_id: COFFEE_ID, name: null, group_id: null, archived: true }]);
+  strictEqual(hiddenThen.groups.find((g) => g.label === "Groceries & dining")!.leaves.length, before.length - 1);
+  const back = build([]).groups.find((g) => g.label === "Groceries & dining")!.leaves.map((l) => l.label);
+  deepStrictEqual(back, before);
+});
+ok("unhiding is the absence of the row, so nothing lingers", () => {
+  const t = build([{ category_id: COFFEE_ID, name: null, group_id: null, archived: false }]);
+  strictEqual(t.writableLabels.has("Coffee shops"), true);
+});
+
 // ── The base is never mutated ───────────────────────────────────────────────
 ok("the built-in groups are not mutated by a merge", () => {
   strictEqual(groceries().leaves.some((l) => l.label === "Coffee shops"), true);
@@ -105,4 +161,4 @@ ok("the built-in groups are not mutated by a merge", () => {
 });
 
 console.log(`${checks} member-category cases passed`);
-console.log("PASS: renames keep their id and their history, created leaves inherit their group's kind");
+console.log("PASS: renames keep their id and their history, created leaves inherit their group's kind,\n      and hiding removes a category from the picker without touching a single charge");
