@@ -37,7 +37,8 @@
 // coordinates taken from the anchor keep the panel on the row it belongs to.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createCategory, renameCategory, deleteCategory, setCategoryHidden } from "@/lib/categories";
+import { createCategory, renameCategory, deleteCategory, setCategoryHidden, setCategoryEmoji } from "@/lib/categories";
+import { EmojiPicker } from "@/components/juniper/emoji-picker";
 import type { CategoryGroupOption } from "@/lib/transactions";
 
 const GAP = 6;      // between the anchor and the panel
@@ -49,8 +50,9 @@ const MAX_NAME = 40;
 // management sits in the picker rather than in a settings surface.
 type Editing = { kind: "rename"; id: string; label: string } | null;
 
-function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onHide, onCancel, taken }: {
+function NameForm({ initial, emoji, cta, busy, error, canDelete, onSave, onDelete, onHide, onIcon, onCancel, taken }: {
   initial: string;
+  emoji: string;
   cta: string;
   busy: boolean;
   error: string | null;
@@ -58,6 +60,7 @@ function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onHi
   onSave: (name: string) => void;
   onDelete: () => void;
   onHide: () => void;
+  onIcon: () => void;
   onCancel: () => void;
   taken: Set<string>;
 }) {
@@ -70,6 +73,10 @@ function NameForm({ initial, cta, busy, error, canDelete, onSave, onDelete, onHi
   const valid = !!name && name.length <= MAX_NAME && !dupe;
   return (
     <form className="cp-form" onSubmit={(e) => { e.preventDefault(); if (valid && !busy) onSave(name); }}>
+      {/* The icon is a button, not a field: it opens the grid, which is the
+          only place the full list can be searched. */}
+      <button type="button" className="cp-icon" onClick={onIcon} disabled={busy}
+        aria-label="Change icon" title="Change icon">{emoji}</button>
       <input
         autoFocus value={v} maxLength={MAX_NAME} placeholder="Category name" disabled={busy}
         aria-label="Category name"
@@ -102,6 +109,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
 }) {
   const [q, setQ] = useState("");
   const [showHidden, setShowHidden] = useState(false);
+  const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +135,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
   useLayoutEffect(place, [place]);
   // Re-placed when a form opens or closes too: the panel's height changes, and a
   // flipped panel that keeps its old top would drift off the anchor.
-  useLayoutEffect(place, [editing, showHidden, place]);
+  useLayoutEffect(place, [editing, showHidden, picking, place]);
 
   useEffect(() => {
     // `true` on scroll: the row sits inside a scrollable wrapper, and a scroll
@@ -155,6 +163,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
       // Escape closes an open form first, and the panel only once there is no
       // form: a member mid-rename means "cancel this", not "throw it all away".
       if (e.key !== "Escape") return;
+      if (picking) { setPicking(null); return; }
       if (editing) { setEditing(null); setError(null); return; }
       onClose();
     };
@@ -164,7 +173,7 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [anchor, onClose, editing]);
+  }, [anchor, onClose, editing, picking]);
 
   const needle = q.trim().toLowerCase();
   // A group name matching keeps all of its categories, so typing "fun" finds
@@ -251,14 +260,24 @@ export function CategoryPicker({ anchor, taxonomy, value, busy, onPick, onClose,
               </div>
               {g.cats.map((c) => (
                 editing?.kind === "rename" && editing.id === c.id ? (
+                  picking === c.id ? (
+                    <EmojiPicker
+                      key={c.id} current={c.emoji}
+                      onPick={(e) => { setPicking(null); void run(() => setCategoryEmoji(c.id, e)); }}
+                      onReset={() => { setPicking(null); void run(() => setCategoryEmoji(c.id, null)); }}
+                      onCancel={() => setPicking(null)}
+                    />
+                  ) : (
                   <NameForm
-                    key={c.id} initial={c.label} cta="Save" busy={saving} error={error}
+                    key={c.id} initial={c.label} emoji={c.emoji} cta="Save" busy={saving} error={error}
                     canDelete={c.custom} taken={takenNames}
                     onSave={(name) => void run(() => renameCategory(c.id, name))}
                     onDelete={() => void run(() => deleteCategory(c.id))}
                     onHide={() => void run(() => setCategoryHidden(c.id, true))}
+                    onIcon={() => { setPicking(c.id); setError(null); }}
                     onCancel={() => { setEditing(null); setError(null); }}
                   />
+                  )
                 ) : (
                   <div className="cp-row" key={c.id}>
                     <button

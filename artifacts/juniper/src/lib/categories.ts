@@ -57,6 +57,14 @@ export async function setCategoryHidden(categoryId: string, hidden: boolean) {
   return authed("/api/categories", { method: "PATCH", body: JSON.stringify({ categoryId, hidden }) });
 }
 
+/** Set a category's icon, or pass null to go back to its default. Any single
+ *  emoji is allowed, including ones newer than the built-in defaults permit:
+ *  those are capped because nobody chose them, while this is the member's own
+ *  screen and their own choice. */
+export async function setCategoryEmoji(categoryId: string, emoji: string | null) {
+  return authed("/api/categories", { method: "PATCH", body: JSON.stringify({ categoryId, emoji }) });
+}
+
 /** Delete a leaf the member created. Refused by the server, with a count, while
  *  transactions or a budget still use it. Built-ins cannot be deleted at all:
  *  the Plaid sync maps onto their labels, so a deleted one would come back as a

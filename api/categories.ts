@@ -5,6 +5,7 @@
 //   POST   { name, group }               -> create a leaf in that built-in group
 //   PATCH  { categoryId, name }          -> rename a leaf, built-in or their own
 //   PATCH  { categoryId, hidden: bool }  -> stop offering it, or offer it again
+//   PATCH  { categoryId, emoji }         -> set its icon, or null for the default
 //   DELETE ?categoryId=c_...             -> remove a leaf they created
 //
 // Groups are built-in only at this stage: a member can add and rename leaves,
@@ -36,6 +37,7 @@ import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
 import { BUILTIN_GROUPS } from "./_categorize";
+import { isSingleEmoji } from "./_emoji";
 
 export const config = { runtime: "edge" };
 
@@ -143,10 +145,22 @@ async function update(uid: string, body: Record<string, unknown>): Promise<Respo
   const categoryId = norm(body.categoryId);
   const wantsName = body.name !== undefined;
   const wantsHidden = body.hidden !== undefined;
+  const wantsEmoji = body.emoji !== undefined;
   const name = norm(body.name);
   const hidden = body.hidden === true;
+  // null clears the member's choice and returns the category to its default.
+  const emoji = body.emoji === null ? null : norm(body.emoji);
   if (!CATEGORY_ID.test(categoryId)) return json({ error: "Invalid `categoryId`" }, 400);
-  if (!wantsName && !wantsHidden) return json({ error: "Nothing to change" }, 400);
+  if (!wantsName && !wantsHidden && !wantsEmoji) return json({ error: "Nothing to change" }, 400);
+  // Validated with Intl.Segmenter rather than a regex over codepoints, because
+  // "one emoji" covers a ZWJ family, a flag made of two regional indicators,
+  // and a glyph carrying a variation selector, and only grapheme segmentation
+  // gets all three right. A member may choose an emoji newer than our built-in
+  // defaults allow: those are capped because nobody chose them, while this is
+  // their own machine and their own screen.
+  if (wantsEmoji && emoji !== null && !isSingleEmoji(emoji)) {
+    return json({ error: "That needs to be a single emoji" }, 400);
+  }
   if (wantsName) {
     if (!name || name.length > MAX_NAME) return json({ error: `A name is required, up to ${MAX_NAME} characters` }, 400);
     if (!NAME_OK.test(name)) return json({ error: "A name can use letters, numbers, spaces and ' & + . / -" }, 400);
@@ -169,25 +183,27 @@ async function update(uid: string, body: Record<string, unknown>): Promise<Respo
   // A merge-duplicates upsert replaces the WHOLE row, so anything not restated
   // here would be lost: hiding a renamed category would drop the rename.
   const existing = await adminRest(
-    `categories?user_id=eq.${uid}&category_id=eq.${enc(categoryId)}&select=group_id,name,archived&limit=1`,
+    `categories?user_id=eq.${uid}&category_id=eq.${enc(categoryId)}&select=group_id,name,archived,emoji&limit=1`,
   );
   const prior = existing.ok
-    ? ((await existing.json().catch(() => [])) as { group_id: string | null; name: string | null; archived: boolean }[])[0]
+    ? ((await existing.json().catch(() => [])) as
+        { group_id: string | null; name: string | null; archived: boolean; emoji: string | null }[])[0]
     : undefined;
 
   const nextName = wantsName ? name : prior?.name ?? null;
   const nextHidden = wantsHidden ? hidden : prior?.archived ?? false;
+  const nextEmoji = wantsEmoji ? (emoji || null) : prior?.emoji ?? null;
 
   // A row that neither renames nor hides says nothing, so it is deleted rather
   // than stored. Unhiding a built-in nobody renamed therefore leaves no trace,
   // which is what makes "unhide" the true inverse of "hide".
-  if (!nextName && !nextHidden) {
+  if (!nextName && !nextHidden && !nextEmoji) {
     const d = await adminRest(`categories?user_id=eq.${uid}&category_id=eq.${enc(categoryId)}`, { method: "DELETE" });
     if (!d.ok) {
       console.error(`[categories] clearing override failed (${d.status}): ${await d.text().catch(() => "")}`);
       return json({ error: "Could not save that change" }, 500);
     }
-    return json({ id: categoryId, label: null, hidden: false });
+    return json({ id: categoryId, label: null, hidden: false, emoji: null });
   }
 
   // Upsert on (user_id, category_id), so changing a built-in for the first time
@@ -204,6 +220,7 @@ async function update(uid: string, body: Record<string, unknown>): Promise<Respo
       name: nextName,
       group_id: prior?.group_id ?? null,
       archived: nextHidden,
+      emoji: nextEmoji,
       updated_at: new Date().toISOString(),
     }),
   });
@@ -211,7 +228,7 @@ async function update(uid: string, body: Record<string, unknown>): Promise<Respo
     console.error(`[categories] update failed (${r.status}): ${await r.text().catch(() => "")}`);
     return json({ error: "Could not save that change" }, 500);
   }
-  return json({ id: categoryId, label: nextName, hidden: nextHidden });
+  return json({ id: categoryId, label: nextName, hidden: nextHidden, emoji: nextEmoji });
 }
 
 async function remove(uid: string, url: URL): Promise<Response> {

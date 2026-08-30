@@ -39,7 +39,7 @@ async function readMemberCategories(userId: string): Promise<MemberCategoryRow[]
   if (!adminConfigured()) return [];
   try {
     const r = await adminRest(
-      `categories?user_id=eq.${userId}&select=category_id,name,group_id,archived&order=created_at.asc`,
+      `categories?user_id=eq.${userId}&select=category_id,name,group_id,archived,emoji&order=created_at.asc`,
     );
     if (!r.ok) {
       // Not thrown: a deploy that runs ahead of migration 0025 lands here, and
