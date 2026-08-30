@@ -19,6 +19,7 @@ export interface TxnRow {
   c: string;                 // leaf category
   e: string;                 // the category's icon, for lists (a chart needs the colour)
   g: string;                 // group it rolls into
+  hue?: number | null;       // set only for a group the member created; see lib/category-color paint()
   k: "spend" | "income" | "transfer";
   v: number;                 // UI sign: negative is spending, positive is money in
   d: string;                 // ISO date
@@ -40,6 +41,7 @@ export interface CategoryGroupOption {
   id: string;
   g: string;
   emoji: string;
+  hue?: number | null;
   kind: "spend" | "income" | "transfer";
   /** Offered. */
   cats: CategoryOption[];
@@ -47,7 +49,7 @@ export interface CategoryGroupOption {
   hidden?: CategoryOption[];
 }
 export interface BreakdownRow {
-  c: string; e: string; v: number; n: number; pct: number;
+  c: string; e: string; hue?: number | null; v: number; n: number; pct: number;
   categories: { c: string; v: number; n: number }[];
 }
 export interface TxnSummary {

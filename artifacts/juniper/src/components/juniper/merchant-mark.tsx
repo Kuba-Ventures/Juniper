@@ -23,15 +23,17 @@ import { BrandTile } from "@/components/juniper/primitives";
 import { merchantMark, initial } from "@/lib/txn-format";
 import type { SeriesKey } from "@/lib/mock-data";
 
-export function MerchantMark({ logo, merchant, name, k, className }: {
+export function MerchantMark({ logo, merchant, name, k, paint, className }: {
   logo: string | null;
   merchant: string | null;
   name: string;
   k: SeriesKey;
+  /** A finished colour, for a group the member created, which has no token. */
+  paint?: string;
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const fallback = <BrandTile name={merchantMark(merchant, name)} letter={initial(name)} k={k} />;
+  const fallback = <BrandTile name={merchantMark(merchant, name)} letter={initial(name)} k={k} paint={paint} />;
   if (!logo || failed) return fallback;
   return (
     <img

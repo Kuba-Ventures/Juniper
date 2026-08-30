@@ -158,8 +158,11 @@ export default async function handler(req: Request): Promise<Response> {
   // group ships both. An emoji cannot fill an arc, which is the whole reason
   // colour did not go away when icons arrived.
   const emojiOfGroup = new Map(tax.groups.map((g) => [g.label, g.emoji]));
+  // A member-created group has no palette token, so its hue travels with it.
+  // Null for the nine built-ins, which keep their tokens.
+  const hueOfGroup = new Map(tax.groups.map((g) => [g.label, g.hue]));
   const spending = tax.spendGroups
-    .map((c) => ({ c, v: Math.round(byGroup.get(c) || 0), e: emojiOfGroup.get(c) ?? "" }))
+    .map((c) => ({ c, v: Math.round(byGroup.get(c) || 0), e: emojiOfGroup.get(c) ?? "", hue: hueOfGroup.get(c) ?? null }))
     .filter((s) => s.v > 0);
 
   const spent = spending.reduce((a, s) => a + s.v, 0);
@@ -192,6 +195,7 @@ export default async function handler(req: Request): Promise<Response> {
     // the rollup used, instead of keeping its own copy of the taxonomy.
     g: tax.classify(t.category_id, t.category).g,
     e: tax.classify(t.category_id, t.category).e,
+    hue: hueOfGroup.get(tax.classify(t.category_id, t.category).g) ?? null,
     v: -t.amount, // flip Plaid's +out convention to the UI's -spend / +income
     d: fmtDay(t.date),
     inc: tax.classify(t.category_id, t.category).k === "income",
@@ -216,6 +220,7 @@ export default async function handler(req: Request): Promise<Response> {
   const budgetsOut = budgets.map((b) => ({
     c: tax.classify(b.category_id, b.category).c,
     e: tax.classify(b.category_id, b.category).e,
+    hue: hueOfGroup.get(tax.classify(b.category_id, b.category).g) ?? null,
     s: budgetSpent(b.category, b.category_id),
     l: Math.round(b.limit_amount),
   }));

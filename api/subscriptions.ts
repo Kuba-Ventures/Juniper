@@ -169,6 +169,7 @@ export default async function handler(req: Request): Promise<Response> {
   // One resolve for the whole response, not one per stream. Stage 2 of
   // docs/CUSTOM_CATEGORIES.md.
   const tax = await taxonomyFor(uid);
+  const hueOfGroup = new Map(tax.groups.map((g) => [g.label, g.hue]));
   const items = streams.map((s) => {
     const o = byStream.get(s.stream_id);
     const review: "confirmed" | "dismissed" | "unreviewed" =
@@ -209,6 +210,7 @@ export default async function handler(req: Request): Promise<Response> {
       logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,
       c: cat.c,
       g: cat.g,
+      hue: hueOfGroup.get(cat.g) ?? null,
       direction: s.direction === "inflow" ? "inflow" : "outflow",
       review,
       confidence,
