@@ -506,6 +506,8 @@ export interface MemberCategoryRow {
   name: string | null;
   group_id: string | null;
   archived?: boolean;
+  /** NULL to keep the default icon. */
+  emoji?: string | null;
 }
 
 // Built-ins plus the member's own, in the resolver's shape.
@@ -531,13 +533,16 @@ export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategor
   }
 
   const renames = new Map<string, string>();          // leaf id -> new label
+  const icons = new Map<string, string>();            // leaf id -> chosen emoji
   const archived = new Set<string>();                 // leaf ids to stop offering
   const created: MemberCategoryRow[] = [];
   for (const r of rows) {
     const name = (r.name || "").trim();
+    const emoji = (r.emoji || "").trim();
     if (groupIds.has(r.category_id)) continue;        // groups are neither renameable nor hideable yet
     if (r.archived) archived.add(r.category_id);
-    if (!name) continue;                              // a hide-only row carries no name
+    if (emoji) icons.set(r.category_id, emoji);
+    if (!name) continue;                              // a hide-only or icon-only row carries no name
     if (builtinLeaf.has(r.category_id)) renames.set(r.category_id, name);
     else if (r.group_id && groupIds.has(r.group_id)) created.push({ ...r, name });
   }
@@ -545,11 +550,18 @@ export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategor
   return base.map((g) => {
     // A rename keeps the leaf's icon: renaming "Coffee shops" to "Coffee" does
     // not make it stop being coffee.
-    const named = (l: ResolvedLeaf) =>
-      (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)!, emoji: l.emoji } : l);
+    // A rename keeps the leaf's icon unless the member also chose one:
+    // renaming "Coffee shops" to "Coffee" does not make it stop being coffee.
+    const named = (l: ResolvedLeaf): ResolvedLeaf => ({
+      id: l.id,
+      label: renames.get(l.id) ?? l.label,
+      emoji: icons.get(l.id) ?? l.emoji,
+    });
     const all = g.leaves.map(named);
     for (const c of created) {
-      if (c.group_id === g.id) all.push({ id: c.category_id, label: c.name!, emoji: NEW_CATEGORY_EMOJI });
+      if (c.group_id === g.id) {
+        all.push({ id: c.category_id, label: c.name!, emoji: icons.get(c.category_id) ?? NEW_CATEGORY_EMOJI });
+      }
     }
     // Split, rather than filtered: the hidden ones still have to resolve.
     const leaves = all.filter((l) => !archived.has(l.id));
