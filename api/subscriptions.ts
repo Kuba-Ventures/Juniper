@@ -36,7 +36,8 @@ function json(body: unknown, status = 200) {
 
 type StreamRow = {
   stream_id: string; item_id: string | null; account_id: string | null;
-  description: string | null; merchant_name: string | null; category: string | null;
+  description: string | null; merchant_name: string | null;
+  category: string | null; category_id: string | null;
   plaid_status: string | null; frequency: string | null; direction: string;
   average_amount: number | null; last_amount: number | null;
   last_date: string | null; predicted_next_date: string | null;
@@ -198,13 +199,16 @@ export default async function handler(req: Request): Promise<Response> {
         : "on_track";
 
     const perMonth = monthly(expected, s.frequency);
+    // Id first, same as every other read since stage 3, so a stream and the
+    // charges behind it name the category the same way after a rename.
+    const cat = tax.classify(s.category_id, s.category);
     return {
       id: s.stream_id,
       name: o?.name || s.merchant_name || s.description || "Recurring charge",
       merchant: s.merchant_name,
       logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,
-      c: s.category || "Everything else",
-      g: tax.groupOf(s.category),
+      c: cat.c,
+      g: cat.g,
       direction: s.direction === "inflow" ? "inflow" : "outflow",
       review,
       confidence,
