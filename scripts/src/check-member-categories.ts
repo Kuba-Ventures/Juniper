@@ -46,8 +46,10 @@ ok("the leaf keeps its position, so the list does not reshuffle", () => {
 // "Everything else", taking it out of the member's dining total and out of any
 // budget on it. By id it is still the same category, wearing its new name.
 ok("history written under the old label still resolves, and displays the new one", () => {
+  // The emoji rides along and does NOT change: renaming "Coffee shops" to
+  // "Coffee" does not make it stop being coffee.
   deepStrictEqual(renamed.classify(COFFEE_ID, "Coffee shops"), {
-    c: "Coffee", g: "Groceries & dining", k: "spend",
+    c: "Coffee", g: "Groceries & dining", k: "spend", e: "\u2615",
   });
 });
 ok("the old label alone no longer names anything, which is why the id is read first", () => {
@@ -60,6 +62,10 @@ ok("a rename does not make the old label writable", () => {
 
 // ── Create a leaf ───────────────────────────────────────────────────────────
 const created = build([{ category_id: "c_11111111", name: "Bike repairs", group_id: DINING_GROUP }]);
+ok("a category the member created gets the label icon, not its group's", () => {
+  strictEqual(created.classify("c_11111111", "Bike repairs").e, "\uD83C\uDFF7\uFE0F");
+  strictEqual(created.classify(COFFEE_ID, "Coffee shops").e, "\u2615");
+});
 ok("a created leaf is offered, and inherits its group's kind", () => {
   strictEqual(created.writableLabels.has("Bike repairs"), true);
   strictEqual(created.groupOf("Bike repairs"), "Groceries & dining");
@@ -113,7 +119,7 @@ ok("a hidden category cannot be chosen", () => {
 // THE ONE THAT MATTERS. Hiding must not touch a single existing charge.
 ok("history in a hidden category still resolves, by id and by label", () => {
   deepStrictEqual(hiddenTax.classify(COFFEE_ID, "Coffee shops"), {
-    c: "Coffee shops", g: "Groceries & dining", k: "spend",
+    c: "Coffee shops", g: "Groceries & dining", k: "spend", e: "\u2615",
   });
   strictEqual(hiddenTax.groupOf("Coffee shops"), "Groceries & dining");
   strictEqual(hiddenTax.kindOf("Coffee shops"), "spend");
@@ -128,7 +134,7 @@ ok("what the Plaid sync produces for a hidden category still lands in the right 
 ok("hiding and renaming at once keeps both", () => {
   const t = build([{ category_id: COFFEE_ID, name: "Coffee", group_id: null, archived: true }]);
   strictEqual(t.writableLabels.has("Coffee"), false);
-  deepStrictEqual(t.classify(COFFEE_ID, "Coffee shops"), { c: "Coffee", g: "Groceries & dining", k: "spend" });
+  deepStrictEqual(t.classify(COFFEE_ID, "Coffee shops"), { c: "Coffee", g: "Groceries & dining", k: "spend", e: "\u2615" });
 });
 ok("a member's own category can be hidden too", () => {
   const t = build([

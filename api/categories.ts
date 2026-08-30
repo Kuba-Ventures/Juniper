@@ -70,10 +70,12 @@ async function list(uid: string): Promise<Response> {
     groups: tax.groups.map((g) => ({
       id: g.id,
       label: g.label,
+      emoji: g.emoji,
       kind: g.kind,
       categories: g.leaves.map((l) => ({
         id: l.id,
         label: l.label,
+        emoji: l.emoji,
         // `custom` decides whether Delete is offered at all, so it is answered
         // here from the built-in table rather than guessed from the id's shape.
         custom: !BUILTIN_LEAF_IDS.has(l.id),
@@ -85,6 +87,7 @@ async function list(uid: string): Promise<Response> {
       hidden: (g.hidden ?? []).map((l) => ({
         id: l.id,
         label: l.label,
+        emoji: l.emoji,
         custom: !BUILTIN_LEAF_IDS.has(l.id),
         hidden: true,
       })),

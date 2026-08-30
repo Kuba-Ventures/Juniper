@@ -11,9 +11,11 @@ export type SeriesKey =
   | "--jnpr-c1" | "--jnpr-c2" | "--jnpr-c3" | "--jnpr-c4" | "--jnpr-c5" | "--jnpr-c6" | "--jnpr-c7"
   | "--jnpr-good" | "--jnpr-accent" | "--jnpr-ink-2" | "--jnpr-ink-3";
 
-export interface SpendCat { c: string; v: number; k: SeriesKey }
-export interface Budget { c: string; s: number; l: number }
-export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; inc?: boolean; logo?: string | null }
+// `e` is the category's icon, for lists. `k` is its colour, for charts: an
+// emoji cannot fill a donut arc, which is why both exist.
+export interface SpendCat { c: string; v: number; k: SeriesKey; e?: string }
+export interface Budget { c: string; s: number; l: number; e?: string }
+export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; e?: string; inc?: boolean; logo?: string | null }
 export interface Account { n: string; i: string; v: number; k: SeriesKey; apr?: string }
 export interface PlanIcon { }
 

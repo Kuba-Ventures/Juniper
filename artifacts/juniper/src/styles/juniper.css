@@ -1244,6 +1244,14 @@
 .jnpr .cp-off{display:block;padding:6px 9px;font-size:12.5px;color:var(--jnpr-ink-3);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jnpr .cp-edit.cp-always{opacity:1;color:var(--jnpr-accent)}
+/* A category's icon in a list. Fixed width so a column of them stays even
+   whatever the emoji, and whatever platform draws it: Apple, Windows and
+   Android all ship different art at slightly different widths. Charts keep the
+   colour, because an emoji cannot fill an arc. */
+.jnpr .cat-em{display:inline-block;width:1.15em;margin-right:6px;text-align:center;
+  font-size:.95em;line-height:1;flex:none;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.jnpr .ctag .cat-em{margin-right:5px}
 .jnpr .td-a{font-weight:650;color:var(--jnpr-ink);white-space:nowrap}
 .jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
 .jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;

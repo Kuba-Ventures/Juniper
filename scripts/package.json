@@ -8,6 +8,7 @@
     "check-category-ids": "tsx ./src/check-category-ids.ts",
     "check-category-resolver": "tsx ./src/check-category-resolver.ts",
     "check-member-categories": "tsx ./src/check-member-categories.ts",
+    "check-category-emoji": "tsx ./src/check-category-emoji.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
