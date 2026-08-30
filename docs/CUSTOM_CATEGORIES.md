@@ -182,12 +182,26 @@ Five stages, each shippable on its own. Stage 1 alone is already useful.
 |---|---|---|
 | 1 | **Ids without behaviour change** | Give built-ins stable ids; add `category_id` alongside the TEXT column on the three tables; backfill; write both. Nothing user-visible. |
 | 2 | **The resolver** | `_categorize.ts` becomes a per-request resolver built from built-ins plus the member's rows, and the six endpoints load it once per request. Still no user-visible change: with zero member rows the resolver returns exactly today's answers. |
-| 3 | **Create and rename leaves** | The `categories` table, its endpoint, and management UI. Renames are now safe, because rows point at ids. |
+| 3a | **Reads move to the id** | Every read resolves `(category_id, category)` through `classify()`, id first. No user-visible change. |
+| 3b | **Create and rename leaves** | The `categories` table, its endpoint, and management UI. |
 | 4 | **Archive built-ins** | Hide from the picker, keep resolving for history. |
 | 5 | **Custom groups** | Only if section 4 answers yes. Carries the colour work. |
 
-Stages 1 and 2 are the bulk of the risk and produce nothing a member can see,
-which is worth saying out loud before starting: the demo is at stage 3.
+Stages 1, 2 and 3a are the bulk of the risk and produce nothing a member can
+see, which is worth saying out loud before starting: the demo is at stage 3b.
+
+> **Corrected 2026-08-30, while building stage 3.** This table originally had a
+> single stage 3 whose note read "renames are now safe, because rows point at
+> ids". That was wrong, and it was wrong in the direction that would have
+> shipped a bug. Stage 1 made rows CARRY ids; nothing READ them. Every endpoint
+> still resolved a stored row by its label, so the first rename would have:
+> dropped every row written before it into "Everything else", shown two names
+> for one category on the same page, and split a budget from its own spending,
+> leaving a limit reading zero with money plainly going out. Reading by id is
+> its own stage, and it has to land before anything can be renamed. Splitting it
+> out also means the change that touches the Score's classification path ships
+> on its own, provable in isolation, rather than buried in the PR that adds a
+> table and a management UI.
 
 ### The regression to guard at every stage
 

@@ -87,6 +87,7 @@ type Txn = {
   amount: number;
   date: string;
   category: string | null;
+  category_id: string | null;
   category_source: string | null;
   pending: boolean;
   account_id: string | null;
@@ -94,12 +95,12 @@ type Txn = {
   iso_currency_code: string | null;
   logo_url: string | null;
 };
-type RollupTxn = Pick<Txn, "name" | "merchant_name" | "amount" | "date" | "category">;
+type RollupTxn = Pick<Txn, "name" | "merchant_name" | "amount" | "date" | "category" | "category_id">;
 type Acct = { account_id?: string; name?: string; mask?: string | null };
 type Item = { item_id: string; institution_name: string | null; accounts: Acct[] };
 
-const PAGE_COLS = "id,name,merchant_name,amount,date,category,category_source,pending,account_id,item_id,iso_currency_code,logo_url";
-const ROLLUP_COLS = "name,merchant_name,amount,date,category";
+const PAGE_COLS = "id,name,merchant_name,amount,date,category,category_id,category_source,pending,account_id,item_id,iso_currency_code,logo_url";
+const ROLLUP_COLS = "name,merchant_name,amount,date,category,category_id";
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
   try { const r = await adminRest(pathAndQuery); if (!r.ok) return []; return (await r.json()) as T[]; }
@@ -204,7 +205,10 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   if (!updated.length) return json({ error: "Not found" }, 404);
 
   const stored = updated[0].category ?? category;
-  return json({ id, c: stored, g: tax.groupOf(stored), k: tax.kindOf(stored), userSet: true });
+  // Through classify, like every read, so the row the client swaps in is
+  // labelled exactly as the next page load will label it.
+  const row = tax.classify(tax.categoryIdOf(stored), stored);
+  return json({ id, c: row.c, g: row.g, k: row.k, userSet: true });
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -287,6 +291,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const transactions = pageRows.map((t) => {
     const acct = t.account_id ? accountOf.get(t.account_id) : undefined;
+    const row = tax.classify(t.category_id, t.category);
     return {
       id: t.id,
       // `m` is the display label and `merchant` the raw Plaid merchant string.
@@ -297,9 +302,11 @@ export default async function handler(req: Request): Promise<Response> {
       // The row's own art first, the merchant cache second, null last. Null is
       // a real answer: the client draws a monogram rather than a broken image.
       logo: t.logo_url ?? (t.merchant_name ? logoOf.get(t.merchant_name) ?? null : null),
-      c: t.category || "Everything else",
-      g: tax.groupOf(t.category),
-      k: tax.kindOf(t.category),
+      // Id first, stored label second. After a rename the two disagree by
+      // design, and the id is the one that still names the right category.
+      c: row.c,
+      g: row.g,
+      k: row.k,
       // True when the member set this category themselves rather than Plaid.
       // The row marks it, so a category somebody corrected by hand is
       // distinguishable from one that was guessed.
@@ -367,8 +374,9 @@ export default async function handler(req: Request): Promise<Response> {
     const ts = Date.parse(t.date);
     if (!Number.isNaN(ts)) { if (ts < oldest) oldest = ts; if (ts > newest) newest = ts; }
     const ym = t.date.slice(0, 7);
-    const cat = t.category || "Everything else";
-    const kind = tax.kindOf(cat);
+    // Aggregated on the CURRENT label, resolved from the id, so a category
+    // renamed halfway through the range is one bucket rather than two.
+    const { c: cat, g, k: kind } = tax.classify(t.category_id, t.category);
     if (kind === "transfer") { transfersRaw += Math.abs(t.amount); continue; }
     if (kind === "income") {
       incomeRaw -= t.amount;
@@ -377,7 +385,6 @@ export default async function handler(req: Request): Promise<Response> {
       countByIncomeCat.set(cat, (countByIncomeCat.get(cat) || 0) + 1);
       continue;
     }
-    const g = tax.groupOf(cat);
     bumpMonth(ym, "spent", t.amount);
     byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
     byCat.set(cat, (byCat.get(cat) || 0) + t.amount);

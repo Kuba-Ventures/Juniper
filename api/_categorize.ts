@@ -302,7 +302,17 @@ export interface Taxonomy {
   /** Every label that may be stored: both levels, because a group label is a
       legitimate stored value on rows categorized at group precision. */
   readonly writableLabels: ReadonlySet<string>;
+  /**
+   * Label-only resolution, for a caller that genuinely has no id: a label typed
+   * into a request, or a value being validated before it is stored.
+   *
+   * Reading a STORED ROW with these is a bug waiting for the first rename.
+   * `transactions.category` holds the label as it stood when the row was
+   * written, so after a member renames a category these two answer for a
+   * category that no longer goes by that name. Use `classify(id, label)`.
+   */
   groupOf(category?: string | null): string;
+  /** Label-only. See groupOf: use `classify` for a stored row. */
   kindOf(category?: string | null): CategoryKind;
   isGroupLabel(label?: string | null): boolean;
   categoryIdOf(category?: string | null): string | null;
@@ -310,6 +320,23 @@ export interface Taxonomy {
       own category can never be something Plaid maps onto, and the built-ins a
       member has archived must still resolve, or their history changes. */
   categorize(primary?: string, detailed?: string): string;
+  /**
+   * A stored row's category, resolved id first and label second.
+   *
+   * This is what makes a rename survivable, and it is why it exists BEFORE
+   * members can rename anything. `transactions.category` holds the label as it
+   * stood when the row was written, so once a member renames "Coffee shops" to
+   * "Coffee", history says one thing and new rows say another: resolving by
+   * label would drop every older row into "Everything else", show two names for
+   * one category, and split the member's budget in half. Resolving by
+   * `category_id` gives one answer for both.
+   *
+   * `c` is therefore the CURRENT display label, not the stored one, and it is
+   * what callers should aggregate on. The label is the fallback for rows
+   * written before migration 0024 backfilled the ids, and for a value outside
+   * the taxonomy, where the stored text is still the most honest thing to show.
+   */
+  classify(categoryId?: string | null, label?: string | null): { c: string; g: string; k: CategoryKind };
 }
 
 export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
@@ -328,6 +355,13 @@ export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
       idByLabel[c] = leafId(c);
       writable.add(c);
     }
+  }
+  // id -> what that category currently is. Groups and leaves cannot collide
+  // here even where they share a name, because their ids differ by prefix.
+  const byId: Record<string, { label: string; group: string; kind: CategoryKind }> = {};
+  for (const g of groups) {
+    byId[groupId(g.label)] = { label: g.label, group: g.label, kind: g.kind };
+    for (const c of g.categories) byId[leafId(c)] = { label: c, group: g.label, kind: g.kind };
   }
   const group = (category?: string | null): string => {
     const c = (category || "").trim();
@@ -348,6 +382,16 @@ export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
       return idByLabel[c] ?? null;
     },
     categorize,
+    classify: (categoryId, label) => {
+      const id = (categoryId || "").trim();
+      const hit = id ? byId[id] : undefined;
+      if (hit) return { c: hit.label, g: hit.group, k: hit.kind };
+      // No id, or an id this member's taxonomy does not know. Fall back to the
+      // stored text, which is exactly what every read did before this existed.
+      const c = (label || "").trim() || "Everything else";
+      const g = group(c);
+      return { c, g, k: kindByGroup[g] ?? "spend" };
+    },
   };
 }
 

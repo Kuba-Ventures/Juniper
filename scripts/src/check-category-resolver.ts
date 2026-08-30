@@ -71,6 +71,43 @@ eq("isGroupLabel(null)", tax.isGroupLabel(null), n.isGroupNull);
 eq("categoryIdOf(null)", tax.categoryIdOf(null), n.idNull);
 eq("categorize(undefined, undefined)", tax.categorize(undefined, undefined), n.categorizeEmpty);
 
+// ── classify(): id-first resolution must agree with the label path ──────────
+//
+// Stage 3 moved every read onto `classify(category_id, category)`. Two things
+// have to hold for that to be a no-op today, and they are what this asserts:
+//
+//   1. with the row's own id, classify returns the same group and kind the
+//      label path returns, and the label itself as the display value
+//   2. with a null id, classify degrades to exactly the label path, which is
+//      the case for every row written before migration 0024 backfilled
+//
+// Once a member renames a category these two DIVERGE on purpose, and that is
+// the point: the id keeps pointing at the same category while the label a row
+// was written with goes stale. Until then they must be identical.
+for (const [label, want] of Object.entries(golden.labelAnswers)) {
+  const id = tax.categoryIdOf(label);
+  const withId = tax.classify(id, label);
+  const withoutId = tax.classify(null, label);
+  const displayed = label.trim() || "Everything else";
+  if (id) {
+    eq(`classify(id of ${JSON.stringify(label)}).g`, withId.g, want.g);
+    eq(`classify(id of ${JSON.stringify(label)}).k`, withId.k, want.k);
+    // `.trim()`, not the raw label: resolving through the id returns the
+    // taxonomy's canonical spelling, so " Rent " comes back as "Rent". That is
+    // the id path doing its job, and it cannot bite real data, because both
+    // writers store exact labels (categorize() returns table strings verbatim,
+    // and PATCH trims then requires an exact match against writableLabels).
+    eq(`classify(id of ${JSON.stringify(label)}).c`, withId.c, label.trim());
+  }
+  eq(`classify(null, ${JSON.stringify(label)}).g`, withoutId.g, want.g);
+  eq(`classify(null, ${JSON.stringify(label)}).k`, withoutId.k, want.k);
+  eq(`classify(null, ${JSON.stringify(label)}).c`, withoutId.c, displayed);
+}
+// An id the taxonomy does not know must not win over the stored label.
+eq("classify(bogus id, 'Rent').g", tax.classify("c_not_a_real_id", "Rent").g, "Housing");
+eq("classify(null, null).c", tax.classify(null, null).c, "Everything else");
+eq("classify(null, null).g", tax.classify(null, null).g, "Everything else");
+
 // The derived lists the endpoints read off the taxonomy, rather than rebuilding
 // from CATEGORY_GROUPS at six call sites the way they used to.
 const spend = tax.groups.filter((g) => g.kind === "spend").map((g) => g.label);
@@ -79,7 +116,7 @@ const everyLabel = tax.groups.flatMap((g) => [g.label, ...g.categories]);
 eq("writableLabels size", tax.writableLabels.size, new Set(everyLabel).size);
 for (const l of everyLabel) if (!tax.writableLabels.has(l)) problems.push(`writableLabels is missing ${JSON.stringify(l)}`);
 
-const cases = Object.keys(golden.labelAnswers).length * 4 + Object.keys(golden.categorizeAnswers).length + 7;
+const cases = Object.keys(golden.labelAnswers).length * 10 + Object.keys(golden.categorizeAnswers).length + 10;
 console.log(`${cases} classification cases replayed against the pre-refactor fixture`);
 if (problems.length) {
   for (const p of problems.slice(0, 25)) console.error(`  ${p}`);

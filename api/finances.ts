@@ -55,8 +55,8 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
   catch { return []; }
 }
 
-type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null; logo_url: string | null };
-type Bud = { category: string; limit_amount: number };
+type Txn = { name: string | null; merchant_name: string | null; amount: number; date: string; category: string | null; category_id: string | null; logo_url: string | null };
+type Bud = { category: string; category_id: string | null; limit_amount: number };
 type Snap = { as_of: string; net_worth: number; estimated?: boolean };
 type ScoreRow = { as_of: string; value: number };
 type Acct = { name: string; mask: string | null; type: string | null; subtype: string | null; balance: number | null };
@@ -83,7 +83,7 @@ export default async function handler(req: Request): Promise<Response> {
   const uid = payload.sub;
 
   const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts,last_synced_at,last_error_code,last_error_at`);
-  const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category,logo_url&order=date.desc&limit=400`);
+  const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category,category_id,logo_url&order=date.desc&limit=400`);
   // Manual accounts (tier 3) are a balance source in their own right, so they're
   // read up here with the other two: the "does this member have anything" test
   // below has to see all three. Balance-less entries are dropped (they still
@@ -103,7 +103,7 @@ export default async function handler(req: Request): Promise<Response> {
   // Budgets only mean something next to a this-month spend figure, so they're
   // read only when there are transactions to measure them against.
   const budgets = hasTransactions
-    ? await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,limit_amount`)
+    ? await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,category_id,limit_amount`)
     : [];
   const snaps = await rows<Snap>(`net_worth_snapshots?user_id=eq.${uid}&select=as_of,net_worth,estimated&order=as_of.asc&limit=400`);
 
@@ -136,11 +136,11 @@ export default async function handler(req: Request): Promise<Response> {
   const byGroup = new Map<string, number>(); // group -> net spend, for the donut
   let incomeRaw = 0;
   for (const t of thisMonth) {
-    const cat = t.category || "Everything else";
-    const kind = tax.kindOf(cat);
+    // Id first, so a renamed category is one bucket across the month rather
+    // than two: rows written before the rename still carry the old label.
+    const { c: cat, g, k: kind } = tax.classify(t.category_id, t.category);
     if (kind === "transfer") continue;
     if (kind === "income") { incomeRaw -= t.amount; continue; }
-    const g = tax.groupOf(cat);
     byCat.set(cat, (byCat.get(cat) || 0) + t.amount);
     byGroup.set(g, (byGroup.get(g) || 0) + t.amount);
   }
@@ -186,10 +186,10 @@ export default async function handler(req: Request): Promise<Response> {
     c: t.category || "Everything else",
     // The group rides along so the client can color a row from the same table
     // the rollup used, instead of keeping its own copy of the taxonomy.
-    g: tax.groupOf(t.category),
+    g: tax.classify(t.category_id, t.category).g,
     v: -t.amount, // flip Plaid's +out convention to the UI's -spend / +income
     d: fmtDay(t.date),
-    inc: tax.kindOf(t.category) === "income",
+    inc: tax.classify(t.category_id, t.category).k === "income",
   }));
 
   // Budgets with this-month spent. A budget is stored by label, and every label
@@ -198,9 +198,21 @@ export default async function handler(req: Request): Promise<Response> {
   // category. Without this, widening the vocabulary would have quietly zeroed
   // every budget the member already had. Clamped at zero so a refund-heavy month
   // cannot render a negative bar.
-  const budgetSpent = (label: string) =>
-    Math.max(0, Math.round((tax.isGroupLabel(label) ? byGroup.get(label) : byCat.get(label)) || 0));
-  const budgetsOut = budgets.map((b) => ({ c: b.category, s: budgetSpent(b.category), l: Math.round(b.limit_amount) }));
+  //
+  // The budget's own label is resolved through the same id-first path the
+  // spending above was bucketed by, so the two agree by construction. Without
+  // it a rename would split a budget from its own spending: the limit would
+  // still say "Coffee shops" while the month's charges had been counted under
+  // "Coffee", and the bar would read zero with money plainly going out.
+  const budgetSpent = (label: string, id: string | null) => {
+    const c = tax.classify(id, label).c;
+    return Math.max(0, Math.round((tax.isGroupLabel(c) ? byGroup.get(c) : byCat.get(c)) || 0));
+  };
+  const budgetsOut = budgets.map((b) => ({
+    c: tax.classify(b.category_id, b.category).c,
+    s: budgetSpent(b.category, b.category_id),
+    l: Math.round(b.limit_amount),
+  }));
 
   // Accounts grouped from the linked snapshots
   const group = (pred: (a: Acct) => boolean, debt = false) =>

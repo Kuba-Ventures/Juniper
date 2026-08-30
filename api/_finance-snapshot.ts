@@ -7,7 +7,7 @@ import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
 import { taxonomyFor } from "./_categorize";
 import type { ScoreInput } from "./_score";
 
-type Txn = { amount: number; date: string; category: string | null };
+type Txn = { amount: number; date: string; category: string | null; category_id: string | null };
 // `limit` is the card's credit line, persisted into the stored snapshot by
 // sanitizeAccounts. Present on most cards, null on plenty of them, which is why
 // utilization below is computed only across the cards that report one.
@@ -79,7 +79,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=accounts`);
   const since = isoDaysAgo(WINDOW_DAYS);
   const txns = await rows<Txn>(
-    `transactions?user_id=eq.${uid}&date=gte.${since}&select=amount,date,category&limit=2000`,
+    `transactions?user_id=eq.${uid}&date=gte.${since}&select=amount,date,category,category_id&limit=2000`,
   );
 
   // Not enough to score off yet, caller keeps the demo mock.
@@ -103,7 +103,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   const tax = await taxonomyFor(uid);
   let outflow = 0, inflow = 0;
   for (const t of txns) {
-    const kind = tax.kindOf(t.category);
+    const kind = tax.classify(t.category_id, t.category).k;
     if (kind === "transfer") continue;
     if (kind === "income") inflow -= t.amount;
     else outflow += t.amount;
