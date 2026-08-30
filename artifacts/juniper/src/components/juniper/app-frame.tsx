@@ -5,6 +5,7 @@ import { useFinances } from "@/lib/finances";
 import { SettingsModal } from "@/components/juniper/settings-modal";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
+import { resetPartnerCache } from "@/lib/partner";
 
 type NavItem = { path: string; label: string; count?: number };
 
@@ -67,7 +68,15 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
     ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
     : 0;
 
-  const signOut = async () => { setOpen(null); try { await supabase.auth.signOut(); } catch { /* ignore */ } setLocation("/"); };
+  const signOut = async () => {
+    setOpen(null);
+    try { await supabase.auth.signOut(); } catch { /* ignore */ }
+    // The partner store is module level, so it survives this client-side route
+    // change. Without clearing it the next member signing in to the same tab
+    // would see the previous one's partner until the first fetch returned.
+    resetPartnerCache();
+    setLocation("/");
+  };
 
   return (
     <div className="appbar">
