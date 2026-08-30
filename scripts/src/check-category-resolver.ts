@@ -23,7 +23,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-const { taxonomyFor } = await import("../../api/_categorize.ts");
+// BUILTIN_TAXONOMY, not taxonomyFor: this check is about the classification
+// maths, and taxonomyFor now reaches for Supabase. A member with no categories
+// of their own gets exactly this object back, which is the case that must never
+// change and the one asserted here.
+const { BUILTIN_TAXONOMY } = await import("../../api/_categorize.ts");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const golden = JSON.parse(readFileSync(resolve(here, "category-golden.json"), "utf8")) as {
@@ -32,10 +36,7 @@ const golden = JSON.parse(readFileSync(resolve(here, "category-golden.json"), "u
   nullish: Record<string, unknown>;
 };
 
-// Any user id: today every member resolves to the same taxonomy. When stage 3
-// makes that untrue, this check keeps asserting the zero-rows case, which is
-// exactly the case that must never change.
-const tax = await taxonomyFor("00000000-0000-0000-0000-000000000000");
+const tax = BUILTIN_TAXONOMY;
 
 const problems: string[] = [];
 const eq = (what: string, got: unknown, want: unknown) => {
@@ -112,7 +113,7 @@ eq("classify(null, null).g", tax.classify(null, null).g, "Everything else");
 // from CATEGORY_GROUPS at six call sites the way they used to.
 const spend = tax.groups.filter((g) => g.kind === "spend").map((g) => g.label);
 eq("spendGroups", tax.spendGroups.join("|"), spend.join("|"));
-const everyLabel = tax.groups.flatMap((g) => [g.label, ...g.categories]);
+const everyLabel = tax.groups.flatMap((g) => [g.label, ...g.leaves.map((l) => l.label)]);
 eq("writableLabels size", tax.writableLabels.size, new Set(everyLabel).size);
 for (const l of everyLabel) if (!tax.writableLabels.has(l)) problems.push(`writableLabels is missing ${JSON.stringify(l)}`);
 

@@ -29,6 +29,7 @@ const { BUILTIN_TAXONOMY } = await import("../../api/_categorize.ts");
 // built-in taxonomy is the right one here: the migration's mapping covers the
 // built-ins and nothing else.
 const { groups: CATEGORY_GROUPS, categoryIdOf } = BUILTIN_TAXONOMY;
+const leavesOf = (g: (typeof CATEGORY_GROUPS)[number]) => g.leaves.map((l) => l.label);
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const sql = readFileSync(resolve(repo, "supabase/migrations/0024_category_ids.sql"), "utf8");
@@ -44,7 +45,7 @@ for (const m of sql.matchAll(/^ {4}\('((?:[^']|'')+)', '([a-z0-9_]+)'\),?$/gm)) 
 const labels = new Set<string>();
 for (const g of CATEGORY_GROUPS) {
   labels.add(g.label);
-  for (const c of g.categories) labels.add(c);
+  for (const c of leavesOf(g)) labels.add(c);
 }
 
 const problems: string[] = [];

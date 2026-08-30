@@ -29,7 +29,8 @@ import { adminConfigured, adminRest } from "../_supabase-admin";
 // deliver. A recurring detection run succeeding says nothing about either, so
 // stamping last_synced_at from here would report data as fresher than it is.
 import { isDeadItemCode, markItemDead } from "../_item-sync-state";
-import { taxonomyFor, type Taxonomy } from "../_categorize";
+import { taxonomyFor } from "../_taxonomy";
+import type { Taxonomy } from "../_categorize";
 import { mapPool } from "../_pool";
 
 export const config = { runtime: "edge" };

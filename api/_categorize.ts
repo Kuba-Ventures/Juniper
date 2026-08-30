@@ -294,9 +294,17 @@ function categorize(primary?: string, detailed?: string): string {
 // which feeds the Juniper Score: a classification that shifts is a member's
 // visible score history shifting, and score_history is keyed by (user, day), so
 // a wrong row cannot be quietly recomputed later.
+// A group and its leaves, each carrying the id it is known by. This is the
+// shape the resolver works in, and it exists because an id can no longer be
+// derived from a label: a member who renames "Coffee shops" to "Coffee" keeps
+// the id `c_coffee_shops`, which is the whole point of having one, and a
+// category they created has an id that never had a slug behind it.
+export interface ResolvedLeaf { id: string; label: string }
+export interface ResolvedGroup { id: string; label: string; kind: CategoryKind; leaves: ResolvedLeaf[] }
+
 export interface Taxonomy {
   /** Ordered, display order, exactly as CATEGORY_GROUPS is. */
-  readonly groups: CategoryGroup[];
+  readonly groups: ResolvedGroup[];
   /** Spend groups only, in display order. What a donut and a legend read. */
   readonly spendGroups: string[];
   /** Every label that may be stored: both levels, because a group label is a
@@ -339,29 +347,27 @@ export interface Taxonomy {
   classify(categoryId?: string | null, label?: string | null): { c: string; g: string; k: CategoryKind };
 }
 
-export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
+export function buildTaxonomy(groups: ResolvedGroup[]): Taxonomy {
   const kindByGroup: Record<string, CategoryKind> = {};
   const groupByLeaf: Record<string, string> = {};
   const idByLabel: Record<string, string> = {};
   const writable = new Set<string>();
-  for (const g of groups) {
-    kindByGroup[g.label] = g.kind;
-    idByLabel[g.label] = groupId(g.label);
-    writable.add(g.label);
-    for (const c of g.categories) {
-      groupByLeaf[c] = g.label;
-      // Leaves after groups, so where a label names both, the LEAF id wins.
-      // Same order as LABEL_ID above, and the migration's mapping.
-      idByLabel[c] = leafId(c);
-      writable.add(c);
-    }
-  }
   // id -> what that category currently is. Groups and leaves cannot collide
   // here even where they share a name, because their ids differ by prefix.
   const byId: Record<string, { label: string; group: string; kind: CategoryKind }> = {};
   for (const g of groups) {
-    byId[groupId(g.label)] = { label: g.label, group: g.label, kind: g.kind };
-    for (const c of g.categories) byId[leafId(c)] = { label: c, group: g.label, kind: g.kind };
+    kindByGroup[g.label] = g.kind;
+    idByLabel[g.label] = g.id;
+    writable.add(g.label);
+    byId[g.id] = { label: g.label, group: g.label, kind: g.kind };
+    for (const leaf of g.leaves) {
+      groupByLeaf[leaf.label] = g.label;
+      // Leaves after groups, so where a label names both, the LEAF id wins.
+      // Same order the migration's mapping was generated in.
+      idByLabel[leaf.label] = leaf.id;
+      writable.add(leaf.label);
+      byId[leaf.id] = { label: leaf.label, group: g.label, kind: g.kind };
+    }
   }
   const group = (category?: string | null): string => {
     const c = (category || "").trim();
@@ -395,11 +401,61 @@ export function buildTaxonomy(groups: CategoryGroup[]): Taxonomy {
   };
 }
 
-export const BUILTIN_TAXONOMY: Taxonomy = buildTaxonomy(CATEGORY_GROUPS);
+// The built-in table, in the resolver's shape. Ids come from the slug helpers,
+// which is the one place a label still determines an id, and only for the
+// categories that shipped in the code.
+export const BUILTIN_GROUPS: ResolvedGroup[] = CATEGORY_GROUPS.map((g) => ({
+  id: groupId(g.label),
+  label: g.label,
+  kind: g.kind,
+  leaves: g.categories.map((c) => ({ id: leafId(c), label: c })),
+}));
 
-// One resolve per request. Async and user-scoped from the start, so stage 3
-// adds a read here and touches nothing else; today every member gets the same
-// object, and no caller can tell the difference.
-export async function taxonomyFor(_userId: string): Promise<Taxonomy> {
-  return BUILTIN_TAXONOMY;
+export const BUILTIN_TAXONOMY: Taxonomy = buildTaxonomy(BUILTIN_GROUPS);
+
+// A member's own categories, layered over the built-ins (stage 3b). Only what
+// they added or changed is stored, so this is usually zero rows.
+export interface MemberCategoryRow {
+  category_id: string;
+  name: string;
+  group_id: string | null;
+}
+
+// Built-ins plus the member's own, in the resolver's shape.
+//
+// Order matters and is chosen, not incidental: a created leaf is appended to
+// the END of its group, so adding one never reshuffles the categories a member
+// already knows the position of. A rename replaces a label in place, keeping
+// the leaf's id and its slot.
+//
+// A row naming a group id, or a built-in that no longer exists after a taxonomy
+// change, is SKIPPED rather than treated as a new leaf. Dropping it is the safe
+// direction: an unknown row appearing as a category the member never made would
+// be worse than one of their renames quietly not applying, and the row survives
+// for a later release to interpret.
+export function applyMemberCategories(base: ResolvedGroup[], rows: MemberCategoryRow[]): ResolvedGroup[] {
+  if (!rows.length) return base;
+
+  const builtinLeaf = new Set<string>();
+  const groupIds = new Set<string>();
+  for (const g of base) {
+    groupIds.add(g.id);
+    for (const l of g.leaves) builtinLeaf.add(l.id);
+  }
+
+  const renames = new Map<string, string>();          // leaf id -> new label
+  const created: MemberCategoryRow[] = [];
+  for (const r of rows) {
+    const name = (r.name || "").trim();
+    if (!name) continue;
+    if (groupIds.has(r.category_id)) continue;        // groups are not renameable yet
+    if (builtinLeaf.has(r.category_id)) renames.set(r.category_id, name);
+    else if (r.group_id && groupIds.has(r.group_id)) created.push({ ...r, name });
+  }
+
+  return base.map((g) => {
+    const leaves = g.leaves.map((l) => (renames.has(l.id) ? { id: l.id, label: renames.get(l.id)! } : l));
+    for (const c of created) if (c.group_id === g.id) leaves.push({ id: c.category_id, label: c.name });
+    return { ...g, leaves };
+  });
 }
