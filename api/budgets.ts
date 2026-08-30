@@ -8,7 +8,7 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { taxonomyFor } from "./_categorize";
+import { taxonomyFor } from "./_taxonomy";
 
 export const config = { runtime: "edge" };
 

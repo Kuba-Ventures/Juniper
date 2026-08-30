@@ -39,7 +39,8 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { taxonomyFor, type Taxonomy } from "./_categorize";
+import { taxonomyFor } from "./_taxonomy";
+import type { Taxonomy } from "./_categorize";
 
 export const config = { runtime: "edge" };
 
@@ -159,7 +160,7 @@ function cursorFilter(cursor: string | null): string | null {
 // categories of their own the picker offers exactly what they can store, by
 // construction rather than by two lists happening to match.
 const pickerOptions = (tax: Taxonomy) =>
-  tax.groups.map((g) => ({ g: g.label, kind: g.kind, cats: g.categories }));
+  tax.groups.map((g) => ({ g: g.label, kind: g.kind, cats: g.leaves.map((l) => l.label) }));
 
 // PATCH /api/transactions  { id, category }
 // Re-categorizes one of the caller's own transactions. Scoped by user_id in the

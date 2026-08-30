@@ -23,7 +23,7 @@ import { adminConfigured, adminRest } from "./_supabase-admin";
 import { fetchScoreInput } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
-import { taxonomyFor } from "./_categorize";
+import { taxonomyFor } from "./_taxonomy";
 import { isDeveloperEmail } from "./_admin";
 
 export const config = { runtime: "edge" };

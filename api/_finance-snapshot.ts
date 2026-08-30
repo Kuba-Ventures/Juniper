@@ -4,7 +4,7 @@
 // scopes by user_id itself (RLS is bypassed here, see _supabase-admin).
 import { adminRest } from "./_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
-import { taxonomyFor } from "./_categorize";
+import { taxonomyFor } from "./_taxonomy";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null; category_id: string | null };

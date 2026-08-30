@@ -15,7 +15,8 @@ import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
-import { taxonomyFor, type Taxonomy } from "../_categorize";
+import { taxonomyFor } from "../_taxonomy";
+import type { Taxonomy } from "../_categorize";
 
 export const config = { runtime: "edge" };
 
