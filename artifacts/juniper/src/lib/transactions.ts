@@ -26,7 +26,15 @@ export interface TxnRow {
   account: string | null;
   mask: string | null;
   institution: string | null;
+  // True when the member set this category themselves. The row marks it, so a
+  // corrected category is distinguishable from one Plaid guessed.
+  userSet?: boolean;
 }
+
+// The category picker's options, shipped with the first page rather than kept
+// as a second copy of ~50 leaf labels in the client. api/_categorize.ts stays
+// the source of truth.
+export interface CategoryGroupOption { g: string; kind: "spend" | "income" | "transfer"; cats: string[] }
 export interface BreakdownRow {
   c: string; v: number; n: number; pct: number;
   categories: { c: string; v: number; n: number }[];
@@ -49,6 +57,7 @@ export interface TxnPage {
   trend?: { ym: string; spent: number; income: number }[];
   summary?: TxnSummary;
   truncated?: boolean;
+  taxonomy?: CategoryGroupOption[];
 }
 
 export interface TxnQuery { from?: string | null; to?: string | null; cursor?: string | null; limit?: number }
@@ -128,3 +137,25 @@ export function merchantMark(raw: string | null, display: string): string {
 }
 
 export const initial = (s: string) => (s.trim()[0] || "?").toUpperCase();
+
+// PATCH one transaction's category. Returns the stored row's new labels, so the
+// table renders what the server saved rather than what the click assumed, or
+// null on any failure, which the caller surfaces rather than swallowing.
+export async function setTransactionCategory(
+  id: string,
+  category: string,
+): Promise<{ id: string; c: string; g: string; k: TxnRow["k"] } | null> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id, category }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { id: string; c: string; g: string; k: TxnRow["k"] };
+  } catch {
+    return null;
+  }
+}

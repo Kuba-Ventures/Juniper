@@ -9,7 +9,12 @@
 // reads, so the full history gets its own read endpoint and /api/finances is
 // left alone.
 //
-// This is a READ-SIDE change only. api/plaid/transactions-sync.ts already pages
+// PATCH is the one write here: it re-categorizes a single transaction, storing
+// the member's choice with `category_source = 'user'` so the Plaid sync knows to
+// leave it alone (see api/plaid/transactions-sync.ts, which preserves overrides
+// across its merge-duplicates upsert). Everything else on this endpoint reads.
+//
+// The GET was a READ-SIDE change only. api/plaid/transactions-sync.ts already pages
 // until has_more is false with no date cap, so the `transactions` table already
 // holds everything Plaid returned (Plaid caps at 24 months, anchored two years
 // before the item was linked, not a sliding window). Nothing needs re-syncing
@@ -42,7 +47,7 @@ const SUPABASE_URL = readEnv("SUPABASE_URL");
 const SUPABASE_JWT_SECRET = readEnv("SUPABASE_JWT_SECRET");
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, PATCH, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 function json(body: unknown, status = 200) {
@@ -81,6 +86,7 @@ type Txn = {
   amount: number;
   date: string;
   category: string | null;
+  category_source: string | null;
   pending: boolean;
   account_id: string | null;
   item_id: string | null;
@@ -91,7 +97,7 @@ type RollupTxn = Pick<Txn, "name" | "merchant_name" | "amount" | "date" | "categ
 type Acct = { account_id?: string; name?: string; mask?: string | null };
 type Item = { item_id: string; institution_name: string | null; accounts: Acct[] };
 
-const PAGE_COLS = "id,name,merchant_name,amount,date,category,pending,account_id,item_id,iso_currency_code,logo_url";
+const PAGE_COLS = "id,name,merchant_name,amount,date,category,category_source,pending,account_id,item_id,iso_currency_code,logo_url";
 const ROLLUP_COLS = "name,merchant_name,amount,date,category";
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
@@ -140,9 +146,66 @@ function cursorFilter(cursor: string | null): string | null {
   return `&or=(date.lt.${date},and(date.eq.${date},id.lt.${id}))`;
 }
 
+// Every label a member is allowed to store, built from the one taxonomy table
+// rather than from a second list here. Both levels are accepted: a leaf is the
+// normal case, and a group label is what a row categorized at group precision
+// already carries (see groupOf's note in _categorize.ts), so refusing groups
+// would make some existing values unwritable.
+const WRITABLE_LABELS = new Set<string>([
+  ...CATEGORY_GROUPS.map((g) => g.label),
+  ...CATEGORY_GROUPS.flatMap((g) => g.categories),
+]);
+
+// The picker's options, shipped with the first page the way `breakdown` and
+// `summary` are. The alternative was a copy of ~50 leaf labels in the client,
+// which is exactly the second stored vocabulary _categorize.ts exists to avoid.
+// Transfers ride along: moving a charge to "Credit card payment" is one of the
+// corrections most worth making, since a card payment counted as spending bills
+// the member twice for the same coffee.
+const TAXONOMY = CATEGORY_GROUPS.map((g) => ({ g: g.label, kind: g.kind, cats: g.categories }));
+
+// PATCH /api/transactions  { id, category }
+// Re-categorizes one of the caller's own transactions. Scoped by user_id in the
+// filter itself, so a valid JWT cannot reach somebody else's row, and the write
+// is rejected rather than coerced when the label is not in the taxonomy: a
+// free-text category would fall through groupOf() into "Everything else" and
+// quietly leave the money uncounted where the member put it.
+async function patchCategory(req: Request, uid: string): Promise<Response> {
+  const body = (await req.json().catch(() => ({}))) as { id?: string; category?: string };
+  const id = (body.id || "").trim();
+  const category = (body.category || "").trim();
+  if (!UUID.test(id)) return json({ error: "Invalid `id`" }, 400);
+  if (!WRITABLE_LABELS.has(category)) return json({ error: "Unknown category" }, 400);
+
+  const res = await adminRest(`transactions?id=eq.${id}&user_id=eq.${uid}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      category,
+      // What stops the next Plaid sync overwriting this. transactions-sync.ts
+      // reads these rows before its upsert and carries the member's choice
+      // through, because the upsert is merge-duplicates over the whole row.
+      category_source: "user",
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!res.ok) {
+    console.error(`[transactions] recategorize failed (${res.status}): ${await res.text().catch(() => "")}`);
+    return json({ error: "Failed to save category" }, 500);
+  }
+  // No rows means the id is not this member's. Answered as a 404 rather than a
+  // success, because a silent no-op would show the member a category that is
+  // not stored anywhere.
+  const updated = (await res.json().catch(() => [])) as { category?: string }[];
+  if (!updated.length) return json({ error: "Not found" }, 404);
+
+  const stored = updated[0].category ?? category;
+  return json({ id, c: stored, g: groupOf(stored), k: kindOf(stored), userSet: true });
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "GET" && req.method !== "PATCH") return json({ error: "Method not allowed" }, 405);
   if (!SUPABASE_URL || !adminConfigured()) return json({ error: "Not configured" }, 503);
 
   const token = extractBearerToken(req);
@@ -150,6 +213,8 @@ export default async function handler(req: Request): Promise<Response> {
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
   const uid = payload.sub;
+
+  if (req.method === "PATCH") return patchCategory(req, uid);
 
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
@@ -226,6 +291,10 @@ export default async function handler(req: Request): Promise<Response> {
       c: t.category || "Everything else",
       g: groupOf(t.category),
       k: kindOf(t.category),
+      // True when the member set this category themselves rather than Plaid.
+      // The row marks it, so a category somebody corrected by hand is
+      // distinguishable from one that was guessed.
+      userSet: t.category_source === "user",
       v: -t.amount, // flip Plaid's +out convention to the UI's -spend / +income
       d: t.date,
       pending: t.pending,
@@ -392,6 +461,10 @@ export default async function handler(req: Request): Promise<Response> {
     largest,
   };
   if (truncated) body.truncated = true;
+  // The category picker's options. First page only, like everything else in
+  // this block: it is a constant per deploy, and the client holds it while it
+  // pages.
+  body.taxonomy = TAXONOMY;
 
   return json(body);
 }

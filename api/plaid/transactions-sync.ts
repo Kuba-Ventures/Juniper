@@ -132,6 +132,30 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
   }[];
   if (!items.length) return json({ added: 0, modified: 0, removed: 0, items: 0, synced: 0, failed: 0, failures: [] });
 
+  // Categories the member set BY HAND, keyed by Plaid's transaction id. The
+  // upsert below is `resolution=merge-duplicates`, which replaces the whole row,
+  // and `toRow` writes Plaid's own classification with `category_source:
+  // "plaid"` every time. So without this, a correction would survive right up
+  // until Plaid next put that transaction in `modified` (or a failed sync
+  // replayed the cursor from its last good position) and then vanish with no
+  // trace and no error. Read once per sync, not per item: one query bounded by
+  // how many corrections the member has made, against a partial-ish index on
+  // (user_id, category).
+  const overrides = new Map<string, string>();
+  const ovRes = await adminRest(
+    `transactions?user_id=eq.${userId}&category_source=eq.user&plaid_transaction_id=not.is.null&select=plaid_transaction_id,category`,
+  );
+  if (ovRes.ok) {
+    const rows = (await ovRes.json().catch(() => [])) as { plaid_transaction_id: string; category: string | null }[];
+    for (const r of rows) if (r.category) overrides.set(r.plaid_transaction_id, r.category);
+  } else {
+    // Not fatal, but it must be loud: proceeding here silently reverts every
+    // correction this member has ever made. Skipping the sync instead would
+    // strand the feed on a transient read failure, which is worse, so the
+    // trade is recorded rather than hidden.
+    console.error(`[plaid] could not read category overrides for ${userId} (${ovRes.status}); a sync now may revert them`);
+  }
+
   let added = 0, modified = 0, removed = 0;
   // Items are isolated from each other, same reasoning as networth-snapshot.ts:
   // this loop used to return on the first item Plaid refused, so one dead
@@ -176,7 +200,15 @@ export async function runTransactionsSync(userId: string): Promise<Response> {
         break;
       }
       const d = sync.data;
-      const upserts = [...(d.added ?? []), ...(d.modified ?? [])].map((t) => toRow(userId, item.item_id, t));
+      const upserts = [...(d.added ?? []), ...(d.modified ?? [])]
+        .map((t) => toRow(userId, item.item_id, t))
+        .map((row) => {
+          // The member's own answer wins over Plaid's. Kept as `user` so it
+          // keeps winning on every future sync, rather than being written back
+          // as `plaid` and reverting the next time round.
+          const mine = overrides.get(row.plaid_transaction_id);
+          return mine ? { ...row, category: mine, category_source: "user" } : row;
+        });
       if (upserts.length) {
         const up = await adminRest("transactions?on_conflict=plaid_transaction_id", {
           method: "POST",
