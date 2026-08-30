@@ -4,7 +4,7 @@
 // live overview when a partnership is active. There is no demo fallback left:
 // the seeded household it used to fall back to is deleted, and every shared
 // surface shows an empty state rather than somebody else's finances.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
 export interface PartnerPrefs { share_balances: boolean; share_transactions: boolean; share_score: boolean }
@@ -106,19 +106,66 @@ export async function reactTo(target: string, emoji: string) {
   return !!res && res.ok;
 }
 
-// Fetches the shared overview once; `refresh()` re-pulls after a mutation.
+/* ------------------------------------------------------------------ *
+ * One copy of the shared overview, for every caller.
+ *
+ * usePartner used to hold its own state per call site, and five components
+ * call it: the shared frame, the share sheet, and the Overview, Accounts and
+ * Goals pages. So there were five copies of the same server answer, and
+ * refreshing one left the rest stale. Sharing an account showed the switch on
+ * in the sheet and the account still Private on the Overview behind it, with
+ * the combined total unmoved, because those two were reading different copies.
+ *
+ * A module store rather than a context, deliberately: usePartner lives in
+ * lib/partner and WorkspaceProvider already imports it, so a provider here
+ * would be a circular import, and every existing call site keeps working
+ * unchanged.
+ * ------------------------------------------------------------------ */
+
+let cache: PartnerData | null = null;
+let loaded = false;
+let inflight: Promise<void> | null = null;
+const subscribers = new Set<() => void>();
+
+function emit() {
+  for (const fn of subscribers) fn();
+}
+
+function load(force: boolean): Promise<void> {
+  // Concurrent callers share one request. Five components mounting together
+  // would otherwise each fire their own on first paint.
+  if (inflight && !force) return inflight;
+  inflight = fetchPartner().then((d) => {
+    cache = d;
+    loaded = true;
+    inflight = null;
+    emit();
+  });
+  return inflight;
+}
+
+// Called on sign out. The store outlives a client-side route change, so without
+// this the next member signing in to the same tab would see the previous one's
+// partner for as long as the first fetch takes.
+export function resetPartnerCache(): void {
+  cache = null;
+  loaded = false;
+  inflight = null;
+  emit();
+}
+
 export function usePartner(): { data: PartnerData | null; loading: boolean; refresh: () => void } {
-  const [data, setData] = useState<PartnerData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
-  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const [, bump] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    fetchPartner().then((d) => { if (alive) { setData(d); setLoading(false); } });
-    return () => { alive = false; };
-  }, [tick]);
-  return { data, loading, refresh };
+    subscribers.add(bump);
+    if (!loaded) void load(false);
+    return () => { subscribers.delete(bump); };
+  }, []);
+  return {
+    data: cache,
+    loading: !loaded,
+    refresh: useCallback(() => { void load(true); }, []),
+  };
 }
 
 export function useBills(): { bills: PartnerBill[] | null; loading: boolean; refresh: () => void } {
