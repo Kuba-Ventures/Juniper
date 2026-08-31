@@ -104,7 +104,23 @@ export default async function handler(req: Request): Promise<Response> {
       // Sandbox caveat: with Plaid's CUSTOM sandbox user, investments has to sit
       // in `products` instead and cannot be consented this way, so a custom
       // sandbox item will report investments as unavailable to the backfill.
-      additional_consented_products: ["investments"],
+      //
+      // `recurring_transactions` joined the list on 2026-08-31, the day the add
+      // on was granted, and deliberately not a day earlier: naming an unentitled
+      // product here makes /link/token/create fail for every member, not just
+      // the ones who would have used it. It stays out of `products` for the same
+      // reason investments does, requesting a product at link time narrows which
+      // institutions will link, and recurring detection is a nice-to-have that
+      // must never cost someone the ability to connect their bank. What needs
+      // it: api/plaid/recurring-sync.ts, which until now answered every run with
+      // `available: false`.
+      //
+      // Items linked BEFORE this change consented to investments only, so under
+      // Data Transparency Messaging they may keep refusing recurring until they
+      // are put back through Link in update mode, the same way investments was
+      // in #144. Nothing here fixes those; the sync degrades per item, so a
+      // member with one relinked bank sees that bank's streams and no error.
+      additional_consented_products: ["investments", "recurring_transactions"],
       country_codes: plaidCountryCodes(),
       language: "en",
       ...(redirectUri ? { redirect_uri: redirectUri } : {}),
