@@ -1,5 +1,5 @@
 import { CardFace, AssumesPointValue } from "@/components/juniper/card-rewards-bits";
-import { money0, pointValueMap, type CardRewards, type SwitchIdea, type UpgradeIdea } from "@/lib/cards";
+import { faceInfoMap, money0, pointValueMap, type CardRewards, type SwitchIdea, type UpgradeIdea } from "@/lib/cards";
 
 // "Worth switching" and "Cards that would beat yours". Treatment A of three
 // (design/card-rewards-variants.html), issue #168.
@@ -33,16 +33,25 @@ function SwitchRow({
   idea,
   brandColorOf,
   centsFor,
+  faceFor,
 }: {
   idea: SwitchIdea;
   brandColorOf: (productId: string) => string | null;
   centsFor: (productId: string) => number | null;
+  /** The SHORT name and network for a face. The prose below keeps the full name,
+      which is correct: a face has 196px and a sentence naming the member's card
+      should name it properly. */
+  faceFor: (productId: string) => { shortName: string; network: string | null };
 }) {
+  const from = faceFor(idea.from.productId);
+  const to = faceFor(idea.to.productId);
   return (
     <div className="cr-sw">
-      <CardFace size="md" productName={idea.from.productName} brandColor={brandColorOf(idea.from.productId)} />
+      <CardFace size="md" productName={from.shortName} network={from.network}
+        brandColor={brandColorOf(idea.from.productId)} />
       <span className="cr-sw-arrow" aria-hidden="true">→</span>
-      <CardFace size="md" productName={idea.to.productName} brandColor={brandColorOf(idea.to.productId)} />
+      <CardFace size="md" productName={to.shortName} network={to.network}
+        brandColor={brandColorOf(idea.to.productId)} />
       <div className="cr-sw-body">
         <div className="cr-sw-h">
           Put {idea.categoryLabel.toLowerCase()} on the {idea.to.productName}
@@ -101,6 +110,9 @@ export function CardSwitches({ data }: { data: CardRewards }) {
     data.cards.find((c) => c.product?.id === productId)?.product?.brand_color ?? null;
   const cents = pointValueMap(data);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
+  const faces = faceInfoMap(data);
+  const faceFor = (productId: string) =>
+    faces.get(productId) ?? { shortName: "", network: null };
 
   const hasSwitches = data.switches.length > 0;
   const hasUpgrades = data.upgrades.length > 0;
@@ -117,7 +129,7 @@ export function CardSwitches({ data }: { data: CardRewards }) {
             <span className="cr-sw-total">{money0(totalGain)} a year</span>
           </div>
           {data.switches.map((s) => (
-            <SwitchRow idea={s} brandColorOf={brandColorOf} centsFor={centsFor}
+            <SwitchRow idea={s} brandColorOf={brandColorOf} centsFor={centsFor} faceFor={faceFor}
               key={`${s.categoryId}-${s.from.productId}`} />
           ))}
           <div className="cr-prov">

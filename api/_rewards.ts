@@ -567,6 +567,60 @@ export function upgradeIdeas(args: {
     .slice(0, args.limit ?? 3);
 }
 
+// ── Display names ───────────────────────────────────────────────────────────
+
+/**
+ * A product name short enough to print on a card face.
+ *
+ * `CardProduct.name` is stored as the ISSUER spells it, which is what makes the
+ * picker recognizable and what a member compares against the card in their hand.
+ * It is also 53 characters for "Capital One Quicksilver Student Cash Rewards
+ * Credit Card", which truncates on any face Juniper can draw.
+ *
+ * DERIVED RATHER THAN STORED, deliberately. Eighteen hand-written short names
+ * would be eighteen chances to get one wrong, and a migration every time the
+ * catalog grows; one function is checkable, and scripts/src/check-rewards.ts
+ * checks it. It drops the issuer, which the face already prints above the name,
+ * and the generic tails that carry no information once the card is identified.
+ *
+ * THE LOWERCASE GUARD IS THE WHOLE SUBTLETY. "Discover it® Chrome" minus its
+ * issuer is "it® Chrome", which is not a card name, it is a fragment. So when
+ * removing the issuer would leave the name starting on a lowercase word, the
+ * issuer stays. That case was found by rendering the result, not by reasoning
+ * about the rule.
+ */
+export function shortCardName(full: string, issuer: string): string {
+  const name = (full ?? "").trim();
+  const iss = (issuer ?? "").trim();
+  if (!name) return "";
+  if (!iss) return name;
+  const esc = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // "Blue Cash Preferred® Card from American Express" puts the issuer at the end
+  // behind a preposition, so that shape is removed before the bare-name pass.
+  let out = name.replace(new RegExp(`\\bfrom\\s+${esc(iss)}\\b`, "i"), " ");
+  const withoutIssuer = out
+    .replace(new RegExp(`\\b${esc(iss)}\\b`, "i"), " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (withoutIssuer && !/^[a-z]/.test(withoutIssuer)) out = withoutIssuer;
+
+  // "Cash Rewards" is always a suffix in Capital One's naming and carries nothing
+  // once the product word is there. "Cash Back" is NOT the same: it is what
+  // separates "Discover it Cash Back" from "Discover it Chrome" and "Discover it
+  // Miles", and stripping it left the flagship card reading as the family name.
+  // Caught by printing the derivation for all 18 seeded products rather than by
+  // checking the examples that happened to be in mind.
+  out = out
+    .replace(/\b(credit card|card)\b/gi, " ")
+    .replace(/\bcash rewards\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Never return nothing. A name made entirely of the words above would leave a
+  // blank face, and the full name always beats that.
+  return out || name;
+}
+
 // ── Matching a linked account to a product ──────────────────────────────────
 
 export interface Candidate {

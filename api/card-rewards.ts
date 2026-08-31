@@ -33,7 +33,7 @@ import { taxonomyFor } from "./_taxonomy";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import {
   anyUnverified, benefitPeriodKey, earningGuide, oldestAsOf, rankCandidates,
-  switchIdeas, trackBenefits, upgradeIdeas,
+  shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
   type AccountCategorySpend, type Benefit, type BenefitPeriod, type CapPeriod,
   type CardProduct, type EarnRow, type EarnUnit, type MemberCard,
 } from "./_rewards";
@@ -343,6 +343,9 @@ export default async function handler(req: Request): Promise<Response> {
         answered: answeredProduct(a.plaid_account_id),
         product: p ? {
           id: p.id, name: p.name, issuer: p.issuer, network: p.network,
+          // Derived here rather than on the client so there is one definition and
+          // scripts/src/check-rewards.ts is the thing that proves it.
+          short_name: shortCardName(p.name, p.issuer),
           annual_fee: Number(p.annual_fee) || 0, brand_color: p.brand_color,
           rewards_currency: p.rewards_currency,
           point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
@@ -409,6 +412,12 @@ export default async function handler(req: Request): Promise<Response> {
       // the only place the number is available for a product the member does not
       // hold, which the upgrade rows need.
       point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
+      // Carried for every product, held or not, because the switch and upgrade
+      // rows draw faces for cards the member does not own and those faces need a
+      // name that fits. Derived once, server-side, by the function the check
+      // script proves.
+      short_name: shortCardName(p.name, p.issuer),
+      network: p.network,
     })),
   });
 }

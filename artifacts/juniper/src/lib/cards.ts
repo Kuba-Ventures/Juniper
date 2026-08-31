@@ -22,7 +22,13 @@ export type CardRateDisplay = string;
 
 export interface CardProductSummary {
   id: string;
+  /** As the issuer spells it. What the picker shows and what a member compares
+      against the card in their hand. */
   name: string;
+  /** Short enough to print on a card face, derived server-side from `name` and
+      `issuer` by `shortCardName` in api/_rewards.ts. Up to 30 characters across
+      the current catalog. */
+  short_name: string;
   issuer: string;
   network: string | null;
   annual_fee: number;
@@ -192,9 +198,20 @@ export interface CardRewards {
     assumesPointValue: boolean;
     periods: { month: string; quarter: string; year: string };
   };
-  catalog: { product_id: string; name: string; issuer: string; annual_fee: number;
-             rewards_currency: string; brand_color: string | null;
-             point_value_cents: number | null }[];
+  catalog: { product_id: string; name: string; short_name: string; issuer: string;
+             annual_fee: number; rewards_currency: string; brand_color: string | null;
+             network: string | null; point_value_cents: number | null }[];
+}
+
+/**
+ * product id -> the short name and network a card FACE needs.
+ *
+ * Built from the catalog rather than from `cards`, because the switch and upgrade
+ * rows draw faces for products the member does not hold, and those never appear
+ * in `cards`. Same reason `pointValueMap` reads the catalog.
+ */
+export function faceInfoMap(data: CardRewards): Map<string, { shortName: string; network: string | null }> {
+  return new Map(data.catalog.map((p) => [p.product_id, { shortName: p.short_name, network: p.network }]));
 }
 
 /**

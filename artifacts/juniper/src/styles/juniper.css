@@ -1530,50 +1530,79 @@
    later. */
 
 /* The synthesized card face. Juniper does NOT ship issuer card art: those
-   images are trademarked and licensed. A face is the product's stored brand
-   colour plus the issuer's own logo as served by Plaid, which this app is
-   already licensed for and already draws on Connections. */
-.jnpr .cr-face{position:relative;display:block;border-radius:11px;overflow:hidden;color:#fff;
-  flex:0 0 auto;box-shadow:0 1px 2px rgba(0,0,0,.18),0 6px 18px -8px rgba(0,0,0,.35)}
+   images are trademarked and licensed, and Juniper has no relationship with any
+   card issuer. A face is the product's stored brand colour plus the issuer's own
+   logo as served by Plaid, which the app is already licensed for.
+
+   The NETWORK is set in plain type, never as its own logo: "Visa" as a word
+   states a fact about the card the member holds, where reproducing Visa's mark
+   and colours would be using their brand asset. */
+.jnpr .cr-face{position:relative;display:block;border-radius:12px;overflow:hidden;color:#fff;
+  flex:0 0 auto;--cr-brand:var(--jnpr-c3);
+  box-shadow:0 1px 2px rgba(0,0,0,.22),0 10px 26px -12px rgba(0,0,0,.5)}
+/* Two stops derived from the ONE stored colour, so a flat hex reads as a moulded
+   surface and nothing new has to be stored per product. */
+.jnpr .cr-face::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(145deg,
+    color-mix(in srgb, var(--cr-brand) 88%, white),
+    var(--cr-brand) 46%,
+    color-mix(in srgb, var(--cr-brand) 74%, black))}
 .jnpr .cr-face::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(118deg,rgba(255,255,255,.20),rgba(255,255,255,0) 44%,rgba(0,0,0,.16))}
-.jnpr .cr-face-lg{width:172px;height:108px}
-.jnpr .cr-face-md{width:104px;height:66px}
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 52%),
+    radial-gradient(120% 80% at 88% 108%,rgba(0,0,0,.28),rgba(0,0,0,0) 60%)}
+.jnpr .cr-face-lg{width:196px;height:124px}
+.jnpr .cr-face-md{width:112px;height:71px;border-radius:9px}
 .jnpr .cr-face-sm{width:26px;height:17px;border-radius:4px}
-.jnpr .cr-face-in{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
-  justify-content:space-between;padding:10px 11px}
+.jnpr .cr-face-in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;
+  justify-content:space-between;padding:11px 12px}
 .jnpr .cr-face-md .cr-face-in{padding:7px 8px}
 .jnpr .cr-face-sm .cr-face-in{padding:0}
-.jnpr .cr-face-iss{display:block;font-size:9.5px;font-weight:750;letter-spacing:.1em;
-  text-transform:uppercase;opacity:.92}
-.jnpr .cr-face-logo{display:block;height:11px;width:auto;max-width:64px;object-fit:contain;
+.jnpr .cr-face-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.jnpr .cr-face-iss{font-size:9.5px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.94;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .cr-face-logo{display:block;height:13px;width:auto;max-width:76px;object-fit:contain;
   /* Plaid's logos are dark marks meant for a light tile, and this one sits on the
      bank's own saturated brand colour, so it is knocked back rather than left to
      disappear into a navy card. */
-  filter:brightness(0) invert(1);opacity:.94}
+  filter:brightness(0) invert(1);opacity:.95}
 .jnpr .cr-face-md .cr-face-logo{height:9px;max-width:52px}
-.jnpr .cr-face-nm{display:block;font-size:11px;font-weight:650;line-height:1.25;letter-spacing:-.01em;
-  margin-top:3px;
-  /* A product name is up to about fifty characters ("Capital One Quicksilver
-     Student Cash Rewards Credit Card") and the face is 172px. Two lines then
-     ellipsis, so a long name is truncated rather than overflowing the card. */
+/* A GENERIC contactless glyph, not a network asset. */
+.jnpr .cr-face-wave{width:13px;height:13px;flex:0 0 auto;opacity:.8}
+.jnpr .cr-face-md .cr-face-wave{width:10px;height:10px}
+.jnpr .cr-face-mid{display:flex;align-items:flex-end}
+/* An EMV chip with contact lines, which is what makes a rounded gold rectangle
+   read as a chip rather than as a stray highlight. */
+.jnpr .cr-face-chip{position:relative;display:block;width:26px;height:19px;border-radius:4px;
+  flex:0 0 auto;background:linear-gradient(135deg,#f2e6bd 0%,#cba85a 48%,#e6d69f 100%)}
+.jnpr .cr-face-md .cr-face-chip{width:18px;height:13px;border-radius:3px}
+.jnpr .cr-face-chip::before,.jnpr .cr-face-chip::after{content:"";position:absolute;
+  background:rgba(120,90,30,.55);left:5px;right:5px;height:1px}
+.jnpr .cr-face-chip::before{top:6px}
+.jnpr .cr-face-chip::after{bottom:6px}
+.jnpr .cr-face-md .cr-face-chip::before{top:4px}
+.jnpr .cr-face-md .cr-face-chip::after{bottom:4px}
+.jnpr .cr-face-bot{display:flex;align-items:flex-end;justify-content:space-between;gap:9px}
+.jnpr .cr-face-idw{min-width:0}
+/* Letter-spaced and shadowed to read as embossing. Two lines then ellipsis: the
+   SHORT name is up to 30 characters across the catalog ("Discover it Student Cash
+   Back"), which is exactly what two lines hold here. Passing the stored name
+   instead, up to 53 characters, ellipsizes. */
+.jnpr .cr-face-nm{display:block;font-size:12px;font-weight:700;line-height:1.2;letter-spacing:.01em;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.jnpr .cr-face-md .cr-face-nm{font-size:9px;margin-top:2px}
-/* Chip and mask together on the LEFT, not pushed to opposite edges. In the
-   fanned stack only about 26px of each card behind the front one is visible, and
-   that strip is its right-hand edge, so a right-aligned mask bled partial digits
-   ("14", "290", "106") down the fan and read as a rendering fault. Left-aligned,
-   the cards behind show clean brand colour. */
-.jnpr .cr-face-ft{display:flex;align-items:center;gap:7px;
-  font-size:9px;font-variant-numeric:tabular-nums;opacity:.88;font-weight:600}
-.jnpr .cr-face-chip{display:block;width:19px;height:14px;border-radius:3px;
-  background:linear-gradient(135deg,#e8d9a8,#b99a4e);opacity:.92;flex:0 0 auto}
-.jnpr .cr-face-md .cr-face-chip{width:15px;height:11px}
+.jnpr .cr-face-md .cr-face-nm{font-size:9px;-webkit-line-clamp:2}
+.jnpr .cr-face-mask{display:block;font-size:9.5px;font-weight:650;
+  font-variant-numeric:tabular-nums;opacity:.88;margin-top:3px}
+.jnpr .cr-face-md .cr-face-mask{font-size:8px;margin-top:2px}
+.jnpr .cr-face-net{font-size:10px;font-weight:750;letter-spacing:.13em;text-transform:uppercase;
+  opacity:.92;flex:0 0 auto;text-align:right;white-space:nowrap}
+.jnpr .cr-face-md .cr-face-net{font-size:7.5px;letter-spacing:.1em}
 /* A card the member has not identified. No brand to borrow, so an outline: a
    borrowed colour would make an unanswered card look answered. */
 .jnpr .cr-face-unk{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);
   border:1px dashed var(--jnpr-line);box-shadow:none}
-.jnpr .cr-face-unk::after{display:none}
+.jnpr .cr-face-unk::before,.jnpr .cr-face-unk::after{display:none}
 
 /* The point-valuation caveat. Rides on every figure that compares a points card
    against a cash-back card, because that comparison is an assumption. */
@@ -1584,22 +1613,66 @@
   padding-top:12px;border-top:1px dashed var(--jnpr-line-2)}
 .jnpr .cr-prov b{color:var(--jnpr-ink-2)}
 
-/* The hero: card faces plus the counts nothing else on the page states. No
+/* The hero: the wallet plus the counts nothing else on the page states. No
    balance and no utilization here, deliberately, so it cannot disagree with the
    Credit cards card above it. */
-.jnpr .cr-hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-bottom:16px;
+.jnpr .cr-hero{display:flex;align-items:center;gap:30px;flex-wrap:wrap;margin-bottom:16px;
   padding-bottom:16px;border-bottom:1px solid var(--jnpr-line-2)}
-/* Explicit height, and the WIDTH is set inline from the card count, because the
-   faces inside are absolutely positioned and therefore contribute nothing to it:
-   without a width the stack measures 0 and the fan lies on top of the text
-   beside it. That is exactly what happened in the first render of the treatment
-   set. */
-.jnpr .cr-stack{position:relative;height:132px;flex:0 0 auto}
-.jnpr .cr-stack .cr-face{position:absolute;top:0}
-.jnpr .cr-stack .cr-face:nth-child(1){left:0;z-index:4}
-.jnpr .cr-stack .cr-face:nth-child(2){left:26px;top:8px;z-index:3}
-.jnpr .cr-stack .cr-face:nth-child(3){left:52px;top:16px;z-index:2}
-.jnpr .cr-stack .cr-face:nth-child(4){left:78px;top:24px;z-index:1}
+
+/* ── The wallet pocket (issue #168 treatment A, revised) ────────────────────
+   VERTICAL, and that is a bug fix rather than a preference. In any overlapping
+   stack the visible band of a hidden card is narrow, and whatever identifies it
+   must sit inside that band. The horizontal fan this replaces left each hidden
+   card's RIGHT edge showing, which is where the network name is, so it read
+   "VISA VISA RCARD COVER". Vertical leaves the TOP strip, where the issuer and
+   the name are, and it scales: a fifth card costs 54px of height rather than
+   52px of width the hero does not have. */
+.jnpr .cr-pocket{position:relative;width:214px;flex:0 0 auto}
+.jnpr .cr-pocket-card{position:absolute;left:0;padding:0;border:0;background:none;cursor:pointer;
+  display:block;transition:transform .22s ease}
+.jnpr .cr-pocket-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:3px;
+  border-radius:13px}
+/* Z-INDEX FROM THE STYLESHEET, NOT INLINE, so `.up` can beat it. An inline
+   declaration wins over any stylesheet selector short of !important, and with the
+   z-index in the style attribute a raised card still painted UNDER its
+   neighbour: measured at 30 while the rule asked for 99. */
+.jnpr .cr-pocket-card.up{z-index:99 !important;transform:translateY(-14px) scale(1.015)}
+.jnpr .cr-pocket-card.up .cr-face{box-shadow:0 2px 5px rgba(0,0,0,.3),0 20px 40px -16px rgba(0,0,0,.62)}
+/* In this layout the name has to live in the reveal strip, so the face's own
+   content order is rotated: issuer and network on the first line, name second,
+   chip and mask pushed to the bottom. That is treatment A's one real cost, since
+   the name leaves the bottom of the card where embossing actually is. */
+.jnpr .cr-pocket .cr-face-in{justify-content:flex-start;gap:3px}
+/* The chip is pushed to the bottom so it never competes for the visible strip.
+   The rest of the order comes from `layout="strip"` in CardFace rather than from
+   here, since CSS `order` cannot move the mask up to the issuer's line. */
+.jnpr .cr-pocket .cr-face-mid{margin-top:auto}
+/* The strip layout gives the name the FULL width of its own line, which is the
+   only arrangement where five cards in a pocket are all distinguishable. Two CSS
+   attempts got there the wrong way: stacked name and mask clipped the mask to
+   "·1575", and side by side they left about 85px for the name so both Discover
+   cards read "Disco...". The rearrangement is in CardFace's `layout="strip"`,
+   because it needs the mask on the issuer's line and `order` only reorders
+   siblings. */
+.jnpr .cr-pocket .cr-face-nm{-webkit-line-clamp:1;font-size:12.5px;min-width:0}
+.jnpr .cr-pocket .cr-face-top{order:0}
+.jnpr .cr-pocket .cr-face-mask{margin-top:0;flex:0 0 auto}
+.jnpr .cr-pocket-lip{position:absolute;left:-9px;right:-9px;bottom:0;height:56px;z-index:60;
+  border-radius:0 0 16px 16px;background:var(--jnpr-surface-2);
+  border:1px solid var(--jnpr-line);border-top:0;
+  box-shadow:0 -10px 18px -14px rgba(0,0,0,.55) inset;
+  /* Decorative, so it must not eat taps meant for the cards behind it. */
+  pointer-events:none}
+.jnpr .cr-pocket-lip::before{content:"";position:absolute;left:0;right:0;top:-13px;height:14px;
+  background:var(--jnpr-surface-2);border-radius:50% 50% 0 0 / 100% 100% 0 0;
+  border:1px solid var(--jnpr-line);border-bottom:0}
+.jnpr .cr-pocket-foot{position:absolute;left:0;right:0;bottom:11px;z-index:61;text-align:center;
+  font-size:11px;font-weight:650;color:var(--jnpr-ink-3)}
+.jnpr .cr-pocket-toggle{font:inherit;font-size:11px;font-weight:650;color:var(--jnpr-accent);
+  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px}
+.jnpr .cr-pocket-toggle:hover{color:var(--jnpr-ink)}
+
 .jnpr .cr-hero-f{flex:1;min-width:200px}
 .jnpr .cr-hero-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:5px}
 .jnpr .cr-hero-stats{display:flex;gap:30px;flex-wrap:wrap;margin-top:16px}

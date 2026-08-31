@@ -325,6 +325,18 @@ rationale in `docs/CARD_REWARDS.md`.
   Custom Cash and BoA Customized Cash are absent (headline earning is conditional on a payment method, a
   transaction count, or a category chosen per cycle), as are Sapphire Reserve and Amex Gold (recently
   moved annual fees, which `upgradeIdeas` subtracts, so a stale figure inverts the recommendation).
+- [x] **(build)** **Better card faces and a wallet the cards sit in** (`design/card-wallet-variants.html`,
+  one face proposal and three wallet treatments, A chosen). Still no issuer card art, which is licensed
+  and gated on the same issuer relationship as the marketplace: a face is the stored brand colour plus
+  the issuer's own Plaid logo, with the network in plain type rather than as its own mark. `shortCardName`
+  in `api/_rewards.ts` derives a name that fits, since the catalog stores 53-character issuer spellings
+  that the picker needs and no face can hold. **The wallet is vertical because in any overlapping stack
+  the visible band of a hidden card is narrow and whatever identifies it has to sit inside that band**,
+  which took four attempts: a horizontal fan revealed the network name ("VISA VISA RCARD COVER"),
+  spreading it needed 816px inside a 352px box, a 34px vertical reveal showed only "CHASE" on both Chase
+  cards, and a 54px reveal with the name stacked under the mask left both Discover cards reading
+  "Disco...". Vertical also scales: a fifth card costs 54px of height rather than width the hero does
+  not have.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
 - [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at

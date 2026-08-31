@@ -1,0 +1,531 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card faces and the wallet, variants</title>
+<!-- The real stylesheet, linked and not copied. New classes are prefixed `cw-`
+     (card wallet), checked against juniper.css for collisions first, which is the
+     habit #168 earned when `.sw` and `.hero` turned out to be taken. Anything
+     `cr-` already ships today. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:84ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.65;margin:16px 0 26px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:44px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 16px;max-width:94ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-side{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;margin:14px 0}
+.pv-cap{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin-bottom:10px}
+
+/* ══ PROPOSED FACE, one design, shown against the shipped one ═══════════════
+   Still no issuer card art: those renders are licensed and Juniper has no issuer
+   relationship. Everything here is drawn from the product's stored brand colour
+   plus the issuer's own logo as served by Plaid, which the app is already
+   licensed for. What changes is only how much care the drawing takes.
+
+   THE NETWORK IS SET IN PLAIN TYPE, never as its own logo. "VISA" as a word is a
+   statement of fact about the card the member holds; reproducing Visa's mark and
+   colours would be using their brand asset, which is the line this whole
+   component exists to stay on the right side of. */
+.cw-face{position:relative;display:block;border-radius:12px;overflow:hidden;color:#fff;
+  flex:0 0 auto;width:196px;height:124px;
+  box-shadow:0 1px 2px rgba(0,0,0,.22),0 10px 26px -12px rgba(0,0,0,.5)}
+/* Two stops from the one stored colour, so a flat hex reads as a moulded surface
+   rather than a swatch. Computed in CSS from the same variable the old face used
+   as a solid fill, so nothing new has to be stored per product. */
+.cw-face::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(145deg,
+    color-mix(in srgb, var(--cw-brand) 88%, white),
+    var(--cw-brand) 46%,
+    color-mix(in srgb, var(--cw-brand) 74%, black))}
+/* The sheen. One soft diagonal band rather than the old flat overlay. */
+.cw-face::after{content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 52%),
+    radial-gradient(120% 80% at 88% 108%,rgba(0,0,0,.28),rgba(0,0,0,0) 60%)}
+.cw-in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;
+  justify-content:space-between;padding:12px 13px}
+.cw-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cw-iss{font-size:9.5px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;opacity:.94;
+  white-space:nowrap}
+.cw-logo{display:block;height:13px;width:auto;max-width:76px;object-fit:contain;
+  filter:brightness(0) invert(1);opacity:.95}
+/* Contactless glyph. A generic symbol, not a network asset. */
+.cw-wave{width:13px;height:13px;flex:0 0 auto;opacity:.8}
+.cw-mid{display:flex;align-items:flex-end;gap:9px}
+/* EMV chip with contact lines, which is what makes a rounded gold rectangle read
+   as a chip rather than as a stray highlight. */
+.cw-chip{position:relative;width:26px;height:19px;border-radius:4px;flex:0 0 auto;
+  background:linear-gradient(135deg,#f2e6bd 0%,#cba85a 48%,#e6d69f 100%)}
+.cw-chip::before,.cw-chip::after{content:"";position:absolute;background:rgba(120,90,30,.55)}
+.cw-chip::before{left:5px;right:5px;top:6px;height:1px}
+.cw-chip::after{left:5px;right:5px;bottom:6px;height:1px}
+.cw-bot{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+/* The product name, letter-spaced and shadowed to read as embossing. Two lines
+   then ellipsis, because "Capital One Quicksilver Student Cash Rewards Credit
+   Card" is 53 characters and the face is 196px. */
+.cw-nm{font-size:12px;font-weight:700;line-height:1.2;letter-spacing:.01em;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cw-meta{display:flex;align-items:baseline;gap:8px;font-size:9.5px;font-weight:650;
+  font-variant-numeric:tabular-nums;opacity:.9}
+.cw-net{font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;opacity:.92;
+  flex:0 0 auto;text-align:right}
+.cw-face-unk{box-shadow:none;color:var(--jnpr-ink-3);
+  background:var(--jnpr-surface-3);border:1px dashed var(--jnpr-line)}
+.cw-face-unk::before,.cw-face-unk::after{display:none}
+
+/* ══ A: wallet pocket, vertical ═════════════════════════════════════════════ */
+/* 54px of reveal, not 34, and the product name moved INTO that strip. The first
+   draft used 34px with the name at the bottom of the face, so both Chase cards
+   revealed only "CHASE" and were indistinguishable. In ANY overlapping stack the
+   visible band of a hidden card is narrow, and whatever identifies it has to sit
+   inside that band. For a vertical wallet that band is the top strip, which is
+   the one real cost of this treatment: it forces the name off the bottom of the
+   card, where embossing actually lives. */
+.cw-pocket{position:relative;width:214px;flex:0 0 auto}
+.cw-pocket .cw-face{position:absolute;left:0;transition:transform .22s ease, box-shadow .22s ease}
+.cw-pocket .cw-in{justify-content:flex-start;gap:2px}
+.cw-pocket .cw-nm{-webkit-line-clamp:1;font-size:12.5px}
+.cw-pocket .cw-mid{margin-top:auto}
+.cw-pocket-lip{position:absolute;left:-9px;right:-9px;bottom:0;height:58px;z-index:60;
+  border-radius:0 0 16px 16px;background:var(--jnpr-surface-2);
+  border:1px solid var(--jnpr-line);border-top:0;
+  box-shadow:0 -10px 18px -14px rgba(0,0,0,.55) inset}
+.cw-pocket-lip::before{content:"";position:absolute;left:0;right:0;top:-13px;height:14px;
+  background:var(--jnpr-surface-2);
+  border-radius:50% 50% 0 0 / 100% 100% 0 0;
+  border:1px solid var(--jnpr-line);border-bottom:0}
+.cw-pocket-foot{position:absolute;left:0;right:0;bottom:12px;z-index:61;text-align:center;
+  font-size:11px;font-weight:650;color:var(--jnpr-ink-3)}
+.cw-collapse{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* ══ B: horizontal fan, one card lifts ═════════════════════════════════════ */
+/* HOVER RAISES ONE CARD, it does not spread the whole fan. Spreading was the
+   first idea and it does not fit: four cards fully separated need 4 x 204 =
+   816px, which is the entire hero width, so the fan simply covered the stats
+   beside it. Measured, not guessed: the spread put the rightmost card's right
+   edge at 846px inside a 352px container. Lifting one card keeps the footprint at
+   352px and still makes any card fully readable, which is also closer to what
+   Credit Karma does when you tap one. */
+/* Z-INDEX LIVES HERE, NOT INLINE, and that is a bug fix rather than tidiness.
+   With `z-index` in the element's style attribute, the `:hover` rule below could
+   not win: an inline declaration beats any stylesheet selector short of
+   !important, so the hovered card lifted and scaled correctly and still painted
+   UNDER its neighbour. Measured, not eyeballed: computed z-index stayed at 30
+   while the rule asked for 99. The shipped `.cr-stack` already does it this way. */
+.cw-fan .cw-face:nth-child(1){z-index:10}
+.cw-fan .cw-face:nth-child(2){z-index:20}
+.cw-fan .cw-face:nth-child(3){z-index:30}
+.cw-fan .cw-face:nth-child(4){z-index:40}
+.cw-fan .cw-face:nth-child(5){z-index:50}
+.cw-fan .cw-face:hover{z-index:99;transform:translateY(-10px) scale(1.02);
+  box-shadow:0 2px 4px rgba(0,0,0,.28),0 18px 36px -14px rgba(0,0,0,.6)}
+/* z-index INCREASES with position, so the RIGHTMOST card is the front one. That
+   is the whole fix and it is not cosmetic. With the leftmost card on top (which
+   is what the shipped fan does, and what the first two drafts of this did) every
+   hidden card reveals its RIGHT edge, and the right edge is where the network name
+   sits, so the fan read "VISA VISA RCARD COVER". Front-on-the-right leaves each
+   hidden card's LEFT edge showing, where the issuer and product name already are.
+   Same class of bug as the mask bleeding down the #168 fan, in the other axis.
+
+   The consequence the component has to honour: the card rendered LAST is the one
+   on top, so the primary card must be rendered last, not first. */
+.cw-fan{position:relative;height:132px;flex:0 0 auto}
+.cw-fan .cw-face{position:absolute;top:0;transition:transform .2s ease, box-shadow .2s ease}
+.cw-fan:hover .cw-face{box-shadow:0 1px 2px rgba(0,0,0,.22),0 14px 30px -14px rgba(0,0,0,.55)}
+
+/* ══ C: carousel ════════════════════════════════════════════════════════════ */
+.cw-car{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.cw-car-face{position:relative}
+.cw-arrow{width:30px;height:30px;border-radius:50%;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface-2);color:var(--jnpr-ink-2);cursor:pointer;font:inherit;font-size:13px;
+  display:grid;place-items:center;flex:0 0 auto}
+.cw-dots{display:flex;gap:6px;justify-content:center;margin-top:12px}
+.cw-dot{width:6px;height:6px;border-radius:50%;background:var(--jnpr-line);border:0;padding:0;
+  cursor:pointer}
+.cw-dot.on{background:var(--jnpr-accent);width:18px;border-radius:3px}
+.cw-car-stats{flex:1;min-width:220px}
+.cw-car-row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:7px 0;
+  border-top:1px solid var(--jnpr-line-2)}
+.cw-car-row:first-child{border-top:0}
+.cw-car-row .k{color:var(--jnpr-ink-3)}
+.cw-car-row .v{font-weight:650;color:var(--jnpr-ink);font-variant-numeric:tabular-nums}
+.pv-tbl{border-collapse:collapse;font-size:12px;margin-top:4px}
+.pv-tbl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);padding:6px 22px 6px 0}
+.pv-tbl td{padding:5px 22px 5px 0;border-top:1px solid var(--jnpr-line-2);color:var(--jnpr-ink-2)}
+.pv-tbl td:last-child{color:var(--jnpr-ink);font-weight:650}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+
+<div class="pv-head">
+  <div>
+    <div class="pv-title">Card faces and the wallet</div>
+    <div class="pv-sub">
+      Your four real cards. One face design proposed below, then three ways of showing them together.
+      The face is a single proposal rather than a third axis, because face style times wallet behaviour
+      would be nine combinations and that is not a useful choice.
+    </div>
+  </div>
+  <button class="pv-toggle" id="t">Light / dark</button>
+</div>
+
+<div class="pv-flag">
+  <b>Still no issuer card art, and that has not changed.</b> Those renders are licensed brand assets and
+  Juniper has no relationship with any card issuer, which is the same gate holding the marketplace. What
+  is below is drawn entirely from the product's stored brand colour plus the issuer's own logo as served
+  by Plaid, which the app is already licensed for and already draws on Connections.<br>
+  <b>The network is set in plain type, never as its own logo.</b> "VISA" as a word states a fact about
+  the card you hold. Reproducing Visa's mark and colours would be using their brand asset, which is
+  exactly the line this component exists to stay on the right side of.
+</div>
+
+<!-- ══ the face ════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab">The face, one proposal</div>
+  <div class="pv-note">
+    Same inputs as today, more care in the drawing. <b>Two gradient stops derived in CSS from the one
+    stored colour</b>, so nothing new is stored per product and a flat hex reads as a moulded surface.
+    A real EMV chip with contact lines, a generic contactless glyph, the product name letter-spaced and
+    shadowed to read as embossing, the network in plain type, and the mask where a mask belongs. The
+    unidentified state stays an outline, because there is no brand to borrow yet and borrowing one would
+    make an unanswered card look answered.
+  </div>
+
+  <div class="pv-side">
+    <div>
+      <div class="pv-cap">Shipping today</div>
+      <span class="cr-face cr-face-lg" style="background:#1152A0"><span class="cr-face-in">
+        <span><span class="cr-face-iss">Chase</span>
+        <span class="cr-face-nm">Chase Sapphire Preferred&reg; Card</span></span>
+        <span class="cr-face-ft"><span class="cr-face-chip"></span><span>&middot;&middot;&middot;&middot;1575</span></span>
+      </span></span>
+    </div>
+    <div>
+      <div class="pv-cap">Proposed</div>
+      <span class="cw-face" style="--cw-brand:#1152A0"><span class="cw-in">
+        <span class="cw-top">
+          <span class="cw-iss">Chase</span>
+          <svg class="cw-wave" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 8a10 10 0 0 1 0 8M9.5 6a14 14 0 0 1 0 12M14 4a18 18 0 0 1 0 16"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        <span class="cw-mid"><span class="cw-chip"></span></span>
+        <span class="cw-bot">
+          <span>
+            <span class="cw-nm">Chase Sapphire Preferred&reg; Card</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;1575</span></span>
+          </span>
+          <span class="cw-net">Visa</span>
+        </span>
+      </span></span>
+    </div>
+    <div>
+      <div class="pv-cap">Not identified yet</div>
+      <span class="cw-face cw-face-unk"><span class="cw-in">
+        <span class="cw-top"><span class="cw-iss">Chase</span></span>
+        <span class="cw-mid"><span class="cw-chip" style="opacity:.35"></span></span>
+        <span class="cw-bot"><span><span class="cw-nm">Which card?</span>
+          <span class="cw-meta"><span>&middot;&middot;&middot;&middot;5012</span></span></span></span>
+      </span></span>
+    </div>
+  </div>
+
+  <div class="pv-side">
+    <div>
+      <div class="pv-cap">Across your four issuers</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <span class="cw-face" style="--cw-brand:#0E4C8A"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Chase</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Chase Freedom Unlimited&reg;</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;8814</span></span></span>
+            <span class="cw-net">Visa</span></span></span></span>
+        <span class="cw-face" style="--cw-brand:#8C8F94"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Capital One</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Quicksilver Student</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;5012</span></span></span>
+            <span class="cw-net">Mastercard</span></span></span></span>
+        <span class="cw-face" style="--cw-brand:#4A5560"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Discover</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Discover it&reg; Chrome</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;2776</span></span></span>
+            <span class="cw-net">Discover</span></span></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ the short name ══════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab">A finding: the face needs a shorter name than the catalog stores</div>
+  <div class="pv-note">
+    The catalog deliberately stores the name <b>as the issuer spells it</b>, because that is what makes
+    a member recognizing their own card a straight string comparison, and it is what the picker has to
+    show. It is also 53 characters for "Capital One Quicksilver Student Cash Rewards Credit Card", which
+    truncates on a 196px face and even on the 236px one in treatment C.
+    <br><br>
+    <b>Derived, not stored.</b> Eighteen hand-written short names would be eighteen chances to get one
+    wrong and would need a migration every time the catalog grows; one function with cases is checkable.
+    It drops the issuer (already printed above it) and the generic tails, and it <b>keeps the issuer
+    when removing it would leave the name starting on a lowercase word</b>, which is the case that broke
+    the first version: "Discover it&reg; Chrome" became "it&reg; Chrome".
+  </div>
+  <table class="pv-tbl" id="shorttbl">
+    <thead><tr><th>Stored name</th><th>On the face</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- ══ A ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">A</span> Wallet pocket, cards stacked vertically</div>
+  <div class="pv-note">
+    <b>Closest to the thing you liked.</b> The cards sit in a pocket with a lip over the front one, each
+    revealing its own top strip, and tapping one brings it forward. <b>Vertical reveal is the reason to
+    prefer it:</b> a 54px strip carries the issuer, the network and the product name, so a fifth and
+    sixth card cost 54px each rather than running out of horizontal room. Collapse gives the page its
+    space back.
+    <br><br>
+    Two costs, both real. It is the tallest of the three at 290px against the 132px the shipped fan uses,
+    so the hero's stats sit beside it on a wide screen and under it on a narrow one. And <b>it forces the
+    product name to the top of the card</b>, off the bottom where embossing actually lives: the first
+    draft of this treatment used a 34px strip with the name at the bottom, and both Chase cards revealed
+    only "CHASE" and were impossible to tell apart.
+  </div>
+
+  <div class="pv-side">
+    <div>
+      <div class="cw-pocket" style="height:290px">
+        <span class="cw-face" style="--cw-brand:#1152A0;top:0px;z-index:10"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Chase</span><span class="cw-net">Visa</span></span>
+          <span class="cw-nm">Sapphire Preferred&reg;</span>
+          <span class="cw-mid"><span class="cw-chip"></span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;1575</span></span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#0E4C8A;top:54px;z-index:20"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Chase</span><span class="cw-net">Visa</span></span>
+          <span class="cw-nm">Freedom Unlimited&reg;</span>
+          <span class="cw-mid"><span class="cw-chip"></span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;8814</span></span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#8C8F94;top:108px;z-index:30"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Capital One</span><span class="cw-net">Mastercard</span></span>
+          <span class="cw-nm">Quicksilver Student</span>
+          <span class="cw-mid"><span class="cw-chip"></span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;5012</span></span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#4A5560;top:162px;z-index:40"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Discover</span><span class="cw-net">Discover</span></span>
+          <span class="cw-nm">Discover it&reg; Chrome</span>
+          <span class="cw-mid"><span class="cw-chip"></span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;2776</span></span></span>
+        </span></span>
+        <div class="cw-pocket-lip"></div>
+        <div class="cw-pocket-foot">4 cards &middot; <button class="cw-collapse" type="button">Collapse</button></div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:230px;padding-top:6px">
+      <div class="eyebrow">Your cards</div>
+      <div style="font-size:12px;color:var(--jnpr-ink-3);margin-top:5px">4 of 4 cards identified</div>
+      <div class="cr-hero-stats">
+        <div class="cr-hero-st"><div class="k">Benefits</div><div class="v tnum">19</div></div>
+        <div class="cr-hero-st"><div class="k">Unused credits</div><div class="v tnum">$57<span class="cr-hero-plus">+</span></div></div>
+        <div class="cr-hero-st"><div class="k">Left on the table</div><div class="v tnum">$121<span class="cr-hero-per">/yr</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ B ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">B</span> Horizontal fan that spreads on hover</div>
+  <div class="pv-note">
+    <b>The smallest change, and it keeps the hero exactly where it is.</b> The fan already ships; this
+    gives it the better faces, a 52px reveal, and a lift on hover or tap that brings one card clear of
+    the others. Nothing else on the Credit page moves and it stays at 352 by 132px.
+    <br><br>
+    Three things to know, all of them found by rendering it rather than by reasoning about it.
+    <b>The front card is the one on the right</b>, which is not a style choice: with the leftmost card on
+    top every hidden card shows its right edge, and that is where the network name sits, so the fan read
+    "VISA VISA RCARD COVER" until the stacking was reversed. <b>Hover lifts one card rather than
+    spreading the fan</b>, because a full spread of four cards needs 816px, the entire hero width, and
+    measurably put the rightmost card at 846px inside a 352px box, straight over the stats. And the 52px
+    reveal <b>shows enough to tell two cards apart but not to read a name</b>: you get the issuer, the
+    first word or so, and the mask, which is what the lift is for.
+    <br><br>
+    <b>The hard ceiling is the reason to hesitate.</b> Four cards is 352px, five is 404px, a sixth stops
+    fitting beside the stats. Right for four, wrong if this member links two more, which the missing
+    Freedom Unlimited makes likely.
+  </div>
+
+  <div class="pv-side">
+    <div>
+      <div class="cw-fan" style="width:352px" id="fan">
+        <span class="cw-face" style="--cw-brand:#1152A0;left:0px"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Chase</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Sapphire Preferred&reg;</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;1575</span></span></span>
+            <span class="cw-net">Visa</span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#0E4C8A;left:52px"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Chase</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Freedom Unlimited&reg;</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;8814</span></span></span>
+            <span class="cw-net">Visa</span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#8C8F94;left:104px"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Capital One</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Quicksilver Student</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;5012</span></span></span>
+            <span class="cw-net">Mastercard</span></span>
+        </span></span>
+        <span class="cw-face" style="--cw-brand:#4A5560;left:156px"><span class="cw-in">
+          <span class="cw-top"><span class="cw-iss">Discover</span></span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot"><span><span class="cw-nm">Discover it&reg; Chrome</span>
+            <span class="cw-meta"><span>&middot;&middot;&middot;&middot;2776</span></span></span>
+            <span class="cw-net">Discover</span></span>
+        </span></span>
+      </div>
+      <div style="font-size:11px;color:var(--jnpr-ink-3);margin-top:10px">
+        Hover any card to lift it clear of the others.
+      </div>
+    </div>
+    <div style="flex:1;min-width:230px;padding-top:6px">
+      <div class="eyebrow">Your cards</div>
+      <div style="font-size:12px;color:var(--jnpr-ink-3);margin-top:5px">4 of 4 cards identified</div>
+      <div class="cr-hero-stats">
+        <div class="cr-hero-st"><div class="k">Benefits</div><div class="v tnum">19</div></div>
+        <div class="cr-hero-st"><div class="k">Unused credits</div><div class="v tnum">$57<span class="cr-hero-plus">+</span></div></div>
+        <div class="cr-hero-st"><div class="k">Left on the table</div><div class="v tnum">$121<span class="cr-hero-per">/yr</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ C ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">C</span> One card at a time, with that card's own numbers</div>
+  <div class="pv-note">
+    <b>The only one where a card's own figures are the subject.</b> A full-size face with its balance,
+    limit, utilization and best categories beside it, and arrows or dots to move between cards. Reads
+    best on a phone, and it is the only treatment that answers "what is THIS card doing" without a
+    second click. The trade is the thing you said you liked: you cannot see all your cards together, and
+    the aggregate stats have to live somewhere else on the page.
+  </div>
+
+  <div class="card pad-lg">
+    <div class="cw-car">
+      <button class="cw-arrow" type="button" aria-label="Previous card">&#8249;</button>
+      <div class="cw-car-face">
+        <span class="cw-face" style="--cw-brand:#8C8F94;width:236px;height:149px"><span class="cw-in">
+          <span class="cw-top">
+            <span class="cw-iss">Capital One</span>
+            <svg class="cw-wave" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 8a10 10 0 0 1 0 8M9.5 6a14 14 0 0 1 0 12M14 4a18 18 0 0 1 0 16"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="cw-mid"><span class="cw-chip"></span></span>
+          <span class="cw-bot">
+            <span><span class="cw-nm">Quicksilver Student Cash Rewards</span>
+              <span class="cw-meta"><span>&middot;&middot;&middot;&middot;5012</span></span></span>
+            <span class="cw-net">Mastercard</span></span>
+        </span></span>
+      </div>
+      <div class="cw-car-stats">
+        <div class="cw-car-row"><span class="k">Balance</span><span class="v">$328</span></div>
+        <div class="cw-car-row"><span class="k">Limit</span>
+          <span class="v">$4,400 <span class="cl-mine">You set this</span></span></div>
+        <div class="cw-car-row"><span class="k">Used</span><span class="v">7%</span></div>
+        <div class="cw-car-row"><span class="k">Earns</span><span class="v">1.5% on everything</span></div>
+        <div class="cw-car-row"><span class="k">Best for</span><span class="v">Nothing, on your spending</span></div>
+        <div class="cw-car-row"><span class="k">Benefits</span><span class="v">1, none ticked off</span></div>
+      </div>
+      <button class="cw-arrow" type="button" aria-label="Next card">&#8250;</button>
+    </div>
+    <div class="cw-dots">
+      <button class="cw-dot" type="button" aria-label="Card 1"></button>
+      <button class="cw-dot on" type="button" aria-label="Card 2"></button>
+      <button class="cw-dot" type="button" aria-label="Card 3"></button>
+      <button class="cw-dot" type="button" aria-label="Card 4"></button>
+    </div>
+    <div class="cr-prov">
+      "Best for: nothing, on your spending" is the honest read of a flat-rate card held alongside a
+      Sapphire Preferred, and it is exactly what the switch ideas below the fold are built from.
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+document.getElementById('t').onclick = () => document.documentElement.classList.toggle('dark');
+
+// The proposed derivation, run live so the cases can be judged rather than
+// promised. The real implementation is this function in lib/cards.ts with these
+// same cases in a check script.
+function shortCardName(full, issuer) {
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let s = full;
+  s = s.replace(new RegExp(`\\bfrom\\s+${esc(issuer)}\\b`, 'i'), ' ');
+  const stripped = s.replace(new RegExp(`\\b${esc(issuer)}\\b`, 'i'), ' ')
+    .replace(/\s+/g, ' ').trim();
+  // Keep the issuer when dropping it would leave the name starting on a
+  // lowercase word. "Discover it Chrome" is the case that forced this: without
+  // it the face read "it Chrome".
+  s = /^[a-z]/.test(stripped) ? s : stripped;
+  s = s.replace(/\b(credit card|card)\b/gi, ' ')
+       .replace(/\b(cash rewards|cash back)\b/gi, ' ')
+       .replace(/\s+/g, ' ').trim();
+  return s || full;
+}
+(() => {
+  const cases = [
+    ['Chase Sapphire Preferred\u00ae Card', 'Chase'],
+    ['Chase Freedom Unlimited\u00ae', 'Chase'],
+    ['Capital One Quicksilver Student Cash Rewards Credit Card', 'Capital One'],
+    ['Capital One SavorOne Cash Rewards Credit Card', 'Capital One'],
+    ['Discover it\u00ae Chrome', 'Discover'],
+    ['Discover it\u00ae Student Cash Back', 'Discover'],
+    ['Blue Cash Preferred\u00ae Card from American Express', 'American Express'],
+    ['Citi Double Cash\u00ae Card', 'Citi'],
+    ['Wells Fargo Autograph\u2120 Card', 'Wells Fargo'],
+  ];
+  const tb = document.querySelector('#shorttbl tbody');
+  if (!tb) return;
+  for (const [full, issuer] of cases) {
+    const tr = document.createElement('tr');
+    const a = document.createElement('td'); a.textContent = full;
+    const b = document.createElement('td'); b.textContent = shortCardName(full, issuer);
+    tr.append(a, b); tb.append(tr);
+  }
+})();
+// Treatment B's lift is pure CSS (`.cw-fan .cw-face:hover`), so there is no
+// script for it. An earlier draft spread the whole fan from JS and had to go: the
+// spread needed 816px inside a 352px container and covered the stats.
+</script>
+</body>
+</html>

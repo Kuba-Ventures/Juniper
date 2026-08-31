@@ -39,15 +39,24 @@ export function CardFace({
   issuer,
   productName,
   mask,
+  network,
   brandColor,
   logoSrc,
   size = "md",
   unknown = false,
   label,
+  layout = "card",
 }: {
   issuer?: string;
+  /** Use the SHORT name (`product.short_name`). The stored name is up to 53
+      characters and ellipsizes on every size below. */
   productName?: string;
   mask?: string | null;
+  /** Set in PLAIN TYPE, never as the network's own logo. "Visa" as a word states
+      a fact about the card the member holds; reproducing Visa's mark and colours
+      would be using their brand asset, which is the line this component exists
+      to stay on the right side of. */
+  network?: string | null;
   brandColor?: string | null;
   /** The institution's own mark, resolved by the caller through the same chain
       Connections uses. Absent is fine and common: plenty of banks have no logo. */
@@ -57,34 +66,90 @@ export function CardFace({
   unknown?: boolean;
   /** Overrides the product name, for the outline state ("Which card?"). */
   label?: string;
+  /**
+   * `strip` rearranges the face for the wallet pocket, where only the top ~54px
+   * is visible and everything identifying has to fit inside it.
+   *
+   * This is a component prop rather than CSS because the fix needs the MASK on
+   * the issuer's line, and `order` only reorders siblings: the mask sits inside
+   * the name's wrapper, two levels from the issuer. Two CSS attempts show why it
+   * matters. Name and mask stacked clipped the mask to "·1575"; side by side they
+   * left about 85px for the name, so both Discover cards read "Disco...". Issuer
+   * plus mask on one line and the name alone on the next is the only arrangement
+   * where five cards in a pocket are all distinguishable.
+   */
+  layout?: "card" | "strip";
 }) {
   const cls = `cr-face cr-face-${size}${unknown ? " cr-face-unk" : ""}`;
-  // The face carries white text over the brand colour, and Plaid's brand colours
+  // The face carries light text over the brand colour, and Plaid's brand colours
   // run from near-white golds to near-black navies. `brandTint` already measures
   // Rec. 709 luma for exactly this problem on the Connections monogram tiles, so
   // the ink is reused from there rather than assumed to be white: a white product
   // name on a pale gold card is unreadable.
+  //
+  // The gradient is derived in CSS from `--cr-brand`, so a flat hex reads as a
+  // moulded surface and nothing new has to be stored per product.
   const tint = unknown ? null : brandTint(brandColor);
-  const style = tint ? { background: tint.background, color: tint.color } : undefined;
+  const style = tint
+    ? ({ ["--cr-brand" as string]: tint.background, color: tint.color } as React.CSSProperties)
+    : undefined;
   const name = label ?? productName ?? "";
+  const tiny = size === "sm";
+  const maskEl = mask
+    ? <span className="cr-face-mask">&middot;&middot;&middot;&middot;{mask}</span>
+    : null;
+
+  if (tiny) {
+    // A 26px swatch. Nothing fits on it and nothing needs to: it exists to tie a
+    // chip or a row back to a card by colour.
+    return <span className={cls} style={style} aria-hidden="true" />;
+  }
+
+  if (layout === "strip") {
+    return (
+      <span className={cls} style={style} aria-hidden="true">
+        <span className="cr-face-in">
+          <span className="cr-face-top">
+            {logoSrc
+              ? <img className="cr-face-logo" src={logoSrc} alt="" />
+              : <span className="cr-face-iss">{issuer}</span>}
+            {maskEl}
+          </span>
+          {name && <span className="cr-face-nm">{name}</span>}
+          {/* Pushed to the bottom, so it never competes for the visible strip. */}
+          <span className="cr-face-mid"><span className="cr-face-chip" /></span>
+        </span>
+      </span>
+    );
+  }
 
   return (
     <span className={cls} style={style} aria-hidden="true">
       <span className="cr-face-in">
-        <span>
-          {size !== "sm" && issuer && !unknown && (
-            logoSrc
-              ? <img className="cr-face-logo" src={logoSrc} alt="" />
-              : <span className="cr-face-iss">{issuer}</span>
+        <span className="cr-face-top">
+          {logoSrc
+            ? <img className="cr-face-logo" src={logoSrc} alt="" />
+            : <span className="cr-face-iss">{issuer}</span>}
+          {/* A generic contactless glyph, not a network asset. */}
+          {!unknown && (
+            <svg className="cr-face-wave" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M5 8a10 10 0 0 1 0 8M9.5 6a14 14 0 0 1 0 12M14 4a18 18 0 0 1 0 16"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+              />
+            </svg>
           )}
-          {size !== "sm" && name && <span className="cr-face-nm">{name}</span>}
         </span>
-        {size !== "sm" && (
-          <span className="cr-face-ft">
-            <span className="cr-face-chip" />
-            {mask && <span>&middot;&middot;&middot;&middot;{mask}</span>}
+        <span className="cr-face-mid">
+          <span className="cr-face-chip" />
+        </span>
+        <span className="cr-face-bot">
+          <span className="cr-face-idw">
+            {name && <span className="cr-face-nm">{name}</span>}
+            {maskEl}
           </span>
-        )}
+          {network && !unknown && <span className="cr-face-net">{network}</span>}
+        </span>
       </span>
     </span>
   );

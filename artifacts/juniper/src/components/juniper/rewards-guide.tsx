@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/juniper/card-rewards-bits";
-import { money0, pointValueMap, type CardRewards, type GuideEntry, type LinkedCard } from "@/lib/cards";
+import { faceInfoMap, money0, pointValueMap, type CardRewards, type GuideEntry, type LinkedCard } from "@/lib/cards";
 
 // The card-art hero and the rewards earning guide. Treatment A of three
 // (design/card-rewards-variants.html), issue #168.
@@ -42,38 +43,102 @@ const CATEGORY_ICON: Record<string, string> = {
 const iconFor = (categoryId: string) => CATEGORY_ICON[categoryId] ?? "📦";
 
 /**
- * The stack of card faces.
+ * The wallet: cards stacked in a pocket, each revealing a strip of itself.
+ *
+ * Treatment A of three, rendered in design/card-wallet-variants.html. Replaces a
+ * horizontal fan, and the reason is not taste. In ANY overlapping stack the
+ * visible band of a hidden card is narrow, and whatever identifies it has to sit
+ * inside that band. A horizontal fan leaves the RIGHT edge showing, where the
+ * network name is, so it read "VISA VISA RCARD COVER"; vertical leaves the TOP
+ * strip, where the issuer and the name are. Vertical also scales: a fifth card
+ * costs 54px of height rather than 52px of width it does not have.
+ *
+ * The cost, and it is real: the product name has to live at the top of the face
+ * in this layout, off the bottom where embossing actually is.
  *
  * Only CONFIRMED cards are drawn. An unidentified card has no brand colour to
- * borrow, and putting an outline in the fan would read as a rendering fault
- * rather than as a card waiting to be named, which is what the identify prompt
- * above it is for.
+ * borrow, and an outline in the pocket reads as a rendering fault rather than as
+ * a card waiting to be named, which is what the identify prompt above is for.
  */
-function CardStack({ cards, logoFor }: { cards: LinkedCard[]; logoFor: (c: LinkedCard) => string | null }) {
+const REVEAL = 54;   // matches `--cr-reveal` in juniper.css
+const FACE_H = 124;  // matches `.cr-face-lg` height
+
+function CardWallet({
+  cards,
+  logoFor,
+}: {
+  cards: LinkedCard[];
+  logoFor: (c: LinkedCard) => string | null;
+}) {
   const withProduct = cards.filter((c) => c.product);
+  const [collapsed, setCollapsed] = useState(false);
+  // Which card is pulled to the front. Null means the natural order stands.
+  const [front, setFront] = useState<string | null>(null);
   if (!withProduct.length) return null;
-  // Capped at four. The fan offsets are fixed in CSS, and a fifth card would
-  // either extend past the stack's declared width or need a second offset scale
-  // for a case almost nobody is in.
-  const shown = withProduct.slice(0, 4);
+
+  // Every card, not the first four: vertical reveal is the whole reason this
+  // layout was chosen, so capping it would throw away the property it was picked
+  // for. Collapsed shows the top three edges and a count.
+  const shown = collapsed ? withProduct.slice(0, 3) : withProduct;
+  const height = collapsed
+    ? REVEAL * (shown.length - 1) + 40
+    : REVEAL * (shown.length - 1) + FACE_H + 58;
+
   return (
-    <div className="cr-stack" style={{ width: 172 + (shown.length - 1) * 26 }}>
-      {shown.map((c) => (
-        <CardFace
-          key={c.plaid_account_id}
-          size="lg"
-          issuer={c.institution}
-          productName={c.product?.name}
-          mask={c.mask}
-          brandColor={c.product?.brand_color}
-          logoSrc={logoFor(c)}
-        />
-      ))}
+    <div className="cr-pocket" style={{ height }}>
+      {shown.map((c, i) => {
+        const id = c.plaid_account_id;
+        const raised = front === id;
+        return (
+          <button
+            type="button"
+            key={id}
+            className={raised ? "cr-pocket-card up" : "cr-pocket-card"}
+            style={{ top: i * REVEAL, zIndex: (i + 1) * 10 }}
+            aria-label={`${c.institution} ${c.product?.short_name ?? c.account_name}`}
+            aria-pressed={raised}
+            onClick={() => setFront(raised ? null : id)}
+          >
+            <CardFace
+              size="lg"
+              layout="strip"
+              issuer={c.institution}
+              productName={c.product?.short_name}
+              mask={c.mask}
+              brandColor={c.product?.brand_color}
+              logoSrc={logoFor(c)}
+            />
+          </button>
+        );
+      })}
+      {/* The lip, over the front card. Purely decorative, so it must not eat the
+          taps meant for the cards behind it. */}
+      <div className="cr-pocket-lip" aria-hidden="true" />
+      <div className="cr-pocket-foot">
+        {withProduct.length} {withProduct.length === 1 ? "card" : "cards"}
+        {withProduct.length > 3 && (
+          <>
+            {" "}&middot;{" "}
+            <button type="button" className="cr-pocket-toggle" onClick={() => setCollapsed((v) => !v)}>
+              {collapsed ? "Show all" : "Collapse"}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-function GuideRow({ entry, centsFor }: { entry: GuideEntry; centsFor: (productId: string) => number | null }) {
+function GuideRow({
+  entry, centsFor, shortFor,
+}: {
+  entry: GuideEntry;
+  centsFor: (productId: string) => number | null;
+  /** The short name, for the chips. The winner's line keeps the FULL name: it is
+      a sentence naming the member's card and should name it properly, where a
+      chip has room for about twenty characters. */
+  shortFor: (productId: string) => string;
+}) {
   const { best } = entry;
   if (!best) return null;
   return (
@@ -101,13 +166,13 @@ function GuideRow({ entry, centsFor }: { entry: GuideEntry; centsFor: (productId
             {entry.tied.map((t) => (
               <span className="cr-rg-chip tie" key={t.productId}>
                 <CardFace size="sm" brandColor={t.brandColor} />
-                Tied with {t.productName}
+                Tied with {shortFor(t.productId) || t.productName}
               </span>
             ))}
             {entry.others.map((o) => (
               <span className="cr-rg-chip" key={o.productId}>
                 <CardFace size="sm" brandColor={o.brandColor} />
-                {o.productName}, {o.display}
+                {shortFor(o.productId) || o.productName}, {o.display}
               </span>
             ))}
           </div>
@@ -144,12 +209,14 @@ export function RewardsGuide({
   const benefits = data.benefits;
   const cents = pointValueMap(data);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
+  const faces = faceInfoMap(data);
+  const shortFor = (productId: string) => faces.get(productId)?.shortName ?? "";
   const totalGain = data.switches.reduce((a, s) => a + s.gain, 0);
 
   return (
     <div className="card pad-lg" style={{ marginBottom: 14 }}>
       <div className="cr-hero">
-        <CardStack cards={confirmed} logoFor={logoFor} />
+        <CardWallet cards={confirmed} logoFor={logoFor} />
         <div className="cr-hero-f">
           <div className="eyebrow">Your cards</div>
           <div className="cr-hero-sub">
@@ -208,7 +275,9 @@ export function RewardsGuide({
             Which of your cards is best in each category, ordered by what you actually spend, so the row
             that matters most to you is first.
           </div>
-          {data.guide.map((e) => <GuideRow entry={e} centsFor={centsFor} key={e.categoryId} />)}
+          {data.guide.map((e) => (
+            <GuideRow entry={e} centsFor={centsFor} shortFor={shortFor} key={e.categoryId} />
+          ))}
         </>
       )}
 
