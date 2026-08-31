@@ -1735,3 +1735,62 @@
   background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
   text-underline-offset:2px}
 .jnpr .cr-row-change:hover{color:var(--jnpr-ink)}
+
+/* ── Setting a credit limit your bank does not report (issue #211) ───────────
+   Treatment A of three, rendered in design/credit-limit-variants.html: the
+   control sits on the row that states the gap, so the member is looking at that
+   card's name and mask while they type.
+
+   Prefixed `cl-`, checked against this file for collisions before it was
+   written, which is the habit #168 earned the hard way when `.sw` and `.hero`
+   turned out to be taken. */
+
+/* A plain text button, not a filled one. There can be three of these in one card
+   list, and three filled buttons under the Identify prompt would make the page
+   read as a list of chores rather than a view of the member's money. */
+.jnpr .cl-set{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
+  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px}
+.jnpr .cl-set:hover{color:var(--jnpr-ink)}
+
+/* THE BADGE ON A LIMIT THE MEMBER SUPPLIED, and it is the load-bearing piece of
+   this feature rather than decoration. A number somebody typed must never be
+   indistinguishable from a number their bank reported: one is a claim and the
+   other is a fact, and a utilization built from a mix of them is only as good as
+   the claim. Quiet rather than loud, because it is a provenance note and not a
+   warning: the member did nothing wrong by setting it. */
+.jnpr .cl-mine{display:inline-flex;align-items:center;font-size:10px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--jnpr-ink-3);
+  background:var(--jnpr-surface-3);border-radius:20px;padding:1px 7px;margin-left:6px;
+  vertical-align:middle;white-space:nowrap}
+
+/* The inline editor. Sized to the number and not to the row: a credit limit is
+   four or five digits, and a full-width field would imply a sentence. */
+.jnpr .cl-form{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.jnpr .cl-cur{font-size:12px;color:var(--jnpr-ink-3);font-weight:650}
+.jnpr .cl-in{font:inherit;font-size:13px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);
+  border:1px solid var(--jnpr-line);border-radius:8px;padding:6px 9px;outline:0;width:110px;
+  font-variant-numeric:tabular-nums;text-align:right}
+.jnpr .cl-in:focus{border-color:var(--jnpr-accent)}
+.jnpr .cl-in:disabled{opacity:.6}
+.jnpr .cl-btn{font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:8px;
+  cursor:pointer;border:1px solid var(--jnpr-accent);background:var(--jnpr-accent);
+  color:var(--jnpr-surface)}
+.jnpr .cl-btn.ghost{background:none;border-color:var(--jnpr-line);color:var(--jnpr-ink-2)}
+.jnpr .cl-btn:disabled{opacity:.6;cursor:default}
+/* A SIBLING of .cl-form rather than a flex item inside it. As an item it refused
+   to wrap onto its own line even with `flex-basis:100%`, because flex
+   line-breaking measures an item's hypothetical size AFTER max-width clamps it,
+   so `max-width:64ch` fitted in the space left beside the buttons. Two CSS
+   attempts missed that; a sibling block cannot. */
+.jnpr .cl-hint{font-size:11px;color:var(--jnpr-ink-3);line-height:1.55;max-width:64ch;
+  margin-top:8px}
+.jnpr .cl-err{font-size:11.5px;font-weight:600;color:var(--jnpr-bad);
+  background:var(--jnpr-bad-soft);border-radius:var(--jnpr-r-sm);padding:7px 10px;margin-top:8px;
+  max-width:64ch}
+
+/* The note under the utilization figure, when any of its limits came from the
+   member. A member who has forgotten they set one would otherwise have no way to
+   know the percentage rests on it. */
+.jnpr .cl-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:6px;
+  max-width:56ch}

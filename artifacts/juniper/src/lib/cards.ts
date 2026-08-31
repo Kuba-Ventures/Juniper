@@ -43,12 +43,42 @@ export interface LinkedCard {
   account_name: string;
   mask: string | null;
   balance: number;
+  /** The effective limit: the bank's where it reports one, otherwise the
+      member's. Prefer `bankLimit`/`memberLimit` when the DISTINCTION matters,
+      which on this surface is most of the time. */
   limit: number | null;
+  /** What the bank reports, or null when it reports nothing. A fact. */
+  bank_limit: number | null;
+  /** What the member typed for a card the bank reports no limit for (#211).
+      A claim, and drawn as one: never rendered without its badge. */
+  member_limit: number | null;
+  member_limit_set_at: string | null;
   currency: string | null;
-  /** True once the member has answered for this account, INCLUDING when they
-      answered "not in your catalog". Distinct from `product != null`. */
+  /** True once the member has answered WHICH PRODUCT this is, including the
+      answer "not in your catalog". Not the same as a row existing: since #211 a
+      row can exist purely to hold a limit. */
   answered: boolean;
   product: CardProductSummary | null;
+}
+
+/** Where a card's usable limit came from, which the surface must always say. */
+export type LimitSource = "bank" | "member" | "none";
+
+/**
+ * The one place that decides which limit a card uses.
+ *
+ * The member's answer wins, and it can only exist for a card the bank reports
+ * nothing for, so in practice the two never compete. Written as an explicit
+ * precedence anyway rather than left to `??`, because if an issuer ever starts
+ * reporting a limit for a card the member had already answered for, the BANK's
+ * number should take over: it is the fact, and theirs was a stand-in for its
+ * absence.
+ */
+export function limitOf(card: { bank_limit: number | null; member_limit: number | null }):
+  { limit: number | null; source: LimitSource } {
+  if (card.bank_limit != null && card.bank_limit > 0) return { limit: card.bank_limit, source: "bank" };
+  if (card.member_limit != null && card.member_limit > 0) return { limit: card.member_limit, source: "member" };
+  return { limit: null, source: "none" };
 }
 
 export interface Candidate {
@@ -210,6 +240,29 @@ export async function confirmCard(plaidAccountId: string, productId: string | nu
     const r = await authedFetch("/api/member-cards", {
       method: "POST",
       body: JSON.stringify({ plaid_account_id: plaidAccountId, product_id: productId }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set the credit limit for a card whose bank does not report one (#211), or clear
+ * it by passing null.
+ *
+ * Accepts what somebody reads off a statement, commas and a dollar sign
+ * included; the server does the parsing so there is one definition of what
+ * counts as a number rather than a client regex and a server regex that drift.
+ *
+ * This never reaches the Juniper Score. See the comment in
+ * api/_finance-snapshot.ts, which deliberately reads bank-reported limits only.
+ */
+export async function setCardLimit(plaidAccountId: string, creditLimit: string | null): Promise<boolean> {
+  try {
+    const r = await authedFetch("/api/member-cards", {
+      method: "PATCH",
+      body: JSON.stringify({ plaid_account_id: plaidAccountId, credit_limit: creditLimit }),
     });
     return r.ok;
   } catch {

@@ -65,7 +65,16 @@ interface ItemRow {
     balance: number | null; limit: number | null; currency: string | null;
   }[] | null;
 }
-interface MemberCardRow { plaid_account_id: string; product_id: string | null }
+interface MemberCardRow {
+  plaid_account_id: string;
+  product_id: string | null;
+  /** #211: a limit the member supplied, for a card the bank reports none for. */
+  credit_limit: number | null;
+  credit_limit_set_at: string | null;
+  /** Whether they have answered WHICH PRODUCT this is. Not the same as the row
+      existing, since a row can now exist only to hold a limit. */
+  product_answered: boolean;
+}
 interface TxnRow { account_id: string | null; amount: number; date: string; category: string | null; category_id: string | null }
 interface UseRow { benefit_id: string; period_key: string; used_at: string }
 
@@ -87,6 +96,50 @@ async function rows<T>(query: string, what: string): Promise<T[]> {
   }
 }
 
+/**
+ * The member's card answers, degrading if migration 0033 has not been applied.
+ *
+ * PostgREST rejects the WHOLE select on one unknown column, and the generic
+ * `rows()` helper above turns any failure into an empty array. That combination
+ * would be actively harmful here rather than merely quiet: with no confirmations,
+ * every card looks unidentified, so a deploy landing ahead of 0033 would put
+ * cards the member has already identified back into the Identify queue and drop
+ * the rewards data they had. So the pre-0033 columns are requested separately and
+ * the #211 ones are treated as optional, the same shape as the per-item health
+ * columns in api/plaid/accounts.ts.
+ *
+ * `product_answered` defaults to TRUE when absent, which matches the column's own
+ * DEFAULT and is the only safe reading: every row that exists before 0033 was
+ * created by a product answer.
+ */
+async function readConfirmations(uid: string): Promise<MemberCardRow[]> {
+  const base = "plaid_account_id,product_id";
+  const withLimit = `${base},credit_limit,credit_limit_set_at,product_answered`;
+  const scope = `member_cards?user_id=eq.${uid}`;
+  try {
+    let r = await adminRest(`${scope}&select=${withLimit}`);
+    if (!r.ok) {
+      r = await adminRest(`${scope}&select=${base}`);
+      if (r.ok) console.warn("[cards] member limit columns unavailable, is migration 0033 applied?");
+    }
+    if (!r.ok) {
+      console.error(`[cards] could not read card confirmations (${r.status})`);
+      return [];
+    }
+    const raw = (await r.json().catch(() => [])) as Partial<MemberCardRow>[];
+    return (Array.isArray(raw) ? raw : []).map((c) => ({
+      plaid_account_id: String(c.plaid_account_id ?? ""),
+      product_id: c.product_id ?? null,
+      credit_limit: c.credit_limit == null ? null : Number(c.credit_limit),
+      credit_limit_set_at: c.credit_limit_set_at ?? null,
+      product_answered: c.product_answered ?? true,
+    }));
+  } catch {
+    console.error("[cards] read threw for card confirmations");
+    return [];
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -101,7 +154,7 @@ export default async function handler(req: Request): Promise<Response> {
   const since = isoDaysAgo(WINDOW_DAYS);
   const [items, confirmations, productRows, earnRows, benefitRows, txns, uses] = await Promise.all([
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
-    rows<MemberCardRow>(`member_cards?user_id=eq.${uid}&select=plaid_account_id,product_id`, "card confirmations"),
+    readConfirmations(uid),
     rows<CardProduct & { status?: string }>(
       "card_products?status=eq.active&select=id,issuer,network,name,annual_fee,brand_color," +
       "rewards_currency,point_value_cents,base_multiplier,base_unit,source_url,as_of,verified", "the card catalog"),
@@ -170,20 +223,25 @@ export default async function handler(req: Request): Promise<Response> {
   }));
 
   // ── Confirmed, and still to identify ────────────────────────────────────
-  // An account with NO row is "not asked yet". An account with a row whose
-  // product_id is NULL is "the member said it is not in the catalog", which is a
-  // real answer and must not put the account back in the queue.
-  const answered = new Map(confirmations.map((c) => [c.plaid_account_id, c.product_id]));
+  //
+  // "Has the member answered which product this is" is `product_answered`, NOT
+  // the presence of a row. Since #211 a row can exist purely to hold a credit
+  // limit, and reading existence as an answer would make the Identify prompt stop
+  // asking about a card nobody has identified. product_id NULL with
+  // product_answered TRUE is the real answer "my card is not in your catalog".
+  const byAccount = new Map(confirmations.map((c) => [c.plaid_account_id, c]));
+  const answeredProduct = (id: string) => byAccount.get(id)?.product_answered === true;
+  const productOf = (id: string) => (answeredProduct(id) ? byAccount.get(id)?.product_id ?? null : null);
   const memberCards: MemberCard[] = accounts.map((a) => ({
     plaid_account_id: a.plaid_account_id,
-    product_id: answered.get(a.plaid_account_id) ?? null,
+    product_id: productOf(a.plaid_account_id),
     institution: a.institution,
     account_name: a.account_name,
     mask: a.mask,
   }));
   const catalog = [...products.values()];
   const unidentified = accounts
-    .filter((a) => !answered.has(a.plaid_account_id))
+    .filter((a) => !answeredProduct(a.plaid_account_id))
     .map((a) => ({
       ...a,
       // Ranked guesses, capped, so the picker opens on a short list rather than
@@ -268,11 +326,21 @@ export default async function handler(req: Request): Promise<Response> {
     // Confirmed cards, each carrying the product it is and the balance and limit
     // the bank reports, so the hero can draw faces and totals from one list.
     cards: accounts.map((a) => {
-      const productId = answered.get(a.plaid_account_id) ?? null;
+      const productId = productOf(a.plaid_account_id);
       const p = productId ? products.get(productId) : null;
+      const row = byAccount.get(a.plaid_account_id);
+      // BOTH limits travel, separately, and the client picks. One effective
+      // number computed here plus another computed there would be two answers to
+      // "what is this card's limit", free to disagree; and the surface has to be
+      // able to say WHICH kind it drew, because a limit the member typed is a
+      // claim and a limit the bank reported is a fact.
+      const memberLimit = row?.credit_limit == null ? null : Number(row.credit_limit);
       return {
         ...a,
-        answered: answered.has(a.plaid_account_id),
+        bank_limit: a.limit,
+        member_limit: memberLimit != null && memberLimit > 0 ? memberLimit : null,
+        member_limit_set_at: row?.credit_limit_set_at ?? null,
+        answered: answeredProduct(a.plaid_account_id),
         product: p ? {
           id: p.id, name: p.name, issuer: p.issuer, network: p.network,
           annual_fee: Number(p.annual_fee) || 0, brand_color: p.brand_color,

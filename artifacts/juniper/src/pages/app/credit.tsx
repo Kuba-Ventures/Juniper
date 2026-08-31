@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
-import { forgetCard, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import { forgetCard, limitOf, setCardLimit, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
@@ -73,9 +73,13 @@ type LinkedCard = {
   // overpaid card, and a negative bar width renders as nothing at all.
   balance: number;
   // null whenever the bank does not report a limit, and also on every snapshot
-  // written before the server started sanitizing `limit` through. Utilization is
-  // simply unknown for those cards, never assumed.
+  // written before the server started sanitizing `limit` through. This is the
+  // BANK's number: a fact.
   limit: number | null;
+  // #211: what the MEMBER typed for a card the bank reports no limit for. A
+  // claim, kept in its own field rather than folded into `limit`, because every
+  // surface that draws it has to be able to say which of the two it drew.
+  memberLimit: number | null;
   currency: string | null;
 };
 
@@ -103,10 +107,20 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
         mask: a.mask,
         balance: Math.abs(a.balance ?? 0),
         limit: a.limit != null && a.limit > 0 ? a.limit : null,
+        // Filled in by the Credit component from /api/card-rewards, which is the
+        // only reader of member_cards. This function stays a pure projection of
+        // the Plaid snapshot.
+        memberLimit: null,
         currency: a.currency,
       })),
   );
 }
+
+// Which limit a card actually uses, and where it came from. Delegates to
+// `limitOf` in lib/cards.ts so the precedence is defined once: the BANK's number
+// wins where it exists, because it is the fact and the member's was a stand-in
+// for its absence.
+const limitFor = (c: LinkedCard) => limitOf({ bank_limit: c.limit, member_limit: c.memberLimit });
 
 const pct = (balance: number, limit: number) => Math.round((balance / limit) * 100);
 
@@ -167,8 +181,15 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
   // a card with an unknown limit either understates the ratio (limit treated as 0
   // and dropped from the denominator) or invents one, so it is excluded and the
   // exclusion is stated.
-  const withLimit = cards.filter((c) => c.limit != null);
+  //
+  // Since #211 "known" includes a limit the MEMBER supplied, and the count of
+  // those is stated too. A percentage built partly from numbers somebody typed is
+  // only as good as what they typed, and a member who has forgotten they set one
+  // would otherwise have no way to know this figure rests on it.
+  const rated = cards.map((c) => ({ card: c, ...limitFor(c) }));
+  const withLimit = rated.filter((r) => r.limit != null);
   const excluded = cards.length - withLimit.length;
+  const memberSet = withLimit.filter((r) => r.source === "member").length;
   if (!withLimit.length) {
     return (
       <div className="util-hero">
@@ -176,16 +197,17 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
           <div className="eyebrow">Overall utilization</div>
           <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", marginTop: 6, maxWidth: "48ch", lineHeight: 1.55 }}>
             None of your linked cards report a credit limit, so there is nothing to measure a balance
-            against. Refreshing your data on Connections re-reads limits from your bank.
+            against. Refreshing your data on Connections re-reads limits from your bank, and you can
+            set a limit yourself on any card below.
           </div>
         </div>
       </div>
     );
   }
-  const balance = withLimit.reduce((a, c) => a + c.balance, 0);
-  const limit = withLimit.reduce((a, c) => a + (c.limit ?? 0), 0);
+  const balance = withLimit.reduce((a, r) => a + r.card.balance, 0);
+  const limit = withLimit.reduce((a, r) => a + (r.limit ?? 0), 0);
   const used = pct(balance, limit);
-  const currency = withLimit[0].currency;
+  const currency = withLimit[0].card.currency;
   return (
     <div className="util-hero">
       <div>
@@ -196,6 +218,14 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
           {withLimit.length === 1 ? "card" : "cards"}
           {excluded > 0 && `, ${excluded} more excluded for reporting no limit`}
         </div>
+        {memberSet > 0 && (
+          <div className="cl-note">
+            {memberSet === 1
+              ? "One of those limits is one you set rather than one your bank reported."
+              : `${memberSet} of those limits are ones you set rather than ones your bank reported.`}{" "}
+            Your Juniper Score uses bank-reported limits only.
+          </div>
+        )}
       </div>
       <div className="ub">
         <div className="bar" style={{ height: 10 }}>
@@ -231,8 +261,88 @@ function CardMark({ card, brands }: { card: LinkedCard; brands: InstitutionBrand
   );
 }
 
+/**
+ * The inline "what is the limit on this card?" editor (#211, treatment A of
+ * three, rendered in design/credit-limit-variants.html).
+ *
+ * It sits on the row that states the gap, which is the point of treatment A: the
+ * member is looking at this card's name and mask while they type, and that is
+ * what stops them entering the Chase limit against the Capital One row.
+ *
+ * Uncontrolled-ish on purpose: the field holds a raw string, commas and dollar
+ * sign included, because that is what somebody reads off a statement. Parsing
+ * happens server-side so there is ONE definition of what counts as a number
+ * rather than a client regex and a server regex free to drift.
+ */
+function LimitForm({
+  card, onSaved, onCancel,
+}: {
+  card: LinkedCard;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(card.memberLimit != null ? String(card.memberLimit) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    const ok = await setCardLimit(card.key, value);
+    setBusy(false);
+    if (!ok) { setError("Could not save that. Check the number and try again."); return; }
+    onSaved();
+  };
+
+  return (
+    <>
+      <div className="cl-form">
+        <span className="cl-cur">$</span>
+        <input
+          className="cl-in"
+          type="text"
+          inputMode="numeric"
+          value={value}
+          placeholder="8,000"
+          aria-label={`Credit limit for ${card.institution} ${card.name}`}
+          disabled={busy}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") onCancel(); }}
+          autoFocus
+        />
+        <button type="button" className="cl-btn" disabled={busy} onClick={() => void save()}>Save</button>
+        <button type="button" className="cl-btn ghost" disabled={busy} onClick={onCancel}>Cancel</button>
+        {/* Clearing is offered only once there is something to clear, and it is
+            the honest inverse of setting one: the member is saying they no longer
+            stand behind the number, so the card goes back to being excluded from
+            utilization rather than keeping a figure nobody vouches for. */}
+        {card.memberLimit != null && (
+          <button
+            type="button"
+            className="cl-btn ghost"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              const ok = await setCardLimit(card.key, null);
+              setBusy(false);
+              if (ok) onSaved(); else setError("Could not remove that.");
+            }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <div className="cl-hint">
+        The limit printed on your statement or in your issuer's app. Juniper cannot read it, so this is
+        your number and it is labelled as yours wherever it appears. It does not affect your Juniper Score.
+      </div>
+      {error && <div className="cl-err">{error}</div>}
+    </>
+  );
+}
+
 function CardRow({
-  card, brands, identified, onChange,
+  card, brands, identified, onChange, onLimitChanged,
 }: {
   card: LinkedCard;
   brands: InstitutionBrandMap | null;
@@ -247,8 +357,12 @@ function CardRow({
       to mix up, and without a way back the wrong rates would sit on their
       spending permanently, quoting confident figures off the wrong product. */
   onChange: () => void;
+  /** A limit was set, cleared or changed, so the page needs to re-read. */
+  onLimitChanged: () => void;
 }) {
-  const used = card.limit != null ? pct(card.balance, card.limit) : null;
+  const [editing, setEditing] = useState(false);
+  const { limit, source } = limitFor(card);
+  const used = limit != null ? pct(card.balance, limit) : null;
   return (
     <div className="card-row">
       <CardMark card={card} brands={brands} />
@@ -257,8 +371,33 @@ function CardRow({
         <div className="csub">
           {card.mask && <>····{card.mask} · </>}
           {money(card.balance, card.currency)}
-          {card.limit != null ? <> of {money(card.limit, card.currency)} limit</> : <> owed, limit not reported</>}
+          {limit != null
+            ? <> of {money(limit, card.currency)} limit</>
+            : <> owed, limit not reported</>}
+          {/* THE BADGE IS NOT DECORATION. A number the member typed must never be
+              indistinguishable from one their bank reported: the first is a claim
+              and the second is a fact, and a utilization built on a mix of them is
+              only as good as the claim. */}
+          {source === "member" && <span className="cl-mine">You set this</span>}
+          {/* OFFERED ONLY WHERE THERE IS SOMETHING TO ANSWER. A card whose bank
+              reports a limit gets no control, because `limitOf` gives the bank's
+              number precedence: a member limit set on such a card would be stored
+              and change nothing on screen, which is worse than an absent control.
+              The bank's figure is the fact, and there is nothing here for the
+              member to improve on. */}
+          {!editing && source !== "bank" && (
+            <> · <button type="button" className="cl-set" onClick={() => setEditing(true)}>
+              {source === "member" ? "Change limit" : "Set limit"}
+            </button></>
+          )}
         </div>
+        {editing && (
+          <LimitForm
+            card={card}
+            onCancel={() => setEditing(false)}
+            onSaved={() => { setEditing(false); onLimitChanged(); }}
+          />
+        )}
         {identified && (
           <div className="cr-row-id">
             {identified}
@@ -298,6 +437,36 @@ export function Credit() {
     return m;
   }, [rewards.data]);
 
+  // account id -> the limit the member supplied (#211). `/api/card-rewards` is
+  // the only reader of member_cards, so the limits arrive with it and are folded
+  // into the Plaid-derived rows here rather than fetched a fourth time.
+  //
+  // DEGRADES RATHER THAN BLOCKS: if that endpoint is unavailable this map is
+  // empty, every card falls back to its bank-reported limit, and the utilization
+  // card behaves exactly as it did before #211. A member-set limit going
+  // temporarily missing understates utilization, which is the safe direction; the
+  // alternative, holding the whole card back on a second request, would blank the
+  // one section of this page that has always worked.
+  const memberLimits = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of rewards.data?.cards ?? []) {
+      if (c.member_limit != null) m.set(c.plaid_account_id, c.member_limit);
+    }
+    return m;
+  }, [rewards.data]);
+
+  const withLimits = useMemo(
+    () => cards?.map((c) => ({ ...c, memberLimit: memberLimits.get(c.key) ?? null })) ?? null,
+    [cards, memberLimits],
+  );
+
+  // Both halves re-read: a limit changes utilization here AND the rewards
+  // payload's own copy of it, and refreshing one would leave the two disagreeing
+  // about the same card until the next page load.
+  const afterLimitChange = async () => {
+    await Promise.all([reloadCards(), rewards.refresh()]);
+  };
+
   const unidentify = async (accountId: string) => {
     // Forget, then re-read. Deleting the row is what returns the account to the
     // identify queue, and the prompt at the top of the page picks it up on the
@@ -305,6 +474,11 @@ export function Credit() {
     // computation to keep the guide, the tracker and the switch ideas consistent.
     if (await forgetCard(accountId)) await rewards.refresh();
   };
+
+  const reloadCards = useCallback(async () => {
+    const items = await fetchPlaidItems();
+    setCards(linkedCards(items));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,25 +518,26 @@ export function Credit() {
         />
       )}
 
-      {cards == null ? (
+      {withLimits == null ? (
         <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
-      ) : cards.length === 0 ? (
+      ) : withLimits.length === 0 ? (
         <CardsEmpty />
       ) : (
         <div className="card pad-lg">
           <div className="card-head">
             <h3>Credit cards</h3>
             <span style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>
-              {cards.length} {cards.length === 1 ? "card" : "cards"}
+              {withLimits.length} {withLimits.length === 1 ? "card" : "cards"}
             </span>
           </div>
-          <OverallUtilization cards={cards} />
-          {cards.map((c) => (
+          <OverallUtilization cards={withLimits} />
+          {withLimits.map((c) => (
             <CardRow
               card={c}
               brands={brands}
               identified={identifiedNames.get(c.key) ?? null}
               onChange={() => void unidentify(c.key)}
+              onLimitChanged={() => void afterLimitChange()}
               key={c.key}
             />
           ))}
