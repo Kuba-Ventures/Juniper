@@ -43,7 +43,7 @@ type StreamRow = {
   last_date: string | null; predicted_next_date: string | null;
   is_active: boolean; transaction_ids: string[];
 };
-type OverrideRow = { stream_id: string; state: string; name: string | null; expected_amount: number | null };
+type OverrideRow = { stream_id: string; state: string; name: string | null; expected_amount: number | null; frequency: string | null };
 
 // How many times a year each cadence bills. UNKNOWN is deliberately absent
 // rather than defaulting to monthly: a stream Plaid cannot put a cadence on
@@ -59,6 +59,12 @@ const monthly = (amount: number | null, frequency: string | null): number | null
   return (amount * per) / 12;
 };
 
+// The cadences a member may set on a stream themselves (migration 0030). These
+// are exactly the keys PER_YEAR can convert, deliberately: storing UNKNOWN would
+// let somebody drop a charge out of their own total with nothing on the row to
+// show they had, and "this is not really recurring" is what dismiss is for.
+const SETTABLE_FREQUENCY = new Set(Object.keys(PER_YEAR));
+
 const CADENCE_LABEL: Record<string, string> = {
   WEEKLY: "Weekly", BIWEEKLY: "Every 2 weeks", SEMI_MONTHLY: "Twice a month",
   MONTHLY: "Monthly", ANNUALLY: "Yearly",
@@ -71,6 +77,20 @@ const CADENCE_LABEL: Record<string, string> = {
 // anything.
 const AMOUNT_TOLERANCE = 0.05;
 const AMOUNT_FLOOR = 1;
+
+// Plaid's `description` is the raw string the bank sent, which for a fee charged
+// by the card issuer rather than a merchant arrives in capitals: "ANNUAL
+// MEMBERSHIP FEE". It is only ever used when Plaid gave no merchant name, so
+// there is no casing to preserve and nothing here can touch a name the member
+// chose or a merchant Plaid enriched. Sentence case rather than title case
+// because these strings are descriptions of a charge and not proper nouns, so
+// "Annual membership fee" reads truer than "Annual Membership Fee"; the cost is
+// that a genuinely brand-like description comes back as "Amazon prime".
+function unshout(raw: string): string {
+  const t = raw.trim();
+  if (t.length < 2 || t !== t.toUpperCase() || !/\p{L}/u.test(t)) return t;
+  return t.toLowerCase().replace(/\p{L}/u, (c) => c.toUpperCase());
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -85,6 +105,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === "POST") {
     const body = (await req.json().catch(() => ({}))) as {
       stream_id?: string; action?: string; name?: string; expected_amount?: number | string | null;
+      frequency?: string | null;
     };
     const streamId = (body.stream_id || "").trim();
     const action = (body.action || "").trim();
@@ -115,12 +136,29 @@ export default async function handler(req: Request): Promise<Response> {
     if (expected != null && (!Number.isFinite(expected) || expected < 0)) {
       return json({ error: "expected_amount must be a positive number" }, 400);
     }
+    // Validated against the same five keys the CHECK constraint in 0030 names,
+    // so a bad value is a 400 here rather than a 23514 from Postgres.
+    const rawFreq = body.frequency;
+    let frequency: string | null = null;
+    if (rawFreq != null && rawFreq !== "") {
+      const f = String(rawFreq).trim().toUpperCase();
+      if (!SETTABLE_FREQUENCY.has(f)) {
+        return json({ error: `frequency must be one of ${[...SETTABLE_FREQUENCY].join(", ")}` }, 400);
+      }
+      frequency = f;
+    }
+    // WHOLE ROW, EVERY TIME. `resolution=merge-duplicates` replaces the row it
+    // conflicts with rather than patching it, so a caller sending only the field
+    // it changed would silently clear the other two. Any client that edits one
+    // of name, expected_amount or frequency has to send all three, which is why
+    // the panel's save reads its own current values back into the request.
     const row = {
       user_id: uid,
       stream_id: streamId,
       state: action === "confirm" ? "confirmed" : "dismissed",
       name: body.name?.trim() || null,
       expected_amount: expected,
+      frequency,
       updated_at: new Date().toISOString(),
     };
     const up = await adminRest("recurring_overrides?on_conflict=user_id,stream_id", {
@@ -138,9 +176,16 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
 
-  const [sRes, oRes] = await Promise.all([
+  const [sRes, oRes, iRes] = await Promise.all([
     adminRest(`recurring_streams?user_id=eq.${uid}&select=*&order=average_amount.desc`),
-    adminRest(`recurring_overrides?user_id=eq.${uid}&select=stream_id,state,name,expected_amount`),
+    adminRest(`recurring_overrides?user_id=eq.${uid}&select=stream_id,state,name,expected_amount,frequency`),
+    // For the mark on a stream Plaid gave no merchant for. A fee charged by the
+    // card issuer is not a merchant transaction, so `merchant_name` is null and
+    // no amount of merchant art will ever cover it, but the bank behind it is
+    // known: the stream carries `item_id` and `plaid_items` has held
+    // `institution_name` since 0007. The client resolves that name through the
+    // same institution chain Connections and Credit already use.
+    adminRest(`plaid_items?user_id=eq.${uid}&select=item_id,institution_name`),
   ]);
   // A missing table reads as "nothing detected yet" rather than an error, so the
   // panel renders its empty state on a deploy where migration 0016 has not been
@@ -148,6 +193,9 @@ export default async function handler(req: Request): Promise<Response> {
   const streams: StreamRow[] = sRes.ok ? await sRes.json() : [];
   const overrides: OverrideRow[] = oRes.ok ? await oRes.json() : [];
   const byStream = new Map(overrides.map((o) => [o.stream_id, o]));
+  // A failed read costs a logo and nothing else, so it degrades rather than 500s.
+  const instRows: { item_id: string; institution_name: string | null }[] = iRes.ok ? await iRes.json() : [];
+  const instOf = new Map(instRows.filter((r) => r.institution_name).map((r) => [r.item_id, r.institution_name as string]));
 
   // Same merchant art the transactions list uses, so a subscription and the
   // charges behind it show the same mark. Plaid's recurring streams carry a
@@ -199,15 +247,26 @@ export default async function handler(req: Request): Promise<Response> {
         : amountChanged ? "amount_changed"
         : "on_track";
 
-    const perMonth = monthly(expected, s.frequency);
+    // The member's cadence beats Plaid's (0030). This is the field most worth
+    // overriding: Plaid answers UNKNOWN whenever three charges were not enough
+    // to be sure, and PER_YEAR cannot convert UNKNOWN, so those streams are
+    // listed and left out of the total until somebody who knows says otherwise.
+    const frequency = o?.frequency || s.frequency;
+    const perMonth = monthly(expected, frequency);
     // Id first, same as every other read since stage 3, so a stream and the
     // charges behind it name the category the same way after a rename.
     const cat = tax.classify(s.category_id, s.category);
+    const bankName = s.merchant_name || (s.description ? unshout(s.description) : null) || "Recurring charge";
     return {
       id: s.stream_id,
-      name: o?.name || s.merchant_name || s.description || "Recurring charge",
+      name: o?.name || bankName,
       merchant: s.merchant_name,
       logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,
+      // Only where Plaid named no merchant, which is the same gate the mark uses.
+      // A Starbucks charge must not fall back to wearing the bank's logo just
+      // because the card behind it is a Chase card; a fee charged BY Chase
+      // should, because Chase is what it is.
+      institution: s.merchant_name ? null : instOf.get(s.item_id ?? "") ?? null,
       c: cat.c,
       g: cat.g,
       hue: hueOfGroup.get(cat.g) ?? null,
@@ -227,28 +286,55 @@ export default async function handler(req: Request): Promise<Response> {
       nextDate: s.predicted_next_date,
       overdue: !!s.predicted_next_date && s.predicted_next_date < today,
       lastDate: s.last_date,
-      cadence: CADENCE_LABEL[(s.frequency || "").toUpperCase()] ?? "Irregular",
+      cadence: CADENCE_LABEL[(frequency || "").toUpperCase()] ?? "Irregular",
+      // Raw, for the cadence control to preselect. The label is for reading and
+      // cannot be sent back, since "Irregular" is not a value Plaid or 0030 has.
+      frequencyKey: SETTABLE_FREQUENCY.has((frequency || "").toUpperCase()) ? (frequency || "").toUpperCase() : null,
       // The client uses this to decide whether a per-month figure can be shown
       // at all, rather than rendering a number the server could not compute.
       perMonth: perMonth == null ? null : Math.round(perMonth * 100) / 100,
       // Set by the member, so the UI can offer "revert to what your bank says".
-      edited: !!o && (o.name != null || o.expected_amount != null),
+      edited: !!o && (o.name != null || o.expected_amount != null || o.frequency != null),
       // Free: Plaid returns the backing charges with the stream.
       charges: Array.isArray(s.transaction_ids) ? s.transaction_ids.length : 0,
+      // THE TWO LAYERS, SEPARATELY, for the edit panel and nothing else. Every
+      // field above is already resolved (the member's answer where they gave
+      // one, the bank's otherwise), which is what a reader wants and exactly
+      // what an EDITOR must not have: a form pre-filled from the resolved value
+      // cannot tell "I chose $95" from "Plaid averaged $95", so saving a change
+      // to the cadence would quietly write the average in as an explicit
+      // expectation and freeze it there. With both layers sent, an empty field
+      // means "use what my bank says" and a filled one is the member's own
+      // answer, which is also the clearer thing to put on screen.
+      own: {
+        name: o?.name ?? null,
+        expected: o?.expected_amount ?? null,
+        frequency: o?.frequency ?? null,
+      },
+      bank: {
+        name: bankName,
+        expected: s.average_amount,
+        cadence: CADENCE_LABEL[(s.frequency || "").toUpperCase()] ?? "Irregular",
+      },
     };
   });
 
   const out = items.filter((i) => i.direction === "outflow");
   const confirmed = out.filter((i) => i.review === "confirmed");
   const unreviewed = out.filter((i) => i.review === "unreviewed");
-  const sumMonthly = (arr: typeof out) => Math.round(arr.reduce((a, i) => a + (i.perMonth ?? 0), 0));
+  // Rounded to CENTS, not to whole dollars. It used to round to the nearest
+  // dollar and then render with money2, so an $7.92 annual fee beside a $6.98
+  // subscription summed to $14.90 and reported "$15.00": a total claiming a
+  // precision it did not have, sitting directly above the two rows that
+  // disproved it.
+  const sumMonthly = (arr: typeof out) => Math.round(arr.reduce((a, i) => a + (i.perMonth ?? 0), 0) * 100) / 100;
 
   return json({
     items,
     summary: {
       // Confirmed only. This is the whole point of the review step.
       monthly: sumMonthly(confirmed),
-      yearly: sumMonthly(confirmed) * 12,
+      yearly: Math.round(sumMonthly(confirmed) * 12 * 100) / 100,
       confirmed: confirmed.length,
       // Surfaced next to the total, never inside it.
       unreviewed: unreviewed.length,

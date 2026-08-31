@@ -1372,10 +1372,46 @@
 .jnpr .sub-dismissed{margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
 .jnpr .sub-toggle{background:none;border:0;padding:0;font-family:inherit;font-size:12px;cursor:pointer}
 
+/* Editing a confirmed charge. The panel is a sibling of the row rather than a
+   child of it, so opening one cannot reflow the row above it, and the row keeps
+   its own grid. */
+.jnpr .sub-exp{border-top:1px solid var(--jnpr-line-2)}
+.jnpr .sub-exp:first-child{border-top:0}
+.jnpr .sub-exp > .sub-row{border-top:0}
+.jnpr .sub-exp.open{background:var(--jnpr-surface-2);border-radius:var(--jnpr-r-sm);
+  margin:0 -10px;padding:0 10px}
+/* A figure the member set, told apart from one Plaid guessed. Same signal the
+   transactions list gives a corrected category. */
+.jnpr .sub-dot{display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:var(--jnpr-accent);margin-left:6px;vertical-align:middle}
+.jnpr .sub-panel{padding:2px 0 14px}
+.jnpr .sub-fields{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.jnpr .sub-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:650;
+  letter-spacing:.02em;color:var(--jnpr-ink-3)}
+.jnpr .sub-lbl-grow{flex:1 1 200px;min-width:0}
+.jnpr .sub-in{font-family:inherit;font-size:13px;color:var(--jnpr-ink);background:var(--jnpr-surface);
+  border:1px solid var(--jnpr-line);border-radius:8px;padding:6px 9px;outline:0;width:100%}
+.jnpr .sub-in:focus{border-color:var(--jnpr-accent)}
+.jnpr .sub-in[aria-invalid="true"]{border-color:var(--jnpr-bad)}
+.jnpr .sub-in-amt{width:82px;text-align:right}
+.jnpr .sub-in-cad{width:auto;min-width:132px}
+.jnpr .sub-money{display:inline-flex;align-items:center;gap:4px;color:var(--jnpr-ink-3);font-size:13px}
+.jnpr .sub-help{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:10px 0 0;max-width:62ch}
+.jnpr .sub-panel-f{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:14px;flex-wrap:wrap}
+.jnpr .sub-panel-r{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.jnpr .sub-meta{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .sub-bad{color:var(--jnpr-bad);font-weight:600}
+
 @media(max-width:640px){
   .jnpr .sub-row{flex-wrap:wrap}
   .jnpr .sub-amt{align-items:flex-start;text-align:left}
   .jnpr .sub-act{width:100%}
+  /* Stacked, because three controls side by side at this width leaves the name
+     field about eight characters wide. */
+  .jnpr .sub-fields{flex-direction:column;align-items:stretch}
+  .jnpr .sub-in-amt,.jnpr .sub-in-cad{width:100%}
+  .jnpr .sub-panel-f{align-items:flex-start;flex-direction:column}
 }
 
 /* ---------- automatic refresh: freshness line and relink prompt ---------- */
