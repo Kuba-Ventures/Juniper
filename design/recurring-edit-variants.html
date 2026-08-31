@@ -1,0 +1,381 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recurring edit variants</title>
+<!-- The real stylesheet, linked and NOT copied: a second copy of juniper.css in
+     this folder would drift from the one the app ships, and the whole point of
+     a treatment set is that it looks like the product. Relative path, so this
+     file opens straight from disk. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+/* Preview scaffolding and proposed classes. Nothing below exists in the app yet. */
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:78ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.6;margin:16px 0 24px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:34px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 12px;max-width:88ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+
+/* proposed: shared field styles */
+.pv-in{font:inherit;font-size:13px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);
+  border:1px solid var(--jnpr-line);border-radius:8px;padding:6px 9px;outline:0;width:100%}
+.pv-in:focus{border-color:var(--jnpr-accent)}
+.pv-amt{width:82px;text-align:right}
+.pv-cad{width:auto;min-width:130px}
+.pv-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:650;
+  letter-spacing:.02em;color:var(--jnpr-ink-3)}
+.pv-money{display:inline-flex;align-items:center;gap:4px;color:var(--jnpr-ink-3);font-size:13px}
+.pv-help{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:10px 0 0;max-width:62ch}
+.pv-help b{color:var(--jnpr-ink)}
+
+/* proposed: A */
+.pv-edit{display:flex;align-items:flex-end;gap:12px;flex:0 0 auto}
+
+/* proposed: B */
+.pv-exp{border-top:1px solid var(--jnpr-line-2)}
+.pv-exp:first-child{border-top:0}
+.pv-rowbtn{width:100%;background:none;border:0;font:inherit;text-align:left;cursor:pointer;color:inherit;border-top:0}
+.pv-chev{color:var(--jnpr-ink-3);font-size:11px;flex:0 0 auto;transition:transform .12s}
+.pv-exp.open .pv-chev{transform:rotate(180deg)}
+.pv-panel{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);
+  border-radius:var(--jnpr-r-sm);padding:14px;margin:0 0 12px}
+.pv-grid{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.pv-grid > .pv-lbl:first-child{flex:1 1 200px}
+.pv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap}
+.pv-foot-r{display:flex;align-items:center;gap:14px}
+.pv-meta{font-size:11.5px;color:var(--jnpr-ink-3)}
+.pv-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--jnpr-accent);margin-left:6px;vertical-align:middle}
+
+/* proposed: C */
+.pv-rel{position:relative}
+.pv-scrim{position:absolute;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;
+  border-radius:var(--jnpr-r);padding:16px;z-index:3}
+.pv-sheet{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);
+  box-shadow:var(--jnpr-shadow-lg);padding:18px;width:min(440px,100%)}
+.pv-sheet-h{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.pv-sheet-t{font-size:14px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sheet-s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+.pv-sheet-f{display:flex;align-items:center;justify-content:flex-end;gap:16px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="jnpr">
+  <div class="pv-wrap">
+    <div class="pv-head">
+      <div>
+        <div class="pv-title">Editing a recurring charge, three treatments</div>
+        <div class="pv-sub">
+          Working previews on the app's own <code>juniper.css</code>. Your two real streams, with two
+          changes already applied in all three: the Chase institution mark on the annual fee, and the
+          shouting description title-cased. Click Edit, a row, or Confirm to try each one.
+        </div>
+      </div>
+      <button class="pv-toggle" id="t">Light mode</button>
+    </div>
+
+    <div class="pv-flag">
+      <b>One constraint shapes all three.</b> <code>recurring_overrides.state</code> is
+      <code>NOT NULL</code> and the endpoint only accepts <code>confirm</code> or
+      <code>dismiss</code>, so an amount cannot be saved without also confirming or dismissing the
+      stream. A and B therefore offer Edit on confirmed rows only. C folds the correction into the
+      Confirm itself, which is the one treatment that needs no migration to cover a pending row.
+      <br><b>Also visible here:</b> the head reads $15.00 while the rows are $7.92 and $6.98, which
+      sum to $14.90. <code>sumMonthly</code> rounds the total to whole dollars and then renders it
+      with cents, so it claims a precision it does not have.
+    </div>
+
+  <section class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">A</span>Inline on the row</div>
+    <p class="pv-note"><b>Why:</b> The control sits on the number it changes, the same principle as the category picker in #201. Two fields is few enough to fit the row, and nothing moves on the page.<br><b>Cost:</b> The row is crowded at this width and wraps on mobile, where <code>.sub-row</code> already sends buttons to their own line. Rename and the revert affordance have nowhere to go.</p>
+    <div class="card">
+      <div class="card-head">
+        <h3>Recurring</h3>
+        <span class="sub-total">
+          <b class="tnum">$15.00</b> a month
+          <span class="sub-total-s"> from 2 confirmed</span>
+        </span>
+      </div>
+
+      <div class="sub-list">
+        <div class="sub-row" data-row="a1">
+          <img class="blogo" src="data:image/png;base64,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" alt="" aria-hidden="true">
+          <div class="sub-id">
+            <span class="sub-n">Annual membership fee</span>
+            <span class="sub-sub">Chase &middot; Yearly &middot; $7.92 a month &middot; last charged Jul 1</span>
+          </div>
+          <div class="sub-amt" data-view>
+            <span class="tnum">$95.00</span>
+            <span class="sub-chip good">On track</span>
+          </div>
+          <div class="pv-edit" data-edit hidden>
+            <label class="pv-lbl">I expect to pay
+              <span class="pv-money"><span>$</span><input class="pv-in pv-amt tnum" value="95.00" inputmode="decimal"></span>
+            </label>
+            <label class="pv-lbl">every <select class="pv-in pv-cad" id="a1c"><option>Weekly</option><option>Every 2 weeks</option><option>Twice a month</option><option>Monthly</option><option selected>Yearly</option><option>Irregular</option></select></label>
+          </div>
+          <div class="sub-act">
+            <button class="btn ghost sm" data-act="edit">Edit</button>
+            <button class="btn ghost sm" data-act="undo">Undo</button>
+            <button class="btn sm" data-act="save" hidden>Save</button>
+            <button class="btn ghost sm" data-act="cancel" hidden>Cancel</button>
+          </div>
+        </div>
+        <div class="sub-row" data-row="a2">
+          <div class="tile" style="background:var(--jnpr-c4)">L</div>
+          <div class="sub-id">
+            <span class="sub-n">Logo-archive</span>
+            <span class="sub-sub">Monthly &middot; next Sep 23</span>
+          </div>
+          <div class="sub-amt" data-view>
+            <span class="tnum">$6.98</span>
+            <span class="sub-chip good">On track</span>
+          </div>
+          <div class="pv-edit" data-edit hidden>
+            <label class="pv-lbl">I expect to pay
+              <span class="pv-money"><span>$</span><input class="pv-in pv-amt tnum" value="6.98" inputmode="decimal"></span>
+            </label>
+            <label class="pv-lbl">every <select class="pv-in pv-cad" id="a2c"><option>Weekly</option><option>Every 2 weeks</option><option>Twice a month</option><option selected>Monthly</option><option>Yearly</option><option>Irregular</option></select></label>
+          </div>
+          <div class="sub-act">
+            <button class="btn ghost sm" data-act="edit">Edit</button>
+            <button class="btn ghost sm" data-act="undo">Undo</button>
+            <button class="btn sm" data-act="save" hidden>Save</button>
+            <button class="btn ghost sm" data-act="cancel" hidden>Cancel</button>
+          </div>
+        </div>
+      </div>
+      <p class="sub-note">9 recurring deposits also detected, such as pay. Money in is not counted in the total above.</p>
+    </div>
+  </section>
+  <section class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">B</span>Row detail expansion</div>
+    <p class="pv-note"><b>Why:</b> Every field the data model already has gets a home: name, expected amount, cadence, the backing charge count, and the revert that <code>edited</code> was returned for and nothing reads. Opening a row to see what is behind it is a familiar move.<br><b>Cost:</b> The whole row becomes a button, so Confirm and Not recurring need care not to be swallowed by it. One more piece of state in the panel.</p>
+    <div class="card">
+      <div class="card-head">
+        <h3>Recurring</h3>
+        <span class="sub-total">
+          <b class="tnum">$15.00</b> a month
+          <span class="sub-total-s"> from 2 confirmed</span>
+        </span>
+      </div>
+
+      <div class="sub-list">
+        <div class="pv-exp" data-exp="b1">
+          <button class="sub-row pv-rowbtn" data-act="toggle">
+            <img class="blogo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAOPElEQVR42u2be5BlVXXGf2vtfe6rp2eanmEc3mpABKOlIGJFQ0jAJGpJmSqTPxIsCwuM6AgWhamS+AiUCRjFQEQtk1JjaSxTpjSJSdBERZQUQiZqqiiwUBHkPcPMYDPd995z9l4rf5zbj3v7PT0DGjlVu6e7uuecfb797bW+9e11xd2dQ3l5HxBMIoYSseFfu2zo9jI6W93Y/ZRDfgmOIICOvPzP4yWHmgGGIQBugIHEDTNAlv2BAdQHf8VDxvw5AATBCRh4BgmL+LFuRvng/jL7v2XuieGpZoCZ4QgugrgjdMlkkAKVBqWViMhyCwgrPV4EEwUXoijkhKqQTFGEQgXkKWaASL3ieKpfTgrEMrtTgw9/6Ta+fttDNBotzOt4kL216CWXo1QIitkBOj7Fuy76XX7jpCOwcoZCFQktDN1wENswA9wynnpI0WA6R+7fvZdTjprgC7fdy/kfuJnSjwEN85tEbZnNsxS9BtyvpvjVoyuuu+TVnHPqJDl1CUFINInypGcBH/rWrAKrKX/9F2/lb//jdpDIzx7rU5aThC0dtAPaUbSjxKI1MtrLjA5Fs01zLBC3P4s7Huqw869u5l+/9zAhtsllH6cagc+fBAA84wY5g/kMJhlvbeaGr97NlZ+8i27ePuBWE9GAWcLc50a2anj48iNZokqO9B+nPbGJu/dlLvrgt/jCdx4kNMfppxLLFTkbKRt4OvwAOGEQ63uIZ4owxie+9VPe+Xe3UzUmiSHMrYXjg7C3YIz8uCLTFLSIpJTolxVjWyZ4jCYX3/CffG7XI2wqxlDPiHUR75NNnwQGiABdkiVyGOfztz7IlZ+8jWk9BpGAWT6EqhKyVUhRILFFt2eEZoe97ODS67/OZ276MWVskTFUekPZ5pAD4INh2XArCcUm/mHXg7zlo7ew+0DB5ghOueG0tNxzHcWJ5H4ihCZ7e5NcfP3tfOzGH5CKMfCEuw9n1TXE97iWKWSvBYgIJKAZt/DF7z7A5R/9DvuZoNgEffoQHB+iYV4u+6+dcFbfx8m4CKqC55LYHqPf3MQVn/wu/arkHee9AMs9zCuUAlDUfVVWrMqA7I54InqJljM0g/LPd0zx1uu/wZ5upGg0SdkHAlg3LE2XnuLsECAgophlQoSyMcFVn93Ftf9+JyG0iDjqGSyxls24KgMMp5BENkMbbb599z4uufarPDJzJK1Og37K4AE357DUPj68RjkN6gw1rCrRWDCjJ/Duv7mF4M6bXv08WlahnnFVzGyBcAZVXRsDnDptCYLlihA63Pzj/Vz4wX/jgb1Osz2GlV0EHQgWqcdhqC4XDtWAqKLiaADL00QyqXMsV3zmf3n/526j1AINs9XoytVHXKztEy71ypsZwSMaW3z7nn285f03c/fjm2kfOU5vZhooIPURHQQIARvU5zKIXmJeA7T2uLSyUpQ+yCAw5jo0updIY4KKrVz993dSdYUrL3gJhVWYVqARzBEMdxmKC4sAcImoO4GEk5AY+N59JZdfdzN3/QwaYx3KsqyNCFfqsLj8yqsILvNEM9nYPpmf+4AVPoYDuZohBEW3HMu1X/4B05646g1ncoT2yVVCY4uUC0R9KFHFRSlHQFywJNBo8z8P93j79d/g9vuExo5teG8ay3nV8CEiqCoiOmTjxGKj5ctIAawt3A21CiwhcQzffiof+codVGWXqy88hyMahiXDl9jxcfGOKzETtFHwvccOcPFf3sKuByri9m3YzBPEGEnDJfmS5kVVVdj0AUxCXSvMTXiDkXLhHnKBolv/m2dj0OOwfy80tvHxf7yP6f1f5s8uOpdnH9kgUCIUwwCMFoNVmWk1lTv2drnshv9i108z7Ynt9Ge6uAdydvBi/lW9GMzLQQS1GpcTj29zyXlH4Zu3DOEUsqyD7kIvJyREcKNQ6EvEvU80JXgH07wgVAjmGdwRUZzj0QP386Of3Mdxk7+CYTTUl48B7k6jaHHX7pJ3fOSbfHPXHuLW48hVNfeA5XSNDFbHJCA4Z73wKF5+2gm0sCEAZN3qOy1DWF+jwHpBHXtyd+UsMHs7U+EvPnUTX9m1j+aOk8hll+zzZY2vaNw5HgyjIqQ+Grskb49k2/WmAUNzQkLggf09brz1XlwbuAjZKwovRjzDPPQsoaI5PsYZzzuO50xGZITxcTTCVl5xz94+0tmG5i7Jcu3yirCSd+IDrSxaYgSgQxYhSF5E6/UkQPMGkjMSmvzosf28+dO34X4ESAdyCbkaiZF5eFJWAH3OOvX7fOKyczlx+2Z8gUSOs9plrthxQzXgJqSU6wJjXQ4RRAKmGcOHUiBAWCcBxBxTJZDIUWiMTWI2iYceZm1cNi/BKh840kaQgKcW/33XPTzy8H5O3L5lAMAKUnh+peUgKCsjGk5gw/WBzDvE5ng2XCrcwgBgH/nbWQBy7Uk4NJptpIiHzxZfVgj54brzWoCVuk7xQAWUok8+AMJTfdVAmeiS1WGcF2mCkAmeMG9BSAsOIdbhs9tCkbHESc66DBNHNEHWWgE6RI/0JOAoYroges1uXxtUfQIUOAahT06BystD4Qr/Il5+KG3x/1/X0wAc8pAz2OO+QJ+v0Qd/mgFPA/A0AE/+FUdThYvO+U7KUkavrOJXLFAPslQKkqcZ8HMPgIj8Mm6BgaWEkHJCVVEZmL8jnsEilSWg6rWhKqs5NusqrjesAIXBvJAlFzYurATcIWnB5JYedscU/Ymj8FHDYVFb0uD3qpAyXvaogCBdKm8RpRiJEWs3RQXIUmCU9ctIDfZKtxARRB1IqDqxquiHJpRGSEtUg8OVvzOeEpe+7mxmqtt5ZF9FEB1ygtSLxU4QIKKkssXRk0Jyw83IkuuCxZezrFYHQB2wCmiQ547JVmeGSMCykTtb8bLLtvbjbJ0YW8TiaAspKxFJwrnPbXHmO8+CDCkOR+8ojaE5zDY/iUA2IwSjLQrFGPMHmhu5AoEGkAcnxbKahTTwAIQQG6Rymon+bq646HROOW6S2ryWxQyY9bOUjHgmpcRdP9xDao3PnXPVJ4Wp9v7mGCBDS9ar+kRvUGiksookB58FFfB+ybZO4MUn76AIzuANVjAfajcohBY5GZ3+/bz7Db/FH7/iOCSXoI3hLRB9OGTkqBRi9L3Fx758J5//2m7aRx1F0orMwIZC5+Yw2g6rXhG0XnnHqHRUJ6w98wYV7PGHecVpk9x41e+TzHFKPCaKbORBEqtjQwZ1PNXtdZJn0Kl9vPuNp/Pm1zybYD2ShEWtxYsdIYmYVRw9Dh98++/Q7nybT938E2THiUh1gMIac50idWAaBiAzxryVIouamyWsvbdTVUhNwYsxBKGVbQkC1XR3E8SMwkoSEfbdw5Xnv4TLf+9FkLu4FPUh6aqWmNexIKcex2w2rnnby8hN57M33YNuPhaRUB+UDM7+Rl1fwszQJHU05mlcBwCKUOAeBvfyJeJfrtOwBEQCXhjae4iL/+g0Lj3/dDRP4RJxlJyhCCsAIDhBK4wmxDZ9m2FrM/Hhi3+Twm7hE197iDi5o474qW5A8FDvPRmkfanaQw+wkQnbOo7GXAW3fXN9BxbDYp2gXRQlxjYiDXqP7uEtr3wu17z+pbSsxL0NGnGchqZFax6HxYEgNJhz2qSNe8Xm2OMDO1/OWPvrfPwrPySOn0D2QJQ+yaQWGlrnaMuNQyduXEAa6IBlHhWTerun4AiJKGAG6ok0tYcLX/NM3vPGM+mQcCuQOFvXLO1H6HI+7qy7nrxBtsC4lvz5m87hsj94Ib3HH4XGplqQ6GxGGHjxGAt7uzY+ZIkpZyCjBNwa0DqS7p6HuODsY3nfhWeytdnHqoSE1VOQriZEgtQ0Fst08gH+5HWncfnrTkX23ImHOg7MdmzYYTsDmGeESsS9GijQSBFb5H338tpfP573XnAGzygOIFWFajFo1PT11AKjADhKiWnEaOEGm7XL1ee/iIkgvO9Ld1G1tqEhkFM6BNp9DdLQFSGDZ1Qb9Kb389ozJvjQW3+NI8cFywUamoOZVKu94ioMEAWPqAvqdT+OeRPNPS7/wxfy3tefhD7xALksUW2hBMRlxbH+N9Y5ua0qaBA0VxRhnPLAw5z7/Mi1O8/mWeMJzaChiSj1kGJV5bUGVaJzX4OCaEA0EKzPpee9mGveeDpjeR85FURr1+lAHF9mbGwLOKkKWPtoyqknOPs5BdfufAUnbA5YJTjFupuw4lrEyEIUPTuoop5p5RkuO+8FhKLJuz5+K6l9DFIM+oVl6c/zHERD91D+aDZb9KYe5SXPbPDXO8/l+Vsjqewh0jioLt11nw0GcVwC2UEkQ+7xtleeTE5wxWe/T85b0CJilnHPi3S7rPpIG3lln4NRNTK1/xFOOwY+tPNVnHzsGL1c0YhjYAnVEqFxeAGQuUJottKbRsouO19zMmMd4T2f3sW+6UlCZwJjP6Jp0D+sdeG0ynGxzqZRB1FDgtFIkR4ZnSk5bTJx3dtfycuetYlUOSE0cAxRreWwHmYGzK/obGRqIgghdbngnOfQnhzn8qv/hT1TmXjEDqw/BbJAr+vKfoB5WACG4r3dNIoa7GdsVq5/x6t46UkTVOUUyBgqiswp5IPo/j/YzwyZ2XzpIAkhY2bkOMY/7bqfP73hRh6ajnjsYLnuIncEpb1Kqu/NMS3nxAntkqsv/W1ee8Z2glWoRMruExTNJtkDITY25DgcNAB1b74PDtVrI0IlQd9JzRZ3P/YEDz66mxCKwWeLdCBkdBX9b3PRImdj+xFbOOWYNg3PqBmWHNUmZkKIg9T0VADACt6nr6FPfz1XtjQAbsTYXGun3GEFYEWGzB23DJVbaymVZIEHVfcbD1y7Q+zYHzYAfqEPRn6Zrv8DjL7wP/CQzs8AAAAASUVORK5CYII=" alt="" aria-hidden="true">
+            <div class="sub-id">
+              <span class="sub-n">Annual membership fee<span class="pv-dot" title="Edited by you"></span></span>
+              <span class="sub-sub">Chase &middot; Yearly &middot; $7.92 a month &middot; last charged Jul 1</span>
+            </div>
+            <div class="sub-amt">
+              <span class="tnum">$95.00</span>
+              <span class="sub-chip good">On track</span>
+            </div>
+            <span class="pv-chev" aria-hidden="true">&#9662;</span>
+          </button>
+          <div class="pv-panel" hidden>
+            <div class="pv-grid">
+              <label class="pv-lbl">Name
+                <input class="pv-in" value="Annual membership fee">
+              </label>
+              <label class="pv-lbl">I expect to pay
+                <span class="pv-money"><span>$</span><input class="pv-in pv-amt tnum" value="95.00" inputmode="decimal"></span>
+              </label>
+              <label class="pv-lbl">Every
+                <select class="pv-in pv-cad" id="b1c"><option>Weekly</option><option>Every 2 weeks</option><option>Twice a month</option><option>Monthly</option><option selected>Yearly</option><option>Irregular</option></select>
+              </label>
+            </div>
+            <p class="pv-help">
+              What you expect, not what your bank last charged. A charge more than 5% and $1 away from
+              this gets flagged rather than quietly replacing it.
+            </p>
+            <div class="pv-foot">
+              <span class="pv-meta">Built from 2 charges</span>
+              <span class="pv-foot-r"><button class="link pv-revert">Revert to what your bank says</button><button class="btn sm">Save</button></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pv-exp" data-exp="b2">
+          <button class="sub-row pv-rowbtn" data-act="toggle">
+            <div class="tile" style="background:var(--jnpr-c4)">L</div>
+            <div class="sub-id">
+              <span class="sub-n">Logo-archive</span>
+              <span class="sub-sub">Monthly &middot; next Sep 23</span>
+            </div>
+            <div class="sub-amt">
+              <span class="tnum">$6.98</span>
+              <span class="sub-chip good">On track</span>
+            </div>
+            <span class="pv-chev" aria-hidden="true">&#9662;</span>
+          </button>
+          <div class="pv-panel" hidden>
+            <div class="pv-grid">
+              <label class="pv-lbl">Name
+                <input class="pv-in" value="Logo-archive">
+              </label>
+              <label class="pv-lbl">I expect to pay
+                <span class="pv-money"><span>$</span><input class="pv-in pv-amt tnum" value="6.98" inputmode="decimal"></span>
+              </label>
+              <label class="pv-lbl">Every
+                <select class="pv-in pv-cad" id="b2c"><option>Weekly</option><option>Every 2 weeks</option><option>Twice a month</option><option selected>Monthly</option><option>Yearly</option><option>Irregular</option></select>
+              </label>
+            </div>
+            <p class="pv-help">
+              What you expect, not what your bank last charged. A charge more than 5% and $1 away from
+              this gets flagged rather than quietly replacing it.
+            </p>
+            <div class="pv-foot">
+              <span class="pv-meta">Built from 4 charges</span>
+              <span class="pv-foot-r"><button class="btn sm">Save</button></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <p class="sub-note">9 recurring deposits also detected, such as pay. Money in is not counted in the total above.</p>
+    </div>
+  </section>
+  <section class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">C</span>Edit sheet</div>
+    <p class="pv-note"><b>Why:</b> Matches the share sheet and rules modal already in the app, and has room for the framing that stops a member erasing a price rise. It also solves the state constraint below, because Confirm and the corrections are one action.<br><b>Cost:</b> Heaviest interaction, and a modal for two numbers can read as ceremony.</p>
+    <div class="card pv-rel">
+      <div class="card-head">
+        <h3>Recurring</h3>
+        <span class="sub-total">
+          <b class="tnum">$6.98</b> a month
+          <span class="sub-total-s"> from 1 confirmed</span>
+        </span>
+      </div>
+
+      <div class="sub-review">
+        <div class="sub-review-h">
+          <span class="sub-review-t">1 possible recurring charge to review</span>
+          <span class="sub-review-s">Nothing here counts toward your total until you confirm it.</span>
+        </div>
+        <div class="sub-row">
+          <img class="blogo" src="data:image/png;base64,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" alt="" aria-hidden="true">
+          <div class="sub-id">
+            <span class="sub-n">Annual membership fee</span>
+            <span class="sub-sub">Chase &middot; Yearly &middot; last charged Jul 1</span>
+          </div>
+          <div class="sub-amt">
+            <span class="tnum">$95.00</span>
+            <span class="sub-chip">Possible, not enough history yet</span>
+          </div>
+          <div class="sub-act">
+            <button class="btn sm" data-open="sheet">Confirm&hellip;</button>
+            <button class="btn ghost sm">Not recurring</button>
+          </div>
+        </div>
+      </div>
+      <div class="sub-list">
+        <div class="sub-row">
+          <div class="tile" style="background:var(--jnpr-c4)">L</div>
+          <div class="sub-id">
+            <span class="sub-n">Logo-archive</span>
+            <span class="sub-sub">Monthly &middot; next Sep 23</span>
+          </div>
+          <div class="sub-amt">
+            <span class="tnum">$6.98</span>
+            <span class="sub-chip good">On track</span>
+          </div>
+          <div class="sub-act">
+            <button class="btn ghost sm" data-open="sheet">Edit</button>
+            <button class="btn ghost sm">Undo</button>
+          </div>
+        </div>
+      </div>
+      <p class="sub-note">9 recurring deposits also detected, such as pay. Money in is not counted in the total above.</p>
+
+      <div class="pv-scrim" id="scrim" hidden>
+        <div class="pv-sheet">
+          <div class="pv-sheet-h">
+            <img class="blogo" src="data:image/png;base64,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" alt="" aria-hidden="true">
+            <div>
+              <div class="pv-sheet-t">Annual membership fee</div>
+              <div class="pv-sheet-s">Chase &middot; built from 2 charges</div>
+            </div>
+          </div>
+          <div class="pv-grid">
+            <label class="pv-lbl">Name
+              <input class="pv-in" value="Annual membership fee">
+            </label>
+            <label class="pv-lbl">I expect to pay
+              <span class="pv-money"><span>$</span><input class="pv-in pv-amt tnum" value="95.00" inputmode="decimal"></span>
+            </label>
+            <label class="pv-lbl">Every
+              <select class="pv-in pv-cad" id="c1c"><option>Weekly</option><option>Every 2 weeks</option><option>Twice a month</option><option>Monthly</option><option selected>Yearly</option><option>Irregular</option></select>
+            </label>
+          </div>
+          <p class="pv-help">
+            Yearly at $95.00 counts as <b>$7.92 a month</b>. What you expect, not what your bank last
+            charged: a charge more than 5% and $1 away from this gets flagged rather than quietly
+            replacing it.
+          </p>
+          <div class="pv-sheet-f">
+            <button class="link" data-close>Cancel</button>
+            <button class="btn sm">Confirm charge</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
+</div>
+<script>
+var t=document.getElementById("t");
+t.addEventListener("click",function(){
+  var d=document.documentElement.classList.toggle("dark");
+  t.textContent=d?"Light mode":"Dark mode";
+});
+
+/* A: swap the amount cell for fields */
+document.querySelectorAll('[data-row]').forEach(function(row){
+  function set(editing){
+    row.querySelector('[data-view]').hidden=editing;
+    row.querySelector('[data-edit]').hidden=!editing;
+    row.querySelector('[data-act=edit]').hidden=editing;
+    row.querySelector('[data-act=undo]').hidden=editing;
+    row.querySelector('[data-act=save]').hidden=!editing;
+    row.querySelector('[data-act=cancel]').hidden=!editing;
+  }
+  row.querySelector('[data-act=edit]').addEventListener('click',function(){set(true);});
+  row.querySelector('[data-act=cancel]').addEventListener('click',function(){set(false);});
+  row.querySelector('[data-act=save]').addEventListener('click',function(){set(false);});
+});
+
+/* B: expand the row */
+document.querySelectorAll('[data-exp]').forEach(function(x){
+  x.querySelector('[data-act=toggle]').addEventListener('click',function(){
+    var p=x.querySelector('.pv-panel');
+    p.hidden=!p.hidden;
+    x.classList.toggle('open',!p.hidden);
+  });
+});
+
+/* C: the sheet */
+var scrim=document.getElementById('scrim');
+document.querySelectorAll('[data-open=sheet]').forEach(function(b){
+  b.addEventListener('click',function(){scrim.hidden=false;});
+});
+scrim.addEventListener('click',function(e){
+  if(e.target===scrim||e.target.hasAttribute('data-close')) scrim.hidden=true;
+});
+</script>
+</body>
+</html>
