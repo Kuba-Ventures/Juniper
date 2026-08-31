@@ -314,6 +314,27 @@ rationale in `docs/CARD_REWARDS.md`.
   `product_answered` boolean defaulting to `true`, which is the value the no-backfill argument rests on.
   The migration tree is now 0001 to 0033. #225's code was already deployed at the time, which was safe
   only because `readConfirmations` treats the new columns as optional and retries without them.
+- [x] **(build)** **The catalog offers the name printed on the card** (migration
+  `0034_card_products_variants.sql`, 8 more products, taking it to 18 products / 31 earn rows / 50
+  benefits). Found by the first real production test of #211: the member's card says "Quicksilver
+  Student" and 0032 could only offer plain "Quicksilver". Student and legacy brandings (SavorOne) now
+  get their own rows, because a catalog of current marketing names cannot identify cards people actually
+  hold. 0034 also establishes the rule for what stays OUT and corrects an assumption 0032 made:
+  understating a rate is safe when recommending a NEW card and unsafe when describing one the member
+  ALREADY HOLDS, since `switchIdeas` would then advise moving spend off it. So Apple Card, Bilt, Citi
+  Custom Cash and BoA Customized Cash are absent (headline earning is conditional on a payment method, a
+  transaction count, or a category chosen per cycle), as are Sapphire Reserve and Amex Gold (recently
+  moved annual fees, which `upgradeIdeas` subtracts, so a stale figure inverts the recommendation).
+- [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
+  it cannot disturb 0032's rows or anything already verified by hand.
+- [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at
+  all.** Reconciled against Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards
+  (Freedom Unlimited $20,000, Sapphire Preferred $9,000, Discover it Chrome $4,500, Quicksilver Student
+  $4,400) and Juniper sees $17,900 across three. The $20,000 difference is exactly the Freedom Unlimited.
+  The stored snapshot is not the cause: `sanitizeAccounts` drops nothing and `networth-snapshot` rewrites
+  the account list from Plaid's live response on every run. So either it sits behind a second Chase login
+  that was never linked, or it was deselected during Link's account-selection step. Affects net worth and
+  utilization, not just this page - Finley
 - [ ] **Set a limit on a real card and confirm the Identify prompt still counts it.** The one assumption
   in #211 that has never touched Postgres: `product_answered` is written FALSE only when a limit
   CREATES the row, so setting a limit on an unidentified card must leave it in the Identify queue. If it

@@ -30,7 +30,7 @@
 // check-category-ids.ts its place, and a typo there is invisible. A card would
 // simply never win a category, with no error anywhere.
 import { strictEqual, deepStrictEqual, ok as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -579,9 +579,20 @@ ok("the quoted as_of is the OLDEST, because the worst row is the only one worth 
 // One fact written twice: migration 0032 names taxonomy ids in SQL, and the
 // taxonomy is TypeScript. A typo is invisible, because a card with a bogus
 // category_id simply never wins that category and nothing errors.
+// EVERY card seed migration, discovered rather than named, so a seed added later
+// is covered without anybody remembering to edit this line. 0034 exists because
+// the picker could not offer "Quicksilver Student"; the next one will exist for a
+// similar reason, and it must not silently escape this check.
+const seedFiles = readdirSync(join(repo, "supabase", "migrations"))
+  .filter((f) => /^\d{4}_card_products.*\.sql$/.test(f))
+  .sort();
 const seedIds = (() => {
-  const sql = readFileSync(join(repo, "supabase", "migrations", "0032_card_products_seed.sql"), "utf8");
-  return [...new Set([...sql.matchAll(/'([gc]_[a-z0-9_]+)'/g)].map((m) => m[1]))];
+  const found = new Set<string>();
+  for (const f of seedFiles) {
+    const sql = readFileSync(join(repo, "supabase", "migrations", f), "utf8");
+    for (const m of sql.matchAll(/'([gc]_[a-z0-9_]+)'/g)) found.add(m[1]);
+  }
+  return [...found];
 })();
 const taxonomyIds = new Set<string>();
 for (const g of C.BUILTIN_TAXONOMY.groups) {
@@ -590,7 +601,7 @@ for (const g of C.BUILTIN_TAXONOMY.groups) {
 }
 ok("every category_id in the seed is a real taxonomy id", () => {
   const missing = seedIds.filter((id) => !taxonomyIds.has(id));
-  deepStrictEqual(missing, [], `seed names ids the taxonomy does not have: ${missing.join(", ")}`);
+  deepStrictEqual(missing, [], `seed names ids the taxonomy does not have: ${missing.join(", ")} (files: ${seedFiles.join(", ")})`);
   assert(seedIds.length > 0, "the check is worthless if it matched nothing");
 });
 ok("every seeded earn row resolves to the category it claims", () => {
@@ -604,5 +615,5 @@ ok("every seeded earn row resolves to the category it claims", () => {
 });
 
 console.log(`${n} rewards cases passed`);
-console.log(`${seedIds.length} seeded category ids all exist in the taxonomy and are spend categories`);
+console.log(`${seedIds.length} seeded category ids across ${seedFiles.length} seed migrations all exist in the taxonomy and are spend categories`);
 console.log("PASS: caps drop to the base rate, the point valuation is disclosed, and the annual fee is subtracted");

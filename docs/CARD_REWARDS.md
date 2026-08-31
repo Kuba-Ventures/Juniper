@@ -210,8 +210,38 @@ all of it would invent a booking channel they never used.
 **Signup bonuses are excluded.** One-time, constantly changing, and unearnable by somebody who already
 holds the card, which is this surface's entire audience.
 
-**The catalog is 10 cards.** Common US cards, not all of them, which is why "my card is not listed" is
-a first-class answer stored as a row rather than a dismissal.
+**The catalog is 18 cards** (0032 seeded 10, 0034 added 8). Common US cards, not all of them, which is
+why "my card is not listed" is a first-class answer stored as a row rather than a dismissal.
+
+### 0034 corrects an assumption 0032 made about understating
+
+0032 said excluding a rate "understates rather than flatters" and treated that as the safe direction.
+It is not, for a card the member **already holds**. `switchIdeas` compares the card they used against
+the best card they own, so a held card recorded at 1% when it really earns 2% produces advice to move
+spending **off** it. Understating is safe when deciding whether to recommend a new card and unsafe when
+describing an existing one, and this surface does both.
+
+So 0034 established the rule: a card whose **headline** earning cannot be represented by
+`card_product_earn` is left out of the catalog entirely rather than added with only the rates that fit.
+Apple Card (2% is conditional on Apple Pay, a payment method rather than a category), Bilt (rent needs
+five transactions that month), Citi Custom Cash and BoA Customized Cash (the 5% or 3% category is
+chosen or derived per cycle) are all absent for that reason. Sapphire Reserve and Amex Gold are absent
+for a different one: their annual fees have moved recently and `upgradeIdeas` subtracts the fee, so a
+stale figure there inverts the recommendation rather than merely blurring it.
+
+A card that is absent is not a dead end. The picker offers "My card is not listed", it is stored as a
+real answer, and the member simply gets no rewards claims for that card. No claim beats a wrong claim.
+
+**Student and legacy names get their own rows.** Quicksilver Student earns the same 1.5% as Quicksilver,
+so no figure would have been wrong, but this surface exists to name the member's card correctly and
+offering a card that is not the one in their hand is exactly its wrong failure. SavorOne is in for the
+same reason: it is what Capital One called the card before the rename and it is still printed on plenty
+of cards in circulation.
+
+**The limitation this makes sharper.** Rotating-category cards carry only their fixed rates, so during a
+quarter when a member's rotating 5% is live the guide understates that card and may suggest moving spend
+away from it. The rotation appears as a quarterly benefit in the tracker, which is where it is
+actionable. Fixing it properly needs a per-quarter category table somebody maintains four times a year.
 
 ## Setting a limit the bank does not report (issue #211)
 
@@ -281,7 +311,9 @@ it is the fact, and theirs was a stand-in for its absence.
 ## Ops to activate
 
 1. Apply `supabase/migrations/0031_card_products.sql` (tables, RLS, grants).
-2. Apply `supabase/migrations/0032_card_products_seed.sql` (10 products, 18 earn rows, 36 benefits).
+2. Apply `supabase/migrations/0032_card_products_seed.sql` (10 products, 18 earn rows, 36 benefits) and
+   `0034_card_products_variants.sql` (8 more products, taking the catalog to 18 products, 31 earn rows,
+   50 benefits).
    `ON CONFLICT DO NOTHING`, not `DO UPDATE`, so a re-run cannot overwrite a row somebody has verified
    by hand and reset its `as_of` to a date nobody checked. Correcting a seeded row is a later migration
    that names it.
