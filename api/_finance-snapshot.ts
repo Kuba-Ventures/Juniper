@@ -21,7 +21,7 @@ async function rows<T>(pathAndQuery: string): Promise<T[]> {
 
 // How far back to ask for transactions. A trailing window keeps the score stable
 // across a partial current month.
-const WINDOW_DAYS = 90;
+export const WINDOW_DAYS = 90;
 
 // The shortest span this will treat as representative. Below it the monthly
 // figures are still an extrapolation, but from a floor rather than from however
@@ -40,7 +40,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // months it covers, their investing pace three times the pace, and their debt
 // load a third of the burden. Savings rate came out right by luck, being a ratio
 // of two numbers that were both a third too small.
-function coveredDays(dates: string[]): number {
+// EXPORTED for /api/card-rewards, which needs exactly this divisor for exactly
+// this reason: it turns a member's observed category spend into an annual figure
+// and then quotes a dollar recommendation off it, so a window that overstates
+// the history overstates the advice. One definition, not two, because two copies
+// of "how much history is there" is how they come to disagree.
+export function coveredDays(dates: string[]): number {
   let oldest = Infinity;
   for (const d of dates) {
     const t = Date.parse(d);
@@ -70,7 +75,9 @@ export interface FinanceSnapshot {
 }
 
 // UTC yyyy-mm-dd for `daysAgo` before now, without Date.now-in-a-loop concerns.
-function isoDaysAgo(daysAgo: number): string {
+// Exported alongside coveredDays and WINDOW_DAYS so a second caller asks for the
+// same window it later divides by.
+export function isoDaysAgo(daysAgo: number): string {
   const ms = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
   return new Date(ms).toISOString().slice(0, 10);
 }

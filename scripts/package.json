@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "check-rewards": "tsx ./src/check-rewards.ts",
     "check-category-ids": "tsx ./src/check-category-ids.ts",
     "check-category-resolver": "tsx ./src/check-category-resolver.ts",
     "check-member-categories": "tsx ./src/check-member-categories.ts",
