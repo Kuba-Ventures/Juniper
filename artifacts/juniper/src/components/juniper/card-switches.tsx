@@ -73,11 +73,29 @@ function SwitchRow({
   );
 }
 
-function UpgradeRow({ idea, centsFor }: { idea: UpgradeIdea; centsFor: (productId: string) => number | null }) {
+function UpgradeRow({
+  idea,
+  centsFor,
+  brandColorOf,
+  faceFor,
+}: {
+  idea: UpgradeIdea;
+  centsFor: (productId: string) => number | null;
+  brandColorOf: (productId: string) => string | null;
+  faceFor: (productId: string) => { shortName: string; network: string | null; artUrl: string | null };
+}) {
   const top = idea.wins.slice(0, 3);
+  // A card the member does not hold is still a card in the catalog, so it gets
+  // the same face as one they do. This used to draw `unknown` -- the grey
+  // outline meant for an account whose product has not been identified -- which
+  // was right only while the catalog had no art. Now it reads as a broken card
+  // next to three real ones. With art it shows the art; without, the synthesized
+  // face off the brand colour. Neither is blank.
+  const face = faceFor(idea.productId);
   return (
     <div className="cr-sw">
-      <CardFace size="md" unknown label={idea.issuer} />
+      <CardFace size="md" productName={face.shortName} network={face.network}
+        brandColor={brandColorOf(idea.productId)} artUrl={face.artUrl} />
       <div className="cr-sw-body">
         <div className="cr-sw-h">{idea.productName}</div>
         <div className="cr-sw-d">
@@ -106,8 +124,15 @@ function UpgradeRow({ idea, centsFor }: { idea: UpgradeIdea; centsFor: (productI
 }
 
 export function CardSwitches({ data }: { data: CardRewards }) {
+  // The CATALOG, not `cards`, for the same reason faceInfoMap and pointValueMap
+  // read from it: the upgrade rows name products the member does NOT hold, and
+  // those never appear in `cards`. Reading from `cards` returned null for every
+  // upgrade, which drew the synthesized face with no colour -- a grey rectangle
+  // beside three real ones. `cards` is kept as a fallback so a held card whose
+  // product has somehow left the active catalog still gets its colour.
   const brandColorOf = (productId: string): string | null =>
-    data.cards.find((c) => c.product?.id === productId)?.product?.brand_color ?? null;
+    data.catalog.find((p) => p.product_id === productId)?.brand_color
+    ?? data.cards.find((c) => c.product?.id === productId)?.product?.brand_color ?? null;
   const cents = pointValueMap(data);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
   const faces = faceInfoMap(data);
@@ -145,7 +170,8 @@ export function CardSwitches({ data }: { data: CardRewards }) {
             <h3>Cards that would beat yours</h3>
             <span className="cr-rg-head">On your own spending</span>
           </div>
-          {data.upgrades.map((u) => <UpgradeRow idea={u} centsFor={centsFor} key={u.productId} />)}
+          {data.upgrades.map((u) => <UpgradeRow idea={u} centsFor={centsFor}
+            brandColorOf={brandColorOf} faceFor={faceFor} key={u.productId} />)}
           <div className="cr-prov">
             Juniper is not offering these and there is nothing to click. It has no affiliate relationship
             with any card issuer, so this names what the arithmetic says and leaves the decision with you.
