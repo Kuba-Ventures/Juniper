@@ -439,6 +439,68 @@ proportions stops reading as a card whatever is drawn on it.
 The `sm` change is the one that matters. At 26 x 17 it was a colour chip, and the picker was asking
 somebody to choose between five Capital One cards on the strength of which shade of grey.
 
+## Two bugs from the first real production pass
+
+Both found by using the surface against real cards, and neither failed loudly.
+
+### An overpaid card was being counted as debt
+
+**The symptom.** A Capital One card sitting at `-328.21` with a $4,400 limit drew as "$328 of $4,400
+limit, Used 7%". The member was using none of that limit: the `-328.21` is a refund, so the issuer owed
+**them** $328.
+
+**The cause.** Plaid reports a credit account's `balances.current` as positive when the member owes and
+negative when the account is in credit. Five places took `Math.abs()` of it, which turns "the issuer
+owes you $328" into "you owe $328":
+
+| Site | What it fed |
+|---|---|
+| `credit.tsx` | the utilization card and each row |
+| `card-rewards.ts` | the rewards payload |
+| `_finance-snapshot.ts` (`cardDebt`) | the Juniper Score's **debt-load** factor |
+| `_finance-snapshot.ts` (`utilBalance`) | the Juniper Score's **credit** factor |
+| `networth-snapshot.ts` (both `classify` fns) | **net worth**, as a debt |
+
+So an overpaid card made the member's score worse **twice** and their net worth smaller, by the amount
+the issuer owed them. On this member's three cards, overall utilization read 5% where the truth is 3%.
+
+**Why the original code did it.** The comment it replaced said a negative balance makes a negative bar
+width, which renders as nothing at all. That is true, and the fix for an un-drawable bar is to clamp the
+**bar**, not to flip the sign of the member's money.
+
+**The fix.** `api/_credit-balance.ts` (pure, mirrored on the client for the same reason `lib/score.ts`
+mirrors `_score.ts`) splits a balance into `owed` and `inCredit`, exactly one of which is ever non-zero.
+`utilizationPct` clamps to 0 and 100 and returns **null** rather than zero when there is no limit,
+because "we do not know" and "you are using none of it" are different facts this page prints
+differently. Ten cases in `scripts/src/check-credit-balance.ts`, including the real three-card portfolio
+asserting 3% and pinning the 5% the old code produced.
+
+A card in credit is counted as **zero debt rather than as a positive asset**, deliberately. It arguably
+is an asset, but a card in credit is nearly always transient (a refund about to be spent against, a
+double payment absorbed next cycle) and folding it into net worth would make the trend jump on something
+that is not really wealth. Zero is the honest floor.
+
+### The trademark symbols were mangled in transit, not in the migrations
+
+**The symptom.** The picker showed "Chase Freedom Flex¬Æ", on thirteen product names.
+
+**The cause was not the migrations.** `0032` and `0034` are correct UTF-8: the bytes for the registered
+sign are `C2 AE` in both files, verified. The SQL was moved to the Supabase editor through the macOS
+clipboard, which carries raw UTF-8 without declaring an encoding, and something on the way in read it as
+MacRoman: `C2` became the not sign and `AE` became the AE ligature.
+
+**The fix.** `0036_repair_card_name_encoding.sql` sets each of the thirteen names from a known-good
+value, building the symbols with `chr(174)` and `chr(8480)` so **no byte above ASCII appears in the file
+at all**, including in its comments. A repair containing the sequence that got mangled would arrive as
+broken as the thing it repairs. `SET` rather than `REPLACE` because replacing needs the file to know what
+the mangling produced, and that depends on which encoding did the misreading; setting from a known-good
+value is correct whether the row is mangled, already fixed, or was never broken, which is what makes it
+re-runnable.
+
+**The convention that follows:** a future card seed should use `chr()` for anything above ASCII, or be
+applied by something that declares its encoding (the Supabase CLI, or `psql` with a file) rather than
+pasted.
+
 ## Ops to activate
 
 1. Apply `supabase/migrations/0031_card_products.sql` (tables, RLS, grants).

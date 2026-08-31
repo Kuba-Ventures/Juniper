@@ -30,6 +30,7 @@ import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
+import { creditPosition } from "./_credit-balance";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import {
   anyUnverified, benefitPeriodKey, earningGuide, oldestAsOf, rankCandidates,
@@ -214,7 +215,10 @@ export default async function handler(req: Request): Promise<Response> {
         institution: it.institution_name || "Linked institution",
         account_name: a.name,
         mask: a.mask,
-        balance: Math.abs(a.balance ?? 0),
+        // Both halves travel. A card in credit must not be drawn as debt, and the
+        // surface has to be able to say which it is. See api/_credit-balance.ts.
+        balance: creditPosition(a.balance).owed,
+        inCredit: creditPosition(a.balance).inCredit,
         limit: a.limit != null && a.limit > 0 ? a.limit : null,
         currency: a.currency,
       })));

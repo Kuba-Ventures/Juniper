@@ -10,6 +10,7 @@
 // The access_token is read server-side only (service-role) and never leaves here.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
+import { creditPosition } from "../_credit-balance";
 import { plaidConfigured, plaidFetch, sanitizeAccounts, PLAID_TIMEOUT_CODE, type SanitizedAccount } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { isDeadItemCode, markItemSynced, markItemDead } from "../_item-sync-state";
@@ -67,14 +68,23 @@ type StoredItem = { item_id: string; access_token: string; accounts: SanitizedAc
 function classifyStored(a: SanitizedAccount): { assets: number; debts: number } {
   const bal = a.balance ?? 0;
   if (!Number.isFinite(bal)) return { assets: 0, debts: 0 };
-  if (DEBT_TYPES.has((a.type ?? "").toLowerCase())) return { assets: 0, debts: Math.abs(bal) };
+  // creditPosition, not Math.abs: a card in credit is not a debt, and abs counted
+  // the issuer's refund against the member's net worth. Zero rather than an asset
+  // is the deliberate floor, see api/_credit-balance.ts.
+  if (DEBT_TYPES.has((a.type ?? "").toLowerCase())) {
+    return { assets: 0, debts: creditPosition(bal).owed };
+  }
   return { assets: bal, debts: 0 };
 }
 
 function classify(a: BalanceAccount): { assets: number; debts: number } {
   const bal = a.balances?.current ?? a.balances?.available ?? 0;
   if (!Number.isFinite(bal)) return { assets: 0, debts: 0 };
-  if (DEBT_TYPES.has((a.type ?? "").toLowerCase())) return { assets: 0, debts: Math.abs(bal) };
+  // Kept identical to classifyStored, which is the whole point of the two living
+  // side by side.
+  if (DEBT_TYPES.has((a.type ?? "").toLowerCase())) {
+    return { assets: 0, debts: creditPosition(bal).owed };
+  }
   return { assets: bal, debts: 0 };
 }
 

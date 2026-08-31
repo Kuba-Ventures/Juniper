@@ -52,7 +52,12 @@ export interface LinkedCard {
   institution: string;
   account_name: string;
   mask: string | null;
+  /** What the member OWES, never the magnitude of the balance. A card in credit
+      reports zero here and a positive `inCredit`. */
   balance: number;
+  /** What the ISSUER owes the member: an overpayment, or a refund that landed
+      after the statement cleared. Drawn as a credit, never as debt. */
+  inCredit: number;
   /** The effective limit: the bank's where it reports one, otherwise the
       member's. Prefer `bankLimit`/`memberLimit` when the DISTINCTION matters,
       which on this surface is most of the time. */
