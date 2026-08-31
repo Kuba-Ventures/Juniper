@@ -42,7 +42,15 @@ function CandidateRow({
       onClick={onPick}
       disabled={busy}
     >
-      <CardFace size="sm" brandColor={candidate.brand_color} />
+      {/* A real thumbnail rather than a colour chip. The chip version was
+          asking somebody to pick between five Capital One cards on the strength
+          of "which shade of grey", which is not a choice anybody can make. */}
+      <CardFace
+        size="sm"
+        issuer={candidate.issuer}
+        brandColor={candidate.brand_color}
+        artUrl={candidate.art_url}
+      />
       <span>
         <span className="cr-pk-on">{candidate.name}</span>
         <span className="cr-pk-od">
@@ -90,7 +98,7 @@ export function CardIdentifyDialog({
       .map((p) => ({
         product_id: p.product_id, name: p.name, issuer: p.issuer,
         annual_fee: p.annual_fee, rewards_currency: p.rewards_currency,
-        brand_color: p.brand_color, confidence: 0,
+        brand_color: p.brand_color, art_url: p.art_url, confidence: 0,
       }));
   }, [catalog, query]);
 

@@ -46,6 +46,7 @@ export function CardFace({
   unknown = false,
   label,
   layout = "card",
+  artUrl,
 }: {
   issuer?: string;
   /** Use the SHORT name (`product.short_name`). The stored name is up to 53
@@ -79,8 +80,32 @@ export function CardFace({
    * where five cards in a pocket are all distinguishable.
    */
   layout?: "card" | "strip";
+  /**
+   * Real card art, when the catalog has a licensed URL for this product
+   * (migration 0035). Absent renders the synthesized face, which is what the
+   * catalog ships with, so this is an upgrade path rather than a requirement.
+   *
+   * Art REPLACES the drawing but not the labelling. Every issuer puts the product
+   * name somewhere different on the artwork, so a stack relying on the image to
+   * identify a hidden card would be legible for Chase and not for Discover. The
+   * strip layout keeps painting its own name and mask over the top.
+   */
+  artUrl?: string | null;
 }) {
-  const cls = `cr-face cr-face-${size}${unknown ? " cr-face-unk" : ""}`;
+  const art = !unknown && artUrl ? artUrl : null;
+  // `cr-face-strip` is on the element rather than inferred from an ancestor,
+  // because the stylesheet has to tell the two layouts apart. With art present a
+  // FULL face hides its labels (the artwork carries its own branding), and a
+  // STRIP must not: its labels are the only thing identifying a card whose body
+  // is covered. Without this class the strip inherited the full face's rule and
+  // lost the issuer and mask line, which is the mask that tells two Chase cards
+  // apart.
+  const cls = [
+    "cr-face", `cr-face-${size}`,
+    unknown ? "cr-face-unk" : "",
+    art ? "cr-face-art" : "",
+    layout === "strip" ? "cr-face-strip" : "",
+  ].filter(Boolean).join(" ");
   // The face carries light text over the brand colour, and Plaid's brand colours
   // run from near-white golds to near-black navies. `brandTint` already measures
   // Rec. 709 luma for exactly this problem on the Connections monogram tiles, so
@@ -99,15 +124,39 @@ export function CardFace({
     ? <span className="cr-face-mask">&middot;&middot;&middot;&middot;{mask}</span>
     : null;
 
+  // The image sits behind everything and is decorative: the product name is
+  // always in the DOM as text beside or over it, so alt="" is correct rather than
+  // lazy. onError drops back to the synthesized face, because a broken-image icon
+  // where a card should be reads as a fault in the money rather than a missing
+  // asset, which is the same call MerchantMark makes for merchant logos.
+  const artEl = art
+    ? <img
+        className="cr-face-img"
+        src={art}
+        alt=""
+        loading="lazy"
+        onError={(e) => {
+          const el = e.currentTarget;
+          el.style.display = "none";
+          el.closest(".cr-face")?.classList.remove("cr-face-art");
+        }}
+      />
+    : null;
+
   if (tiny) {
-    // A 26px swatch. Nothing fits on it and nothing needs to: it exists to tie a
-    // chip or a row back to a card by colour.
-    return <span className={cls} style={style} aria-hidden="true" />;
+    // A swatch. With art it is a recognizable thumbnail of the card; without, it
+    // is a colour chip that ties a chip or a row back to a card.
+    return (
+      <span className={cls} style={style} aria-hidden="true">
+        {artEl}
+      </span>
+    );
   }
 
   if (layout === "strip") {
     return (
       <span className={cls} style={style} aria-hidden="true">
+        {artEl}
         <span className="cr-face-in">
           <span className="cr-face-top">
             {logoSrc
@@ -125,6 +174,7 @@ export function CardFace({
 
   return (
     <span className={cls} style={style} aria-hidden="true">
+      {artEl}
       <span className="cr-face-in">
         <span className="cr-face-top">
           {logoSrc

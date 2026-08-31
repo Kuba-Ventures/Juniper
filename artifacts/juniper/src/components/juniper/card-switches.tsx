@@ -41,17 +41,17 @@ function SwitchRow({
   /** The SHORT name and network for a face. The prose below keeps the full name,
       which is correct: a face has 196px and a sentence naming the member's card
       should name it properly. */
-  faceFor: (productId: string) => { shortName: string; network: string | null };
+  faceFor: (productId: string) => { shortName: string; network: string | null; artUrl: string | null };
 }) {
   const from = faceFor(idea.from.productId);
   const to = faceFor(idea.to.productId);
   return (
     <div className="cr-sw">
       <CardFace size="md" productName={from.shortName} network={from.network}
-        brandColor={brandColorOf(idea.from.productId)} />
+        brandColor={brandColorOf(idea.from.productId)} artUrl={from.artUrl} />
       <span className="cr-sw-arrow" aria-hidden="true">→</span>
       <CardFace size="md" productName={to.shortName} network={to.network}
-        brandColor={brandColorOf(idea.to.productId)} />
+        brandColor={brandColorOf(idea.to.productId)} artUrl={to.artUrl} />
       <div className="cr-sw-body">
         <div className="cr-sw-h">
           Put {idea.categoryLabel.toLowerCase()} on the {idea.to.productName}
@@ -112,7 +112,7 @@ export function CardSwitches({ data }: { data: CardRewards }) {
   const centsFor = (productId: string) => cents.get(productId) ?? null;
   const faces = faceInfoMap(data);
   const faceFor = (productId: string) =>
-    faces.get(productId) ?? { shortName: "", network: null };
+    faces.get(productId) ?? { shortName: "", network: null, artUrl: null };
 
   const hasSwitches = data.switches.length > 0;
   const hasUpgrades = data.upgrades.length > 0;

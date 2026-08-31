@@ -376,6 +376,69 @@ the cards behind it. And `z-index` comes from the stylesheet rather than inline,
 declaration beats any stylesheet selector short of `!important`, and with it inline a raised card still
 painted UNDER its neighbour: measured at 30 while the rule asked for 99.
 
+## Real card art, and bigger faces
+
+**Migration:** `0035_card_product_art.sql` adds `card_products.art_url` and `art_license`.
+
+### The column ships empty, and that is the decision rather than an omission
+
+Card art is what a member actually recognizes. A colour chip tells somebody almost nothing when they are
+choosing between five Capital One cards, which is exactly what the picker asks. The synthesized faces
+are a workaround.
+
+The obstacle was never technical: those renders are issuer marketing assets and Juniper has no
+relationship with any card issuer, which is the same gate holding the marketplace. So the schema, the
+endpoint and the component all support art, the app renders it the moment a URL is set, and the
+synthesized face remains the fallback. What no migration does is arrive with URLs already in it, because
+choosing a source is a licensing decision for whoever owns the product.
+
+Three routes to a URL, roughly cleanest first:
+
+1. **An issuer affiliate or partner program.** Approval comes with a brand-asset pack and written
+   guidelines covering exactly this use, and it is the same approval Stage 5 needs.
+2. **A licensed card-data vendor.** Several bundle art with a rates feed under contract, worth pricing
+   alongside the rates, since the hand-maintained catalog is the real long-term cost here.
+3. **Issuer-hosted URLs, hotlinked.** Cheapest and least defensible: it uses their bandwidth as well as
+   their artwork and breaks when they reorganize a path. Reverting is one UPDATE per row.
+
+`art_license` is `NOT NULL` whenever `art_url` is, enforced by a CHECK, for the same reason `source_url`
+is required on a rate: an asset whose provenance nobody recorded is one nobody can defend later, and it
+will not be the same person answering for it. `art_url` is also constrained to `https://`, since an
+http image on an https page is blocked as mixed content and renders as a broken card rather than as a
+diagnosable error.
+
+### Art replaces the drawing, never the labelling
+
+With art present the synthesized gradient, sheen, chip and contactless glyph all come off, or they tint
+somebody else's artwork. The labels are treated differently depending on where the face is:
+
+- **A full face** hides its labels. The artwork carries its own branding.
+- **A strip in the pocket** keeps them, over a scrim. This is not a preference: every issuer puts the
+  product name somewhere different on the artwork, so a stack relying on the image to identify a hidden
+  card would be legible for Chase and not for Discover.
+
+That distinction needed a `cr-face-strip` class on the element. Without it the strip inherited the full
+face's hide rule and **lost its issuer and mask line, which is the mask that tells two Chase cards
+apart**, and it was caught by measuring computed `display` rather than by looking at a screenshot.
+
+A URL that fails to load drops back to the synthesized face via `onError`, rather than showing a broken
+image icon where a card should be, which reads as a fault in the money rather than a missing asset. The
+same call `MerchantMark` makes for merchant logos. Verified with a deliberately bad URL.
+
+### Sizes
+
+All three sizes are on the real card aspect of 1.586:1 (85.6 by 53.98mm), because a card at the wrong
+proportions stops reading as a card whatever is drawn on it.
+
+| | Before | After |
+|---|---|---|
+| `lg` (the wallet) | 196 x 124 | 236 x 149, down to 200 x 126 under 640px |
+| `md` (switch rows) | 112 x 71 | 132 x 83 |
+| `sm` (picker, chips) | 26 x 17 | 60 x 38 |
+
+The `sm` change is the one that matters. At 26 x 17 it was a colour chip, and the picker was asking
+somebody to choose between five Capital One cards on the strength of which shade of grey.
+
 ## Ops to activate
 
 1. Apply `supabase/migrations/0031_card_products.sql` (tables, RLS, grants).
