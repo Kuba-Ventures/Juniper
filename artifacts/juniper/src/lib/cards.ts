@@ -38,6 +38,10 @@ export interface CardProductSummary {
   source_url: string;
   as_of: string;
   verified: boolean;
+  /** Real card art, when there is a licensed source for it (migration 0035).
+      NULL means draw the synthesized face, which is the state the catalog ships
+      in. */
+  art_url: string | null;
 }
 
 export interface LinkedCard {
@@ -94,6 +98,9 @@ export interface Candidate {
   annual_fee: number;
   rewards_currency: string;
   brand_color: string | null;
+  /** Real card art when the catalog has a licensed URL. Null draws the
+      synthesized face. */
+  art_url: string | null;
   /** Orders the picker. Never a threshold that skips the member's tap. */
   confidence: number;
 }
@@ -200,7 +207,8 @@ export interface CardRewards {
   };
   catalog: { product_id: string; name: string; short_name: string; issuer: string;
              annual_fee: number; rewards_currency: string; brand_color: string | null;
-             network: string | null; point_value_cents: number | null }[];
+             network: string | null; point_value_cents: number | null;
+             art_url: string | null }[];
 }
 
 /**
@@ -210,8 +218,12 @@ export interface CardRewards {
  * rows draw faces for products the member does not hold, and those never appear
  * in `cards`. Same reason `pointValueMap` reads the catalog.
  */
-export function faceInfoMap(data: CardRewards): Map<string, { shortName: string; network: string | null }> {
-  return new Map(data.catalog.map((p) => [p.product_id, { shortName: p.short_name, network: p.network }]));
+export function faceInfoMap(
+  data: CardRewards,
+): Map<string, { shortName: string; network: string | null; artUrl: string | null }> {
+  return new Map(data.catalog.map((p) => [p.product_id, {
+    shortName: p.short_name, network: p.network, artUrl: p.art_url,
+  }]));
 }
 
 /**

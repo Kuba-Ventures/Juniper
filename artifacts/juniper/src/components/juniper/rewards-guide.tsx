@@ -106,6 +106,7 @@ function CardWallet({
               productName={c.product?.short_name}
               mask={c.mask}
               brandColor={c.product?.brand_color}
+              artUrl={c.product?.art_url}
               logoSrc={logoFor(c)}
             />
           </button>
@@ -130,7 +131,7 @@ function CardWallet({
 }
 
 function GuideRow({
-  entry, centsFor, shortFor,
+  entry, centsFor, shortFor, artFor,
 }: {
   entry: GuideEntry;
   centsFor: (productId: string) => number | null;
@@ -138,6 +139,7 @@ function GuideRow({
       a sentence naming the member's card and should name it properly, where a
       chip has room for about twenty characters. */
   shortFor: (productId: string) => string;
+  artFor: (productId: string) => string | null;
 }) {
   const { best } = entry;
   if (!best) return null;
@@ -165,13 +167,13 @@ function GuideRow({
                 0.05% gap stays a winner. */}
             {entry.tied.map((t) => (
               <span className="cr-rg-chip tie" key={t.productId}>
-                <CardFace size="sm" brandColor={t.brandColor} />
+                <CardFace size="sm" brandColor={t.brandColor} artUrl={artFor(t.productId)} />
                 Tied with {shortFor(t.productId) || t.productName}
               </span>
             ))}
             {entry.others.map((o) => (
               <span className="cr-rg-chip" key={o.productId}>
-                <CardFace size="sm" brandColor={o.brandColor} />
+                <CardFace size="sm" brandColor={o.brandColor} artUrl={artFor(o.productId)} />
                 {shortFor(o.productId) || o.productName}, {o.display}
               </span>
             ))}
@@ -211,6 +213,7 @@ export function RewardsGuide({
   const centsFor = (productId: string) => cents.get(productId) ?? null;
   const faces = faceInfoMap(data);
   const shortFor = (productId: string) => faces.get(productId)?.shortName ?? "";
+  const artFor = (productId: string) => faces.get(productId)?.artUrl ?? null;
   const totalGain = data.switches.reduce((a, s) => a + s.gain, 0);
 
   return (
@@ -276,7 +279,8 @@ export function RewardsGuide({
             that matters most to you is first.
           </div>
           {data.guide.map((e) => (
-            <GuideRow entry={e} centsFor={centsFor} shortFor={shortFor} key={e.categoryId} />
+            <GuideRow entry={e} centsFor={centsFor} shortFor={shortFor} artFor={artFor}
+              key={e.categoryId} />
           ))}
         </>
       )}

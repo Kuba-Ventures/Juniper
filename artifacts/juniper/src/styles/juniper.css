@@ -1551,13 +1551,49 @@
   background:
     linear-gradient(118deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 52%),
     radial-gradient(120% 80% at 88% 108%,rgba(0,0,0,.28),rgba(0,0,0,0) 60%)}
-.jnpr .cr-face-lg{width:196px;height:124px}
-.jnpr .cr-face-md{width:112px;height:71px;border-radius:9px}
-.jnpr .cr-face-sm{width:26px;height:17px;border-radius:4px}
+/* Sizes, all on the real card aspect of 1.586:1 (85.6 by 53.98mm), because a card
+   drawn at the wrong proportions stops reading as a card no matter what is on it.
+   `sm` grew from 26x17: at that size it was a colour chip, and a colour chip is
+   nearly useless for choosing between five Capital One cards, which is exactly
+   what the Identify picker asks somebody to do. */
+.jnpr .cr-face-lg{width:236px;height:149px}
+.jnpr .cr-face-md{width:132px;height:83px;border-radius:10px}
+.jnpr .cr-face-sm{width:60px;height:38px;border-radius:6px}
+@media(max-width:640px){
+  /* The pocket is the widest thing on the page at lg, so it comes back down
+     rather than forcing the hero to scroll sideways. */
+  .jnpr .cr-face-lg{width:200px;height:126px}
+}
 .jnpr .cr-face-in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;
   justify-content:space-between;padding:11px 12px}
 .jnpr .cr-face-md .cr-face-in{padding:7px 8px}
 .jnpr .cr-face-sm .cr-face-in{padding:0}
+/* Real card art, when the catalog has a licensed URL (migration 0035). It sits
+   behind the labels rather than replacing them: every issuer puts the product
+   name somewhere different on the artwork, so a stack that relied on the image to
+   identify a hidden card would be legible for Chase and not for Discover. */
+.jnpr .cr-face-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  z-index:1;display:block}
+/* With art present the synthesized gradient and sheen come off, or they tint
+   somebody else's artwork. The chip and the contactless glyph go too: the real
+   card already has its own. */
+.jnpr .cr-face-art::before,.jnpr .cr-face-art::after{display:none}
+.jnpr .cr-face-art .cr-face-chip,.jnpr .cr-face-art .cr-face-wave{display:none}
+/* The name and mask stay, and get a scrim so they are readable over any artwork,
+   light or dark. Only in the strip layout: on a full face the art speaks for
+   itself and a scrim would just cover it. */
+.jnpr .cr-pocket .cr-face-art .cr-face-in{
+  background:linear-gradient(180deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.34) 46px,rgba(0,0,0,0) 74px)}
+.jnpr .cr-pocket .cr-face-art .cr-face-iss,
+.jnpr .cr-pocket .cr-face-art .cr-face-nm,
+.jnpr .cr-pocket .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+/* On a FULL face with art the labels are the artwork's job, so they come off. The
+   STRIP layout is excluded, and that exclusion is the whole point: a strip's body
+   is covered by the next card, so its labels are the only thing identifying it.
+   Without the `:not(.cr-face-strip)` the strip inherited this rule and lost its
+   issuer and mask line, which is the mask that tells two Chase cards apart. */
+.jnpr .cr-face-art:not(.cr-face-sm):not(.cr-face-strip) .cr-face-in > .cr-face-bot,
+.jnpr .cr-face-art:not(.cr-face-sm):not(.cr-face-strip) .cr-face-in > .cr-face-top{display:none}
 .jnpr .cr-face-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .jnpr .cr-face-iss{font-size:9.5px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;
   opacity:.94;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

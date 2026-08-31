@@ -337,6 +337,21 @@ rationale in `docs/CARD_REWARDS.md`.
   cards, and a 54px reveal with the name stacked under the mask left both Discover cards reading
   "Disco...". Vertical also scales: a fifth card costs 54px of height rather than width the hero does
   not have.
+- [x] **(build)** **Somewhere to put real card art, and faces big enough to read** (migration
+  `0035_card_product_art.sql`). `art_url` plus `art_license`, paired by a CHECK for the same reason a
+  rate needs `source_url`. The column SHIPS EMPTY on purpose: the images are issuer marketing assets and
+  choosing a source is a licensing decision for the product owner, not the migration author, so the app
+  renders art the moment a URL is set and keeps the synthesized face as the fallback. Three legitimate
+  routes are written into the migration header: an issuer affiliate program's brand pack (the same
+  approval Stage 5 needs), a licensed card-data vendor, or a deliberate decision about issuer-hosted
+  URLs. Sizes moved to the real card aspect of 1.586:1, and `sm` went from 26x17 to 60x38, which is the
+  one that matters: at chip size the picker was asking somebody to choose between five Capital One cards
+  by shade of grey.
+- [ ] **(ops)** Apply `0035` to the production Supabase project. Nothing changes on screen until a URL
+  is set, which is what makes it safe to apply ahead of any licensing decision.
+- [ ] **Decide where card art comes from, or decide not to have it.** The plumbing is done and the
+  column is empty. The cheapest option (hotlinking issuer URLs) is also the least defensible; the
+  cleanest (an affiliate program's brand pack) is the same approval the marketplace already waits on - Finley
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
 - [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at

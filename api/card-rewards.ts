@@ -140,6 +140,37 @@ async function readConfirmations(uid: string): Promise<MemberCardRow[]> {
   }
 }
 
+/**
+ * The card catalog, degrading if migration 0035 has not been applied.
+ *
+ * PostgREST rejects the whole select on one unknown column, and `rows()` turns any
+ * failure into an empty array, which here would mean an empty catalog: no rewards,
+ * no benefits, and an Identify picker with nothing in it. So `art_url` is
+ * requested as optional and retried without, the same shape as the #211 columns in
+ * `readConfirmations` and the per-item health columns in api/plaid/accounts.ts.
+ */
+async function readCatalog(): Promise<(CardProduct & { art_url: string | null })[]> {
+  const base = "id,issuer,network,name,annual_fee,brand_color,rewards_currency," +
+    "point_value_cents,base_multiplier,base_unit,source_url,as_of,verified";
+  const scope = "card_products?status=eq.active";
+  try {
+    let r = await adminRest(`${scope}&select=${base},art_url`);
+    if (!r.ok) {
+      r = await adminRest(`${scope}&select=${base}`);
+      if (r.ok) console.warn("[cards] art_url unavailable, is migration 0035 applied?");
+    }
+    if (!r.ok) {
+      console.error(`[cards] could not read the card catalog (${r.status})`);
+      return [];
+    }
+    const raw = (await r.json().catch(() => [])) as (CardProduct & { art_url?: string | null })[];
+    return (Array.isArray(raw) ? raw : []).map((p) => ({ ...p, art_url: p.art_url ?? null }));
+  } catch {
+    console.error("[cards] read threw for the card catalog");
+    return [];
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -155,9 +186,7 @@ export default async function handler(req: Request): Promise<Response> {
   const [items, confirmations, productRows, earnRows, benefitRows, txns, uses] = await Promise.all([
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
     readConfirmations(uid),
-    rows<CardProduct & { status?: string }>(
-      "card_products?status=eq.active&select=id,issuer,network,name,annual_fee,brand_color," +
-      "rewards_currency,point_value_cents,base_multiplier,base_unit,source_url,as_of,verified", "the card catalog"),
+    readCatalog(),
     rows<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
       "earn rates"),
@@ -193,6 +222,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (!accounts.length) {
     return json({ linked: false, cards: [], unidentified: [], guide: [], switches: [], upgrades: [], benefits: null });
   }
+
+  // Kept apart from `products` because the pure module's CardProduct has no art:
+  // art is a presentation fact and api/_rewards.ts should not learn about it.
+  const artById = new Map<string, string | null>(
+    productRows.map((p) => [p.id, (p as { art_url?: string | null }).art_url ?? null]),
+  );
+  const artOf = (id: string) => artById.get(id) ?? null;
 
   const products = new Map<string, CardProduct>(
     productRows.map((p) => [p.id, {
@@ -251,6 +287,7 @@ export default async function handler(req: Request): Promise<Response> {
         product_id: c.product.id, name: c.product.name, issuer: c.product.issuer,
         annual_fee: Number(c.product.annual_fee) || 0,
         rewards_currency: c.product.rewards_currency, brand_color: c.product.brand_color,
+        art_url: artOf(c.product.id),
         confidence: Number(c.confidence.toFixed(3)),
       })),
     }));
@@ -350,6 +387,7 @@ export default async function handler(req: Request): Promise<Response> {
           rewards_currency: p.rewards_currency,
           point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
           source_url: p.source_url, as_of: p.as_of, verified: p.verified,
+          art_url: artOf(p.id),
         } : null,
       };
     }),
@@ -418,6 +456,7 @@ export default async function handler(req: Request): Promise<Response> {
       // script proves.
       short_name: shortCardName(p.name, p.issuer),
       network: p.network,
+      art_url: artOf(p.id),
     })),
   });
 }
