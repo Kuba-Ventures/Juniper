@@ -309,10 +309,19 @@ rationale in `docs/CARD_REWARDS.md`.
   because one is a fact and the other is a claim. And it **never reaches the Juniper Score**:
   `_finance-snapshot.ts` reads bank-reported limits only and carries a comment saying not to join
   `member_cards` in, since otherwise anybody could raise their own score by typing a generous number.
-- [ ] **(ops)** Apply `0033` to the production Supabase project. No backfill statement is needed:
-  `product_answered DEFAULT TRUE` is already correct for every row that predates it. A deploy landing
-  ahead of it degrades safely, but only because `readConfirmations` treats the new columns as optional
-  and retries without them.
+- [x] **(ops)** Applied `0033` to the production Supabase project on 2026-08-31 (Finley), and verified
+  from `information_schema`: `credit_limit` numeric, `credit_limit_set_at` timestamptz, and
+  `product_answered` boolean defaulting to `true`, which is the value the no-backfill argument rests on.
+  The migration tree is now 0001 to 0033. #225's code was already deployed at the time, which was safe
+  only because `readConfirmations` treats the new columns as optional and retries without them.
+- [ ] **Set a limit on a real card and confirm the Identify prompt still counts it.** The one assumption
+  in #211 that has never touched Postgres: `product_answered` is written FALSE only when a limit
+  CREATES the row, so setting a limit on an unidentified card must leave it in the Identify queue. If it
+  is wrong the card silently leaves that queue and never gets its rewards data, with nothing on screen
+  to explain why. Capital One ····5012 is the card to try it on, since it reports no limit and is not
+  yet identified. Also worth checking on the same pass: the row reads "$328 of $8,000 limit" with a
+  "You set this" badge, and the utilization line picks the card up and says one of its limits came from
+  the member - Finley
 - [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
   done every member sees the "not yet re-checked" caveat.
