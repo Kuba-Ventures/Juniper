@@ -1,0 +1,361 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set a credit limit, variants (#211)</title>
+<!-- The real stylesheet, linked and NOT copied, so a treatment cannot drift from
+     what the app ships. The cost of that, learned on #168: an invented class
+     name can silently collide with a real one, and `.sw` and `.hero` both did.
+     Everything proposed here is prefixed `cl-` (credit limit), checked against
+     juniper.css for collisions before a line of it was written. Anything `cr-`
+     below already exists and ships today. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:82ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.65;margin:16px 0 26px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:40px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 14px;max-width:92ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+
+/* Shipped classes this preview leans on, reproduced ONLY where the real
+   stylesheet needs a card row and the preview has no React to build one.
+   `.card-row`, `.util-hero`, `.bar`, `.eyebrow` are all real. */
+
+/* ── proposed: the "set a limit" affordance ────────────────────────────────── */
+
+/* The link on a row whose bank reports no limit. Deliberately a plain text
+   button rather than a filled control: there can be two or three of these on one
+   card list, and three buttons competing with the Identify prompt above them
+   would make the page read as a list of chores. */
+.cl-set{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.cl-set:hover{color:var(--jnpr-ink)}
+
+/* The inline editor. Sized to the number, not to the row: a credit limit is four
+   or five digits and a full-width field would imply a sentence. */
+.cl-form{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+.cl-in{font:inherit;font-size:13px;color:var(--jnpr-ink);background:var(--jnpr-surface-2);
+  border:1px solid var(--jnpr-line);border-radius:8px;padding:6px 9px;outline:0;width:110px;
+  font-variant-numeric:tabular-nums;text-align:right}
+.cl-in:focus{border-color:var(--jnpr-accent)}
+.cl-cur{font-size:12px;color:var(--jnpr-ink-3);font-weight:650}
+.cl-btn{font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--jnpr-accent);background:var(--jnpr-accent);color:var(--jnpr-surface)}
+.cl-btn.ghost{background:none;border-color:var(--jnpr-line);color:var(--jnpr-ink-2)}
+/* A SIBLING of .cl-form, not a flex item inside it. As an item with
+   `flex-basis:100%` it still refused to wrap onto its own line, because flex
+   line-breaking measures the item's hypothetical size AFTER max-width clamps it,
+   so `max-width:64ch` (443px) fitted in the space left beside the buttons. Two
+   CSS attempts missed that; moving it out of the flex row cannot miss it. */
+.cl-hint{font-size:11px;color:var(--jnpr-ink-3);line-height:1.55;max-width:64ch;margin-top:8px}
+
+/* The badge on a limit the MEMBER supplied. This is the load-bearing piece of
+   this whole feature: a number somebody typed must never be indistinguishable
+   from a number their bank reported, because the first is a claim and the second
+   is a fact, and utilization built on the two is not the same figure. */
+.cl-mine{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--jnpr-ink-3);
+  background:var(--jnpr-surface-3);border-radius:20px;padding:1px 7px;vertical-align:middle}
+
+/* The queue prompt, treatment B. Same shape as the shipped `.cr-cc` identify
+   prompt so two prompts cannot look like two different kinds of thing. */
+.cl-q{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface-2);border-radius:var(--jnpr-r-sm);padding:14px 16px;margin-bottom:16px}
+.cl-q-b{flex:1;min-width:220px}
+.cl-q-h{font-size:13.5px;font-weight:650;color:var(--jnpr-ink);margin:0}
+.cl-q-d{font-size:11.5px;color:var(--jnpr-ink-2);margin:4px 0 0;line-height:1.6;max-width:74ch}
+.cl-q-ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:17px;
+  background:var(--jnpr-surface-3);flex:0 0 auto}
+
+/* The dialog, treatment B */
+.cl-dlg{max-width:460px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);
+  background:var(--jnpr-surface);padding:18px;box-shadow:0 18px 44px -18px rgba(0,0,0,.4)}
+.cl-dlg h3{font-size:15px;margin:0 0 5px}
+.cl-dlg-s{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;margin:0}
+.cl-dlg-row{display:flex;align-items:center;gap:12px;padding:14px 0;
+  border-top:1px solid var(--jnpr-line-2);margin-top:14px}
+.cl-dlg-n{flex:1;min-width:0}
+.cl-dlg-nn{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.cl-dlg-ns{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
+.cl-prog{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin-top:14px}
+
+/* The hero-line control, treatment C */
+.cl-excl{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+.cl-panel{margin-top:14px;padding-top:14px;border-top:1px dashed var(--jnpr-line-2)}
+.cl-panel-h{font-size:12px;font-weight:650;color:var(--jnpr-ink-2);margin-bottom:10px}
+.cl-panel-row{display:flex;align-items:center;gap:12px;padding:9px 0;flex-wrap:wrap}
+.cl-panel-row + .cl-panel-row{border-top:1px solid var(--jnpr-line-2)}
+.cl-panel-n{flex:1;min-width:160px;font-size:12.5px;color:var(--jnpr-ink)}
+.cl-panel-n span{display:block;font-size:11px;color:var(--jnpr-ink-3);margin-top:2px}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+
+<div class="pv-head">
+  <div>
+    <div class="pv-title">Setting a credit limit your bank does not report, three treatments (issue #211)</div>
+    <div class="pv-sub">
+      Real state from production: Chase reports a $9,000 limit, Capital One ····5012 ($328 owed) and
+      Discover ····2776 ($0 owed) report none, so overall utilization is built from one card and says
+      "2 more excluded for reporting no limit". All three treatments let the member supply the two
+      missing numbers. What differs is where the control lives.
+    </div>
+  </div>
+  <button class="pv-toggle" id="t">Light / dark</button>
+</div>
+
+<div class="pv-flag">
+  <b>Two rules hold in all three, and the second one is the reason this is not just a text field.</b><br>
+  <b>1. A limit you typed is never drawn as a limit your bank reported.</b> It carries a "You set this"
+  badge everywhere it appears, and the utilization line says how many of its limits came from you. The
+  two are different kinds of number: one is a fact, the other is a claim, and a percentage built from a
+  mix of them is only as good as the claim.<br>
+  <b>2. It does not touch your Juniper Score.</b> The Score's credit factor is computed from
+  bank-reported limits only, deliberately, so nobody can move their own score by typing a generous
+  number. If every limit on a card is self-reported, that factor stays unmeasured and the Score keeps
+  saying so, which is the behaviour #146 built.
+</div>
+
+<!-- ══ A ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">A</span> Inline on the row that is missing it</div>
+  <div class="pv-note">
+    <b>The control sits exactly where the gap is stated.</b> "limit not reported" gains a "Set limit"
+    link, and the row expands into a field in place. Cheapest to build, nothing new above the fold, and
+    the member is looking at the card's name and mask while they type, which is what stops them entering
+    the Chase limit against the Capital One row. The trade: with three unlimited cards there are three
+    separate links and no single place that says "you have two of these to do".
+  </div>
+
+  <div class="card pad-lg">
+    <div class="card-head"><h3>Credit cards</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">3 cards</span></div>
+
+    <div class="util-hero">
+      <div>
+        <div class="eyebrow">Overall utilization</div>
+        <div class="big tnum">6%</div>
+        <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px">
+          $533 of $9,000 across 1 card, 2 more excluded for reporting no limit
+        </div>
+      </div>
+      <div class="ub">
+        <div class="bar" style="height:10px"><i style="width:6%;background:var(--jnpr-accent)"></i></div>
+        <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:7px">
+          Scoring models generally favor staying under 30% of your limit.
+        </div>
+      </div>
+    </div>
+
+    <div class="card-row">
+      <div class="tile" style="background:#1152A0">C</div>
+      <div class="ci">
+        <div class="cn">Chase &middot; Ultimate Rewards&reg;</div>
+        <div class="csub">&middot;&middot;&middot;&middot;1575 &middot; $533 of $9,000 limit</div>
+      </div>
+      <div class="util">
+        <div class="ut"><span>Used</span><span>6%</span></div>
+        <div class="bar"><i style="width:6%;background:var(--jnpr-accent)"></i></div>
+      </div>
+    </div>
+
+    <!-- closed state -->
+    <div class="card-row">
+      <div class="tile" style="background:#8C8F94">C</div>
+      <div class="ci">
+        <div class="cn">Capital One &middot; Quicksilver</div>
+        <div class="csub">
+          &middot;&middot;&middot;&middot;5012 &middot; $328 owed, limit not reported &middot;
+          <button class="cl-set" type="button">Set limit</button>
+        </div>
+      </div>
+      <div class="util"><div class="ut"><span>Used</span><span>Unknown</span></div></div>
+    </div>
+
+    <!-- open state -->
+    <div class="card-row">
+      <div class="tile" style="background:#4A5560">D</div>
+      <div class="ci">
+        <div class="cn">Discover &middot; Discover it chrome Card</div>
+        <div class="csub">&middot;&middot;&middot;&middot;2776 &middot; $0 owed, limit not reported</div>
+        <div class="cl-form">
+          <span class="cl-cur">$</span>
+          <input class="cl-in" type="text" inputmode="numeric" value="4,500" aria-label="Credit limit">
+          <button class="cl-btn" type="button">Save</button>
+          <button class="cl-btn ghost" type="button">Cancel</button>
+        </div>
+        <div class="cl-hint">
+            The limit printed on your statement or in your issuer's app. Juniper cannot read it, so this
+            is your number and it is labelled as yours wherever it appears.
+        </div>
+      </div>
+      <div class="util"><div class="ut"><span>Used</span><span>Unknown</span></div></div>
+    </div>
+
+    <!-- saved state -->
+    <div class="card-row">
+      <div class="tile" style="background:#B5121B">W</div>
+      <div class="ci">
+        <div class="cn">Wells Fargo &middot; Active Cash</div>
+        <div class="csub">
+          &middot;&middot;&middot;&middot;3391 &middot; $612 of $5,000 limit
+          <span class="cl-mine">You set this</span>
+          &middot; <button class="cl-set" type="button">Change</button>
+        </div>
+      </div>
+      <div class="util">
+        <div class="ut"><span>Used</span><span class="hi">12%</span></div>
+        <div class="bar"><i style="width:12%;background:var(--jnpr-accent)"></i></div>
+      </div>
+    </div>
+
+    <div class="cr-prov">
+      Utilization above counts 2 of your 4 cards, and 1 of those limits is one you set rather than one
+      your bank reported. Your Juniper Score uses bank-reported limits only.
+    </div>
+  </div>
+</div>
+
+<!-- ══ B ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">B</span> A prompt and a queue, matching the Identify flow</div>
+  <div class="pv-note">
+    <b>One thing to do, and it walks the cards for you.</b> The same shape as the Identify prompt
+    shipped in #168, sitting under it, with a dialog that moves to the next card on save. Best when
+    several cards are missing a limit, and it makes the work countable ("2 cards"). The trade, and it is
+    a real one: this page would then carry <b>two</b> prompt banners stacked, and a member who has just
+    linked their banks would be met with a list of chores before they see any of their own money.
+  </div>
+
+  <div class="cr-cc">
+    <span class="cr-face cr-face-md cr-face-unk"><span class="cr-face-in">
+      <span class="cr-face-nm">Which card?</span></span></span>
+    <div class="cr-cc-b">
+      <h3 class="cr-cc-h">Identify 3 of your cards</h3>
+      <p class="cr-cc-d">Your bank tells Juniper the account name and not the product, so it cannot tell
+        what these cards earn until you confirm them. Starting with Capital One &middot;&middot;&middot;&middot;5012.</p>
+    </div>
+    <div class="cr-cc-act"><button class="btn" type="button">Identify cards</button></div>
+  </div>
+
+  <div class="cl-q">
+    <div class="cl-q-ico" aria-hidden="true">&#128290;</div>
+    <div class="cl-q-b">
+      <h3 class="cl-q-h">2 cards are missing a credit limit</h3>
+      <p class="cl-q-d">Capital One and Discover do not report one, so neither counts toward your
+        utilization. Add the limits from your statements and both will.</p>
+    </div>
+    <div class="cr-cc-act"><button class="btn" type="button">Add limits</button></div>
+  </div>
+
+  <div class="cl-dlg">
+    <h3>What is the limit on this card?</h3>
+    <p class="cl-dlg-s">Capital One does not report a limit for this account, so Juniper cannot work out
+      how much of it you are using.</p>
+    <div class="cl-dlg-row">
+      <span class="cr-face cr-face-md" style="background:#8C8F94"><span class="cr-face-in">
+        <span class="cr-face-nm">Quicksilver</span>
+        <span class="cr-face-ft"><span class="cr-face-chip"></span><span>&middot;&middot;&middot;&middot;5012</span></span></span></span>
+      <div class="cl-dlg-n">
+        <div class="cl-dlg-nn">Capital One Quicksilver</div>
+        <div class="cl-dlg-ns">&middot;&middot;&middot;&middot;5012 &middot; $328 owed</div>
+      </div>
+    </div>
+    <div class="cl-form">
+      <span class="cl-cur">$</span>
+      <input class="cl-in" type="text" inputmode="numeric" placeholder="8,000" aria-label="Credit limit">
+      <button class="cl-btn" type="button">Save and next</button>
+      <button class="cl-btn ghost" type="button">Skip this card</button>
+    </div>
+    <div class="cl-hint">
+        Found on your statement or in the Capital One app. Juniper cannot read it, so this is your number
+        and it will be labelled as yours.
+    </div>
+    <div class="cl-prog">Card 1 of 2</div>
+  </div>
+</div>
+
+<!-- ══ C ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">C</span> Where the consequence is already stated</div>
+  <div class="pv-note">
+    <b>The exclusion line becomes the control.</b> "2 more excluded for reporting no limit" is already
+    the sentence that tells the member something is missing and already the only place the cost of it is
+    visible, so it gains a link that opens both cards in one small panel under the hero. No new banner,
+    no per-row links, and the fix sits next to the number it fixes. The trade: it is the least
+    discoverable of the three, because nobody reads the small print under a big percentage until they
+    are already wondering why it looks wrong.
+  </div>
+
+  <div class="card pad-lg">
+    <div class="card-head"><h3>Credit cards</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">3 cards</span></div>
+
+    <div class="util-hero">
+      <div>
+        <div class="eyebrow">Overall utilization</div>
+        <div class="big tnum">6%</div>
+        <div class="cl-excl">
+          $533 of $9,000 across 1 card, 2 more excluded for reporting no limit &middot;
+          <button class="cl-set" type="button">Add their limits</button>
+        </div>
+      </div>
+      <div class="ub">
+        <div class="bar" style="height:10px"><i style="width:6%;background:var(--jnpr-accent)"></i></div>
+        <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:7px">
+          Scoring models generally favor staying under 30% of your limit.
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-panel">
+      <div class="cl-panel-h">Add a limit for the 2 cards your banks do not report one for</div>
+      <div class="cl-panel-row">
+        <div class="cl-panel-n">Capital One Quicksilver<span>&middot;&middot;&middot;&middot;5012 &middot; $328 owed</span></div>
+        <span class="cl-cur">$</span>
+        <input class="cl-in" type="text" inputmode="numeric" placeholder="Limit" aria-label="Capital One limit">
+      </div>
+      <div class="cl-panel-row">
+        <div class="cl-panel-n">Discover it chrome Card<span>&middot;&middot;&middot;&middot;2776 &middot; $0 owed</span></div>
+        <span class="cl-cur">$</span>
+        <input class="cl-in" type="text" inputmode="numeric" value="4,500" aria-label="Discover limit">
+      </div>
+      <div class="cl-form" style="margin-top:12px">
+        <button class="cl-btn" type="button">Save limits</button>
+        <button class="cl-btn ghost" type="button">Cancel</button>
+      </div>
+      <div class="cl-hint">
+          Each limit is printed on that card's statement. Juniper cannot read them, so these are your
+          numbers and each will be labelled as yours. Leave one blank to skip it.
+      </div>
+    </div>
+
+    <div class="cr-prov">
+      Your Juniper Score's credit factor uses bank-reported limits only, so a limit you add here changes
+      this page and not your score.
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+document.getElementById('t').onclick = () => document.documentElement.classList.toggle('dark');
+</script>
+</body>
+</html>

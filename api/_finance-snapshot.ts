@@ -123,6 +123,19 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // across only the cards that report a limit so the ratio stays consistent: a
   // card with a balance and no limit would otherwise inflate it, and a card with
   // a limit and no balance is legitimately 0% of that line.
+  //
+  // BANK-REPORTED LIMITS ONLY, and this is load-bearing rather than incidental.
+  // Since #211 a member can supply a limit for a card their issuer does not
+  // report one for (`member_cards.credit_limit`), and that number is shown on the
+  // Credit page with a "You set this" badge. It is deliberately NOT read here.
+  // This utilization feeds the Juniper Score's credit factor at weight 0.15, and
+  // the Score is a figure Juniper asserts about the member: folding in a
+  // self-reported denominator would let anybody raise their own score by typing
+  // a generous number, with nothing on screen to show why it moved. #146 removed
+  // a flat placeholder from this same factor for the same reason, and a null
+  // factor renormalizes the remaining weights, so a member whose only limits are
+  // self-reported correctly gets an unmeasured credit factor rather than a
+  // flattering one. Do not "helpfully" join member_cards in here.
   let utilBalance = 0, utilLimit = 0;
   for (const it of items) {
     for (const a of it.accounts || []) {

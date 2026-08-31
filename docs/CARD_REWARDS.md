@@ -1,6 +1,7 @@
 # Card rewards on the Credit page
 
-**Status:** built and shipped behind two unapplied migrations. Issue #168.
+**Status:** #168 shipped and live (migrations 0031 and 0032 applied 2026-08-31). #211, setting a limit
+the bank does not report, is built behind migration 0033.
 **Date:** 2026-08-31
 **What it is:** the four things #168 asked for, in Juniper's own design system: identify which card each
 linked account is, a per-category rewards earning guide, a benefits tracker, and recommendations.
@@ -212,6 +213,71 @@ holds the card, which is this surface's entire audience.
 **The catalog is 10 cards.** Common US cards, not all of them, which is why "my card is not listed" is
 a first-class answer stored as a row rather than a dismissal.
 
+## Setting a limit the bank does not report (issue #211)
+
+**Design record:** `design/credit-limit-variants.html`, three treatments, A chosen (the control sits
+inline on the row that states the gap).
+
+Plaid returns `balances.limit` only when the issuer sends it, and plenty do not. On this member's real
+production data Chase reports $9,000 while Capital One and Discover report nothing, so utilization was
+computed from one card of three and the page said so. The limit is printed on their statement, so they
+can supply it. `member_cards.credit_limit` holds it (migration 0033).
+
+### The two rules
+
+**A limit the member typed is never drawn like one the bank reported.** It carries a "You set this"
+badge on the row, and the utilization figure states how many of its limits came from the member. One is
+a fact and the other is a claim; a percentage mixing them is only as good as the claim, and a member
+who has forgotten they set one would otherwise have no way to know the figure rests on it.
+
+**It never reaches the Juniper Score.** `api/_finance-snapshot.ts` computes `creditUtilization` from
+`plaid_items` only and carries a comment saying not to join `member_cards` in. Otherwise anybody could
+raise their own Score by typing a generous number, with nothing on screen to show why it moved. A
+member whose only limits are self-reported correctly gets an unmeasured credit factor and the
+renormalized weights #146 built, rather than a flattering one.
+
+### Three things that were not obvious
+
+**`product_answered` had to exist.** #168 read "a row exists for this account" as "the member has
+answered which product this is", which was sound while a row could only be created by answering.
+`product_id IS NULL` is itself a real answer there ("not in your catalog"), so row existence was the
+only thing separating that from "never asked". Once a row can be created purely to hold a limit, the
+inference breaks in the worst direction: the Identify prompt would decide the member had answered and
+stop asking. `DEFAULT TRUE` is why 0033 needs no backfill, since every row predating it came from a
+product answer.
+
+**Every write in `api/member-cards.ts` moved off `merge-duplicates`.** That upsert replaces the row
+rather than patching it, and `member_cards` now holds two independent facts, so saving a product answer
+would have wiped a limit and vice versa, silently. Restating every column on each write is the other
+fix and it is the fragile one: correct only until somebody adds a third column and forgets.
+`patchOrInsert` patches what it names, and its `insertOnly` argument is what lets a limit create a row
+without claiming the product question was answered.
+
+**`forget` no longer deletes the row unconditionally.** "Change which card this is" would otherwise
+discard a limit the member had set on the same card. It now clears the product answer and keeps the
+row when a limit is present.
+
+### The control is offered only where there is something to answer
+
+A card whose bank reports a limit gets no "set your own" affordance. `limitOf` gives the bank's number
+precedence, so a member limit on such a card would be stored and change nothing on screen, which is
+worse than an absent control. Written as explicit precedence rather than `??` so that if an issuer ever
+starts reporting a limit for a card the member had already answered for, the bank's number takes over:
+it is the fact, and theirs was a stand-in for its absence.
+
+### Not verified
+
+- **`product_answered` has not been exercised against a database.** It is the highest-risk item here:
+  if setting a limit on an unidentified card wrongly marked it answered, that card would silently drop
+  out of the Identify queue and never get its rewards data. The logic and the `DEFAULT TRUE` are the
+  guard; nothing has run against Postgres.
+- **The server's number parsing is only exercised by a stub.** The field accepts "$8,000" and the
+  server strips `$`, commas and whitespace, rejects non-numbers and anything over 10,000,000, and
+  rounds to cents. The browser check used a stub mirroring that regex, not the endpoint.
+- **`credit_limit_set_at` is stored and not yet shown.** A limit goes stale when an issuer raises one
+  and Juniper will never hear about it, so the column is there for a "you set this in August" line that
+  is not built.
+
 ## Ops to activate
 
 1. Apply `supabase/migrations/0031_card_products.sql` (tables, RLS, grants).
@@ -219,8 +285,20 @@ a first-class answer stored as a row rather than a dismissal.
    `ON CONFLICT DO NOTHING`, not `DO UPDATE`, so a re-run cannot overwrite a row somebody has verified
    by hand and reset its `as_of` to a date nobody checked. Correcting a seeded row is a later migration
    that names it.
-3. Nothing else. The endpoints degrade to "no cards identified yet" when the tables are absent, which
+3. Apply `supabase/migrations/0033_member_card_limit.sql` (#211: `credit_limit`,
+   `credit_limit_set_at`, `product_answered` on `member_cards`). No backfill statement, because
+   `product_answered DEFAULT TRUE` is already correct for every row that predates it.
+4. Nothing else. The endpoints degrade to "no cards identified yet" when the tables are absent, which
    renders the same prompt a new member sees, so a deploy that lands ahead of the migrations is safe.
+
+**A deploy landing ahead of 0033 is safe, but only because it is handled explicitly.** PostgREST
+rejects the whole select on one unknown column, and the generic `rows()` helper turns any failure into
+an empty array, so the naive version of this would have been worse than quiet: with no confirmations,
+every card looks unidentified, and a member who had already identified their cards would find them back
+in the Identify queue with their rewards data gone. `readConfirmations` therefore requests the #211
+columns as optional and retries without them, the same shape as the per-item health columns in
+`api/plaid/accounts.ts`, and defaults `product_answered` to TRUE when absent because every row
+predating 0033 came from a product answer.
 
 ## Not verified
 

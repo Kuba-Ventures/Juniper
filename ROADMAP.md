@@ -295,8 +295,24 @@ rationale in `docs/CARD_REWARDS.md`.
   "Cards that would beat yours" names catalog cards they do not hold and **carries no URL**, because
   every affiliate link here is still a placeholder and a credit-card application is the category where
   that matters most (`docs/CREDIT_PROVIDER.md` section 4).
-- [ ] **(ops)** Apply `0031` and `0032` to the production Supabase project. The endpoints degrade to
-  "no cards identified yet" while the tables are absent, so a deploy ahead of the migrations is safe.
+- [x] **(ops)** Applied `0031` and `0032` to the production Supabase project on 2026-08-31 (Finley),
+  verified at 10 products / 18 earn rows / 36 benefits. The surface is live: a production screenshot on
+  issue #211 shows the Identify prompt rendering and the Chase, Capital One and Discover institution
+  marks resolving.
+- [x] **(build)** **A limit the bank does not report can be set by the member** (issue #211, migration
+  `0033_member_card_limit.sql`). Plaid returns `balances.limit` only when the issuer sends it, and on
+  real production data Chase reports $9,000 while Capital One and Discover report nothing, so
+  utilization was computed from one card of three. Treatment A of three
+  (`design/credit-limit-variants.html`): the control sits inline on the row that states the gap, so the
+  member is looking at that card's name and mask while they type. Two rules hold. A limit they typed
+  carries a "You set this" badge and the utilization figure says how many of its limits came from them,
+  because one is a fact and the other is a claim. And it **never reaches the Juniper Score**:
+  `_finance-snapshot.ts` reads bank-reported limits only and carries a comment saying not to join
+  `member_cards` in, since otherwise anybody could raise their own score by typing a generous number.
+- [ ] **(ops)** Apply `0033` to the production Supabase project. No backfill statement is needed:
+  `product_answered DEFAULT TRUE` is already correct for every row that predates it. A deploy landing
+  ahead of it degrades safely, but only because `readConfirmations` treats the new columns as optional
+  and retries without them.
 - [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
   done every member sees the "not yet re-checked" caveat.
