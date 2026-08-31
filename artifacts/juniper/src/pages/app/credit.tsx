@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
+import { forgetCard, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
+import { RewardsGuide } from "@/components/juniper/rewards-guide";
+import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
+import { CardSwitches } from "@/components/juniper/card-switches";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -28,6 +33,32 @@ import { resolveInstitutionMark } from "@/lib/institution-brand";
 // APR is not shown. Plaid only returns card APRs under the `liabilities` product,
 // and PLAID_PRODUCTS is `transactions` (see api/_plaid.ts), so there is no honest
 // source for a rate. The old page printed one anyway.
+//
+// ── THE REWARDS SURFACE BELOW (issue #168) ─────────────────────────────────
+//
+// Treatment A of three, rendered in design/card-rewards-variants.html: identify
+// each card, then a per-category earning guide, a benefits checklist, and what
+// the wrong card is costing. It reads ONE endpoint, /api/card-rewards, which
+// computes all of it server-side through the pure api/_rewards.ts (checked by
+// scripts/src/check-rewards.ts). Nothing on the client does rewards arithmetic,
+// so there is no second answer to "what is this worth a year".
+//
+// THREE FETCHES ON THIS PAGE, AND EACH ONE EARNS ITS PLACE, which is worth
+// saying because it looks like sloppiness:
+//   - fetchPlaidItems, for the balances and LIMITS the utilization card needs
+//     (the reason for the exception documented above).
+//   - fetchInstitutionLogos, for the marks, which is a separate endpoint by
+//     design so it can be cached per institution and fail silently.
+//   - /api/card-rewards, which needs the member's taxonomy, their per-account
+//     spend and the catalog joined together, none of which the other two carry.
+// Collapsing them means widening the /api/finances rollup with `limit` and with
+// per-account spend, which is the follow-up this page has been waiting on since
+// #132 and is deliberately not attempted here.
+//
+// The rewards sections render NOTHING until a card is identified, and that is not
+// an empty state, it is the honest one: Plaid does not say which product an
+// account is, so until the member confirms, Juniper has no rates to show and says
+// so through the identify prompt instead of guessing. See card-identify.tsx.
 
 type LinkedCard = {
   key: string;
@@ -200,7 +231,23 @@ function CardMark({ card, brands }: { card: LinkedCard; brands: InstitutionBrand
   );
 }
 
-function CardRow({ card, brands }: { card: LinkedCard; brands: InstitutionBrandMap | null }) {
+function CardRow({
+  card, brands, identified, onChange,
+}: {
+  card: LinkedCard;
+  brands: InstitutionBrandMap | null;
+  /** What the member said this card is, once they have said. Null covers both
+      "not asked yet" and "they told us it is not in the catalog", which the
+      identify prompt above already distinguishes; on this row the only useful
+      thing to draw is a product name or nothing. */
+  identified: string | null;
+  /** Undo the identification, which puts the card back in the identify queue.
+      This exists because the picker is a member's answer and a member can get it
+      wrong: two Chase cards with the same mask-less "CREDIT CARD" name are easy
+      to mix up, and without a way back the wrong rates would sit on their
+      spending permanently, quoting confident figures off the wrong product. */
+  onChange: () => void;
+}) {
   const used = card.limit != null ? pct(card.balance, card.limit) : null;
   return (
     <div className="card-row">
@@ -212,6 +259,12 @@ function CardRow({ card, brands }: { card: LinkedCard; brands: InstitutionBrandM
           {money(card.balance, card.currency)}
           {card.limit != null ? <> of {money(card.limit, card.currency)} limit</> : <> owed, limit not reported</>}
         </div>
+        {identified && (
+          <div className="cr-row-id">
+            {identified}
+            <button type="button" className="cr-row-change" onClick={onChange}>Change</button>
+          </div>
+        )}
       </div>
       <div className="util">
         {used != null ? (
@@ -232,6 +285,26 @@ function CardRow({ card, brands }: { card: LinkedCard; brands: InstitutionBrandM
 export function Credit() {
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
+  const rewards = useCardRewards();
+
+  // account id -> the product the member said it is. Built from the rewards
+  // payload rather than fetched again, so the two halves of this page cannot
+  // disagree about which card is which.
+  const identifiedNames = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of rewards.data?.cards ?? []) {
+      if (c.product) m.set(c.plaid_account_id, c.product.name);
+    }
+    return m;
+  }, [rewards.data]);
+
+  const unidentify = async (accountId: string) => {
+    // Forget, then re-read. Deleting the row is what returns the account to the
+    // identify queue, and the prompt at the top of the page picks it up on the
+    // next render; a local edit would have to reproduce the whole server
+    // computation to keep the guide, the tracker and the switch ideas consistent.
+    if (await forgetCard(accountId)) await rewards.refresh();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -260,6 +333,17 @@ export function Credit() {
 
       <ScorePending />
 
+      {/* Above the cards, because it is the one thing on this page with something
+          for the member to DO, and because every section below it is gated on the
+          answer. */}
+      {rewards.data && (
+        <CardIdentifyPrompt
+          cards={rewards.data.unidentified}
+          catalog={rewards.data.catalog}
+          onSaved={() => void rewards.refresh()}
+        />
+      )}
+
       {cards == null ? (
         <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
       ) : cards.length === 0 ? (
@@ -273,9 +357,54 @@ export function Credit() {
             </span>
           </div>
           <OverallUtilization cards={cards} />
-          {cards.map((c) => <CardRow card={c} brands={brands} key={c.key} />)}
+          {cards.map((c) => (
+            <CardRow
+              card={c}
+              brands={brands}
+              identified={identifiedNames.get(c.key) ?? null}
+              onChange={() => void unidentify(c.key)}
+              key={c.key}
+            />
+          ))}
         </div>
+      )}
+
+      {/* Order is deliberate: the guide is the reference somebody reads, the
+          tracker is the thing they act on repeatedly, and the switch ideas are
+          the money. The guide goes first anyway, because a recommendation to move
+          a category reads as arbitrary until you have seen the rate table it came
+          from, and this surface can least afford to look like it is guessing. */}
+      {rewards.data && (
+        <>
+          <RewardsGuide data={rewards.data} logoFor={rewardsLogo(brands)} />
+          {rewards.data.benefits && (
+            <BenefitsTracker
+              summary={rewards.data.benefits}
+              cardCount={rewards.data.cards.filter((c) => c.product).length}
+              periods={rewards.data.provenance.periods}
+              onChanged={() => void rewards.refresh()}
+            />
+          )}
+          <CardSwitches data={rewards.data} />
+        </>
       )}
     </div>
   );
+}
+
+// The institution mark for a rewards card, resolved through the SAME chain the
+// card rows above use (`resolveInstitutionMark`: Plaid's logo, then bundled brand
+// art, then a monogram). A second resolution here would be a second fallback
+// ladder, which is exactly what institution-brand.ts exists to prevent.
+//
+// Only a real logo is returned. A card face already carries the brand colour and
+// the product name, so a monogram letter on top of it would be a third mark in
+// one small box; falling through to nothing is the right answer here even though
+// it is the wrong answer on a list row.
+function rewardsLogo(brands: InstitutionBrandMap | null) {
+  return (card: RewardsCard): string | null => {
+    const brand = card.institution_id ? brands?.[card.institution_id] : null;
+    const mark = resolveInstitutionMark(card.institution, brand);
+    return mark.kind === "logo" ? mark.src : null;
+  };
 }

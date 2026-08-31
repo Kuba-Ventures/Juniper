@@ -1,0 +1,752 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card rewards variants (#168)</title>
+<!-- The real stylesheet, linked and NOT copied, the same call #222 made: a second
+     copy of juniper.css in this folder would drift from the one the app ships,
+     and the whole point of a treatment set is that it looks like the product.
+     Relative path, so this file opens straight from disk. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+/* Preview scaffolding and proposed classes. Nothing below exists in the app yet. */
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:80ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.65;margin:16px 0 26px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:40px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 14px;max-width:90ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+
+/* ── NAMESPACE, and this is a finding rather than a style preference ─────────
+   This file links the SHIPPED juniper.css (see the head comment), which is what
+   makes a treatment set look like the product. The cost, discovered the hard way
+   while building this one: an invented class name can silently collide with a
+   real one. `.sw` is already the share-sheet switch and sets `width:10px`, and
+   `.hero` is already taken, so two of these treatments rendered as a column of
+   single words until both were renamed. `.cf` was not a collision but meant
+   "cashflow" everywhere else in that stylesheet, which is its own trap for the
+   next reader. Everything proposed here is therefore prefixed `cr-` (card
+   rewards), and the implementation should keep that prefix. */
+
+/* ── proposed: the synthesized card face ─────────────────────────────────────
+   Juniper does NOT ship issuer card art. Those images are trademarked and
+   licensed, and Credit Karma pays for the ones in the screenshots on #168. The
+   face below is drawn from the product's stored brand colour plus the issuer's
+   own logo as served by Plaid, which Juniper is already licensed for through its
+   Plaid agreement and already renders on Connections and on Credit today. */
+.cr-face{position:relative;border-radius:11px;overflow:hidden;color:#fff;flex:0 0 auto;
+  box-shadow:0 1px 2px rgba(0,0,0,.18),0 6px 18px -8px rgba(0,0,0,.35)}
+.cr-face::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(118deg,rgba(255,255,255,.20),rgba(255,255,255,0) 44%,rgba(0,0,0,.16))}
+.cr-face-lg{width:172px;height:108px}
+.cr-face-md{width:104px;height:66px}
+.cr-face-sm{width:58px;height:37px}
+.cr-face-in{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
+  justify-content:space-between;padding:10px 11px}
+.cr-face-sm .cr-face-in{padding:5px 6px}
+.cr-face-md .cr-face-in{padding:7px 8px}
+.cr-face-iss{display:block;font-size:9.5px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;opacity:.9}
+.cr-face-nm{display:block;font-size:11px;font-weight:650;line-height:1.25;letter-spacing:-.01em}
+.cr-face-md .cr-face-nm{font-size:9px}
+.cr-face-sm .cr-face-nm,.cr-face-sm .cr-face-iss{display:none}
+.cr-face-ft{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;font-size:9px;
+  font-variant-numeric:tabular-nums;opacity:.88;font-weight:600}
+.cr-face-chip{width:19px;height:14px;border-radius:3px;background:linear-gradient(135deg,#e8d9a8,#b99a4e);opacity:.92}
+.cr-face-sm .cr-face-chip{width:13px;height:10px}
+/* A face for a card the member has not identified yet: no colour to borrow, so
+   it is drawn as an outline rather than given an invented brand. */
+.cr-face-unk{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);border:1px dashed var(--jnpr-line);
+  box-shadow:none}
+.cr-face-unk::after{display:none}
+
+/* ── proposed: shared rewards classes ─────────────────────────────────────── */
+.rg-row{display:flex;align-items:flex-start;gap:13px;padding:14px 0;border-top:1px solid var(--jnpr-line-2)}
+.rg-row:first-of-type{border-top:0}
+.rg-ico{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:15px;
+  background:var(--jnpr-surface-3);flex:0 0 auto}
+.rg-body{flex:1;min-width:0}
+.rg-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rg-cat{font-size:13.5px;font-weight:650;color:var(--jnpr-ink)}
+.rg-rate{font-size:13.5px;font-weight:750;color:var(--jnpr-accent);font-variant-numeric:tabular-nums}
+.rg-card{font-size:12px;color:var(--jnpr-ink-2);margin-top:3px}
+.rg-fine{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:5px;line-height:1.55}
+.rg-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.rg-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;
+  border:1px solid var(--jnpr-line);border-radius:20px;padding:3px 9px 3px 4px;color:var(--jnpr-ink-2)}
+.rg-chip .cr-face{border-radius:4px}
+.rg-tie{border-color:color-mix(in srgb,var(--jnpr-accent) 40%,var(--jnpr-line));color:var(--jnpr-accent)}
+.rg-spend{font-size:11.5px;color:var(--jnpr-ink-3);font-variant-numeric:tabular-nums;
+  text-align:right;flex:0 0 auto;padding-top:2px}
+.rg-spend b{display:block;font-size:13px;color:var(--jnpr-ink-2);font-weight:700}
+
+/* assumption disclosure, the load-bearing piece of copy on this whole surface */
+.rw-assume{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
+  color:var(--jnpr-warn);background:var(--jnpr-warn-soft);border-radius:20px;padding:2px 8px;
+  letter-spacing:.01em;vertical-align:middle}
+.rw-prov{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin-top:14px;
+  padding-top:12px;border-top:1px dashed var(--jnpr-line-2)}
+.rw-prov a{color:var(--jnpr-accent)}
+
+/* benefits */
+.bt-grp{border-top:1px solid var(--jnpr-line-2);padding:12px 0}
+.bt-grp:first-of-type{border-top:0}
+.bt-gh{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:650;color:var(--jnpr-ink);
+  width:100%;background:none;border:0;font-family:inherit;padding:0;cursor:pointer;text-align:left}
+.bt-gh .n{margin-left:auto;font-size:11.5px;font-weight:650;color:var(--jnpr-ink-3);
+  font-variant-numeric:tabular-nums}
+.bt-b{display:flex;align-items:flex-start;gap:10px;padding:10px 0 10px 39px;font-size:12.5px}
+.bt-b + .bt-b{border-top:1px solid var(--jnpr-line-2)}
+.bt-tick{appearance:none;width:16px;height:16px;border-radius:5px;border:1.5px solid var(--jnpr-line);
+  background:var(--jnpr-surface-2);cursor:pointer;flex:0 0 auto;margin-top:1px;position:relative}
+.bt-tick:checked{background:var(--jnpr-good);border-color:var(--jnpr-good)}
+.bt-tick:checked::after{content:"";position:absolute;left:4.5px;top:1.5px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.bt-bn{font-weight:600;color:var(--jnpr-ink)}
+.bt-b.done .bt-bn{color:var(--jnpr-ink-3);text-decoration:line-through}
+.bt-bd{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px;line-height:1.55}
+.bt-val{margin-left:auto;font-size:12px;font-weight:700;color:var(--jnpr-ink-2);flex:0 0 auto;
+  font-variant-numeric:tabular-nums}
+.bt-per{font-size:10.5px;font-weight:650;color:var(--jnpr-ink-3);text-transform:uppercase;
+  letter-spacing:.06em;margin-left:7px}
+
+/* switch ideas */
+.cr-sw{display:flex;align-items:center;gap:13px;padding:14px 0;border-top:1px solid var(--jnpr-line-2)}
+.cr-sw:first-of-type{border-top:0}
+.cr-sw-arrow{color:var(--jnpr-ink-3);font-size:15px;flex:0 0 auto}
+.cr-sw-body{flex:1;min-width:0}
+.cr-sw-h{font-size:13.5px;font-weight:650;color:var(--jnpr-ink)}
+.cr-sw-d{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:4px;line-height:1.55}
+.cr-sw-gain{font-size:15px;font-weight:750;color:var(--jnpr-good);flex:0 0 auto;
+  font-variant-numeric:tabular-nums;text-align:right}
+.cr-sw-gain span{display:block;font-size:10.5px;font-weight:650;color:var(--jnpr-ink-3);
+  text-transform:uppercase;letter-spacing:.06em}
+
+/* confirm prompt */
+.cc{display:flex;align-items:center;gap:13px;border:1px solid color-mix(in srgb,var(--jnpr-accent) 30%,var(--jnpr-line));
+  background:var(--jnpr-accent-soft);border-radius:var(--jnpr-r-sm);padding:13px 15px;margin-bottom:16px}
+.cc-b{flex:1;min-width:0}
+.cc-h{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.cc-d{font-size:11.5px;color:var(--jnpr-ink-2);margin-top:3px;line-height:1.55}
+.cc-act{display:flex;gap:7px;flex:0 0 auto;flex-wrap:wrap}
+.btn-sm{font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink)}
+.btn-sm.pri{background:var(--jnpr-accent);border-color:var(--jnpr-accent);color:var(--jnpr-surface)}
+
+/* the picker dialog, shared by all three treatments */
+.pk{max-width:440px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);
+  background:var(--jnpr-surface);padding:18px;box-shadow:0 18px 44px -18px rgba(0,0,0,.4)}
+.pk-h{font-size:14px;font-weight:650;color:var(--jnpr-ink)}
+.pk-s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:4px;line-height:1.6}
+.pk-list{margin-top:13px;display:flex;flex-direction:column;gap:7px}
+.pk-o{display:flex;align-items:center;gap:11px;border:1px solid var(--jnpr-line);border-radius:9px;
+  padding:8px 10px;cursor:pointer;background:var(--jnpr-surface-2);width:100%;font-family:inherit;text-align:left}
+.pk-o:hover{border-color:var(--jnpr-accent)}
+.pk-o.top{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.pk-on{display:block;font-size:12.5px;font-weight:650;color:var(--jnpr-ink)}
+.pk-od{display:block;font-size:11px;color:var(--jnpr-ink-3);margin-top:2px}
+.pk-none{font-size:12px;font-weight:600;color:var(--jnpr-ink-2);border:1px dashed var(--jnpr-line);
+  border-radius:9px;padding:10px;text-align:center;cursor:pointer;background:none;width:100%;font-family:inherit}
+
+/* wallet accordion, treatment B */
+.wl{border-top:1px solid var(--jnpr-line-2)}
+.wl:first-of-type{border-top:0}
+.wl-h{display:flex;align-items:center;gap:13px;padding:13px 0;width:100%;background:none;border:0;
+  font-family:inherit;cursor:pointer;text-align:left}
+.wl-b{flex:1;min-width:0}
+.wl-n{display:block;font-size:13.5px;font-weight:650;color:var(--jnpr-ink)}
+.wl-s{display:block;font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
+.wl-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.wl-tag{font-size:10.5px;font-weight:700;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);
+  border-radius:20px;padding:2px 8px}
+.wl-r{flex:0 0 auto;text-align:right;font-size:11.5px;color:var(--jnpr-ink-3);align-self:center}
+.wl-r b{display:block;font-size:14px;color:var(--jnpr-ink);font-weight:700;font-variant-numeric:tabular-nums}
+.wl-body{padding:2px 0 16px 0}
+.wl-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.wl-cols{grid-template-columns:1fr}}
+.wl-ct{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin-bottom:9px}
+.wl-er{display:flex;align-items:baseline;gap:8px;font-size:12.5px;padding:6px 0;
+  border-top:1px solid var(--jnpr-line-2)}
+.wl-er:first-of-type{border-top:0}
+.wl-er .r{margin-left:auto;font-weight:750;color:var(--jnpr-accent);font-variant-numeric:tabular-nums}
+.wl-caret{color:var(--jnpr-ink-3);font-size:11px;flex:0 0 auto;transition:transform .15s}
+[open] .wl-caret{transform:rotate(90deg)}
+
+/* the stacked card faces plus the totals, treatment A */
+.cr-hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:18px;
+  border-bottom:1px solid var(--jnpr-line-2)}
+/* Explicit width, because the faces inside are absolutely positioned and
+   therefore contribute nothing to it: without this the stack measures 0 wide and
+   the cards lie on top of the balance beside them. Widest offset (78px) plus one
+   card (172px). */
+.cr-stack{position:relative;width:250px;height:132px;flex:0 0 auto}
+.cr-stack .cr-face{position:absolute;top:0}
+.cr-stack .cr-face:nth-child(1){left:0;z-index:4}
+.cr-stack .cr-face:nth-child(2){left:26px;top:8px;z-index:3}
+.cr-stack .cr-face:nth-child(3){left:52px;top:16px;z-index:2}
+.cr-stack .cr-face:nth-child(4){left:78px;top:24px;z-index:1}
+.cr-hero-f{flex:1;min-width:200px}
+.cr-hero-big{font-size:30px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink);
+  font-variant-numeric:tabular-nums}
+.cr-hero-sub{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
+.cr-hero-stats{display:flex;gap:30px;flex-wrap:wrap;margin-top:16px}
+.cr-hero-st .k{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.cr-hero-st .v{font-size:19px;font-weight:750;color:var(--jnpr-ink);margin-top:3px;font-variant-numeric:tabular-nums}
+
+/* the optimizer lead, treatment C */
+.op{border:1px solid color-mix(in srgb,var(--jnpr-good) 32%,var(--jnpr-line));
+  background:color-mix(in srgb,var(--jnpr-good) 8%,transparent);border-radius:var(--jnpr-r);
+  padding:18px 20px;margin-bottom:16px}
+.op-k{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--jnpr-good)}
+.op-big{font-size:29px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink);margin-top:5px;
+  font-variant-numeric:tabular-nums}
+.op-sub{font-size:12px;color:var(--jnpr-ink-2);margin-top:4px;line-height:1.6;max-width:62ch}
+.op-fold{margin-top:8px;border-top:1px solid var(--jnpr-line-2);padding-top:10px}
+.op-fold > summary{font-size:12.5px;font-weight:650;color:var(--jnpr-accent);cursor:pointer;
+  list-style:none;padding:4px 0}
+.op-fold > summary::-webkit-details-marker{display:none}
+.op-fold > summary::before{content:"\25B8 ";display:inline-block;transition:transform .15s}
+.op-fold[open] > summary::before{transform:rotate(90deg)}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+
+<div class="pv-head">
+  <div>
+    <div class="pv-title">Card rewards on the Credit page, three treatments (issue #168)</div>
+    <div class="pv-sub">
+      Same data behind all three: four linked credit accounts, the member has confirmed which product each
+      one is, and ninety days of their own categorized spending. What differs is what the page leads with
+      and how it is organized. Pick one and it gets built.
+    </div>
+  </div>
+  <button class="pv-toggle" id="t">Light / dark</button>
+</div>
+
+<div class="pv-flag">
+  <b>Two things are deliberately different from the Credit Karma screenshots on the issue,
+  and they are the same in all three treatments.</b><br>
+  <b>1. No issuer card art.</b> Those images are trademarked and Credit Karma licenses them. Every card
+  face below is synthesized from the product's stored brand colour plus the issuer's own logo as served by
+  Plaid, which Juniper already renders on Connections and on Credit today.
+  <b>2. Comparing a points card against a cash-back card is an assumption, and it is labelled as one.</b>
+  "3x points" is only worth more than "2% cash back" if a point is worth something, so the house
+  valuation travels with every figure that used it and the surface says so. Credit Karma never
+  cross-compares currencies, which is how it avoids owing anybody that disclosure.
+</div>
+
+<!-- ══ A ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">A</span> Stacked sections, closest to the screenshots</div>
+  <div class="pv-note">
+    The shape Credit Karma uses, in Juniper's own design system: a card-art hero with the totals,
+    then the earning guide as a category list, then the benefits tracker grouped by perk family, then
+    the upgrade ideas. One scroll on <code>/app/credit</code>, under the existing utilization card.
+    <b>Organized by category</b>, which answers "what do I reach for at the pump" and is the question
+    people actually have at the till. Costs the most vertical space of the three.
+  </div>
+
+  <div class="card pad-lg">
+    <div class="cr-hero">
+      <div class="cr-stack">
+        <div class="cr-face cr-face-lg" style="background:#1152A0"><div class="cr-face-in">
+          <div><div class="cr-face-iss">Chase</div><div class="cr-face-nm">Sapphire Preferred</div></div>
+          <div class="cr-face-ft"><div class="cr-face-chip"></div><span>&#183;&#183;&#183;&#183;4021</span></div></div></div>
+        <div class="cr-face cr-face-lg" style="background:#0E4C8A"><div class="cr-face-in">
+          <div><div class="cr-face-iss">Chase</div><div class="cr-face-nm">Freedom Unlimited</div></div>
+          <div class="cr-face-ft"><div class="cr-face-chip"></div><span>&#183;&#183;&#183;&#183;8814</span></div></div></div>
+        <div class="cr-face cr-face-lg" style="background:#8C8F94"><div class="cr-face-in">
+          <div><div class="cr-face-iss">Capital One</div><div class="cr-face-nm">Quicksilver</div></div>
+          <div class="cr-face-ft"><div class="cr-face-chip"></div><span>&#183;&#183;&#183;&#183;2290</span></div></div></div>
+        <div class="cr-face cr-face-lg" style="background:#5B6470"><div class="cr-face-in">
+          <div><div class="cr-face-iss">Discover</div><div class="cr-face-nm">it Chrome</div></div>
+          <div class="cr-face-ft"><div class="cr-face-chip"></div><span>&#183;&#183;&#183;&#183;7106</span></div></div></div>
+      </div>
+      <div class="cr-hero-f">
+        <div class="eyebrow">Total reported balance</div>
+        <div class="cr-hero-big">$1,284</div>
+        <div class="cr-hero-sub">3% of a $37,900 limit across 4 cards</div>
+        <div class="cr-hero-stats">
+          <div class="cr-hero-st"><div class="k">Benefits</div><div class="v">28</div></div>
+          <div class="cr-hero-st"><div class="k">Unused this year</div><div class="v">$167</div></div>
+          <div class="cr-hero-st"><div class="k">Left on the table</div><div class="v">$94<span style="font-size:12px;font-weight:600;color:var(--jnpr-ink-3)">/yr</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-head"><h3>Rewards earning guide</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">Your spend, largest first</span></div>
+    <div style="font-size:12px;color:var(--jnpr-ink-3);margin:-2px 0 8px;line-height:1.6">
+      Which of your cards is best in each category. Ordered by what you actually spend, so the row that
+      matters most to you is first.
+    </div>
+
+    <div class="rg-row">
+      <div class="rg-ico">&#128722;</div>
+      <div class="rg-body">
+        <div class="rg-top"><span class="rg-cat">Groceries</span><span class="rg-rate">3x points</span>
+          <span class="rw-assume" title="3x points valued at 1.25 cents each">&#9432; assumes 1.25&#162;/pt</span></div>
+        <div class="rg-card">Chase Sapphire Preferred&#174; Card</div>
+        <div class="rg-fine">Online grocery purchases only, excludes Target, Walmart and wholesale clubs.</div>
+        <div class="rg-chips">
+          <span class="rg-chip"><span class="cr-face cr-face-sm" style="background:#8C8F94"></span>Quicksilver, 1.5%</span>
+        </div>
+      </div>
+      <div class="rg-spend"><b>$412</b>a month</div>
+    </div>
+
+    <div class="rg-row">
+      <div class="rg-ico">&#127869;</div>
+      <div class="rg-body">
+        <div class="rg-top"><span class="rg-cat">Restaurants &amp; bars</span><span class="rg-rate">3x points</span>
+          <span class="rw-assume">&#9432; assumes 1.25&#162;/pt</span></div>
+        <div class="rg-card">Chase Sapphire Preferred&#174; Card</div>
+        <div class="rg-chips">
+          <span class="rg-chip rg-tie"><span class="cr-face cr-face-sm" style="background:#0E4C8A"></span>Freedom Unlimited, 3%</span>
+        </div>
+      </div>
+      <div class="rg-spend"><b>$286</b>a month</div>
+    </div>
+
+    <div class="rg-row">
+      <div class="rg-ico">&#9981;</div>
+      <div class="rg-body">
+        <div class="rg-top"><span class="rg-cat">Gas</span><span class="rg-rate">2% cash back</span></div>
+        <div class="rg-card">Discover it&#174; Chrome</div>
+        <div class="rg-fine">On the first $1,000 each quarter, then 1%.</div>
+      </div>
+      <div class="rg-spend"><b>$164</b>a month</div>
+    </div>
+
+    <div class="rg-row">
+      <div class="rg-ico">&#9992;&#65039;</div>
+      <div class="rg-body">
+        <div class="rg-top"><span class="rg-cat">Travel</span><span class="rg-rate">2x points</span>
+          <span class="rw-assume">&#9432; assumes 1.25&#162;/pt</span></div>
+        <div class="rg-card">Chase Sapphire Preferred&#174; Card</div>
+      </div>
+      <div class="rg-spend"><b>$98</b>a month</div>
+    </div>
+
+    <div class="rg-row">
+      <div class="rg-ico">&#128230;</div>
+      <div class="rg-body">
+        <div class="rg-top"><span class="rg-cat">Everything else</span><span class="rg-rate">1.5% cash back</span></div>
+        <div class="rg-card">Chase Freedom Unlimited&#174;</div>
+        <div class="rg-chips">
+          <span class="rg-chip rg-tie"><span class="cr-face cr-face-sm" style="background:#8C8F94"></span>tied with Quicksilver</span>
+        </div>
+      </div>
+      <div class="rg-spend"><b>$743</b>a month</div>
+    </div>
+
+    <div class="rw-prov">
+      Rates as published by each issuer, read on 26 August 2026, and <b>not yet re-checked against the
+      issuer's own page</b>. Verify before you act on a large purchase. Point valuations are Juniper's
+      estimate, not the issuer's.
+    </div>
+  </div>
+
+  <div class="card pad-lg" style="margin-top:14px">
+    <div class="card-head"><h3>Benefits tracker</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">28 benefits from your 4 cards</span></div>
+    <div style="font-size:12px;color:var(--jnpr-ink-3);margin:-2px 0 4px;line-height:1.6">
+      Your own checklist. Juniper cannot see whether you used a credit, so tick them off yourself.
+      Periods here are <b>calendar</b> periods; several issuers reset on your cardmember year instead.
+    </div>
+
+    <div class="bt-grp">
+      <button class="bt-gh">&#9992;&#65039; Travel <span class="n">2 of 9 used</span></button>
+      <div class="bt-b done"><input class="bt-tick" type="checkbox" checked>
+        <div><div class="bt-bn">$50 hotel credit through Chase Travel</div>
+          <div class="bt-bd">Sapphire Preferred. Used 14 March 2026.</div></div>
+        <div class="bt-val">$50<span class="bt-per">Year</span></div></div>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Primary auto rental collision damage waiver</div>
+          <div class="bt-bd">Sapphire Preferred. Decline the counter's coverage to use it.</div></div>
+        <div class="bt-val">n/a</div></div>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Trip cancellation and interruption insurance</div>
+          <div class="bt-bd">Sapphire Preferred. Up to $10,000 per person.</div></div>
+        <div class="bt-val">n/a</div></div>
+    </div>
+
+    <div class="bt-grp">
+      <button class="bt-gh">&#128722; Shopping <span class="n">0 of 6 used</span></button>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Activate this quarter's 5% categories</div>
+          <div class="bt-bd">Discover it Chrome. Resets 1 October 2026, and it is the perk people miss most.</div></div>
+        <div class="bt-val">n/a<span class="bt-per">Quarter</span></div></div>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Purchase protection</div>
+          <div class="bt-bd">Sapphire Preferred. 120 days, up to $500 per claim.</div></div>
+        <div class="bt-val">n/a</div></div>
+    </div>
+
+    <div class="bt-grp">
+      <button class="bt-gh">&#128241; Protection <span class="n">0 of 4 used</span></button>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Cell phone protection</div>
+          <div class="bt-bd">Freedom Unlimited. Pay the bill with the card to be covered.</div></div>
+        <div class="bt-val">n/a</div></div>
+    </div>
+  </div>
+
+  <div class="card pad-lg" style="margin-top:14px">
+    <div class="card-head"><h3>Worth switching</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-good);font-weight:700">$94 a year</span></div>
+    <div class="cr-sw">
+      <span class="cr-face cr-face-md" style="background:#8C8F94"><span class="cr-face-in">
+        <div class="cr-face-nm">Quicksilver</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-sw-arrow">&#8594;</span>
+      <span class="cr-face cr-face-md" style="background:#1152A0"><span class="cr-face-in">
+        <div class="cr-face-nm">Sapphire Preferred</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <div class="cr-sw-body">
+        <div class="cr-sw-h">Put groceries on the Sapphire Preferred</div>
+        <div class="cr-sw-d">You put $412 a month of groceries on the Quicksilver at 1.5%. The Sapphire
+          earns 3x points there, worth about 3.75%, on online grocery orders.
+          <span class="rw-assume">&#9432; assumes 1.25&#162;/pt</span></div>
+      </div>
+      <div class="cr-sw-gain">+$94<span>a year</span></div>
+    </div>
+    <div class="rw-prov">
+      Both cards are already yours, so there is nothing to apply for and no credit check.
+      Juniper does not show cards to apply for here: every affiliate link in the product is still a
+      placeholder until approved programs and credit disclosures clear.
+    </div>
+  </div>
+</div>
+
+<!-- ══ B ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">B</span> Wallet, one expandable row per card</div>
+  <div class="pv-note">
+    <b>Organized by card</b> rather than by category. A short "best card for" strip sits on top, then each
+    card opens onto its own rates, its own benefits and what it is costing you. Scales best when somebody
+    holds five or six cards, and it is the only treatment where "what does this card actually do" is a
+    single click. The trade: the at-a-glance category answer is compressed into the strip, so
+    "what do I use at the pump" takes a read rather than a glance.
+  </div>
+
+  <div class="card pad-lg">
+    <div class="card-head"><h3>Your cards</h3>
+      <span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">4 cards &#183; 28 benefits</span></div>
+
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 6px">
+      <span class="rg-chip"><span class="cr-face cr-face-sm" style="background:#1152A0"></span>Groceries, dining, travel</span>
+      <span class="rg-chip"><span class="cr-face cr-face-sm" style="background:#5B6470"></span>Gas</span>
+      <span class="rg-chip"><span class="cr-face cr-face-sm" style="background:#0E4C8A"></span>Everything else</span>
+      <span class="rg-chip" style="border-style:dashed;color:var(--jnpr-ink-3)">
+        <span class="cr-face cr-face-sm cr-face-unk"></span>Quicksilver wins nothing</span>
+    </div>
+
+    <details class="wl" open>
+      <summary class="wl-h">
+        <span class="wl-caret">&#9656;</span>
+        <span class="cr-face cr-face-md" style="background:#1152A0"><span class="cr-face-in">
+          <div class="cr-face-nm">Sapphire Preferred</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+        <span class="wl-b">
+          <span class="wl-n">Chase Sapphire Preferred&#174; Card</span>
+          <span class="wl-s">&#183;&#183;&#183;&#183;4021 &#183; $95 a year &#183; $612 of $12,000 limit</span>
+          <span class="wl-tags"><span class="wl-tag">Best for 3 of your categories</span>
+            <span class="wl-tag" style="color:var(--jnpr-warn);background:var(--jnpr-warn-soft)">$117 unused</span></span>
+        </span>
+        <span class="wl-r"><b>9</b>benefits</span>
+      </summary>
+      <div class="wl-body"><div class="wl-cols">
+        <div>
+          <div class="wl-ct">What it earns</div>
+          <div class="wl-er"><span>Restaurants &amp; bars</span><span class="r">3x</span></div>
+          <div class="wl-er"><span>Groceries, online only</span><span class="r">3x</span></div>
+          <div class="wl-er"><span>Streaming &amp; music</span><span class="r">3x</span></div>
+          <div class="wl-er"><span>Travel</span><span class="r">2x</span></div>
+          <div class="wl-er"><span>Everything else</span><span class="r">1x</span></div>
+          <div class="rg-fine">Points, valued at 1.25&#162; each for the comparisons on this page.
+            <span class="rw-assume">&#9432; Juniper's estimate</span></div>
+        </div>
+        <div>
+          <div class="wl-ct">Benefits not yet ticked off</div>
+          <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+            <div><div class="bt-bn">Primary auto rental coverage</div></div><div class="bt-val">n/a</div></div>
+          <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+            <div><div class="bt-bn">Trip cancellation insurance</div></div><div class="bt-val">n/a</div></div>
+          <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+            <div><div class="bt-bn">10% anniversary points bonus</div></div><div class="bt-val">n/a</div></div>
+          <div class="bt-b done" style="padding-left:0"><input class="bt-tick" type="checkbox" checked>
+            <div><div class="bt-bn">$50 Chase Travel hotel credit</div></div><div class="bt-val">$50</div></div>
+        </div>
+      </div></div>
+    </details>
+
+    <details class="wl">
+      <summary class="wl-h">
+        <span class="wl-caret">&#9656;</span>
+        <span class="cr-face cr-face-md" style="background:#0E4C8A"><span class="cr-face-in">
+          <div class="cr-face-nm">Freedom Unlimited</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+        <span class="wl-b">
+          <span class="wl-n">Chase Freedom Unlimited&#174;</span>
+          <span class="wl-s">&#183;&#183;&#183;&#183;8814 &#183; no annual fee &#183; $402 of $9,400 limit</span>
+          <span class="wl-tags"><span class="wl-tag">Best for everything else</span></span>
+        </span>
+        <span class="wl-r"><b>7</b>benefits</span>
+      </summary>
+      <div class="wl-body"><div class="wl-cols">
+        <div>
+          <div class="wl-ct">What it earns</div>
+          <div class="wl-er"><span>Restaurants &amp; bars</span><span class="r">3%</span></div>
+          <div class="wl-er"><span>Pharmacy</span><span class="r">3%</span></div>
+          <div class="wl-er"><span>Everything else</span><span class="r">1.5%</span></div>
+        </div>
+        <div>
+          <div class="wl-ct">Benefits not yet ticked off</div>
+          <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+            <div><div class="bt-bn">Cell phone protection</div></div><div class="bt-val">n/a</div></div>
+        </div>
+      </div></div>
+    </details>
+
+    <details class="wl">
+      <summary class="wl-h">
+        <span class="wl-caret">&#9656;</span>
+        <span class="cr-face cr-face-md" style="background:#8C8F94"><span class="cr-face-in">
+          <div class="cr-face-nm">Quicksilver</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+        <span class="wl-b">
+          <span class="wl-n">Capital One Quicksilver Cash Rewards</span>
+          <span class="wl-s">&#183;&#183;&#183;&#183;2290 &#183; no annual fee &#183; $270 of $8,500 limit</span>
+          <span class="wl-tags"><span class="wl-tag" style="color:var(--jnpr-warn);background:var(--jnpr-warn-soft)">
+            Costing you $94 a year</span></span>
+        </span>
+        <span class="wl-r"><b>5</b>benefits</span>
+      </summary>
+      <div class="wl-body">
+        <div class="cr-sw" style="border:0;padding-top:4px">
+          <div class="cr-sw-body">
+            <div class="cr-sw-h">Your groceries are on this card</div>
+            <div class="cr-sw-d">$412 a month at 1.5%. The Sapphire Preferred earns 3x on online grocery
+              orders, worth about 3.75%.</div>
+          </div>
+          <div class="cr-sw-gain">+$94<span>a year</span></div>
+        </div>
+        <div class="wl-cols">
+          <div><div class="wl-ct">What it earns</div>
+            <div class="wl-er"><span>Everything, flat</span><span class="r">1.5%</span></div></div>
+          <div><div class="wl-ct">Benefits not yet ticked off</div>
+            <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+              <div><div class="bt-bn">No foreign transaction fees</div></div><div class="bt-val">n/a</div></div></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="wl">
+      <summary class="wl-h">
+        <span class="wl-caret">&#9656;</span>
+        <span class="cr-face cr-face-md cr-face-unk"><span class="cr-face-in"><div class="cr-face-nm">Not identified</div></span></span>
+        <span class="wl-b">
+          <span class="wl-n">Discover it&#174; Chrome</span>
+          <span class="wl-s">&#183;&#183;&#183;&#183;7106 &#183; no annual fee &#183; limit not reported</span>
+          <span class="wl-tags"><span class="wl-tag">Best for gas</span></span>
+        </span>
+        <span class="wl-r"><b>7</b>benefits</span>
+      </summary>
+      <div class="wl-body"><div class="wl-cols">
+        <div><div class="wl-ct">What it earns</div>
+          <div class="wl-er"><span>Gas</span><span class="r">2%</span></div>
+          <div class="wl-er"><span>Everything else</span><span class="r">1%</span></div>
+          <div class="rg-fine">Gas capped at $1,000 a quarter, then 1%.</div></div>
+        <div><div class="wl-ct">Benefits not yet ticked off</div>
+          <div class="bt-b" style="padding-left:0"><input class="bt-tick" type="checkbox">
+            <div><div class="bt-bn">Activate this quarter's 5% categories</div>
+              <div class="bt-bd">Resets 1 October 2026.</div></div><div class="bt-val">n/a</div></div></div>
+      </div></div>
+    </details>
+
+    <div class="rw-prov">
+      Rates as published by each issuer, read on 26 August 2026, and not yet re-checked against the
+      issuer's own page.
+    </div>
+  </div>
+</div>
+
+<!-- ══ C ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">C</span> Optimizer, money first and the tables folded away</div>
+  <div class="pv-note">
+    <b>Leads with what to change</b> and treats the guide and the tracker as reference material behind
+    a fold. The argument for it: the earning guide is a table somebody reads once and the switch
+    recommendation is the only thing on the page that hands them money. The argument against it, and it
+    is a real one: a page that only ever shows conclusions is harder to trust than one that shows its
+    working, and this surface already has a provenance problem to be honest about.
+  </div>
+
+  <div class="op">
+    <div class="op-k">Worth doing</div>
+    <div class="op-big">$261 a year</div>
+    <div class="op-sub">
+      Two changes to which card you reach for, plus $167 of card credits you have not used this year.
+      Nothing here needs an application or a credit check.
+    </div>
+  </div>
+
+  <div class="card pad-lg">
+    <div class="cr-sw">
+      <span class="cr-face cr-face-md" style="background:#8C8F94"><span class="cr-face-in">
+        <div class="cr-face-nm">Quicksilver</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-sw-arrow">&#8594;</span>
+      <span class="cr-face cr-face-md" style="background:#1152A0"><span class="cr-face-in">
+        <div class="cr-face-nm">Sapphire Preferred</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <div class="cr-sw-body">
+        <div class="cr-sw-h">Move groceries to the Sapphire Preferred</div>
+        <div class="cr-sw-d">$412 a month at 1.5% today, against 3x points there.
+          <span class="rw-assume">&#9432; assumes 1.25&#162;/pt</span></div>
+      </div>
+      <div class="cr-sw-gain">+$94<span>a year</span></div>
+    </div>
+    <div class="cr-sw">
+      <span class="cr-face cr-face-md" style="background:#0E4C8A"><span class="cr-face-in">
+        <div class="cr-face-nm">Freedom Unlimited</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-sw-arrow">&#8594;</span>
+      <span class="cr-face cr-face-md" style="background:#5B6470"><span class="cr-face-in">
+        <div class="cr-face-nm">it Chrome</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <div class="cr-sw-body">
+        <div class="cr-sw-h">Move gas to the Discover it Chrome</div>
+        <div class="cr-sw-d">$164 a month at 1.5% today, against 2% on the first $1,000 a quarter.</div>
+      </div>
+      <div class="cr-sw-gain">+$10<span>a year</span></div>
+    </div>
+    <div class="cr-sw">
+      <div class="rg-ico" style="width:34px;height:34px;font-size:16px">&#9200;</div>
+      <div class="cr-sw-body">
+        <div class="cr-sw-h">Activate Discover's 5% categories before 30 September</div>
+        <div class="cr-sw-d">Quarterly, and the benefit people miss most often. Two other credits are
+          sitting unused: a $50 Chase Travel hotel credit and $117 across your Sapphire perks.</div>
+      </div>
+      <div class="cr-sw-gain">$167<span>unused</span></div>
+    </div>
+  </div>
+
+  <details class="op-fold card pad-lg" style="margin-top:14px">
+    <summary>Rewards earning guide, all 5 categories</summary>
+    <div class="rg-row" style="border-top:1px solid var(--jnpr-line-2);margin-top:8px">
+      <div class="rg-ico">&#128722;</div>
+      <div class="rg-body"><div class="rg-top"><span class="rg-cat">Groceries</span>
+        <span class="rg-rate">3x points</span><span class="rw-assume">&#9432; 1.25&#162;/pt</span></div>
+        <div class="rg-card">Chase Sapphire Preferred&#174; Card</div></div>
+      <div class="rg-spend"><b>$412</b>a month</div>
+    </div>
+    <div class="rg-row">
+      <div class="rg-ico">&#127869;</div>
+      <div class="rg-body"><div class="rg-top"><span class="rg-cat">Restaurants &amp; bars</span>
+        <span class="rg-rate">3x points</span></div>
+        <div class="rg-card">Chase Sapphire Preferred&#174; Card
+          <span class="rg-chip rg-tie" style="margin-left:6px">tied with Freedom Unlimited</span></div></div>
+      <div class="rg-spend"><b>$286</b>a month</div>
+    </div>
+    <div class="rg-row">
+      <div class="rg-ico">&#9981;</div>
+      <div class="rg-body"><div class="rg-top"><span class="rg-cat">Gas</span>
+        <span class="rg-rate">2% cash back</span></div>
+        <div class="rg-card">Discover it&#174; Chrome</div></div>
+      <div class="rg-spend"><b>$164</b>a month</div>
+    </div>
+    <div class="rw-prov">Rates read on 26 August 2026, not yet re-checked against the issuer's page.</div>
+  </details>
+
+  <details class="op-fold card pad-lg" style="margin-top:14px">
+    <summary>Benefits tracker, 28 benefits and 2 ticked off</summary>
+    <div class="bt-grp" style="margin-top:8px">
+      <button class="bt-gh">&#9992;&#65039; Travel <span class="n">2 of 9 used</span></button>
+      <div class="bt-b done"><input class="bt-tick" type="checkbox" checked>
+        <div><div class="bt-bn">$50 hotel credit through Chase Travel</div></div>
+        <div class="bt-val">$50<span class="bt-per">Year</span></div></div>
+      <div class="bt-b"><input class="bt-tick" type="checkbox">
+        <div><div class="bt-bn">Primary auto rental collision damage waiver</div></div>
+        <div class="bt-val">n/a</div></div>
+    </div>
+  </details>
+
+  <details class="op-fold card pad-lg" style="margin-top:14px">
+    <summary>Your 4 cards</summary>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+      <span class="cr-face cr-face-md" style="background:#1152A0"><span class="cr-face-in">
+        <div class="cr-face-nm">Sapphire Preferred</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-face cr-face-md" style="background:#0E4C8A"><span class="cr-face-in">
+        <div class="cr-face-nm">Freedom Unlimited</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-face cr-face-md" style="background:#8C8F94"><span class="cr-face-in">
+        <div class="cr-face-nm">Quicksilver</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+      <span class="cr-face cr-face-md" style="background:#5B6470"><span class="cr-face-in">
+        <div class="cr-face-nm">it Chrome</div><div class="cr-face-ft"><div class="cr-face-chip"></div></div></span></span>
+    </div>
+  </details>
+</div>
+
+<!-- ══ shared: identifying the card ════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab">Shared by all three</div>
+  <div class="pv-note">
+    Everything above depends on knowing <b>which product</b> each linked account is, and Plaid does not
+    say. It returns an institution and an account name, and that name is routinely "CREDIT CARD" or
+    "Card ending 4021". So the member confirms, once per card, and nothing on this surface appears until
+    they have. <b>There is no auto-confirm path</b>, deliberately: a wrong guess attaches a stranger's
+    reward rates to somebody's real spending and then quotes them a confident dollar figure off it.
+    Juniper ranks the guesses and the member taps.
+  </div>
+
+  <div class="cc">
+    <span class="cr-face cr-face-md cr-face-unk"><span class="cr-face-in"><div class="cr-face-nm">Which card?</div></span></span>
+    <div class="cc-b">
+      <div class="cc-h">Which Chase card is &#183;&#183;&#183;&#183;4021?</div>
+      <div class="cc-d">Your bank calls it "CREDIT CARD", which does not tell us the product. Confirm it
+        and Juniper can show what it earns and what it comes with.</div>
+    </div>
+    <div class="cc-act"><button class="btn-sm pri">Identify card</button><button class="btn-sm">Not now</button></div>
+  </div>
+
+  <div class="pk">
+    <div class="pk-h">Which Chase card is this?</div>
+    <div class="pk-s">Chase &#183; "CREDIT CARD" &#183; &#183;&#183;&#183;&#183;4021. Pick the one printed on your card.</div>
+    <div class="pk-list">
+      <button class="pk-o top">
+        <span class="cr-face cr-face-sm" style="background:#1152A0"></span>
+        <span><span class="pk-on">Chase Sapphire Preferred&#174; Card</span>
+          <span class="pk-od">$95 a year &#183; points &#183; closest match to your account name</span></span>
+      </button>
+      <button class="pk-o">
+        <span class="cr-face cr-face-sm" style="background:#0E4C8A"></span>
+        <span><span class="pk-on">Chase Freedom Unlimited&#174;</span>
+          <span class="pk-od">No annual fee &#183; cash back</span></span>
+      </button>
+      <button class="pk-o">
+        <span class="cr-face cr-face-sm" style="background:#12559F"></span>
+        <span><span class="pk-on">Chase Freedom Flex&#174;</span>
+          <span class="pk-od">No annual fee &#183; cash back</span></span>
+      </button>
+      <button class="pk-none">My card is not listed</button>
+    </div>
+    <div class="rw-prov" style="margin-top:14px">
+      "Not listed" is a real answer and Juniper stores it, so you are not asked again. The catalog is
+      hand-assembled and covers the most common US cards, not all of them.
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+document.getElementById('t').onclick = () =>
+  document.documentElement.classList.toggle('dark');
+</script>
+</body>
+</html>

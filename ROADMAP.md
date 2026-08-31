@@ -255,6 +255,62 @@ never-used-Plaid users get a good path:
 
 ---
 
+## Stage 14: Card rewards on the Credit page **(build)**, *shipped, behind two unapplied migrations*
+
+Cannibalizes the Credit Karma Cards Optimizer (issue #168): identify which card each linked account
+is, a per-category rewards earning guide, a benefits tracker, and recommendations. Distinct from Stage
+10, which is bureau score monitoring and still needs a provider; this needed no provider at all.
+Design record: `design/card-rewards-variants.html`, three rendered treatments, A chosen. Full
+rationale in `docs/CARD_REWARDS.md`.
+
+- [x] **(build)** Curated card catalog with enforced provenance → migration `0031_card_products.sql`
+  (`card_products`, `card_product_earn`, `card_product_benefits`, plus `member_cards` and
+  `card_benefit_uses` for the member's own layer). `source_url` and `as_of` are NOT NULL on all three
+  catalog tables, so a rate cannot exist without saying where it came from, and `verified` is FALSE on
+  everything the seed writes with the page saying so. No product Juniper integrates returns rewards
+  terms: Plaid's `liabilities` gives APRs and limits, not earn rates.
+- [x] **(build)** Seed of 10 common US cards, 18 earn rows, 36 benefits → `0032_card_products_seed.sql`.
+  `ON CONFLICT DO NOTHING`, never `DO UPDATE`, so a re-run cannot overwrite a row somebody verified by
+  hand. Rotating categories, portal-only rates and signup bonuses are deliberately excluded, each for a
+  reason recorded in the migration header.
+- [x] **(build)** The maths, pure and I/O-free → `api/_rewards.ts`, exercised by 54 cases in
+  `scripts/src/check-rewards.ts` with no database, no Plaid account and no session. The four things it
+  guards: a cap drops to the card's BASE rate rather than stopping, a points rate is only comparable
+  once a valuation is applied and that valuation is disclosed, a leaf category beats its group, and the
+  annual fee is subtracted before a card is recommended.
+- [x] **(build)** Which card is which, answered by the MEMBER → `api/member-cards.ts` plus
+  `components/juniper/card-identify.tsx`. Plaid returns an account name like "CREDIT CARD" and nothing
+  that identifies a product, so there is no auto-confirm path anywhere: `confidence` orders the picker
+  and a tap is the only thing that writes a row. "My card is not listed" is a stored answer rather than
+  a dismissal, so a member holding something outside the catalog stops being asked.
+- [x] **(build)** Rewards earning guide, ordered by the member's OWN spend rather than a fixed
+  Groceries / Gas / Dining / Travel → `components/juniper/rewards-guide.tsx`.
+- [x] **(build)** Benefits tracker → `api/card-benefits.ts` plus
+  `components/juniper/benefits-tracker.tsx`. `period_key` (`2026-08` / `2026-Q3` / `2026` / `once`) is
+  computed server-side and never accepted from the client, which is what makes a recurring credit reset
+  with no cron job. Nothing is ticked automatically: a matching charge proves a purchase, not that the
+  issuer applied a credit.
+- [x] **(build)** Recommendations → `components/juniper/card-switches.tsx`. "Worth switching" compares
+  cards the member already holds, so it needs no application, no hard pull and no affiliate link.
+  "Cards that would beat yours" names catalog cards they do not hold and **carries no URL**, because
+  every affiliate link here is still a placeholder and a credit-card application is the category where
+  that matters most (`docs/CREDIT_PROVIDER.md` section 4).
+- [ ] **(ops)** Apply `0031` and `0032` to the production Supabase project. The endpoints degrade to
+  "no cards identified yet" while the tables are absent, so a deploy ahead of the migrations is safe.
+- [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
+  TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
+  done every member sees the "not yet re-checked" caveat.
+- [ ] **(build)** Shared caps. Discover it Chrome caps gas and restaurants at $1,000 a quarter
+  COMBINED and `card_product_earn` caps per row, so the arithmetic is optimistic for somebody who
+  spends heavily in both. The fine print on screen is right; a shared-cap column is the fix if a second
+  card ever needs one.
+- [ ] **(build)** Move `catalog` out of the `/api/card-rewards` response into its own searchable
+  endpoint once the catalog passes a few hundred products. It rides along today only because ten
+  products are free to send.
+- [ ] **(build)** Widen the `/api/finances` rollup with `limit` and per-account spend, which is what
+  would let the Credit page stop reading outside the `lib/finances.ts` seam. Open since #132, and this
+  stage widened the exception by one endpoint rather than closing it.
+
 ## Critical path (read this first)
 
 **Stages 3 → 4 are the real product.** Everything Mint-like ("I miss the budgeting / expense reports") lives in **Stage 3**, which is gated on **Plaid transactions + Production access (Stage 6)**. Design and shell (Stages 1–2) are fast; the **data engine (Stage 3) is where the real weeks go.**
