@@ -347,7 +347,23 @@ rationale in `docs/CARD_REWARDS.md`.
   URLs. Sizes moved to the real card aspect of 1.586:1, and `sm` went from 26x17 to 60x38, which is the
   one that matters: at chip size the picker was asking somebody to choose between five Capital One cards
   by shade of grey.
-- [ ] **(ops)** Apply `0035` to the production Supabase project. Nothing changes on screen until a URL
+- [x] **(build)** **An overpaid card is not debt** (`api/_credit-balance.ts`, mirrored client-side,
+  10 cases in `scripts/src/check-credit-balance.ts`). Found on real production data: a Capital One card
+  at -328.21 with a $4,400 limit drew as "$328 of $4,400 limit, Used 7%" when the member was using none
+  of it, because Plaid reports a credit balance as NEGATIVE when the account is in credit and five places
+  took `Math.abs()` of it. That reached the Credit page, the rewards payload, the Juniper Score's
+  debt-load factor, the Score's credit factor and net worth, so a refund the issuer owed made the
+  member's score worse twice and their net worth smaller. Overall utilization read 5% where the truth is
+  3%. A card in credit is now zero debt rather than a positive asset, deliberately: it is nearly always
+  transient and folding it into net worth would make the trend jump on something that is not wealth.
+- [x] **(build)** **Repair the trademark symbols mangled in transit** (`0036`). Not a migration bug:
+  `0032` and `0034` are correct UTF-8 (`C2 AE`, verified), and the macOS clipboard carried raw bytes into
+  the SQL editor which read them as MacRoman, so thirteen names rendered as "Chase Freedom Flex" plus two
+  pieces of punctuation. The repair sets each name from a known-good value with `chr(174)` and
+  `chr(8480)`, and contains no byte above ASCII anywhere including its comments, because a repair holding
+  the sequence that got mangled would arrive as broken as the thing it repairs.
+- [ ] **(ops)** Apply `0035` and `0036` to the production Supabase project. `0036` ends with a
+  verification SELECT: every row should report `ok` true. Nothing changes on screen until a URL
   is set, which is what makes it safe to apply ahead of any licensing decision.
 - [ ] **Decide where card art comes from, or decide not to have it.** The plumbing is done and the
   column is empty. The cheapest option (hotlinking issuer URLs) is also the least defensible; the

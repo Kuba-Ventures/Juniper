@@ -5,6 +5,7 @@
 import { adminRest } from "./_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
 import { taxonomyFor } from "./_taxonomy";
+import { creditPosition } from "./_credit-balance";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null; category_id: string | null };
@@ -144,11 +145,17 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       if (type === "depository") cashReserves += bal;
       else if (type === "investment" || type === "brokerage") investmentBalance += bal;
       else if (type === "credit") {
-        cardDebt += Math.abs(bal);
+        // `creditPosition`, not Math.abs. Plaid reports a credit balance as
+        // NEGATIVE when the account is in credit, and abs turned "the issuer owes
+        // you $328" into "you owe $328", which made an overpaid card lower the
+        // member's score twice over: once through debt load and once through
+        // utilization. See api/_credit-balance.ts.
+        const { owed } = creditPosition(bal);
+        cardDebt += owed;
         const limit = typeof a.limit === "number" ? a.limit : 0;
         if (limit > 0) {
           utilLimit += limit;
-          utilBalance += Math.abs(bal);
+          utilBalance += owed;
         }
       }
       else if (type === "loan") loanDebt += Math.abs(bal);

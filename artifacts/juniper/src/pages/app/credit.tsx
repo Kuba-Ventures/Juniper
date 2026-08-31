@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
 import { forgetCard, limitOf, setCardLimit, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
@@ -68,10 +69,15 @@ type LinkedCard = {
   institution: string;
   name: string;
   mask: string | null;
-  // Amount owed. Plaid reports credit balances as a positive `current`, but take
-  // the magnitude anyway: a few issuers hand back a negative balance for an
-  // overpaid card, and a negative bar width renders as nothing at all.
+  // What the member OWES. Plaid reports a credit balance as positive when owed
+  // and negative when the account is in credit, and this used to take the
+  // magnitude with it, which drew "the issuer owes you $328" as "you owe $328"
+  // and read 7% of a limit the member was using none of. See lib/credit-balance.
   balance: number;
+  // What the ISSUER owes the member: an overpayment, or a refund that landed after
+  // the statement cleared. Kept apart from `balance` because the row has to be
+  // able to say which of the two it is drawing.
+  inCredit: number;
   // null whenever the bank does not report a limit, and also on every snapshot
   // written before the server started sanitizing `limit` through. This is the
   // BANK's number: a fact.
@@ -105,7 +111,8 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
         institution: it.institution_name || "Linked institution",
         name: a.name,
         mask: a.mask,
-        balance: Math.abs(a.balance ?? 0),
+        balance: creditPosition(a.balance).owed,
+        inCredit: creditPosition(a.balance).inCredit,
         limit: a.limit != null && a.limit > 0 ? a.limit : null,
         // Filled in by the Credit component from /api/card-rewards, which is the
         // only reader of member_cards. This function stays a pure projection of
@@ -122,7 +129,9 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
 // for its absence.
 const limitFor = (c: LinkedCard) => limitOf({ bank_limit: c.limit, member_limit: c.memberLimit });
 
-const pct = (balance: number, limit: number) => Math.round((balance / limit) * 100);
+// Kept as a thin alias so every call site reads the same, and so the clamping and
+// the null-for-no-limit rule live in one place. See lib/credit-balance.ts.
+const pct = (owed: number, limit: number) => utilizationPct(owed, limit) ?? 0;
 
 // The factors a real score is built from, named so the not-live panel is specific
 // about what is coming rather than vaguely promising "credit features".
@@ -370,10 +379,16 @@ function CardRow({
         <div className="cn">{card.institution} · {card.name}</div>
         <div className="csub">
           {card.mask && <>····{card.mask} · </>}
-          {money(card.balance, card.currency)}
-          {limit != null
-            ? <> of {money(limit, card.currency)} limit</>
-            : <> owed, limit not reported</>}
+          {/* A card in credit is not debt, and saying "$328 owed" about a refund is
+              the kind of specific, confident wrongness this page exists to avoid.
+              The amount still shows, because the member wants to know it is there. */}
+          {card.inCredit > 0
+            ? <><b>{money(card.inCredit, card.currency)} in credit</b>{limit != null
+                ? <> of a {money(limit, card.currency)} limit</>
+                : <>, limit not reported</>}</>
+            : <>{money(card.balance, card.currency)}{limit != null
+                ? <> of {money(limit, card.currency)} limit</>
+                : <> owed, limit not reported</>}</>}
           {/* THE BADGE IS NOT DECORATION. A number the member typed must never be
               indistinguishable from one their bank reported: the first is a claim
               and the second is a fact, and a utilization built on a mix of them is
