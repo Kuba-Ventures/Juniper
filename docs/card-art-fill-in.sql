@@ -1,45 +1,41 @@
--- STAGE B TEMPLATE: the three cards 0037 left NULL.
+-- Template for adding card art to a NEW product. Not a migration: it lives in
+-- docs/ so it cannot be applied half-filled.
 --
--- NOT a migration. It lives in docs/ so it cannot be applied half-filled. Fill in
--- the rows you have a usable render for, DELETE the rows you do not, then save as
--- supabase/migrations/0038_card_art_urls_chase.sql.
+-- The 18 products in the catalog as of 0038 all carry art. This is the shape to
+-- copy the next time a product is added.
 --
--- ---- WHY THESE THREE ARE STILL EMPTY ---------------------------------------
+-- 1. Add the row to scripts/card-art-sources.tsv, then:
 --
--- Chase publishes exactly one render per Freedom card and it has a promotional
--- "NO ANNUAL FEE!" ribbon baked into the top-right corner. Probed and confirmed
--- absent: the base name without _alt, and eleven other suffixes (_noname, _plain,
--- _clean, _nobanner, ...). Chase's own comparison pages use the ribboned file too,
--- so there is no second asset to find on their site.
+--      python3 scripts/card-art.py <product-id> "<issuer-url>" [--ribbon] [--keep-name]
 --
--- The ribbon inpaints out well -- it is a flat colour over a smooth corner -- but
--- it is the same yellow-green as the word UNLIMITED, so a colour-keyed mask erases
--- the product name along with it. The fix is to intersect the colour mask with the
--- top-right corner triangle before dilating. Everything else in the Stage A
--- pipeline (trim, cover-fit to 472x298, WebP q88, median-filter the placeholder
--- name band) applies unchanged.
+--    It trims the issuer's baked-in matting and drop shadow, cover-fits to
+--    472x298 (twice the 236x149 face), erases the embossed PLACEHOLDER cardholder
+--    name most issuer renders carry, and writes WebP into
+--    artifacts/juniper/public/card-art/. Pass --keep-name if the render has no
+--    such name, so the licence note below stays true. Pass --ribbon for a Chase
+--    Freedom card. Read the script's docstring before trusting either flag.
 --
--- Sources, all 289x181 or thereabouts:
---   chase-freedom-unlimited  .../card-art/freedom_unlimited_card_alt.png
---   chase-freedom-flex       .../card-art/freedom_flex_card_alt.png
---   chase-freedom-rise       .../card-art/freedom_rise_alt_card2.png
---   (base: https://creditcards.chase.com/content/dam/jpmc-marketplace)
+-- 2. LOOK AT THE RESULT at 236x149 before believing it. Every defect that
+--    mattered on this surface was invisible in the source and obvious at ship
+--    size: a placeholder name, a promotional ribbon, a card floating inside its
+--    own frame.
+--
+-- 3. Fill in the row below, save as the next migration number, apply.
 --
 -- ---- RULES, enforced by CHECK constraints in 0035 --------------------------
 --
 --   * art_url MUST start with https://   (http on an https page is blocked as
 --     mixed content and renders as a broken card)
 --   * art_license is REQUIRED whenever art_url is set, and FORBIDDEN when it is
---     not. Match the wording 0037 uses: source URL, fetch date, what was done to
---     the image, and the fact that there is no licence behind it.
+--     not. Match the wording 0037 and 0038 use: source URL, fetch date, every
+--     modification made, and the fact that there is no licence behind it. If the
+--     affiliate approval in ROADMAP Stage 5 has landed by then, say that instead
+--     -- that is the whole point of the field.
 --
--- Host the files the way Stage A did -- artifacts/juniper/public/card-art/<id>.webp,
--- served off Juniper's own origin -- rather than hotlinking Chase.
---
--- KEEP THIS FILE PURE ASCII. See docs/CARD_REWARDS.md: a UTF-8 paste through the
--- macOS clipboard was read as MacRoman and mangled 13 card names in production.
--- Verify before applying:
---   python3 -c "d=open('supabase/migrations/0038_card_art_urls_chase.sql','rb').read(); print(sum(1 for b in d if b>126))"
+-- KEEP THIS FILE PURE ASCII, and the migration too. See docs/CARD_REWARDS.md: a
+-- UTF-8 paste through the macOS clipboard was read as MacRoman and mangled 13
+-- card names in production. Verify before applying:
+--   python3 -c "d=open(PATH,'rb').read(); print(sum(1 for b in d if b>126))"
 -- and expect 0.
 
 BEGIN;
@@ -49,9 +45,12 @@ UPDATE public.card_products AS p
        art_license = v.art_license
   FROM (VALUES
   -- (product_id, art_url, art_license)
-    ('chase-freedom-unlimited', NULL, NULL),
-    ('chase-freedom-flex',      NULL, NULL),
-    ('chase-freedom-rise',      NULL, NULL)
+    ('PRODUCT-ID-HERE',
+     'https://www.juniperplan.com/card-art/PRODUCT-ID-HERE.webp',
+     'Issuer marketing render, downloaded YYYY-MM-DD from SOURCE-URL. Rehosted on'
+     ' Juniper''s own origin; DESCRIBE EVERY MODIFICATION. NO licence or affiliate'
+     ' agreement with the issuer -- unlicensed use pending ROADMAP Stage 5'
+     ' approval. Revert by setting art_url NULL.')
   ) AS v(product_id, art_url, art_license)
  WHERE p.id = v.product_id;
 
