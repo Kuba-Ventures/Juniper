@@ -84,6 +84,25 @@ const REAL_PARENT: Record<string, string> = {};
 for (const g of C.BUILTIN_TAXONOMY.groups) for (const l of g.leaves) REAL_PARENT[l.id] = g.id;
 const parentOf: R.ParentOf = (id) => REAL_PARENT[id] ?? null;
 
+// Every (name, issuer) pair the seeds actually insert, so the length bound below
+// is checked against the real catalog rather than against examples.
+const SEEDED: { name: string; issuer: string }[] = (() => {
+  const out: { name: string; issuer: string }[] = [];
+  const files = readdirSync(join(repo, "supabase", "migrations"))
+    .filter((f) => /^\d{4}_card_products.*\.sql$/.test(f));
+  for (const f of files) {
+    const sql = readFileSync(join(repo, "supabase", "migrations", f), "utf8");
+    const block = sql.split("INSERT INTO public.card_products")[1];
+    if (!block) continue;
+    const values = block.split("ON CONFLICT")[0];
+    // ('id', 'Issuer', 'Network'|NULL, 'Name', ...
+    for (const m of values.matchAll(/\(\s*'[a-z0-9-]+',\s*'([^']+)',\s*(?:'[^']*'|NULL),\s*'((?:[^']|'')+)'/g)) {
+      out.push({ issuer: m[1], name: m[2].replace(/''/g, "'") });
+    }
+  }
+  return out;
+})();
+
 // ── 1. Rate arithmetic ──────────────────────────────────────────────────────
 ok("cash back is its own percentage", () => {
   strictEqual(R.ratePct(1.5, "percent", null), 1.5);
@@ -452,6 +471,74 @@ ok("ranking is stable for equal confidence, so the picker does not reshuffle", (
   const first = R.rankCandidates({ institution: "Testbank", account_name: "CARD" }, pool);
   const second = R.rankCandidates({ institution: "Testbank", account_name: "CARD" }, [...pool].reverse());
   deepStrictEqual(first.map((c) => c.product.id), second.map((c) => c.product.id));
+});
+
+// ── 7b. The short display name ─────────────────────────────────────────────
+//
+// `name` is stored as the issuer spells it, which the picker needs and a card
+// face cannot fit. The derivation earns a check because it is a regex over
+// somebody's card name, and the failure mode is a face that reads as a fragment.
+ok("the issuer is dropped, since the face already prints it", () => {
+  strictEqual(R.shortCardName("Chase Sapphire Preferred® Card", "Chase"), "Sapphire Preferred®");
+  strictEqual(R.shortCardName("Chase Freedom Unlimited®", "Chase"), "Freedom Unlimited®");
+  strictEqual(R.shortCardName("Citi Double Cash® Card", "Citi"), "Double Cash®");
+  strictEqual(R.shortCardName("Wells Fargo Autograph℠ Card", "Wells Fargo"), "Autograph℠");
+});
+ok("\"Cash Back\" is kept, because for Discover it is the card name", () => {
+  // "Cash Rewards" is a Capital One suffix that carries nothing. "Cash Back" is
+  // what separates three different Discover cards, and stripping it left the
+  // flagship reading as the family name. Found by printing all 18 derivations.
+  strictEqual(R.shortCardName("Discover it® Cash Back", "Discover"), "Discover it® Cash Back");
+  strictEqual(R.shortCardName("Capital One Quicksilver Cash Rewards Credit Card", "Capital One"), "Quicksilver");
+});
+ok("generic tails go, so 53 characters becomes 19", () => {
+  strictEqual(
+    R.shortCardName("Capital One Quicksilver Student Cash Rewards Credit Card", "Capital One"),
+    "Quicksilver Student",
+  );
+  strictEqual(R.shortCardName("Capital One SavorOne Cash Rewards Credit Card", "Capital One"), "SavorOne");
+});
+ok("an issuer behind a preposition is found too", () => {
+  // "Blue Cash Preferred® Card from American Express" puts it at the END.
+  strictEqual(
+    R.shortCardName("Blue Cash Preferred® Card from American Express", "American Express"),
+    "Blue Cash Preferred®",
+  );
+  strictEqual(
+    R.shortCardName("Blue Cash Everyday® Card from American Express", "American Express"),
+    "Blue Cash Everyday®",
+  );
+});
+ok("THE LOWERCASE GUARD: the issuer stays when dropping it leaves a fragment", () => {
+  // The case that broke the first version. "Discover it® Chrome" minus its issuer
+  // is "it® Chrome", which is not a card name. Found by rendering it, not by
+  // reasoning about the rule.
+  strictEqual(R.shortCardName("Discover it® Chrome", "Discover"), "Discover it® Chrome");
+  // 30 characters, the longest in the catalog and exactly at the face's limit.
+  // "Cash Back" stays for the reason the case above gives.
+  strictEqual(R.shortCardName("Discover it® Student Cash Back", "Discover"),
+    "Discover it® Student Cash Back");
+  strictEqual(R.shortCardName("Discover it® Miles", "Discover"), "Discover it® Miles");
+});
+ok("it never returns an empty face", () => {
+  // A name made entirely of the words this strips would otherwise blank the card.
+  strictEqual(R.shortCardName("Chase Credit Card", "Chase"), "Chase Credit Card");
+  strictEqual(R.shortCardName("", "Chase"), "");
+  strictEqual(R.shortCardName("Some Card", ""), "Some Card");
+});
+ok("every seeded product shortens to something drawable", () => {
+  // Guard against a vacuous pass: if the seed parser matched nothing, the bound
+  // below proves nothing. 18 products as of 0034.
+  assert(SEEDED.length >= 18, `parsed only ${SEEDED.length} seeded products`);
+  // 26 characters is what fits two lines on the 196px face at 12px. This is a
+  // real bound on the catalog, not a style note: past it the face ellipsizes.
+  for (const p of SEEDED) {
+    const short = R.shortCardName(p.name, p.issuer);
+    assert(short.length > 0, `${p.name} shortened to nothing`);
+    // 30 characters is what two lines of the 196px face hold at 12px. A real
+    // bound on the catalog rather than a style note: past it the face ellipsizes.
+    assert(short.length <= 30, `${p.name} shortened to ${short.length} chars: "${short}"`);
+  }
 });
 
 // ── 8. Benefit periods ─────────────────────────────────────────────────────

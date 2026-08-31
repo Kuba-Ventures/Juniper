@@ -308,6 +308,74 @@ it is the fact, and theirs was a stand-in for its absence.
   and Juniper will never hear about it, so the column is there for a "you set this in August" line that
   is not built.
 
+## The card faces and the wallet
+
+**Design record:** `design/card-wallet-variants.html`, one face proposal and three wallet treatments,
+A chosen (a vertical pocket).
+
+**Still no issuer card art, and that has not changed.** Those renders are licensed brand assets and
+Juniper has no relationship with any card issuer, which is the same gate holding the marketplace. A face
+is the product's stored `brand_color` plus the issuer's own logo as served by Plaid. What changed is the
+care in the drawing: two gradient stops derived in CSS from the one stored colour, an EMV chip with
+contact lines, a generic contactless glyph, and the product name letter-spaced as embossing.
+
+**The network is set in plain type, never as its own logo.** "Visa" as a word states a fact about the
+card the member holds. Reproducing Visa's mark and colours would be using their brand asset, which is
+the line this component exists to stay on the right side of.
+
+### shortCardName, and why it is derived
+
+`card_products.name` is stored as the issuer spells it, which is what the picker needs and what a member
+compares against the card in their hand. It is also 53 characters for "Capital One Quicksilver Student
+Cash Rewards Credit Card", which ellipsizes on every face size.
+
+So `shortCardName(full, issuer)` in `api/_rewards.ts` derives it, and the endpoint sends `short_name` on
+every product and every catalog row. Derived rather than stored because eighteen hand-written short
+names would be eighteen chances to get one wrong plus a migration every time the catalog grows, where
+one function is checkable. Six cases in `check-rewards.ts` cover it, plus a bound asserting every
+seeded product shortens to 30 characters or fewer, which is what two lines of the face hold.
+
+Two cases that were found by printing all 18 derivations rather than by reasoning about the rule:
+
+- **The lowercase guard.** "Discover it® Chrome" minus its issuer is "it® Chrome", a fragment rather
+  than a card name. So when dropping the issuer would leave the name starting on a lowercase word, the
+  issuer stays.
+- **"Cash Back" is kept, "Cash Rewards" is not.** "Cash Rewards" is a Capital One suffix carrying
+  nothing once the product word is there. "Cash Back" is what separates three different Discover cards,
+  and stripping it left the flagship reading as the family name, "Discover it®".
+
+### The wallet is vertical, and that is a bug fix rather than a preference
+
+**In any overlapping stack, the visible band of a hidden card is narrow, and whatever identifies it must
+sit inside that band.** That single fact drove every decision here, and it took four attempts to get
+right:
+
+1. A **horizontal fan** leaves each hidden card's RIGHT edge showing, which is where the network name
+   sits, so it read "VISA VISA RCARD COVER".
+2. Reversing the fan so the leftmost edge shows fixed that, but **spreading it to make each card
+   readable needs 816px**, the entire hero width. Measured: the rightmost card landed at 846px inside a
+   352px box, straight over the stats.
+3. Vertical with a 34px reveal showed only the issuer, so **both Chase cards read "CHASE"** and were
+   indistinguishable.
+4. Vertical with 54px and the name stacked under the mask clipped the mask to "·1575"; side by side they
+   left about 85px for the name, so **both Discover cards read "Disco..."**.
+
+The shipped answer is a 54px reveal with `CardFace layout="strip"`, which puts the issuer and the mask
+on one line and gives the name the full width of its own. That is a component prop rather than CSS
+because the fix needs the mask on the issuer's line and CSS `order` only reorders siblings.
+
+**Vertical also scales**, which is the reason to prefer it beyond legibility: a fifth card costs 54px of
+height rather than 52px of width the hero does not have. Five cards is 398px, collapsing to 148px.
+
+**The cost, stated because it is real:** the product name lives at the top of the face in this layout,
+off the bottom where embossing actually is, and the pocket is the tallest option at 398px for five cards
+against the 132px the old fan used.
+
+Two smaller things worth knowing. The lip is `pointer-events: none`, or it would eat the taps meant for
+the cards behind it. And `z-index` comes from the stylesheet rather than inline, because an inline
+declaration beats any stylesheet selector short of `!important`, and with it inline a raised card still
+painted UNDER its neighbour: measured at 30 while the rule asked for 99.
+
 ## Ops to activate
 
 1. Apply `supabase/migrations/0031_card_products.sql` (tables, RLS, grants).
