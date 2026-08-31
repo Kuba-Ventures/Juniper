@@ -44,6 +44,31 @@ Everything below is the evidence for that, and the design rules that follow.
 > streams through the stale-stream delete would wipe the member's cached list on
 > the strength of a permissions error.
 
+> **Granted 2026-08-31.** Plaid approved the `recurring_transactions` add on, so
+> the "not before" above is satisfied and `additional_consented_products` now
+> reads `["investments", "recurring_transactions"]`. Nothing else in the code
+> changed, and deliberately so: `recurring-sync.ts` decides availability from
+> what Plaid answers at runtime, so an entitled client simply stops taking the
+> refusal path, and the panel it feeds has always rendered whatever streams the
+> cache holds. Three things are therefore true and unverified until somebody
+> checks them against production, in this order:
+>
+> 1. `/link/token/create` still succeeds. This is the one change that can break
+>    linking for **everyone**, so it is worth checking before anything else. A
+>    real link token from a signed-in session is the check that counts; the
+>    unauthenticated probe answers 401 either way, so it proves the function is
+>    alive and not that Plaid accepted the product list. A refusal appears
+>    server-side as `[plaid] link/token/create failed`.
+> 2. A sync returns streams rather than `available: false`. The seven production
+>    items were all linked before this change, so under Data Transparency
+>    Messaging some or all of them may keep refusing until they are put back
+>    through Link in update mode. A partial answer is the expected shape here
+>    rather than a bug, because the sync degrades per item.
+> 3. Sandbox is a separate entitlement question. Preview and local run on the
+>    Sandbox secret, so if that environment refuses the product then
+>    `/link/token/create` fails on every preview deploy while production is
+>    fine. Check a preview link before assuming the change is safe everywhere.
+
 The response splits `inflow_streams` and `outflow_streams`. Per stream:
 
 | Field | What it is | Why it matters here |
