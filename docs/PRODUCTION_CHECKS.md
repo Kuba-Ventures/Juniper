@@ -3,6 +3,12 @@
 *Written 2026-08-30. A short manual pass, with the SQL to confirm each step,*
 *for the parts of #199, #201 and #214 that no automated check can reach.*
 
+*__All three last passed 2026-08-30.__ Two bugs came out of that first run and*
+*were fixed in #216: no merchant rule could be saved at all, and a corrected*
+*row kept its old icon. Both were invisible to every automated check, and the*
+*rule one was invisible to the preview too, because it lived in the shape of an*
+*index. Re-run this whenever any of it changes.*
+
 ---
 
 ## Why this exists
@@ -121,6 +127,13 @@ is behind `DEVELOPER_EMAILS`, falling back to `ADMIN_EMAILS`).
 its `updated_at` has moved (proving the sync rewrote it and preserved the
 correction rather than skipping it).
 
+> **Confirmed 2026-08-30.** Chase's cursor was cleared and its whole history
+> replayed. All seven Chick-fil-A rows came back stamped with one identical
+> `updated_at`, so every one of them went through the upsert: six stayed
+> `rule`, one stayed `user`. That is the correction surviving, the rule
+> surviving, and the correction outranking the rule, all on the path that used
+> to eat corrections before #201.
+
 **Wrong:** the row is gone from the `user` list, or its category is back to
 Plaid's guess. That is the exact bug #201 set out to prevent, and it means the
 override read in `transactions-sync.ts` is not doing its job.
@@ -173,6 +186,19 @@ something else. Then sync again (step 2's method).
 **Right:** that one charge stays `user` with your category, while its siblings
 stay `rule`. If the rule overwrites it, the more-specific-wins rule is not
 holding and `_category-precedence.ts` is not being consulted where it should be.
+
+---
+
+---
+
+## Known: the Settings refresh button
+
+The "Refresh data now" control in Settings did not appear to do anything, while
+the one on Connections did. Both call the same `syncFinances()`, but Settings
+went through `runBackgroundSync()`, which swallows every error and returns an
+in-flight promise rather than starting new work. It reported "Done" either way.
+It calls `syncFinances()` directly now and says what happened. Use the
+Connections button if the Settings one still misbehaves, and say so.
 
 ---
 

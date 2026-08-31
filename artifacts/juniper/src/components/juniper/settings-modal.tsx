@@ -4,7 +4,8 @@ import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingRep
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { useTheme } from "@/lib/theme";
 import { useFinances } from "@/lib/finances";
-import { runBackgroundSync, timeAgo } from "@/lib/auto-sync";
+import { timeAgo } from "@/lib/auto-sync";
+import { syncFinances } from "@/lib/plaid";
 
 // Wipe this account back to a brand-new state, server profile + plans and all
 // local caches (profile, onboarded flag, welcome tip), then hard-reload into
@@ -51,14 +52,44 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
   const [refreshed, setRefreshed] = useState(false);
   const { sync, syncing, refresh } = useFinances();
   const isDeveloper = import.meta.env.DEV || !!sync?.isDeveloper;
+  // Its own busy flag rather than the context's `syncing`, which is true only
+  // for the AUTOMATIC background refresh. Sharing it left the button disabled
+  // while a background sync it had not started was running.
+  const [busyRefresh, setBusyRefresh] = useState(false);
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
 
   const doRefresh = async () => {
-    // The same background sync the app runs on its own, not a second path to
-    // the same endpoints. What this skips is the six-hour staleness check, not
-    // any of the work.
-    await runBackgroundSync();
-    await refresh();
-    setRefreshed(true);
+    // syncFinances directly, NOT runBackgroundSync, and both differences matter
+    // for a control somebody deliberately pressed.
+    //
+    // runBackgroundSync swallows every failure ("a failed background refresh is
+    // not the member's problem"), which is right for a refresh nobody asked for
+    // and wrong here: this button reported "Done" whether or not anything
+    // happened, so a failing sync was indistinguishable from a working one.
+    //
+    // It also returns the in-flight promise when a background sync is already
+    // running, so a press could resolve without starting any work at all.
+    setBusyRefresh(true); setRefreshNote(null);
+    try {
+      const result = await syncFinances();
+      await refresh();
+      // Same reporting the Connections page does, for the same reason: a run
+      // that reached Plaid for some connections and not others must not look
+      // like a clean one.
+      if (result.needsRelink.length) {
+        setRefreshNote(
+          `${result.needsRelink.length} connection${result.needsRelink.length === 1 ? "" : "s"} need reconnecting. Fix them on Connections.`,
+        );
+      } else if (!result.transactions && !result.netWorth) {
+        setRefreshNote("Nothing refreshed. Check Connections.");
+      } else {
+        setRefreshed(true);
+      }
+    } catch {
+      setRefreshNote("That did not run. Try again.");
+    } finally {
+      setBusyRefresh(false);
+    }
   };
 
   const doReset = async () => {
@@ -138,9 +169,10 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
                       Skips the six-hour wait and pulls transactions, balances, and recurring charges from Plaid.
                       {sync?.syncedAt ? ` Last synced ${timeAgo(sync.syncedAt)}.` : ""}
                     </div>
+                    {refreshNote && <div className="dev-warn">{refreshNote}</div>}
                   </div>
-                  <button className="btn ghost sm" disabled={syncing || refreshed} onClick={doRefresh}>
-                    {syncing ? "Refreshing…" : refreshed ? "Done" : "Refresh"}
+                  <button className="btn ghost sm" disabled={busyRefresh || refreshed} onClick={doRefresh}>
+                    {busyRefresh ? "Refreshing…" : refreshed ? "Done" : "Refresh"}
                   </button>
                 </div>
 

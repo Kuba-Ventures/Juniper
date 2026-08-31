@@ -17,7 +17,8 @@ import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type 
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { BudgetsPanel } from "@/components/juniper/budgets-panel";
 import { CategoryPicker } from "@/components/juniper/category-picker";
-import { createMerchantRule } from "@/lib/merchant-rules";
+import { createMerchantRule, fetchMerchantRules } from "@/lib/merchant-rules";
+import { RulesModal } from "@/components/juniper/rules-modal";
 import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money0, money2 } from "@/lib/txn-format";
 import {
@@ -75,6 +76,12 @@ export default function Transactions() {
   const [ruleBusy, setRuleBusy] = useState(false);
   const [ruleDone, setRuleDone] = useState<{ id: string; applied: number | null } | null>(null);
   const [ruleFailed, setRuleFailed] = useState<string | null>(null);
+  // How many rules exist, so the entry point can be absent for a member who has
+  // never made one. Read once on mount and after any change, not per render.
+  const [ruleCount, setRuleCount] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const countRules = useCallback(() => { void fetchMerchantRules().then((r) => setRuleCount(r.length)); }, []);
+  useEffect(countRules, [countRules]);
   // The Budgets panel and the Overview both read /api/finances, and moving a
   // charge between groups changes this month's spend, so the rollup that owns
   // that figure is asked to catch up rather than left to disagree.
@@ -133,6 +140,7 @@ export default function Transactions() {
     const applied = typeof r.data.applied === "number" ? (r.data.applied as number) : null;
     setRuleDone({ id: offer.id, applied });
     setOffer(null);
+    countRules();
     // The rule may have moved charges elsewhere in the range, so the rollup and
     // the rows both have to catch up rather than only this one row.
     await load(range);
@@ -249,6 +257,21 @@ export default function Transactions() {
         )}
       </div>
 
+      {rulesOpen && (
+        <RulesModal
+          onClose={() => setRulesOpen(false)}
+          onChanged={() => {
+            countRules();
+            // A removed rule stops applying to NEW charges and leaves the ones
+            // it already set alone, so nothing on screen moves. The rollup is
+            // re-read anyway rather than assumed: this is the one place a
+            // member changes categorization without touching a row.
+            void load(range);
+            void refreshFinances();
+          }}
+        />
+      )}
+
       {/* Between the chart and the table on purpose. A recurring charge is a
          conclusion drawn from the same rows the table lists, so it reads as a
          summary of them rather than as a separate feature. */}
@@ -257,6 +280,15 @@ export default function Transactions() {
       <div className="card">
         <div className="card-head">
           <h3>Transactions</h3>
+          {/* Only when a rule exists: a member who has never made one gets no
+              chrome for a feature they have not used. It is also the only place
+              a rule can be seen or removed, so it cannot be hidden behind a
+              hover or a menu. */}
+          {ruleCount > 0 && (
+            <button type="button" className="tx-rules" onClick={() => setRulesOpen(true)}>
+              {ruleCount === 1 ? "1 rule" : `${ruleCount} rules`}
+            </button>
+          )}
           <span className="search" style={{ maxWidth: 260 }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
             <input placeholder="Search loaded transactions" value={q} onChange={(e) => setQ(e.target.value)} />
