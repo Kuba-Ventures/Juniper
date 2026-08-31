@@ -362,12 +362,23 @@ rationale in `docs/CARD_REWARDS.md`.
   pieces of punctuation. The repair sets each name from a known-good value with `chr(174)` and
   `chr(8480)`, and contains no byte above ASCII anywhere including its comments, because a repair holding
   the sequence that got mangled would arrive as broken as the thing it repairs.
-- [ ] **(ops)** Apply `0035` and `0036` to the production Supabase project. `0036` ends with a
-  verification SELECT: every row should report `ok` true. Nothing changes on screen until a URL
-  is set, which is what makes it safe to apply ahead of any licensing decision.
-- [ ] **Decide where card art comes from, or decide not to have it.** The plumbing is done and the
-  column is empty. The cheapest option (hotlinking issuer URLs) is also the least defensible; the
-  cleanest (an affiliate program's brand pack) is the same approval the marketplace already waits on - Finley
+- [x] **(ops)** Apply `0035` and `0036` to the production Supabase project. Both applied; verified
+  against `information_schema`.
+- [ ] **(ops)** Apply `0037_card_art_urls.sql` to the production Supabase project. Fills `art_url` for
+  15 of the 18 products; `0038` fills the remaining three. Ends with a verification SELECT: every row carrying a URL should report `ok`
+  true. **Deploy the branch first** - the URLs point at `/card-art/*.webp` on Juniper's own origin, so
+  applying it ahead of the deploy leaves 15 faces briefly falling back to the synthesized render.
+- [x] **Decide where card art comes from.** Decided: rehost the issuers' own renders on Juniper's origin
+  as a stopgap, margin-trimmed, with the issuers' placeholder cardholder names ("D. BARRETT",
+  "LEE M CARDHOLDER", "LINDA WALKER") erased so a stranger's name never appears on a member's card.
+  Unlicensed and knowingly so - see the header of `0037` for the full position and the one-line revert.
+  Superseded the moment an affiliate brand pack lands, which is the same approval Stage 5 waits on.
+- [x] **Card art, stage B: the three Chase Freedom cards** (`0038`). The ribbon mask is intersected with
+  the upper-right corner triangle, which is what lets the colour threshold be loose enough to catch its
+  antialiased edge without also erasing the word UNLIMITED. The ribbon juts past the card edge, so the
+  card width is reconstructed from its height at the true 1.586 ratio rather than trimmed to the opaque
+  bounds (which measured the ribbon: 1.519). All 18 products now carry art.
+- [ ] **(ops)** Apply `0038_card_art_urls_chase.sql`. Same deploy-first rule as `0037`.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
 - [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at

@@ -1,0 +1,23 @@
+# product_id	source_url	flags
+# Regenerate every face:  awk -F'\t' '!/^#/ && NF{system("python3 scripts/card-art.py "$1" \""$2"\" "$3)}' scripts/card-art-sources.tsv
+# Flags: --ribbon strips Chase's promotional corner ribbon; --keep-name skips the
+# placeholder-cardholder-name pass (nothing needs it today, the detector no-ops
+# on a render that has no name band).
+amex-blue-cash-preferred	https://icm.aexp-static.com/acquisition/card-art/NUS000000264_480x304_straight_noname.png	--keep-name
+amex-blue-cash-everyday	https://icm.aexp-static.com/acquisition/card-art/NUS000000305_480x304_straight_noname.png	--keep-name
+capital-one-venture	https://ecm.capitalone.com/WCM/card/products/venture-card-art.png	--keep-name
+capital-one-quicksilver	https://ecm.capitalone.com/WCM/card/products/quicksilver-card-art.png	
+capital-one-quicksilver-student	https://ecm.capitalone.com/WCM/card/products/quicksilver-card-art.png	
+capital-one-savor	https://ecm.capitalone.com/WCM/card/products/savor-card-art.png	
+capital-one-savorone	https://ecm.capitalone.com/WCM/card/products/savorone-card-art.png	
+discover-it-cash-back	https://ecm.capitalone.com/WCM/dfs-card/products/cardart-cashit-with-shadow.png	--keep-name
+discover-it-chrome	https://ecm.capitalone.com/WCM/dfs-card/products/cardart-cash-chrome-shadow.png	--keep-name
+discover-it-miles	https://ecm.capitalone.com/WCM/dfs-card/products/it-miles-card-header.png	--keep-name
+discover-it-student-cash-back	https://ecm.capitalone.com/WCM/dfs-card/products/cardart-student-it-iridescent-shadow.png	--keep-name
+chase-sapphire-preferred	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/sapphire_preferred_card.png	
+chase-freedom-unlimited	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/freedom_unlimited_card_alt.png	--ribbon
+chase-freedom-flex	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/freedom_flex_card_alt.png	--ribbon
+chase-freedom-rise	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/freedom_rise_alt_card2.png	--ribbon
+citi-double-cash	https://aemapi.citi.com/content/dam/cfs/uspb/usmkt/cards/en/static/images/citi-double-cash-credit-card/citi-double-cash-credit-card_306x192.webp	
+wells-fargo-active-cash	https://creditcards.wellsfargo.com/rv/bcs/production/active-cash.9hXxvW2T_1Thrzz.webp	
+wells-fargo-autograph	https://creditcards.wellsfargo.com/rv/bcs/production/autograph.B5C6nsw-_Z2rG3ci.webp	
