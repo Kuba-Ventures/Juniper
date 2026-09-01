@@ -644,6 +644,11 @@ rationale in `docs/CARD_REWARDS.md`.
   "In credit" and 0% used rather than being drawn as debt, a card with no limit reads "Not known" and
   "Unknown" rather than 0%, a member-set limit is badged "Yours", and a hand-entered card carries "You
   added this".
+  **Refined after seeing it on the real page:** the cover went from 54px to 84px, because at 54 it read
+  as a strip laid under the cards rather than a pocket, and the front card in particular looked like it
+  was resting against it instead of sitting down inside it. The sheet went from the standard 440px modal
+  to a `narrow` 330px one with the card sized to fill it, since at the default width it read as a dialog
+  that had taken over the page to show a preview: 24% of the viewport rather than most of it.
 - [ ] **(ops)** Apply `0048`. Deploy first, as with `0037`, though it is additive and safe either way:
   the column is nullable and an absent value renders the default holder. Verified against a scratch
   Postgres before shipping: `0001` then `0048` applies clean, re-running is a no-op, a pre-existing
