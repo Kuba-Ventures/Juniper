@@ -547,6 +547,14 @@ export function Credit() {
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
   const rewards = useCardRewards();
+  // Bumped to open the identify picker from somewhere other than the prompt's own
+  // button: the wallet in the rewards hero draws an outline for each card still
+  // to be named, and tapping one has to land on the answer. A counter rather than
+  // a boolean, so the same slot can be tapped twice after a dismissal. The state
+  // sits here because the prompt and the wallet are siblings, and the alternative
+  // is a second picker mounted in the hero, which would be a second place the
+  // same answer gets written.
+  const [identifyRequest, setIdentifyRequest] = useState(0);
 
   // account id -> the product the member said it is. Built from the rewards
   // payload rather than fetched again, so the two halves of this page cannot
@@ -652,6 +660,7 @@ export function Credit() {
         <CardIdentifyPrompt
           cards={rewards.data.unidentified}
           catalog={rewards.data.catalog}
+          openRequest={identifyRequest}
           onSaved={() => void rewards.refresh()}
         />
       )}
@@ -693,7 +702,11 @@ export function Credit() {
           from, and this surface can least afford to look like it is guessing. */}
       {rewards.data && (
         <>
-          <RewardsGuide data={rewards.data} logoFor={rewardsLogo(brands)} />
+          <RewardsGuide
+            data={rewards.data}
+            logoFor={rewardsLogo(brands)}
+            onIdentify={() => setIdentifyRequest((n) => n + 1)}
+          />
           {rewards.data.benefits && (
             <BenefitsTracker
               summary={rewards.data.benefits}
