@@ -1633,18 +1633,18 @@
    digits and a picture. Accepted deliberately: the fix then is that card's art,
    or `short_name` on a face with no art at all, not a label over every card in
    the catalog. Treatments in design/wallet-label-variants.html. */
-.jnpr .cr-pocket .cr-face-art .cr-face-in{
+.jnpr .cr-holder .cr-face-art .cr-face-in{
   background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.22) 30px,rgba(0,0,0,0) 48px)}
-.jnpr .cr-pocket .cr-face-art .cr-face-iss,
-.jnpr .cr-pocket .cr-face-art .cr-face-nm{display:none}
+.jnpr .cr-holder .cr-face-art .cr-face-iss,
+.jnpr .cr-holder .cr-face-art .cr-face-nm{display:none}
 /* And the mask HOLDS THE RIGHT. `.cr-face-top` is space-between, so removing the
    issuer left the mask as an only child and it slid to the left edge, straight on
    top of the Chase octagon that the artwork prints there. Issuers put their mark
    top-left and their own name centre or left; the right corner is the one part of
    a card face that is reliably empty, which is why the mask was there to begin
    with. Found by looking at the render, not by reading the rule. */
-.jnpr .cr-pocket .cr-face-art .cr-face-top{justify-content:flex-end}
-.jnpr .cr-pocket .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.jnpr .cr-holder .cr-face-art .cr-face-top{justify-content:flex-end}
+.jnpr .cr-holder .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 /* On a FULL face with art the labels are the artwork's job, so they come off. The
    STRIP layout is excluded, and that exclusion is the whole point: a strip's body
    is covered by the next card, so its labels are the only thing identifying it.
@@ -1737,6 +1737,152 @@
    "VISA VISA RCARD COVER". Vertical leaves the TOP strip, where the issuer and
    the name are, and it scales: a fifth card costs 54px of height rather than
    52px of width the hero does not have. */
+/* ══ THE CARD HOLDER ═══════════════════════════════════════════════════════
+   Replaces the old `cr-pocket` lip, which had two defects reported on
+   2026-09-01. The component's `FACE_H` said 124 while `.cr-face-lg` is 149,
+   so every computed height was 25px short; and nothing clipped the stack, so
+   collapsing reserved 148px for 257px of content and 109px of card hung out
+   below the pocket front. `.cr-holder-clip` now clips, and the component reads
+   the face height from one constant that matches this file.
+
+   The construction follows a real holder (design/card-holder-b-refined.html,
+   built against a photograph): each card sits behind a SLOT BAND a few px tall,
+   lit along its top edge and casting a shadow down onto the card below, and the
+   FRONT card sits in a deeper pocket showing much more of itself than the ones
+   above it. A hairline divider reads as a list; a lit band reads as material.
+
+   Six materials, chosen by the member and stored per member (migration 0048,
+   `hold-*` classes from lib/holder-style.ts). Organised by material rather than
+   by who the member is, so nobody has to sort themselves into a bucket to find a
+   look they like. Every one of them has to work in light AND dark, collapsed AND
+   expanded, which is six styles times four states and the real cost of the
+   feature. */
+.jnpr .cr-holder{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 0;
+  border-radius:14px}
+.jnpr .cr-holder-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+@media (prefers-reduced-motion:reduce){
+  .jnpr .cr-holder-clip{transition:none}
+}
+.jnpr .cr-holder-card{position:absolute;left:0;right:0;padding:0;border:0;background:none;
+  cursor:pointer;display:block;border-radius:9px;overflow:hidden;
+  transition:top .26s cubic-bezier(.2,.7,.3,1), transform .2s ease}
+@media (prefers-reduced-motion:reduce){
+  .jnpr .cr-holder-card{transition:none}
+}
+.jnpr .cr-holder-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+.jnpr .cr-holder-card.up{transform:translateY(-7px)}
+/* The slot each card is tucked into: lit on top, shadow cast downward. */
+.jnpr .cr-holder-band{position:absolute;left:0;right:0;height:7px;pointer-events:none}
+.jnpr .cr-holder-band::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:rgba(255,255,255,.13)}
+.jnpr .cr-holder-band::after{content:"";position:absolute;left:0;right:0;top:100%;height:11px;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,0))}
+.jnpr .cr-holder-foot{position:relative;z-index:3;text-align:center;font-size:11.5px;
+  font-weight:650;padding:15px 0 16px}
+.jnpr .cr-holder-toggle{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
+  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px}
+.jnpr .cr-holder-toggle:hover{color:var(--jnpr-ink)}
+
+/* Grain, shared by the leather and canvas finishes: two offset repeating
+   gradients at low opacity, which costs nothing and reads as material where a
+   flat fill reads as a box. */
+.jnpr .hold-cognac::before,.jnpr .hold-black::before,.jnpr .hold-canvas::before,
+.jnpr .hold-saffiano::before,.jnpr .hold-metal::before{
+  content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none}
+/* The stitch, set in from the edge, which is most of what says "leather". */
+.jnpr .hold-cognac::after,.jnpr .hold-black::after,.jnpr .hold-canvas::after{
+  content:"";position:absolute;inset:6px;border-radius:10px;pointer-events:none;
+  border:1px dashed rgba(255,255,255,.22)}
+
+/* ── cognac leather ── */
+.jnpr .hold-cognac{background:radial-gradient(120% 80% at 30% 0%,#a4643a,#8d5330 55%,#74421f);
+  border:1px solid #6b3d1d;
+  box-shadow:inset 0 1px 0 rgba(255,225,196,.22),0 18px 34px -20px rgba(0,0,0,.85)}
+.jnpr .hold-cognac::before{opacity:.55;background:
+  repeating-linear-gradient(37deg,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,0) 2px 5px),
+  repeating-linear-gradient(-52deg,rgba(80,35,10,.13) 0 3px,rgba(0,0,0,0) 3px 7px)}
+.jnpr .hold-cognac::after{border-color:rgba(255,232,205,.42)}
+.jnpr .hold-cognac .cr-holder-band{background:linear-gradient(180deg,#ab6e43,#864c26)}
+.jnpr .hold-cognac .cr-holder-foot{color:#f3dfc8}
+.jnpr .hold-cognac .cr-holder-toggle{color:#fff}
+
+/* ── black leather ── */
+.jnpr .hold-black{background:radial-gradient(120% 80% at 30% 0%,#2c2f2b,#23261f 55%,#1b1e18);
+  border:1px solid #3a3e35;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 18px 34px -20px rgba(0,0,0,.85)}
+.jnpr .hold-black::before{opacity:.5;background:
+  repeating-linear-gradient(37deg,rgba(255,255,255,.022) 0 2px,rgba(0,0,0,0) 2px 5px),
+  repeating-linear-gradient(-52deg,rgba(0,0,0,.05) 0 3px,rgba(0,0,0,0) 3px 7px)}
+.jnpr .hold-black::after{border-color:rgba(226,214,192,.30)}
+.jnpr .hold-black .cr-holder-band{background:linear-gradient(180deg,#33372e,#25281f)}
+.jnpr .hold-black .cr-holder-foot{color:#a8b09c}
+
+/* ── saffiano: the cross-hatch pressed finish, no stitch ── */
+.jnpr .hold-saffiano{background:linear-gradient(160deg,#3b3f4a,#2a2d35 60%,#20232a);
+  border:1px solid #474c58;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85)}
+.jnpr .hold-saffiano::before{opacity:.6;background:
+  repeating-linear-gradient(45deg,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,0) 1px 4px),
+  repeating-linear-gradient(-45deg,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,0) 1px 4px)}
+.jnpr .hold-saffiano .cr-holder-band{background:linear-gradient(180deg,#454a56,#31353d)}
+.jnpr .hold-saffiano .cr-holder-foot{color:#b6bccb}
+
+/* ── canvas: woven, with a contrast stitch ── */
+.jnpr .hold-canvas{background:linear-gradient(160deg,#5f6553,#4c5142 60%,#3e4236);
+  border:1px solid #6d7360;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85)}
+.jnpr .hold-canvas::before{opacity:.7;background:
+  repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0 1px,rgba(0,0,0,0) 1px 3px),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 3px)}
+.jnpr .hold-canvas::after{border-color:rgba(240,238,220,.34)}
+.jnpr .hold-canvas .cr-holder-band{background:linear-gradient(180deg,#666c58,#4e5344)}
+.jnpr .hold-canvas .cr-holder-foot{color:#dfe2d2}
+
+/* ── brushed metal: a hard case, so a hairline band rather than a soft one ── */
+.jnpr .hold-metal{background:linear-gradient(100deg,#8f949b,#6f747c 32%,#585d65 58%,#7d828a);
+  border:1px solid #9ba0a8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 18px 34px -20px rgba(0,0,0,.85)}
+.jnpr .hold-metal::before{opacity:.5;background:
+  repeating-linear-gradient(92deg,rgba(255,255,255,.10) 0 1px,rgba(0,0,0,0) 1px 3px),
+  repeating-linear-gradient(92deg,rgba(0,0,0,.07) 0 1px,rgba(0,0,0,0) 1px 6px)}
+.jnpr .hold-metal .cr-holder-band{background:linear-gradient(180deg,#a5aab2,#7c8189);height:5px}
+.jnpr .hold-metal .cr-holder-band::before{background:rgba(255,255,255,.45)}
+.jnpr .hold-metal .cr-holder-foot{color:#2a2d31}
+.jnpr .hold-metal .cr-holder-toggle{color:#1d3f2c}
+
+/* ── minimal: the anatomy, none of the material. Uses the app's own tokens, so
+      it follows a theme change and never dates. ── */
+.jnpr .hold-minimal{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.jnpr .hold-minimal .cr-holder-band{background:var(--jnpr-surface-3);height:6px}
+.jnpr .hold-minimal .cr-holder-band::before{background:rgba(255,255,255,.07)}
+.jnpr .hold-minimal .cr-holder-band::after{
+  background:linear-gradient(180deg,rgba(0,0,0,.32),rgba(0,0,0,0))}
+.jnpr .hold-minimal .cr-holder-foot{color:var(--jnpr-ink-3)}
+
+/* The picker's swatch: the same holder at a size that fits six across. */
+/* Portrait, because a card holder is: the real one is 262 wide by about 290
+   tall. A landscape swatch read as a single card rather than as a holder. */
+.jnpr .hold-swatch{position:relative;display:block;width:100%;aspect-ratio:.92;border-radius:9px;
+  padding:5px 5px 0;cursor:pointer;overflow:hidden}
+.jnpr .hold-swatch::after{inset:3px;border-radius:6px}
+.jnpr .hold-swatch .sw-card{position:absolute;left:5px;right:5px;height:22px;border-radius:3px;
+  background:linear-gradient(120deg,rgba(255,255,255,.30),rgba(255,255,255,.10))}
+.jnpr .hold-swatch .cr-holder-band{height:4px}
+.jnpr .hold-swatch .cr-holder-band::after{height:6px}
+.jnpr .hold-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+/* Fills its grid cell, without which the button shrinks to its content and the
+   percentage-width swatch inside it collapses to a sliver. */
+.jnpr .hold-opt{display:block;width:100%;background:none;border:0;padding:0;cursor:pointer;
+  text-align:center}
+.jnpr .hold-opt .lbl{display:block;font-size:11px;font-weight:650;color:var(--jnpr-ink-3);
+  margin-top:5px}
+.jnpr .hold-opt[aria-pressed="true"] .hold-swatch{outline:2px solid var(--jnpr-accent);
+  outline-offset:2px}
+.jnpr .hold-opt[aria-pressed="true"] .lbl{color:var(--jnpr-ink)}
+
 .jnpr .cr-pocket{position:relative;width:214px;flex:0 0 auto}
 .jnpr .cr-pocket-card{position:absolute;left:0;padding:0;border:0;background:none;cursor:pointer;
   display:block;transition:transform .22s ease}
@@ -1752,11 +1898,11 @@
    content order is rotated: issuer and network on the first line, name second,
    chip and mask pushed to the bottom. That is treatment A's one real cost, since
    the name leaves the bottom of the card where embossing actually is. */
-.jnpr .cr-pocket .cr-face-in{justify-content:flex-start;gap:3px}
+.jnpr .cr-holder .cr-face-in{justify-content:flex-start;gap:3px}
 /* The chip is pushed to the bottom so it never competes for the visible strip.
    The rest of the order comes from `layout="strip"` in CardFace rather than from
    here, since CSS `order` cannot move the mask up to the issuer's line. */
-.jnpr .cr-pocket .cr-face-mid{margin-top:auto}
+.jnpr .cr-holder .cr-face-mid{margin-top:auto}
 /* The strip layout gives the name the FULL width of its own line, which is the
    only arrangement where five cards in a pocket are all distinguishable. Two CSS
    attempts got there the wrong way: stacked name and mask clipped the mask to
@@ -1764,9 +1910,9 @@
    cards read "Disco...". The rearrangement is in CardFace's `layout="strip"`,
    because it needs the mask on the issuer's line and `order` only reorders
    siblings. */
-.jnpr .cr-pocket .cr-face-nm{-webkit-line-clamp:1;font-size:12.5px;min-width:0}
-.jnpr .cr-pocket .cr-face-top{order:0}
-.jnpr .cr-pocket .cr-face-mask{margin-top:0;flex:0 0 auto}
+.jnpr .cr-holder .cr-face-nm{-webkit-line-clamp:1;font-size:12.5px;min-width:0}
+.jnpr .cr-holder .cr-face-top{order:0}
+.jnpr .cr-holder .cr-face-mask{margin-top:0;flex:0 0 auto}
 .jnpr .cr-pocket-lip{position:absolute;left:-9px;right:-9px;bottom:0;height:56px;z-index:60;
   border-radius:0 0 16px 16px;background:var(--jnpr-surface-2);
   border:1px solid var(--jnpr-line);border-top:0;

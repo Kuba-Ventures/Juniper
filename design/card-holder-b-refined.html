@@ -1,0 +1,214 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The slotted card holder, refined</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:20px 20px 90px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;max-width:104ch;margin-bottom:8px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-bar{display:flex;gap:10px;align-items:center;margin:12px 0 26px;flex-wrap:wrap}
+.pv-btn{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer}
+.pv-btn:hover{border-color:var(--jnpr-accent)}
+.pv-sec{margin-bottom:40px}
+.pv-lab{display:flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:6px}
+.pv-num{display:grid;place-items:center;min-width:26px;height:20px;padding:0 6px;border-radius:6px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:0 0 14px;max-width:104ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+
+/* ── The hero row, as it sits on the Credit page today ───────────────────── */
+.hv-hero{display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap}
+.hv-stats{padding-top:8px;min-width:0}
+.hv-stats .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--jnpr-ink-3)}
+.hv-sub{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:4px}
+.hv-figs{display:flex;gap:36px;margin-top:18px;flex-wrap:wrap}
+.hv-fig .v{font-size:27px;font-weight:700;color:var(--jnpr-ink);font-variant-numeric:tabular-nums;
+  margin-top:3px;letter-spacing:-.01em}
+.hv-fig .v .per{font-size:13px;color:var(--jnpr-ink-3);font-weight:650}
+
+/* ── Shared card + slot mechanics ────────────────────────────────────────── */
+.hv-card{position:absolute;left:0;right:0;height:149px;border-radius:9px;overflow:hidden;
+  padding:0;border:0;background:none;cursor:pointer;display:block;
+  transition:top .26s cubic-bezier(.2,.7,.3,1), transform .2s ease}
+.hv-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hv-mask{position:absolute;top:9px;right:11px;z-index:2;font-size:11px;font-weight:700;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);font-variant-numeric:tabular-nums}
+.hv-scrim{position:absolute;left:0;right:0;top:0;height:40px;z-index:1;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.18) 26px,rgba(0,0,0,0))}
+.hv-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+
+/* THE SLOT BAND. The reference photo's giveaway: a card sits BEHIND a band of
+   leather a few px tall, lit on its top edge and casting a shadow down onto the
+   card below. A hairline reads as a divider; a lit band reads as material. */
+.hv-band{position:absolute;left:0;right:0;height:7px;pointer-events:none}
+.hv-band::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:rgba(255,255,255,.13)}
+.hv-band::after{content:"";position:absolute;left:0;right:0;top:100%;height:11px;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,0))}
+
+/* ── 1. Dark leather, stitched ───────────────────────────────────────────── */
+.h1{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 0;border-radius:14px;
+  background:
+    radial-gradient(120% 80% at 30% 0%, #2c2f2b 0%, #23261f 55%, #1b1e18 100%);
+  border:1px solid #3a3e35;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 34px -20px rgba(0,0,0,.85)}
+/* Grain, cheap and convincing: two offset repeating gradients at low opacity. */
+.h1::before{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(37deg, rgba(255,255,255,.022) 0 2px, rgba(0,0,0,0) 2px 5px),
+    repeating-linear-gradient(-52deg, rgba(0,0,0,.05) 0 3px, rgba(0,0,0,0) 3px 7px)}
+/* The stitch, set in from the edge the way it is on the real thing. */
+.h1::after{content:"";position:absolute;inset:6px;border-radius:10px;pointer-events:none;
+  border:1px dashed rgba(226,214,192,.30)}
+.h1 .hv-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+.h1 .hv-band{background:linear-gradient(180deg,#33372e,#25281f)}
+.h1 .hv-foot{position:relative;z-index:3;text-align:center;font-size:11.5px;font-weight:650;
+  color:#a8b09c;padding:15px 0 16px}
+.h1 .hv-link{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* ── 2. Cognac leather, literal to the reference ─────────────────────────── */
+.h2{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 0;border-radius:14px;
+  background:radial-gradient(120% 80% at 30% 0%, #a4643a 0%, #8d5330 55%, #74421f 100%);
+  border:1px solid #6b3d1d;
+  box-shadow:inset 0 1px 0 rgba(255,225,196,.22), 0 18px 34px -20px rgba(0,0,0,.85)}
+.h2::before{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;opacity:.55;
+  background:
+    repeating-linear-gradient(37deg, rgba(255,255,255,.05) 0 2px, rgba(0,0,0,0) 2px 5px),
+    repeating-linear-gradient(-52deg, rgba(80,35,10,.13) 0 3px, rgba(0,0,0,0) 3px 7px)}
+.h2::after{content:"";position:absolute;inset:6px;border-radius:10px;pointer-events:none;
+  border:1px dashed rgba(255,232,205,.42)}
+.h2 .hv-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+.h2 .hv-band{background:linear-gradient(180deg,#a76a40,#82492473)}
+.h2 .hv-band{background:linear-gradient(180deg,#ab6e43,#864c26)}
+.h2 .hv-foot{position:relative;z-index:3;text-align:center;font-size:11.5px;font-weight:650;
+  color:#f3dfc8;padding:15px 0 16px}
+.h2 .hv-link{font:inherit;font-size:11.5px;font-weight:700;color:#fff;background:none;border:0;
+  padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* ── 3. The structure only, no material ──────────────────────────────────── */
+.h3{position:relative;width:262px;flex:0 0 auto;padding:12px 11px 0;border-radius:14px;
+  background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.h3 .hv-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+.h3 .hv-band{background:var(--jnpr-surface-3);height:6px}
+.h3 .hv-foot{position:relative;z-index:3;text-align:center;font-size:11.5px;font-weight:650;
+  color:var(--jnpr-ink-3);padding:14px 0 15px}
+.h3 .hv-link{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  B, refined against your reference. Three things the photo made obvious that my first pass missed:
+  a card sits <b>behind a band of leather</b> lit on its top edge, not behind a hairline; the
+  <b>stitch line is set in from the edge</b> and is most of what says "leather"; and the
+  <b>front card sits in a deeper pocket</b> showing much more of itself than the ones above it.
+  All three are shown in the page's real container, with the figures where they sit today.
+</div>
+<div class="pv-bar">
+  <button class="pv-btn" onclick="document.querySelectorAll('[data-h]').forEach(toggle)">Toggle collapsed / expanded</button>
+  <button class="pv-btn" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+  <span style="font-size:11.5px;color:var(--jnpr-ink-3)">Click any card to raise it.</span>
+</div>
+<div id="rows"></div>
+</div>
+<script>
+const CARDS = [
+  ["capital-one-quicksilver-student","5012"],
+  ["discover-it-chrome","2776"],
+  ["chase-sapphire-preferred","1575"],
+  ["chase-freedom-unlimited","4417"],
+];
+const FACE_H = 149;
+const art = s => `https://www.juniperplan.com/card-art/${s}.webp`;
+const STATS = `
+  <div class="hv-stats">
+    <div class="k">Your cards</div>
+    <div class="hv-sub">3 of 3 linked cards identified · 1 added by hand</div>
+    <div class="hv-figs">
+      <div class="hv-fig"><div class="k">Benefits</div><div class="v">12</div></div>
+      <div class="hv-fig"><div class="k">Unused credits</div><div class="v">$50<span class="per">+</span></div></div>
+      <div class="hv-fig"><div class="k">Left on the table</div><div class="v">$13<span class="per">/yr</span></div></div>
+    </div>
+  </div>`;
+
+function holder(cls){
+  const faces = CARDS.map(([slug,mask],i)=>
+    `<button type="button" class="hv-card" data-i="${i}" aria-label="card ${mask}">
+       <img src="${art(slug)}" alt=""><span class="hv-scrim"></span>
+       <span class="hv-mask">····${mask}</span></button>`).join("");
+  const bands = CARDS.map(()=>`<span class="hv-band"></span>`).join("");
+  return `<div class="hv-hero">
+    <div class="${cls}" data-h="1" data-collapsed="1">
+      <div class="hv-clip">${faces}${bands}</div>
+      <div class="hv-foot"><span class="n"></span> · <button class="hv-link"></button></div>
+    </div>${STATS}</div>`;
+}
+
+// The reference's proportions: a thin reveal for the seated cards, and a much
+// deeper one for the front card, which is the card you are actually looking at.
+const STEP_CLOSED = 30, STEP_OPEN = 46, FRONT_CLOSED = 62, FRONT_OPEN = FACE_H;
+function layout(h){
+  const closed = h.dataset.collapsed === "1";
+  const cards = [...h.querySelectorAll(".hv-card")];
+  const bands = [...h.querySelectorAll(".hv-band")];
+  const step = closed ? STEP_CLOSED : STEP_OPEN;
+  const front = closed ? FRONT_CLOSED : FRONT_OPEN;
+  const raised = h.dataset.raised;
+  cards.forEach((c,i)=>{
+    c.style.top = (i*step)+"px";
+    c.style.zIndex = (i+1)*10;
+    c.style.transform = raised === String(i) ? "translateY(-7px)" : "";
+  });
+  // A band sits at the TOP of each card except the first: it is the slot that
+  // card is tucked into, so it is drawn above the card and below the one before.
+  bands.forEach((b,i)=>{
+    b.style.top = (i*step - 7)+"px";
+    b.style.zIndex = (i+1)*10 - 5;
+    b.style.display = i === 0 ? "none" : "";
+  });
+  const last = (cards.length-1)*step;
+  h.querySelector(".hv-clip").style.height = (last + front)+"px";
+  h.querySelector(".n").textContent = cards.length + " cards";
+  h.querySelector(".hv-link").textContent = closed ? "Show all" : "Collapse";
+}
+function toggle(h){ h.dataset.collapsed = h.dataset.collapsed === "1" ? "0" : "1"; layout(h); }
+
+const ROWS = [
+  ["1","Dark leather, stitched",
+   "The reference's construction in Juniper's own palette: a warm near-black leather, grain from two offset repeating gradients, and the <b>set-in dashed stitch</b> that does most of the work. Sits inside the page's card without fighting it.",
+   "h1"],
+  ["2","Cognac leather, literal",
+   "Your reference's actual colour. The most unmistakably a card holder, and the most assertive thing on the page by a distance. Worth seeing before ruling out: on a dark surface a warm tan reads as a real object sitting on the screen.",
+   "h2"],
+  ["3","Structure only, no material",
+   "The card holder's <b>anatomy</b> without simulating leather: slot bands, depth, a deeper front pocket, the surface tokens the rest of the app already uses. Ages best and never clashes with a theme change.",
+   "h3"],
+];
+document.getElementById("rows").innerHTML = ROWS.map(([n,t,note,cls])=>
+  `<div class="pv-sec">
+     <div class="pv-lab"><span class="pv-num">B${n}</span> ${t}</div>
+     <div class="pv-note">${note}</div>
+     <div class="card pad-lg">${holder(cls)}</div>
+   </div>`).join("");
+document.querySelectorAll("[data-h]").forEach(h=>{
+  h.querySelector(".hv-link").addEventListener("click", e=>{ e.stopPropagation(); toggle(h); });
+  h.querySelectorAll(".hv-card").forEach(c=>c.addEventListener("click",()=>{
+    h.dataset.raised = h.dataset.raised === c.dataset.i ? "" : c.dataset.i; layout(h);
+  }));
+  layout(h);
+});
+</script>
+</body>
+</html>

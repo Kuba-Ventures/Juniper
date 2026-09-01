@@ -1,0 +1,236 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The card holder, three treatments</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1280px;margin:0 auto;padding:22px 22px 80px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;max-width:108ch;margin-bottom:6px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-bar{display:flex;gap:10px;align-items:center;margin:14px 0 22px;flex-wrap:wrap}
+.pv-btn{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer}
+.pv-btn:hover{border-color:var(--jnpr-accent)}
+.pv-row{margin-bottom:34px}
+.pv-lab{display:flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:6px}
+.pv-num{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:0 0 14px;max-width:100ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-cost{font-size:11.5px;color:var(--jnpr-warn);line-height:1.6;margin-top:12px;max-width:100ch}
+
+/* The hero row every treatment keeps: holder left, the three figures right. */
+.hv-hero{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap}
+.hv-stats{padding-top:6px;min-width:0}
+.hv-stats .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--jnpr-ink-3)}
+.hv-figs{display:flex;gap:34px;margin-top:14px;flex-wrap:wrap}
+.hv-fig .v{font-size:26px;font-weight:700;color:var(--jnpr-ink);font-variant-numeric:tabular-nums;
+  margin-top:2px}
+.hv-fig .v .per{font-size:13px;color:var(--jnpr-ink-3);font-weight:650}
+.hv-sub{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:3px}
+
+/* Shared card face, sized to the real .cr-face-lg */
+.hv-card{position:absolute;left:0;width:236px;height:149px;border-radius:13px;overflow:hidden;
+  padding:0;border:0;background:none;cursor:pointer;display:block;
+  transition:transform .24s cubic-bezier(.2,.7,.3,1), top .24s cubic-bezier(.2,.7,.3,1);
+  box-shadow:0 1px 2px rgba(0,0,0,.34),0 10px 22px -12px rgba(0,0,0,.55)}
+.hv-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hv-mask{position:absolute;top:11px;right:12px;z-index:2;font-size:11.5px;font-weight:700;
+  color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.75);font-variant-numeric:tabular-nums;
+  letter-spacing:.02em}
+.hv-scrim{position:absolute;left:0;right:0;top:0;height:48px;z-index:1;
+  background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.22) 30px,rgba(0,0,0,0))}
+.hv-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:3px}
+
+/* ── A. The seated pocket ─────────────────────────────────────────────────
+   The metaphor done properly: a pocket the cards genuinely sit inside, with
+   the stack CLIPPED so nothing can ever hang below the front panel. */
+.a-holder{position:relative;width:254px;flex:0 0 auto}
+.a-clip{position:relative;overflow:hidden;padding:9px 9px 0;margin:-9px -9px 0;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+.a-stack{position:relative;height:100%}
+.a-front{position:absolute;left:0;right:0;bottom:0;height:62px;z-index:50;
+  border-radius:3px 3px 15px 15px;
+  background:linear-gradient(180deg,var(--jnpr-surface-2),var(--jnpr-surface-3));
+  border:1px solid var(--jnpr-line);border-top:0;
+  box-shadow:0 -10px 20px -14px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05)}
+/* The seam where the leather is stitched, which is what sells it as a pocket. */
+.a-front::after{content:"";position:absolute;left:12px;right:12px;top:9px;height:1px;
+  border-top:1px dashed var(--jnpr-line-2);opacity:.75}
+.a-foot{position:absolute;left:0;right:0;bottom:15px;z-index:51;text-align:center;font-size:11.5px;
+  font-weight:650;color:var(--jnpr-ink-3)}
+.a-link{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* ── B. The slotted case ──────────────────────────────────────────────────
+   Every card sits in its own slot, and the slot's own edge crosses it. */
+.b-holder{position:relative;width:256px;flex:0 0 auto;
+  background:linear-gradient(180deg,var(--jnpr-surface-2),var(--jnpr-surface-3));
+  border:1px solid var(--jnpr-line);border-radius:16px;padding:10px 10px 52px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.b-clip{position:relative;overflow:hidden;border-radius:10px;
+  transition:height .26s cubic-bezier(.2,.7,.3,1)}
+.b-slot{position:absolute;left:0;right:0;z-index:4;height:1px;background:var(--jnpr-line);
+  box-shadow:0 3px 8px -4px rgba(0,0,0,.75)}
+.b-foot{position:absolute;left:0;right:0;bottom:17px;text-align:center;font-size:11.5px;
+  font-weight:650;color:var(--jnpr-ink-3)}
+
+/* ── C. The fanned deck ───────────────────────────────────────────────────
+   Anchored bottom-left and splayed, the way a hand of cards actually sits. */
+.c-holder{position:relative;width:300px;flex:0 0 auto}
+.c-stack{position:relative}
+.c-stack .hv-card{transform-origin:6% 94%}
+.c-foot{position:absolute;left:0;right:0;bottom:-6px;text-align:center;font-size:11.5px;
+  font-weight:650;color:var(--jnpr-ink-3)}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  Three holders, each fixing the two things behind the current formatting errors: <b>`FACE_H` is 124 in
+  the component while the real face is 149px tall</b>, so every height is short by 25px, and
+  <b>nothing clips the stack</b>, so collapsing leaves 109px of card hanging below the pocket front.
+  All three keep Benefits, Unused credits and Left on the table to the right. Real production artwork.
+</div>
+<div class="pv-bar">
+  <button class="pv-btn" onclick="document.querySelectorAll('[data-holder]').forEach(h=>toggle(h))">Toggle collapsed / expanded</button>
+  <button class="pv-btn" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+  <span style="font-size:11.5px;color:var(--jnpr-ink-3)">Each holder is live: click a card to raise it, or use the buttons.</span>
+</div>
+<div id="rows"></div>
+</div>
+<script>
+const CARDS = [
+  ["capital-one-quicksilver-student","5012"],
+  ["discover-it-chrome","2776"],
+  ["chase-sapphire-preferred","1575"],
+  ["chase-freedom-unlimited","4417"],
+];
+const FACE_H = 149, REVEAL = 54;
+const art = s => `https://www.juniperplan.com/card-art/${s}.webp`;
+
+function faces(n){
+  return CARDS.slice(0,n).map(([slug,mask],i)=>
+    `<button type="button" class="hv-card" data-i="${i}" aria-label="card ${mask}">
+       <img src="${art(slug)}" alt="">
+       <span class="hv-scrim"></span><span class="hv-mask">····${mask}</span>
+     </button>`).join("");
+}
+const STATS = `
+  <div class="hv-stats">
+    <div class="k">Your cards</div>
+    <div class="hv-sub">3 of 3 linked cards identified · 1 added by hand</div>
+    <div class="hv-figs">
+      <div class="hv-fig"><div class="k">Benefits</div><div class="v">12</div></div>
+      <div class="hv-fig"><div class="k">Unused credits</div><div class="v">$50<span class="per">+</span></div></div>
+      <div class="hv-fig"><div class="k">Left on the table</div><div class="v">$13<span class="per">/yr</span></div></div>
+    </div>
+  </div>`;
+
+// A: cards seated in a pocket, clipped, only their top edge showing when closed.
+function holderA(){
+  return `<div class="hv-hero"><div class="a-holder" data-holder="a" data-collapsed="1">
+    <div class="a-clip"><div class="a-stack">${faces(4)}</div></div>
+    <div class="a-front"></div>
+    <div class="a-foot"><span class="n"></span> · <button class="a-link"></button></div>
+  </div>${STATS}</div>`;
+}
+// B: a slotted case, one slot edge per card.
+function holderB(){
+  return `<div class="hv-hero"><div class="b-holder" data-holder="b" data-collapsed="1">
+    <div class="b-clip">${faces(4)}${CARDS.map(()=>'<span class="b-slot"></span>').join("")}</div>
+    <div class="b-foot"><span class="n"></span> · <button class="a-link"></button></div>
+  </div>${STATS}</div>`;
+}
+// C: a fan, anchored bottom-left.
+function holderC(){
+  return `<div class="hv-hero"><div class="c-holder" data-holder="c" data-collapsed="1">
+    <div class="c-stack">${faces(4)}</div>
+    <div class="c-foot"><span class="n"></span> · <button class="a-link"></button></div>
+  </div>${STATS}</div>`;
+}
+
+const ROWS = [
+  ["A","The seated pocket",
+   "The metaphor made real. Cards sit <b>inside</b> the pocket and the stack is clipped to it, so nothing can hang below the front panel, which is the bug you are looking at. <b>Closed</b>, only the top edge of each card shows above the front, the way cards actually sit in a wallet. <b>Open</b>, the stack rises out and the front stays in front of it. The count and the toggle are printed on the pocket itself rather than floating under it.",
+   "Cost: closest to what ships, so the least new. The top edge alone is a narrow target for tapping a specific card when closed.",
+   holderA],
+  ["B","The slotted case",
+   "A leather card case with discrete slots. Each card gets <b>its own slot edge drawn across it</b>, which is what gives real depth and stops four cards reading as one smeared stack. The case has a body, so the holder is an object on the page rather than a floating pile, and the cards are clipped inside it.",
+   "Cost: the most chrome. A visible case border competes with the card art it surrounds, and it takes more vertical room than the pocket does.",
+   holderB],
+  ["C","The fanned deck",
+   "Anchored bottom-left and splayed with a little rotation, the way a hand of cards or a fanned wallet actually sits. <b>Every card is reachable</b> and distinguishable at a glance, and the fan tightens when closed rather than hiding anything. The most physical of the three, and the only one where the whole card is visible.",
+   "Cost: it is wider, which pushes the figures right or wraps them on a narrow screen; and rotation on real card art can read as sloppy if a face is not perfectly square.",
+   holderC],
+];
+
+document.getElementById("rows").innerHTML = ROWS.map(([n,t,note,cost,fn])=>
+  `<div class="pv-row">
+     <div class="pv-lab"><span class="pv-num">${n}</span> ${t}</div>
+     <div class="pv-note">${note}</div>
+     ${fn()}
+     <div class="pv-cost">${cost}</div>
+   </div>`).join("");
+
+function layout(h){
+  const kind = h.dataset.holder, closed = h.dataset.collapsed === "1";
+  const cards = [...h.querySelectorAll(".hv-card")];
+  const raised = h.dataset.raised;
+  if (kind === "a"){
+    const step = closed ? 26 : REVEAL;
+    cards.forEach((c,i)=>{ c.style.top = (i*step)+"px"; c.style.zIndex = (i+1)*10;
+      c.style.transform = raised === String(i) ? "translateY(-14px) scale(1.015)" : ""; });
+    const last = (cards.length-1)*step, FRONT = 56, PEEK = 27;
+    // Closed: every card's top edge clears the pocket front, so all four are
+    // visible and tappable rather than two of them being swallowed by it.
+    // Open: the front overlaps the bottom of the last card, which is what makes
+    // them look tucked in rather than stacked on top of a panel.
+    h.querySelector(".a-clip").style.height =
+      (closed ? last + PEEK + FRONT : last + FACE_H + 8)+"px";
+  }
+  if (kind === "b"){
+    const step = closed ? 34 : REVEAL;
+    cards.forEach((c,i)=>{ c.style.top = (i*step)+"px"; c.style.zIndex = (i+1)*10;
+      c.style.transform = raised === String(i) ? "translateY(-10px)" : ""; });
+    [...h.querySelectorAll(".b-slot")].forEach((s,i)=>{
+      s.style.top = (i*step + (closed ? step-1 : FACE_H-1))+"px";
+      s.style.display = (closed && i === cards.length-1) ? "none" : "";
+      s.style.zIndex = (i+1)*10 + 5;
+    });
+    const last = (cards.length-1)*step;
+    h.querySelector(".b-clip").style.height = (closed ? last + step : last + FACE_H)+"px";
+  }
+  if (kind === "c"){
+    // A real riffle: each card steps down AND right and picks up a degree of
+    // rotation, so the deck reads as splayed rather than as a tidy stack with a
+    // whisper of tilt. Anchored bottom-left, which is where a thumb would hold it.
+    const step = closed ? 26 : 40, dx = closed ? 9 : 15, rot = closed ? 1.6 : 2.6;
+    cards.forEach((c,i)=>{
+      c.style.top = (i*step)+"px";
+      c.style.zIndex = (i+1)*10;
+      const lift = raised === String(i) ? -16 : 0;
+      c.style.transform = `translate(${i*dx}px,${lift}px) rotate(${i*rot}deg)`;
+    });
+    const n = cards.length;
+    h.querySelector(".c-stack").style.height = ((n-1)*step + FACE_H + 34)+"px";
+    h.style.width = (236 + (n-1)*dx + 26)+"px";
+  }
+  h.querySelector(".n").textContent = cards.length + " cards";
+  h.querySelector(".a-link").textContent = closed ? "Show all" : "Collapse";
+}
+function toggle(h){ h.dataset.collapsed = h.dataset.collapsed === "1" ? "0" : "1"; layout(h); }
+document.querySelectorAll("[data-holder]").forEach(h=>{
+  h.querySelector(".a-link").addEventListener("click", e=>{ e.stopPropagation(); toggle(h); });
+  h.querySelectorAll(".hv-card").forEach(c=>c.addEventListener("click",()=>{
+    h.dataset.raised = h.dataset.raised === c.dataset.i ? "" : c.dataset.i; layout(h);
+  }));
+  layout(h);
+});
+</script>
+</body>
+</html>

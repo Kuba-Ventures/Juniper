@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/juniper/card-rewards-bits";
 import { faceInfoMap, money0, pointValueMap, type CardRewards, type GuideEntry, type LinkedCard } from "@/lib/cards";
+import { holderClass, type HolderStyle } from "@/lib/holder-style";
 
 // The card-art hero and the rewards earning guide. Treatment A of three
 // (design/card-rewards-variants.html), issue #168.
@@ -93,8 +94,30 @@ const iconFor = (categoryId: string) => CATEGORY_ICON[categoryId] ?? "📦";
  * recognize. It also keeps the confirmed cards in the order they were already
  * drawn in, which is the order the guide and the switch rows use.
  */
-const REVEAL = 54;   // matches `--cr-reveal` in juniper.css
-const FACE_H = 124;  // matches `.cr-face-lg` height
+/**
+ * The holder's geometry, and every one of these has to agree with juniper.css.
+ *
+ * `FACE_H` used to say 124 with a comment claiming it matched `.cr-face-lg`. It
+ * did not: that rule is 149px tall at desktop and drops to 126px only under a
+ * media query, so every computed height was 25px short. Combined with nothing
+ * clipping the stack, collapsing reserved 148px for 257px of content and 109px
+ * of card hung out below the holder. Both are fixed here and in the stylesheet.
+ *
+ * The card is measured rather than assumed now: `.cr-holder-card` is
+ * left/right-anchored so its WIDTH comes from the holder, and the height follows
+ * from the 1.586 ISO/IEC 7810 ID-1 aspect ratio every credit card in the world
+ * has. So a holder that changes width cannot desynchronize from a constant here.
+ */
+const HOLDER_W = 262 - 24;              // .cr-holder width less its padding
+const FACE_H = Math.round(HOLDER_W / 1.586); // ID-1: 85.60mm x 53.98mm
+/** How much of a seated card shows above the slot below it. */
+const REVEAL_OPEN = 46;
+const REVEAL_CLOSED = 30;
+/** How much of the FRONT card shows. It is the one being looked at, so it sits
+    in a deeper pocket than the cards above it, exactly as in a real holder. */
+const FRONT_CLOSED = 62;
+/** The slot band's height, matching `.cr-holder-band`. */
+const BAND_H = 7;
 
 function CardWallet({
   cards,
@@ -102,6 +125,7 @@ function CardWallet({
   manual,
   logoFor,
   onIdentify,
+  holderStyle,
 }: {
   cards: LinkedCard[];
   /** Cards still to be named, drawn as labelled outlines after the real ones. */
@@ -112,6 +136,8 @@ function CardWallet({
   /** Opens the identify picker. See the note in the docblock about why an
       outline that does nothing would be worse than no outline at all. */
   onIdentify: () => void;
+  /** Which holder the member chose (migration 0048), or null for the default. */
+  holderStyle: HolderStyle | null;
 }) {
   const withProduct = cards.filter((c) => c.product);
   const [collapsed, setCollapsed] = useState(false);
@@ -154,25 +180,29 @@ function CardWallet({
     })),
   ];
 
-  // Every card, not the first four: vertical reveal is the whole reason this
-  // layout was chosen, so capping it would throw away the property it was picked
-  // for. Collapsed shows the top three edges and a count.
-  const shown = collapsed ? slots.slice(0, 3) : slots;
-  const height = collapsed
-    ? REVEAL * (shown.length - 1) + 40
-    : REVEAL * (shown.length - 1) + FACE_H + 58;
+  // EVERY card is drawn in both states. Collapsing used to render only the first
+  // three, which is what made "4 cards" sit above a stack of three, and it never
+  // needed to: closing the holder tightens the reveal, it does not hide cards.
+  // A member with eight cards gets a shorter holder, not a truncated one.
+  const step = collapsed ? REVEAL_CLOSED : REVEAL_OPEN;
+  const frontShown = collapsed ? FRONT_CLOSED : FACE_H;
+  // The clip's height, and the clip is the fix: the stack is absolutely
+  // positioned and taller than this, so without `overflow:hidden` the last card
+  // hangs below the holder. That was the reported bug.
+  const clipH = step * (slots.length - 1) + frontShown;
 
   return (
-    <div className="cr-pocket" style={{ height }}>
-      {shown.map((s, i) => {
+    <div className={`cr-holder ${holderClass(holderStyle)}`}>
+      <div className="cr-holder-clip" style={{ height: clipH }}>
+      {slots.map((s, i) => {
         const c = s.card;
         const raised = front === s.key;
         return (
           <button
             type="button"
             key={s.key}
-            className={raised ? "cr-pocket-card up" : "cr-pocket-card"}
-            style={{ top: i * REVEAL, zIndex: (i + 1) * 10 }}
+            className={raised ? "cr-holder-card up" : "cr-holder-card"}
+            style={{ top: i * step, height: FACE_H, zIndex: (i + 1) * 10 }}
             // Says what tapping DOES where tapping does something. A hand-entered
             // card is a thing to look at like any other, so it keeps the plain
             // descriptive label; an outline is a thing to act on, so it says so.
@@ -211,18 +241,29 @@ function CardWallet({
           </button>
         );
       })}
-      {/* The lip, over the front card. Purely decorative, so it must not eat the
-          taps meant for the cards behind it. */}
-      <div className="cr-pocket-lip" aria-hidden="true" />
-      <div className="cr-pocket-foot">
+      {/* THE SLOT each card is tucked into, drawn above that card and below the
+          one before it, so the band appears to be in front of the card it holds
+          and behind the card overlapping it. That ordering is the whole illusion.
+          Skipped for the first card, which has no slot above it, and decorative
+          throughout, so it must not eat taps meant for the cards. */}
+      {slots.slice(1).map((s, i) => (
+        <span
+          key={`band:${s.key}`}
+          className="cr-holder-band"
+          aria-hidden="true"
+          style={{ top: (i + 1) * step - BAND_H, zIndex: (i + 1) * 10 + 5 }}
+        />
+      ))}
+      </div>
+      <div className="cr-holder-foot">
         {/* Counts the outlines AND the hand-entered cards, so the foot, the stack
             and the "N cards" on the Credit list above all say the same number. The
             header underneath is the one that breaks it down. */}
         {slots.length} {slots.length === 1 ? "card" : "cards"}
-        {slots.length > 3 && (
+        {slots.length > 1 && (
           <>
             {" "}&middot;{" "}
-            <button type="button" className="cr-pocket-toggle" onClick={() => setCollapsed((v) => !v)}>
+            <button type="button" className="cr-holder-toggle" onClick={() => setCollapsed((v) => !v)}>
               {collapsed ? "Show all" : "Collapse"}
             </button>
           </>
@@ -294,6 +335,7 @@ export function RewardsGuide({
   data,
   logoFor,
   onIdentify,
+  holderStyle = null,
 }: {
   data: CardRewards;
   /** The institution mark for a card, resolved by the caller through the same
@@ -303,6 +345,11 @@ export function RewardsGuide({
       component on the page. Threaded rather than duplicated, because a second
       picker mounted here would be a second place the same answer is written. */
   onIdentify: () => void;
+  /** Which holder the member chose (migration 0048), or null for the default.
+      Threaded from the page rather than read here, so this component stays a
+      pure function of its props and the settings picker can render the same
+      holder classes for its swatches without a provider in between. */
+  holderStyle?: HolderStyle | null;
 }) {
   const confirmed = data.cards.filter((c) => c.product);
   if (!confirmed.length) return null;
@@ -333,6 +380,7 @@ export function RewardsGuide({
           manual={data.manual ?? []}
           logoFor={logoFor}
           onIdentify={onIdentify}
+          holderStyle={holderStyle}
         />
         <div className="cr-hero-f">
           <div className="eyebrow">Your cards</div>

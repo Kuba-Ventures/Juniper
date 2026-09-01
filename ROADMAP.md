@@ -599,6 +599,38 @@ rationale in `docs/CARD_REWARDS.md`.
   this change. **The known risk, stated rather than designed around:** a future card whose art carries no
   name in its top 54px will read as four digits and a picture. The fix then is that card's art, not a
   label over every card in the catalog.
+- [x] **The card holder is a real holder, and the member picks its material** (`0048`). Two defects
+  behind the reported formatting errors, both arithmetic rather than taste: `FACE_H` in the component
+  said 124 with a comment claiming it matched `.cr-face-lg`, which is **149px** at desktop, so every
+  computed height was 25px short; and **nothing clipped the stack**, so collapsing reserved 148px for
+  257px of content and 109px of card hung below the pocket front. The height is now derived from the
+  ID-1 aspect ratio every credit card has (85.60 x 53.98mm) rather than from a constant that can go
+  stale, and `.cr-holder-clip` clips. Collapsing also stopped hiding cards: it tightens the reveal, so a
+  member with eight cards gets a shorter holder rather than a truncated one, which is what made "4 cards"
+  sit above a stack of three.
+  The construction follows a photographed holder (`design/card-holder-variants.html`, then
+  `design/card-holder-b-refined.html`): each card sits behind a **slot band** lit along its top edge and
+  casting a shadow onto the card below, and the **front card sits in a deeper pocket**. A hairline reads
+  as a list; a lit band reads as material.
+  **Six materials, chosen by the member**: cognac, black, saffiano, canvas, metal, minimal. Stored per
+  MEMBER rather than per device, unlike the theme, because a theme is a property of the screen you are
+  looking at and a holder is a thing you picked, so one that changed when you opened your laptop would be
+  a bug. Organised by material and deliberately **not** by who the member is: a gendered split would make
+  somebody sort themselves into a bucket before they could find a look they like, the bucket does not
+  predict the answer, and the same range is reachable either way. The CHECK is a closed list because the
+  value becomes part of a CSS class name, and `holderClass` falls back to the default for anything
+  unrecognized rather than interpolating a stored string into the DOM. NULL means "has not chosen", which
+  is not the same as choosing the default: if the default ever moves, an unchosen member moves with it.
+  **A regression the render caught:** renaming the container from `.cr-pocket` to `.cr-holder` silently
+  unhooked ten descendant rules, including the ones that hide the issuer and product name over card art,
+  so the labels removed a change earlier came straight back. All ten rescoped.
+  The real cost of the feature is not the styles, it is that six of them times light/dark times
+  collapsed/expanded is 24 states, which is why the set is six and not ten.
+- [ ] **(ops)** Apply `0048`. Deploy first, as with `0037`, though it is additive and safe either way:
+  the column is nullable and an absent value renders the default holder. Verified against a scratch
+  Postgres before shipping: `0001` then `0048` applies clean, re-running is a no-op, a pre-existing
+  profile row survives with `holder_style` NULL, a known style is accepted, an unknown one is refused,
+  and a value shaped to escape a class attribute is refused.
 - [ ] **(ops)** Apply `0047`. Deploy first, as with `0037`, though it is additive and safe either way:
   the column is nullable and every read and write carries a fallback for its absence. Verified against a
   scratch Postgres before shipping: `0014`, `0046`, then `0047` applies clean, re-running is a no-op, two

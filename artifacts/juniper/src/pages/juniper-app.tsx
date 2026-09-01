@@ -119,7 +119,16 @@ export default function JuniperApp() {
     <FinancesProvider profile={profile}>
       <WorkspaceProvider>
       <div className="jnpr">
-        <AppBar name={displayName} email={email} />
+        <AppBar
+          name={displayName}
+          email={email}
+          holderStyle={profile?.holderStyle ?? null}
+          // Saved through the profile hook, so the choice lands in localStorage
+          // and in `user_profiles` by the same path every other profile field
+          // takes. Spread over the CURRENT profile rather than a fresh object:
+          // saving a holder must not blank somebody's income.
+          onHolderStyle={(s) => saveProfile({ ...(profile ?? {}), holderStyle: s })}
+        />
         <Switch>
           <Route path="/app">
             {() => (
@@ -148,7 +157,13 @@ export default function JuniperApp() {
             {() => <Plans profile={profile} profileReady={ready} />}
           </Route>
           <Route path="/app/ask" component={Ask} />
-          <Route path="/app/credit" component={Credit} />
+          {/* The holder style is a member preference (migration 0048), so it is
+              threaded from here where the profile already lives rather than
+              given its own provider. One prop is cheaper than a context for a
+              value exactly one page reads. */}
+          <Route path="/app/credit">
+            {() => <Credit holderStyle={profile?.holderStyle ?? null} />}
+          </Route>
           <Route path="/app/connections" component={ConnectionsView} />
           {/* Stage 4d: two of the six shared surfaces are routed again, the two
               that can show the member's own real data or an honest empty state.

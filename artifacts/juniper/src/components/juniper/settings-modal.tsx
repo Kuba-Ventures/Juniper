@@ -3,6 +3,7 @@ import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay } from "@/lib/profile";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { useTheme } from "@/lib/theme";
+import { HOLDER_STYLES, HOLDER_LABEL, holderClass, type HolderStyle } from "@/lib/holder-style";
 import { useFinances } from "@/lib/finances";
 import { timeAgo } from "@/lib/auto-sync";
 import { syncFinances } from "@/lib/plaid";
@@ -44,7 +45,18 @@ function restartOnboarding(email: string) {
   window.location.assign("/app");
 }
 
-export function SettingsModal({ name, email, onClose }: { name: string; email: string; onClose: () => void }) {
+export function SettingsModal({
+  name, email, onClose, holderStyle = null, onHolderStyle,
+}: {
+  name: string;
+  email: string;
+  onClose: () => void;
+  /** The member's chosen holder (migration 0048), or null for the default. */
+  holderStyle?: HolderStyle | null;
+  /** Persists a new choice. Absent means the picker is not shown, which keeps
+      this modal usable from anywhere that has no profile to write to. */
+  onHolderStyle?: (s: HolderStyle) => void;
+}) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const [confirming, setConfirming] = useState(false);
@@ -150,6 +162,51 @@ export function SettingsModal({ name, email, onClose }: { name: string; email: s
             />
           </button>
         </div>
+
+        {/* THE CARD HOLDER. Appearance is where it belongs, beside the theme,
+            because both are "how the app looks to me" and neither is about money.
+            Unlike the theme it is stored per MEMBER rather than per device
+            (migration 0048): a theme is a property of the screen you are looking
+            at, and a holder is a thing you picked, so a holder that changed when
+            you opened your laptop would be a bug.
+            Six materials, and the labels are what somebody would say out loud.
+            Deliberately not split by who the member is: that would make somebody
+            sort themselves into a bucket before they could find a look they like,
+            and the bucket does not predict the answer. */}
+        {onHolderStyle && (
+          <div className="fr" style={{ marginBottom: 20 }}>
+            <div className="k" style={{ fontWeight: 650, color: "var(--jnpr-ink)" }}>Card holder</div>
+            <div className="v" style={{ color: "var(--jnpr-ink-3)", fontSize: 12.5 }}>
+              How your cards are drawn on the Credit page.
+            </div>
+            <div className="hold-pick">
+              {HOLDER_STYLES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="hold-opt"
+                  aria-pressed={holderStyle === s}
+                  aria-label={HOLDER_LABEL[s]}
+                  onClick={() => onHolderStyle(s)}
+                >
+                  {/* The swatch IS the holder, same classes, so a material can
+                      never look one way here and another on the Credit page.
+                      Three stand-in cards rather than real art: the choice is
+                      about the holder, and borrowing an issuer's artwork to
+                      advertise a leather finish is not a comparison of holders. */}
+                  <span className={`hold-swatch ${holderClass(s)}`} aria-hidden="true">
+                    <span className="sw-card" style={{ top: 5 }} />
+                    <span className="cr-holder-band" style={{ top: 20 }} />
+                    <span className="sw-card" style={{ top: 27 }} />
+                    <span className="cr-holder-band" style={{ top: 42 }} />
+                    <span className="sw-card" style={{ top: 49, bottom: 0, height: "auto" }} />
+                  </span>
+                  <span className="lbl">{HOLDER_LABEL[s]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Developer tools. These used to be one "Testing" block shown to
            everyone, including the reset that wipes an account. A member has no
