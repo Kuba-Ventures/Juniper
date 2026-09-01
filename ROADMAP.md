@@ -464,6 +464,23 @@ rationale in `docs/CARD_REWARDS.md`.
   The last of those is the one that proves the score isolation held in production rather than only in the
   check script. Note the plan for this work predicted 2 percent, which was a rounding slip; 1 percent is
   the correct reading of the same arithmetic - Finley
+- [x] **The wallet draws the cards still to be identified**, which reverses a deliberate decision and
+  is recorded as a reversal rather than as a new feature. `CardWallet` filtered to
+  `cards.filter(c => c.product)` and its docblock gave the reason: an unidentified card has no brand
+  colour to borrow, so an outline in the pocket would read as a rendering fault rather than as a card
+  waiting to be named. **The evidence came back against it.** The header beside the stack says "2 of 3
+  cards identified, 1 still to go", and a real member read that against a stack of two as their Chase
+  card having gone MISSING, which is precisely the confusion the original decision meant to prevent,
+  and the worse thing to imply on a money page. The outline is now drawn through `CardFace`'s existing
+  `unknown` prop with a `label`, the same pair the Identify prompt itself uses, and it is TAPPABLE
+  straight through to the picker: an outline that does nothing is what the original comment was rightly
+  afraid of, and an outline that takes you to the answer is not the same object. Drawn last, which in
+  this layout means at the front and fully visible, because it is the only slot in the pocket with
+  something to do. The picker is opened from a distance through an `openRequest` counter on
+  `CardIdentifyPrompt`, a counter rather than a boolean so the same slot can be tapped again after a
+  dismissal, rather than mounting a second picker in the hero. No new CSS. The docblock was rewritten
+  rather than left asserting the opposite of the code, and it records what changed and what changed it.
+  States rendered in `design/card-wallet-unidentified.html`.
 - [ ] **(build)** No in-place edit of a manual account, which `0046` makes more visible than it was.
   Connections offers add and remove only, so a member who entered a card and left the limit blank has to
   remove it and add it again. The Credit page's row therefore links to "Manage on Connections" rather

@@ -56,19 +56,59 @@ const iconFor = (categoryId: string) => CATEGORY_ICON[categoryId] ?? "📦";
  * The cost, and it is real: the product name has to live at the top of the face
  * in this layout, off the bottom where embossing actually is.
  *
- * Only CONFIRMED cards are drawn. An unidentified card has no brand colour to
- * borrow, and an outline in the pocket reads as a rendering fault rather than as
- * a card waiting to be named, which is what the identify prompt above is for.
+ * ── WHAT IS DRAWN, AND WHY THAT CHANGED ───────────────────────────────────
+ *
+ * This used to draw CONFIRMED cards only. The reason recorded here was that an
+ * unidentified card has no brand colour to borrow, so an outline in the pocket
+ * would read as a rendering fault rather than as a card waiting to be named,
+ * which the identify prompt above the wallet already handles.
+ *
+ * THE EVIDENCE CAME BACK AGAINST IT. The header beside this stack says "2 of 3
+ * cards identified, 1 still to go", and a real member read that against a stack
+ * of two as their Chase card having gone MISSING, not as a card awaiting a name.
+ * That is precisely the confusion the original decision meant to prevent, so the
+ * decision is reversed: the count and the stack now agree, because a header that
+ * says three over a pocket holding two invites the reading that something was
+ * lost, and losing a card is the worse thing to imply on a money page.
+ *
+ * Two things make the outline read as a prompt rather than as a fault, and both
+ * are load-bearing:
+ *
+ *   1. IT IS LABELLED. `CardFace`'s `unknown` prop draws the outline and `label`
+ *      names it, the same pair the identify prompt itself already uses. A blank
+ *      outline would deserve the original objection; "Which card?" does not.
+ *   2. IT IS TAPPABLE, straight through to the picker. An outline that does
+ *      nothing is what the original comment was rightly afraid of; an outline
+ *      that takes you to the answer is not the same object.
+ *
+ * The outlines are drawn LAST, after every confirmed card, and it is worth being
+ * exact about what that means in this layout, because it is not what "last"
+ * usually implies. Each card sits `REVEAL` lower than the one before and on top
+ * of it, so every card but the final one shows only its top strip: last means
+ * FRONT and fully visible, not tucked away.
+ *
+ * That is the right place for it. The outline is the only slot in the pocket with
+ * something to do, so it earns the front, and putting it earlier would push the
+ * member's real cards down behind an unanswered one and reorder a stack they
+ * recognize. It also keeps the confirmed cards in the order they were already
+ * drawn in, which is the order the guide and the switch rows use.
  */
 const REVEAL = 54;   // matches `--cr-reveal` in juniper.css
 const FACE_H = 124;  // matches `.cr-face-lg` height
 
 function CardWallet({
   cards,
+  unidentified,
   logoFor,
+  onIdentify,
 }: {
   cards: LinkedCard[];
+  /** Cards still to be named, drawn as labelled outlines after the real ones. */
+  unidentified: CardRewards["unidentified"];
   logoFor: (c: LinkedCard) => string | null;
+  /** Opens the identify picker. See the note in the docblock about why an
+      outline that does nothing would be worse than no outline at all. */
+  onIdentify: () => void;
 }) {
   const withProduct = cards.filter((c) => c.product);
   const [collapsed, setCollapsed] = useState(false);
@@ -76,38 +116,66 @@ function CardWallet({
   const [front, setFront] = useState<string | null>(null);
   if (!withProduct.length) return null;
 
+  // ONE list, confirmed first and outlines last, so the pocket's count and the
+  // header's "N of M identified" describe the same set. See the docblock: a
+  // header saying three over a stack of two reads as a card having gone missing.
+  const slots: { key: string; card: LinkedCard | null; label: string; mask: string | null;
+                 issuer: string }[] = [
+    ...withProduct.map((c) => ({
+      key: c.plaid_account_id, card: c, issuer: c.institution,
+      label: c.product?.short_name ?? c.account_name, mask: c.mask,
+    })),
+    ...unidentified.map((u) => ({
+      // Prefixed: an unidentified card's `plaid_account_id` is in the same
+      // namespace as a confirmed one's, and the two lists are disjoint today, but
+      // a key collision here would silently drop a face rather than error.
+      key: `unk:${u.plaid_account_id}`, card: null, issuer: u.institution,
+      label: "Which card?", mask: u.mask,
+    })),
+  ];
+
   // Every card, not the first four: vertical reveal is the whole reason this
   // layout was chosen, so capping it would throw away the property it was picked
   // for. Collapsed shows the top three edges and a count.
-  const shown = collapsed ? withProduct.slice(0, 3) : withProduct;
+  const shown = collapsed ? slots.slice(0, 3) : slots;
   const height = collapsed
     ? REVEAL * (shown.length - 1) + 40
     : REVEAL * (shown.length - 1) + FACE_H + 58;
 
   return (
     <div className="cr-pocket" style={{ height }}>
-      {shown.map((c, i) => {
-        const id = c.plaid_account_id;
-        const raised = front === id;
+      {shown.map((s, i) => {
+        const c = s.card;
+        const raised = front === s.key;
         return (
           <button
             type="button"
-            key={id}
+            key={s.key}
             className={raised ? "cr-pocket-card up" : "cr-pocket-card"}
             style={{ top: i * REVEAL, zIndex: (i + 1) * 10 }}
-            aria-label={`${c.institution} ${c.product?.short_name ?? c.account_name}`}
-            aria-pressed={raised}
-            onClick={() => setFront(raised ? null : id)}
+            // The outline says what tapping it DOES, because unlike a real card
+            // it is not a thing to look at, it is a thing to act on.
+            aria-label={c ? `${s.issuer} ${s.label}` : `Identify your ${s.issuer} card`}
+            // A raise is a toggle and an identify is not, so only the real cards
+            // claim a pressed state. Reporting one on the outline would announce
+            // a toggle that does not exist.
+            aria-pressed={c ? raised : undefined}
+            onClick={() => { if (c) setFront(raised ? null : s.key); else onIdentify(); }}
           >
             <CardFace
               size="lg"
               layout="strip"
-              issuer={c.institution}
-              productName={c.product?.short_name}
-              mask={c.mask}
-              brandColor={c.product?.brand_color}
-              artUrl={c.product?.art_url}
-              logoSrc={logoFor(c)}
+              issuer={s.issuer}
+              // `unknown` draws the outline and `label` names it. The pair is the
+              // same one the identify prompt itself uses, so the two surfaces
+              // cannot describe the same state differently.
+              unknown={!c}
+              productName={c ? s.label : undefined}
+              label={c ? undefined : s.label}
+              mask={s.mask}
+              brandColor={c?.product?.brand_color}
+              artUrl={c?.product?.art_url}
+              logoSrc={c ? logoFor(c) : null}
             />
           </button>
         );
@@ -116,8 +184,11 @@ function CardWallet({
           taps meant for the cards behind it. */}
       <div className="cr-pocket-lip" aria-hidden="true" />
       <div className="cr-pocket-foot">
-        {withProduct.length} {withProduct.length === 1 ? "card" : "cards"}
-        {withProduct.length > 3 && (
+        {/* Counts the OUTLINES too, so the foot, the stack and the header above
+            all say the same number. The header is the one that says how many of
+            them are still to be named. */}
+        {slots.length} {slots.length === 1 ? "card" : "cards"}
+        {slots.length > 3 && (
           <>
             {" "}&middot;{" "}
             <button type="button" className="cr-pocket-toggle" onClick={() => setCollapsed((v) => !v)}>
@@ -191,11 +262,16 @@ function GuideRow({
 export function RewardsGuide({
   data,
   logoFor,
+  onIdentify,
 }: {
   data: CardRewards;
   /** The institution mark for a card, resolved by the caller through the same
       chain Connections and the Credit card rows use. */
   logoFor: (c: LinkedCard) => string | null;
+  /** Opens the identify picker, which lives in `CardIdentifyPrompt` above this
+      component on the page. Threaded rather than duplicated, because a second
+      picker mounted here would be a second place the same answer is written. */
+  onIdentify: () => void;
 }) {
   const confirmed = data.cards.filter((c) => c.product);
   if (!confirmed.length) return null;
@@ -219,7 +295,12 @@ export function RewardsGuide({
   return (
     <div className="card pad-lg" style={{ marginBottom: 14 }}>
       <div className="cr-hero">
-        <CardWallet cards={confirmed} logoFor={logoFor} />
+        <CardWallet
+          cards={confirmed}
+          unidentified={data.unidentified}
+          logoFor={logoFor}
+          onIdentify={onIdentify}
+        />
         <div className="cr-hero-f">
           <div className="eyebrow">Your cards</div>
           <div className="cr-hero-sub">

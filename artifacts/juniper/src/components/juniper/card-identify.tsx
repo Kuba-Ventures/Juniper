@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { CardFace } from "@/components/juniper/card-rewards-bits";
 import { confirmCard, money0, type Candidate, type CardRewards, type UnidentifiedCard } from "@/lib/cards";
@@ -203,12 +203,31 @@ export function CardIdentifyPrompt({
   cards,
   catalog,
   onSaved,
+  openRequest = 0,
 }: {
   cards: UnidentifiedCard[];
   catalog: CardRewards["catalog"];
   onSaved: () => void;
+  /**
+   * A counter another surface increments to open the picker from a distance.
+   *
+   * The wallet in `rewards-guide.tsx` now draws an outline for each card still to
+   * be identified, and an outline that does nothing is exactly what the wallet's
+   * original comment was right to be afraid of. Tapping one has to land on the
+   * answer, and the answer is this dialog.
+   *
+   * A COUNTER rather than a boolean, because the same request can be made twice:
+   * open the picker, dismiss it without answering, tap the same slot again. A
+   * boolean would already be true the second time and nothing would happen.
+   */
+  openRequest?: number;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Zero is the initial value and must not open anything on first render: a
+  // dialog nobody asked for, over a page they have just arrived at.
+  useEffect(() => {
+    if (openRequest > 0) setOpenIndex(0);
+  }, [openRequest]);
   if (!cards.length) return null;
 
   const first = cards[0];
