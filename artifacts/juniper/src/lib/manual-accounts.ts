@@ -34,6 +34,12 @@ export type ManualAccount = {
       A limit somebody typed is a claim, and a score a member could raise by
       typing a bigger number would not be a score. */
   credit_limit?: number | null;
+  /** Which catalog card this is (migration 0047), for IDENTITY ONLY: name, brand
+      colour and art. Null or absent means the member has not said, and the card
+      draws a neutral face, which is the honest answer. It buys no rewards
+      tracking: the rewards figures are computed from per-account spend a
+      hand-entered card has none of. */
+  product_id?: string | null;
 };
 
 export type ManualAccountInput = {
@@ -49,6 +55,10 @@ export type ManualAccountInput = {
       rather than silently dropped: a member who typed a number, was told it
       saved, and saw no effect is worse served than one who is told no. */
   credit_limit?: number | null;
+  /** Rejected with a 400 on any category other than `credit`, like the limit.
+      An id the catalog does not have is refused by the FOREIGN KEY rather than
+      stored. */
+  product_id?: string | null;
 };
 
 export const MANUAL_CATEGORIES: { key: ManualCategory; label: string; defaultKind: ManualKind }[] = [

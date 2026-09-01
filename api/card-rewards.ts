@@ -308,6 +308,47 @@ export default async function handler(req: Request): Promise<Response> {
   // array whose members sometimes have a plaid_account_id and sometimes do not
   // would put the burden on every reader. The Credit page merges the two for its
   // utilization list, which is the only place the distinction stops mattering.
+  // Kept apart from `products` because the pure module's CardProduct has no art:
+  // art is a presentation fact and api/_rewards.ts should not learn about it.
+  //
+  // DECLARED HERE, above the manual block, and that is load-bearing rather than
+  // stylistic: `identityOf` below calls `artOf`, and `manual` is built before the
+  // no-linked-accounts early return. Left further down, where it used to sit,
+  // `artOf` was in the temporal dead zone at that call and naming a hand-entered
+  // card threw a ReferenceError. It only threw once a card was actually named,
+  // which is to say only for the feature being added.
+  const artById = new Map<string, string | null>(
+    productRows.map((p) => [p.id, (p as { art_url?: string | null }).art_url ?? null]),
+  );
+  const artOf = (id: string) => artById.get(id) ?? null;
+
+  // Identity for a hand-entered card the member has NAMED (migration 0047), and
+  // identity is all of it: short name, brand colour, art.
+  //
+  // Resolved from `productRows`, the raw catalog, and pointedly NOT by putting the
+  // product into the `products` map above. That map feeds api/_rewards.ts, which
+  // computes the earning guide, the switch ideas and the upgrade rows from
+  // per-ACCOUNT spend keyed on `transactions.account_id`. A hand-entered account
+  // has no Plaid account id and therefore no transactions, ever, so every one of
+  // those figures would be computed over an empty spend set and come out as a
+  // confident zero: "you are losing $0 a year on this card" is a statement about
+  // missing data wearing the clothes of a statement about money.
+  //
+  // So the catalog is read twice, for two different purposes, and that is the
+  // point rather than a duplication to tidy away.
+  const identityOf = (productId: string | null) => {
+    if (!productId) return null;
+    const p = productRows.find((x) => x.id === productId);
+    if (!p) return null;
+    return {
+      id: p.id,
+      name: p.name,
+      short_name: shortCardName(p.name, p.issuer),
+      brand_color: p.brand_color,
+      art_url: artOf(p.id),
+    };
+  };
+
   const manual = manualRows.map((m) => {
     const held = Math.abs(m.balance ?? 0);
     // `kind` carries the sign on a manual account, the same convention
@@ -328,6 +369,9 @@ export default async function handler(req: Request): Promise<Response> {
       // NULL means unknown, and the surface says "Unknown" rather than 0%.
       limit: m.credit_limit,
       currency: m.currency,
+      // Null until the member names it, and null is an honest answer: the face
+      // draws neutral rather than borrowing a brand it was not told about.
+      product: identityOf(m.product_id),
     };
   });
 
@@ -341,12 +385,6 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // Kept apart from `products` because the pure module's CardProduct has no art:
-  // art is a presentation fact and api/_rewards.ts should not learn about it.
-  const artById = new Map<string, string | null>(
-    productRows.map((p) => [p.id, (p as { art_url?: string | null }).art_url ?? null]),
-  );
-  const artOf = (id: string) => artById.get(id) ?? null;
   const tierById = new Map<string, CardTier>(productRows.map((p) => [p.id, p.tier]));
   const tierOf = (id: string): CardTier => tierById.get(id) ?? "featured";
 

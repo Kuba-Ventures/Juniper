@@ -165,6 +165,23 @@ export interface ManualCard {
       as "Unknown" rather than as 0%. */
   limit: number | null;
   currency: string | null;
+  /**
+   * Which catalog card the member said this is (migration 0047). IDENTITY ONLY.
+   *
+   * It carries a name, a brand colour and art, and it carries them so the face in
+   * the wallet can stop being blank. It carries NO rates, NO benefits and NO
+   * annual fee, and that is not an omission to fill in later: the rewards figures
+   * are computed from per-account spend that a hand-entered card has none of, so
+   * anything derived here would be a confident zero standing in for missing data.
+   * Never pass this to rewards arithmetic; read `cards` for that.
+   */
+  product: {
+    id: string;
+    name: string;
+    short_name: string;
+    brand_color: string | null;
+    art_url: string | null;
+  } | null;
 }
 
 export interface GuideCardRef {
