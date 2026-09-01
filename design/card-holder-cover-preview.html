@@ -1,0 +1,199 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A cover on the front, and what a tap opens</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1240px;margin:0 auto;padding:20px 22px 90px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;max-width:106ch;margin-bottom:14px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-bar{display:flex;gap:10px;align-items:center;margin:0 0 26px;flex-wrap:wrap}
+.pv-btn{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer}
+.pv-sec{margin-bottom:42px}
+.pv-lab{display:flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:6px}
+.pv-num{display:grid;place-items:center;min-width:24px;height:20px;padding:0 6px;border-radius:6px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:0 0 14px;max-width:104ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-stage{position:relative}
+
+.hv-hero{display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap}
+.hv-stats{padding-top:8px}
+.hv-stats .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.hv-sub{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:4px}
+.hv-figs{display:flex;gap:34px;margin-top:18px;flex-wrap:wrap}
+.hv-fig .v{font-size:27px;font-weight:700;color:var(--jnpr-ink);font-variant-numeric:tabular-nums;margin-top:3px}
+.hv-fig .v .per{font-size:13px;color:var(--jnpr-ink-3);font-weight:650}
+
+/* ── The holder, with a COVER ──────────────────────────────────────────── */
+.hv-holder{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 0;border-radius:14px;
+  background:radial-gradient(120% 80% at 30% 0%,#a4643a,#8d5330 55%,#74421f);
+  border:1px solid #6b3d1d;box-shadow:inset 0 1px 0 rgba(255,225,196,.22),0 18px 34px -20px rgba(0,0,0,.85)}
+.hv-holder::before{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;opacity:.55;
+  background:repeating-linear-gradient(37deg,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,0) 2px 5px),
+             repeating-linear-gradient(-52deg,rgba(80,35,10,.13) 0 3px,rgba(0,0,0,0) 3px 7px)}
+.hv-holder::after{content:"";position:absolute;inset:6px;border-radius:10px;pointer-events:none;
+  border:1px dashed rgba(255,232,205,.42);z-index:7}
+.hv-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0}
+.hv-card{position:absolute;left:0;right:0;height:149px;border-radius:9px;overflow:hidden;padding:0;border:0;
+  background:none;cursor:pointer;display:block;transition:top .24s cubic-bezier(.2,.7,.3,1)}
+.hv-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hv-mask{position:absolute;top:9px;right:11px;z-index:2;font-size:11px;font-weight:700;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);font-variant-numeric:tabular-nums}
+.hv-scrim{position:absolute;left:0;right:0;top:0;height:40px;z-index:1;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.18) 26px,rgba(0,0,0,0))}
+.hv-band{position:absolute;left:0;right:0;height:7px;pointer-events:none;
+  background:linear-gradient(180deg,#ab6e43,#864c26)}
+.hv-band::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:rgba(255,255,255,.16)}
+.hv-band::after{content:"";position:absolute;left:0;right:0;top:100%;height:11px;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,0))}
+/* THE COVER: the front panel of the wallet, in front of every card. */
+.hv-cover{position:absolute;left:0;right:0;bottom:0;z-index:50;border-radius:2px 2px 13px 13px;
+  background:linear-gradient(180deg,#a4643a,#8a5029 60%,#7a4522);
+  border-top:1px solid rgba(255,225,196,.28);
+  box-shadow:0 -12px 22px -14px rgba(0,0,0,.75)}
+.hv-cover::after{content:"";position:absolute;left:14px;right:14px;top:10px;height:1px;
+  border-top:1px dashed rgba(255,232,205,.4)}
+.hv-foot{position:absolute;left:0;right:0;bottom:14px;z-index:51;text-align:center;font-size:11.5px;
+  font-weight:650;color:#f3dfc8}
+.hv-link{font:inherit;font-size:11.5px;font-weight:700;color:#fff;background:none;border:0;padding:0;
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* ── A. a modal ───────────────────────────────────────────────────────── */
+.pv-modal{position:absolute;inset:0;z-index:80;display:none;place-items:center;
+  background:rgba(0,0,0,.62);border-radius:14px}
+.pv-modal.on{display:grid}
+.pv-modal .box{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:16px;
+  padding:18px;width:330px;box-shadow:var(--jnpr-shadow-lg)}
+.pv-big{position:relative;width:100%;aspect-ratio:1.586;border-radius:11px;overflow:hidden}
+.pv-big img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pv-meta{margin-top:13px}
+.pv-meta .nm{font-size:14.5px;font-weight:700;color:var(--jnpr-ink)}
+.pv-meta .sub{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:2px}
+.pv-rows{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.pv-row{display:flex;justify-content:space-between;font-size:12.5px}
+.pv-row .k{color:var(--jnpr-ink-3)}
+.pv-row .v{font-weight:650;color:var(--jnpr-ink);font-variant-numeric:tabular-nums}
+
+/* ── B. lifts out of the holder in place ──────────────────────────────── */
+.b-lift{position:absolute;left:12px;top:13px;width:238px;z-index:70;display:none}
+.b-lift.on{display:block}
+.b-lift .pv-big{box-shadow:0 22px 44px -14px rgba(0,0,0,.8)}
+.b-cap{margin-top:9px;font-size:12px;color:var(--jnpr-ink-2);text-align:center}
+.b-dim{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.5);border-radius:14px;display:none}
+.b-dim.on{display:block}
+
+/* ── C. inline, the holder opens to it ────────────────────────────────── */
+.c-panel{margin-top:12px;display:none;background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);
+  border-radius:13px;padding:14px;width:262px}
+.c-panel.on{display:block}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  <b>The cover is in all three</b> and is not the question: a front panel now sits in front of every card
+  so each one shows only its top quarter, including the front card, which used to lie on top of the
+  pocket rather than in it. <b>The question is what a tap opens.</b> Click any card in any of the three.
+</div>
+<div class="pv-bar">
+  <button class="pv-btn" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+  <span style="font-size:11.5px;color:var(--jnpr-ink-3)">Click a card. Click the backdrop or the card again to close.</span>
+</div>
+<div id="rows"></div>
+</div>
+<script>
+const CARDS = [
+  ["capital-one-quicksilver-student","5012","Quicksilver Student","Capital One","$328 in credit","$4,400","0%"],
+  ["discover-it-chrome","2776","Discover it® Chrome","Discover","$0 in credit","$4,500","0%"],
+  ["chase-sapphire-preferred","1575","Sapphire Preferred®","Chase","$562 owed","$9,000","6%"],
+  ["chase-freedom-unlimited","4417","Freedom Unlimited®","Chase","$0 owed","$20,000","0%"],
+];
+const art = s => `https://www.juniperplan.com/card-art/${s}.webp`;
+// A quarter of the face, which is what "only the top 25%" comes to.
+const PEEK = 37, COVER = 54, FACE = 149;
+
+const STATS = `<div class="hv-stats"><div class="k">Your cards</div>
+  <div class="hv-sub">3 of 3 linked cards identified &middot; 1 added by hand</div>
+  <div class="hv-figs">
+    <div class="hv-fig"><div class="k">Benefits</div><div class="v">12</div></div>
+    <div class="hv-fig"><div class="k">Unused credits</div><div class="v">$50<span class="per">+</span></div></div>
+    <div class="hv-fig"><div class="k">Left on the table</div><div class="v">$13<span class="per">/yr</span></div></div>
+  </div></div>`;
+
+function holder(id){
+  const faces = CARDS.map(([slug,mask],i)=>
+    `<button type="button" class="hv-card" data-i="${i}" style="top:${i*PEEK}px;z-index:${(i+1)*10}"
+       aria-label="card ${mask}"><img src="${art(slug)}" alt="">
+       <span class="hv-scrim"></span><span class="hv-mask">····${mask}</span></button>`).join("");
+  const bands = CARDS.slice(1).map((_,i)=>
+    `<span class="hv-band" style="top:${(i+1)*PEEK-7}px;z-index:${(i+1)*10+5}"></span>`).join("");
+  // The clip stops just past the last card's peek, so the cover crosses it.
+  const clipH = (CARDS.length-1)*PEEK + PEEK + COVER;
+  return `<div class="hv-holder" data-holder="${id}">
+    <div class="hv-clip" style="height:${clipH}px">${faces}${bands}</div>
+    <div class="hv-cover" style="height:${COVER+13}px"></div>
+    <div class="hv-foot">4 cards &middot; <button class="hv-link">Show all</button></div>
+  </div>`;
+}
+function bigCard(i){
+  const [slug,mask,name,iss,bal,lim,used] = CARDS[i];
+  return `<div class="pv-big"><img src="${art(slug)}" alt=""></div>
+    <div class="pv-meta"><div class="nm">${name}</div>
+      <div class="sub">${iss} &middot; ····${mask}</div></div>
+    <div class="pv-rows">
+      <div class="pv-row"><span class="k">Balance</span><span class="v">${bal}</span></div>
+      <div class="pv-row"><span class="k">Limit</span><span class="v">${lim}</span></div>
+      <div class="pv-row"><span class="k">Used</span><span class="v">${used}</span></div>
+    </div>`;
+}
+
+const ROWS = [
+  ["A","A card sheet over the page",
+   "The tap opens a proper sheet: the card at full size with <b>everything Juniper knows about it</b> under it, balance, limit and utilization. The card is the subject rather than a thumbnail that got bigger. Familiar, and it has room to grow when there is more to say about a card.",
+   (id)=>`<div class="pv-stage">${holder(id)}<div class="pv-modal"><div class="box"></div></div></div>`],
+  ["B","It lifts out of the holder",
+   "The card rises out of the wallet to full size where it sits, the holder dims behind it, and a tap puts it back. <b>The most physical</b>, and the closest to what taking a card out of a wallet actually is. The detail stays short because there is no panel to put it in.",
+   (id)=>`<div class="pv-stage">${holder(id)}<div class="b-dim"></div><div class="b-lift"></div></div>`],
+  ["C","The holder opens below it",
+   "The tap leaves the wallet alone and opens a panel <b>underneath</b> it with the card and its figures. Nothing covers the page, the stats to the right stay readable, and two cards could be compared by tapping between them without anything flying about.",
+   (id)=>`<div class="pv-stage">${holder(id)}<div class="c-panel"></div></div>`],
+];
+
+document.getElementById("rows").innerHTML = ROWS.map(([n,t,note,fn],i)=>
+  `<div class="pv-sec"><div class="pv-lab"><span class="pv-num">${n}</span> ${t}</div>
+    <div class="pv-note">${note}</div>
+    <div class="hv-hero">${fn(n)}${STATS}</div></div>`).join("");
+
+document.querySelectorAll(".pv-stage").forEach(stage=>{
+  const kind = stage.querySelector("[data-holder]").dataset.holder;
+  const close = () => {
+    stage.querySelectorAll(".pv-modal,.b-dim,.b-lift,.c-panel").forEach(e=>e.classList.remove("on"));
+  };
+  stage.querySelectorAll(".hv-card").forEach(c=>c.addEventListener("click",()=>{
+    const i = +c.dataset.i;
+    if (kind === "A"){
+      const m = stage.querySelector(".pv-modal");
+      m.querySelector(".box").innerHTML = bigCard(i);
+      m.classList.add("on");
+    }
+    if (kind === "B"){
+      const l = stage.querySelector(".b-lift");
+      l.innerHTML = `<div class="pv-big"><img src="${art(CARDS[i][0])}" alt=""></div>
+        <div class="b-cap">${CARDS[i][2]} &middot; ····${CARDS[i][1]} &middot; ${CARDS[i][4]} of ${CARDS[i][5]}</div>`;
+      l.classList.add("on"); stage.querySelector(".b-dim").classList.add("on");
+    }
+    if (kind === "C"){
+      const p = stage.querySelector(".c-panel");
+      p.innerHTML = bigCard(i); p.classList.add("on");
+    }
+  }));
+  stage.querySelectorAll(".pv-modal,.b-dim").forEach(e=>e.addEventListener("click",close));
+});
+</script>
+</body>
+</html>
