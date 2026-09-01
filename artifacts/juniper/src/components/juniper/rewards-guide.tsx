@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/juniper/card-rewards-bits";
 import { faceInfoMap, money0, pointValueMap, type CardRewards, type GuideEntry, type LinkedCard } from "@/lib/cards";
 import { holderClass, type HolderStyle } from "@/lib/holder-style";
 import { limitOf, type LimitSource } from "@/lib/cards";
-import { utilizationPct } from "@/lib/credit-balance";
-import { ModalBackdrop } from "@/components/juniper/modal-portal";
-import { X } from "lucide-react";
+import { utilizationBand, utilizationPct } from "@/lib/credit-balance";
+import { Info, X } from "lucide-react";
 
 // The card-art hero and the rewards earning guide. Treatment A of three
 // (design/card-rewards-variants.html), issue #168.
@@ -112,7 +111,10 @@ const iconFor = (categoryId: string) => CATEGORY_ICON[categoryId] ?? "📦";
  * from the 1.586 ISO/IEC 7810 ID-1 aspect ratio every credit card in the world
  * has. So a holder that changes width cannot desynchronize from a constant here.
  */
-const HOLDER_W = 262 - 24;              // .cr-holder width less its padding
+const HOLDER_W = 262 - 24 - 2;          // .cr-holder width less its padding AND its 1px border
+// The border was the missing 2px: every holder finish carries `border:1px solid`
+// and the box is border-box, so the inner width a card is stretched to is 236,
+// not 238. Measured in the browser after the face was made to fill its slot.
 const FACE_H = Math.round(HOLDER_W / 1.586); // ID-1: 85.60mm x 53.98mm
 /**
  * How much of each card shows, and this is now the SAME for every card including
@@ -126,22 +128,45 @@ const FACE_H = Math.round(HOLDER_W / 1.586); // ID-1: 85.60mm x 53.98mm
  */
 const REVEAL = Math.round(FACE_H / 4);   // a quarter of the card
 /**
+ * The reveal when the member opens the holder, restoring the control #248 took
+ * out and taking Credit Karma's answer to what it is for.
+ *
+ * #248 removed a collapse that only tightened the reveal, correctly: it cost a
+ * line of copy to save 44px. This is the other direction. Tucked, the holder is a
+ * summary - four strips and a total. Open, it is the stack itself, each card
+ * showing enough of its artwork to be recognised rather than read. That is worth
+ * a control where "44px shorter" was not.
+ */
+const REVEAL_OPEN = Math.round(FACE_H * 0.56);
+/**
  * The front panel's height, matching `.cr-holder-cover`.
  *
- * Deep rather than thin, and the depth is the point: a wallet's front panel is a
- * substantial piece of the object, not a lip. At 54 it read as a strip laid under
- * the cards, and the front card in particular looked like it was resting against
- * it rather than sitting down inside it. The floor is the count plus its padding;
- * everything above that floor is what makes it look like a pocket.
+ * Deep rather than thin, and the depth is now load-bearing: the panel CARRIES THE
+ * FIGURES. It states the count, the total reported balance and the utilization
+ * sentence, which is what Credit Karma's Cards Optimizer puts on the same surface
+ * and what 120px of blank leather was quietly asking for.
+ *
+ * 84 read as a strip laid under the cards; 120 read as a panel with nothing on
+ * it. 168 is the block plus the stitch above it plus the margin the numbers need
+ * from the bottom edge, measured rather than guessed.
  */
-const COVER_H = 84;
+const COVER_H = 168;
+/**
+ * How much wider the popped card is than the holder, per side.
+ *
+ * The card comes OUT of the holder rather than growing inside it, and the
+ * overhang is the whole reason that reads: a card that stops at the leather's
+ * edge looks like a bigger card in the wallet. Credit Karma's does the same, and
+ * it is the one part of their popup that cannot be faked with a shadow.
+ */
+const POP_OUT = 11;
 /** The slot band's height, matching `.cr-holder-band`. */
 const BAND_H = 7;
 
 /**
- * One place in the holder, and everything the sheet needs to describe it.
+ * One place in the holder, and everything the panel needs to describe it.
  *
- * The figures are resolved when the slot is built rather than in the sheet,
+ * The figures are resolved when the slot is built rather than where they print,
  * because the limit precedence (`limitOf`) already has one definition and a
  * second reader would be a second answer to "what is this card's limit".
  */
@@ -163,74 +188,107 @@ interface Slot {
 }
 
 /**
- * The card sheet: one card at full size with what Juniper knows about it.
+ * The figures the holder's front panel carries.
  *
- * WHY A SHEET RATHER THAN A NUDGE. Tapping a card used to move it seven pixels,
- * which is a leftover from when the holder was a loose stack and raising a card
- * was the only way to read the one behind it. With a cover in front of every
- * card there is nothing to raise it out of, and seven pixels was never an answer
- * to "what is this card"; it was an answer to "which card is on top".
+ * WHY THEY LIVE ON THE LEATHER. This is Credit Karma's Cards Optimizer move and
+ * it is the right one: the panel crossing the cards is the most-looked-at surface
+ * in the component, and it was carrying a two-word count. The figures are the
+ * reason somebody looks at a wallet.
  *
- * It prints the same figures as the Credit list above, and prints them the same
- * way: a card in credit is never drawn as debt, an unknown limit says so rather
- * than reading as 0%, and a member-supplied limit is labelled as theirs. Those
- * rules are not restated here, they are the reason `limitOf`, `utilizationPct`
- * and the `Slot` figures exist.
+ * WHAT THIS MUST NOT DO is disagree with the Credit page's own utilization card,
+ * which was the stated reason the wallet showed no money at all. It cannot now:
+ * the balance is a plain sum of the same `Slot` figures the list above is built
+ * from, the percentage uses the same `utilizationPct`, and the scope is said out
+ * loud whenever a card has no limit to be measured against. Two surfaces reading
+ * one set of rows can be redundant. They cannot contradict.
  */
-function CardSheet({ slot, onClose }: { slot: Slot; onClose: () => void }) {
-  const used = utilizationPct(slot.owed, slot.limit);
-  const cur = slot.currency;
+function CoverFigures({
+  label, amount, currency, used, limit, scope, fallback,
+}: {
+  label: string;
+  amount: number;
+  currency: string | null;
+  /** Null where no limit is known, which is not the same as zero. */
+  used: number | null;
+  limit: number | null;
+  /** "across 3 of 4 cards", where some card has no limit to be counted in. */
+  scope?: string;
+  /** What the sentence says instead when there is no percentage to state. */
+  fallback: string;
+}) {
+  const band = utilizationBand(used);
   return (
-    <ModalBackdrop narrow onClose={onClose}>
-      <div className="cs-head">
-        <h3 className="cs-h">{slot.label}</h3>
-        <button type="button" className="conn-add-x" onClick={onClose} aria-label="Close">
-          <X size={15} />
-        </button>
+    <>
+      <div className="hp-k">{label}</div>
+      <div className="hp-v tnum">{money0(amount, currency)}</div>
+      <div className="hp-u">
+        {band && used != null && limit != null ? (
+          <>
+            <b>{band}</b> {used}% used of {money0(limit, currency)} limit{scope}{" "}
+            <span
+              className="hp-i"
+              title="Utilization is what you owe divided by your limit. Under 10% is the band scoring models reward."
+            >
+              <Info size={11} aria-hidden="true" />
+            </span>
+          </>
+        ) : (
+          fallback
+        )}
       </div>
-      <div className="cs-sub">
-        {slot.issuer}
-        {slot.mask && <> &middot; &middot;&middot;&middot;&middot;{slot.mask}</>}
-        {slot.hand && <span className="cl-mine">You added this</span>}
-      </div>
-      {/* The card at a size worth looking at, which is the whole point of the
-          sheet. `card` layout rather than `strip`: nothing is covering it here,
-          so the artwork does not need labels painted over it. */}
-      <div className="cs-face">
-        <CardFace
-          size="lg"
-          issuer={slot.issuer}
-          unknown={!slot.card && !slot.hand}
-          hand={slot.hand && !slot.art && !slot.brand}
-          productName={slot.card || slot.hand ? slot.label : undefined}
-          label={slot.card || slot.hand ? undefined : slot.label}
-          mask={slot.mask}
-          brandColor={slot.card?.product?.brand_color ?? slot.brand}
-          artUrl={slot.card?.product?.art_url ?? slot.art}
-        />
-      </div>
-      <div className="cs-rows">
-        <div className="cs-row">
-          <span className="k">{slot.inCredit > 0 ? "In credit" : "Balance"}</span>
-          <span className="v tnum">
-            {money0(slot.inCredit > 0 ? slot.inCredit : slot.owed, cur)}
-          </span>
-        </div>
-        <div className="cs-row">
-          <span className="k">Limit</span>
-          <span className="v tnum">
-            {slot.limit != null ? money0(slot.limit, cur) : "Not known"}
-            {slot.limitSource === "member" && <span className="cl-mine">Yours</span>}
-          </span>
-        </div>
-        <div className="cs-row">
-          <span className="k">Used</span>
-          {/* Null, not zero. "We do not know" and "you are using none of it" are
-              different facts, which is why `utilizationPct` returns null. */}
-          <span className="v tnum">{used != null ? `${used}%` : "Unknown"}</span>
-        </div>
-      </div>
-    </ModalBackdrop>
+    </>
+  );
+}
+
+/**
+ * The card, out of the holder.
+ *
+ * Wider than the holder by `POP_OUT` on each side and drawn OVER the stack, which
+ * together are what make it read as the card coming out rather than a picture of
+ * the card appearing. It is not a modal: no backdrop, no portal, nothing else on
+ * the page dimmed. Tapping a card in a wallet should not take over a page, and
+ * the sheet that used to do exactly that is what this replaces.
+ *
+ * `layout` is the full face rather than the strip. In the holder the labels are
+ * painted over the artwork because a covered card has nothing else to identify
+ * it; here nothing is covering it, so the artwork speaks and the labels come off.
+ */
+function PoppedCard({
+  slot, logoSrc, closeRef, onClose,
+}: {
+  slot: Slot;
+  logoSrc: string | null;
+  closeRef: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="cr-pop"
+      role="group"
+      aria-label={`${slot.label}${slot.mask ? `, ····${slot.mask}` : ""}`}
+    >
+      <CardFace
+        size="lg"
+        issuer={slot.issuer}
+        unknown={!slot.card && !slot.hand}
+        hand={slot.hand && !slot.art && !slot.brand}
+        productName={slot.card || slot.hand ? slot.label : undefined}
+        label={slot.card || slot.hand ? undefined : slot.label}
+        mask={slot.mask}
+        brandColor={slot.card?.product?.brand_color ?? slot.brand}
+        artUrl={slot.card?.product?.art_url ?? slot.art}
+        logoSrc={logoSrc}
+      />
+      <button
+        type="button"
+        className="cr-pop-x"
+        onClick={onClose}
+        ref={closeRef}
+        aria-label={`Put ${slot.label} back`}
+      >
+        <X size={16} />
+      </button>
+    </div>
   );
 }
 
@@ -255,11 +313,30 @@ function CardWallet({
   holderStyle: HolderStyle | null;
 }) {
   const withProduct = cards.filter((c) => c.product);
-  // Which card's sheet is open, by slot key. Replaces the old "which card is
-  // raised 7px", which stopped meaning anything once a cover sat in front of
-  // every card: there is nothing to raise a card out of, and 7px was never an
-  // answer to "what is this card".
+  // Which card is OUT of the holder, by slot key. Was "which card's sheet is
+  // open", and before that "which card is raised 7px". The card now comes out of
+  // the wallet in place: no portal, no backdrop, nothing else on the page dimmed.
   const [openKey, setOpenKey] = useState<string | null>(null);
+  /** Whether the holder is open, showing more of each card. See REVEAL_OPEN. */
+  const [open, setOpen] = useState(false);
+  // Focus follows the card out and back again. Without the second half, closing
+  // a popped card drops focus to the top of the document, which for a keyboard
+  // member is the whole page over again.
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const cameFrom = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (openKey) closeRef.current?.focus();
+  }, [openKey]);
+  // Escape puts the card back. It is not a dialog, so nothing else does this for
+  // us, and it is the key everybody presses at a thing lying over other things.
+  useEffect(() => {
+    if (!openKey) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setOpenKey(null); cameFrom.current?.focus(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openKey]);
   if (!withProduct.length) return null;
 
   // ONE list, confirmed first and outlines last, so the pocket's count and the
@@ -270,8 +347,8 @@ function CardWallet({
       key: c.plaid_account_id, card: c, issuer: c.institution,
       label: c.product?.short_name ?? c.account_name, mask: c.mask, hand: false,
       art: null, brand: null,
-      // What the sheet prints. Resolved HERE, once, from the same limit
-      // precedence `limitOf` defines, rather than recomputed in the sheet: two
+      // What the panel prints. Resolved HERE, once, from the same limit
+      // precedence `limitOf` defines, rather than recomputed where it prints: two
       // places deciding which limit a card uses is two answers to one question.
       owed: c.balance, inCredit: c.inCredit,
       limit: limitOf(c).limit, limitSource: limitOf(c).source, currency: c.currency,
@@ -319,16 +396,55 @@ function CardWallet({
   // The front card gets the same reveal as the others and then the cover crosses
   // it, which is the whole point of the cover: nothing lies ON the holder.
   //
-  // NO COLLAPSED STATE. It used to hide all but three cards, which is what made
-  // "4 cards" sit above a stack of three; that was fixed by making it tighten the
-  // reveal instead, and once it only moved a quarter-card's worth of height it
-  // was a control that cost a line of copy to save 44px. A holder is now one
-  // shape: every card, a quarter of each, the cover across the front.
-  const clipH = REVEAL * slots.length + COVER_H;
+  // THE HOLDER OPENS AGAIN, which reverses #248 rather than forgetting it. That
+  // change removed a collapse that only tightened the reveal, and it was right:
+  // a line of copy to save 44px. This control does something else. Tucked, the
+  // holder is a summary - four strips and one total. Open, it is the stack, each
+  // card showing enough of itself to be recognised. Both are worth having.
+  //
+  // A CARD COMING OUT TUCKS THE STACK BEHIND IT, without forgetting that the
+  // member had opened it. An open holder is 332px of stack and the popped card is
+  // 179px of card, so the bottom half of an expanded stack went on showing under
+  // a card that was supposed to be out of it. The open state is kept in `open`
+  // and restored the moment the card goes back.
+  const reveal = open && !openKey ? REVEAL_OPEN : REVEAL;
+  const clipH = reveal * slots.length + COVER_H;
+
+  // The card that is out of the holder, if any. Looked up rather than asserted: a
+  // refresh landing while a card is out can retire it, and a stale key has to put
+  // the holder back rather than throw inside it.
+  const popped = openKey ? slots.find((x) => x.key === openKey) ?? null : null;
+  const putBack = () => { setOpenKey(null); cameFrom.current?.focus(); };
+
+  // WHAT THE PANEL SAYS WHEN NOTHING IS OUT: every card, one figure.
+  //
+  // The balance is a plain sum over every card, because "total reported balance"
+  // is a sum and a card without a limit still has one. The PERCENTAGE is not: it
+  // can only include cards with a limit to be measured against, exactly as the
+  // Credit page's utilization card does, and it says so out loud when the two
+  // sets differ rather than quietly describing three cards as four.
+  const currency = slots.find((s) => s.currency)?.currency ?? null;
+  const owedAll = slots.reduce((a, s) => a + s.owed, 0);
+  const creditAll = slots.reduce((a, s) => a + s.inCredit, 0);
+  const measurable = slots.filter((s) => s.limit != null && s.limit > 0);
+  const limitAll = measurable.reduce((a, s) => a + (s.limit ?? 0), 0);
+  const usedAll = utilizationPct(measurable.reduce((a, s) => a + s.owed, 0), limitAll);
+  const scope = measurable.length !== slots.length
+    ? ` across ${measurable.length} of ${slots.length} cards`
+    : "";
+  // A card in credit is never drawn as debt. Same rule as the Credit list, and
+  // the reason `Slot` carries the two halves separately.
+  const netCredit = owedAll === 0 && creditAll > 0;
+
+  const poppedUsed = popped ? utilizationPct(popped.owed, popped.limit) : null;
 
   return (
     <div className={`cr-holder ${holderClass(holderStyle)}`}>
       <div className="cr-holder-clip" style={{ height: clipH }}>
+      {/* THE STACK, wrapped so the figures below can sit in the same clip without
+          being made inert with it. Inert while a card is out, so tab does not walk
+          through a stack standing behind an opaque card. */}
+      <div className="cr-holder-stack" inert={popped ? true : undefined}>
       {slots.map((s, i) => {
         const c = s.card;
         const known = !!c || s.hand;
@@ -337,15 +453,15 @@ function CardWallet({
             type="button"
             key={s.key}
             className="cr-holder-card"
-            style={{ top: i * REVEAL, height: FACE_H, zIndex: (i + 1) * 10 }}
+            style={{ top: i * reveal, height: FACE_H, zIndex: (i + 1) * 10 }}
             // Says what tapping DOES, and the two do different things: a card
-            // Juniper can describe opens its sheet, and an outline opens the
-            // picker, because there is nothing to describe yet.
+            // Juniper can describe comes out of the holder, and an outline opens
+            // the picker, because there is nothing to bring out yet.
             aria-label={known ? `${s.label}, ····${s.mask ?? ""}` : `Identify your ${s.issuer} card`}
             // No pressed state on either. Both open something and neither is a
             // toggle, which is what `aria-pressed` claims.
-            onClick={() => {
-              if (known) setOpenKey(s.key);
+            onClick={(e) => {
+              if (known) { cameFrom.current = e.currentTarget; setOpenKey(s.key); }
               else onIdentify();
             }}
           >
@@ -384,29 +500,97 @@ function CardWallet({
           key={`band:${s.key}`}
           className="cr-holder-band"
           aria-hidden="true"
-          style={{ top: (i + 1) * REVEAL - BAND_H, zIndex: (i + 1) * 10 + 5 }}
+          style={{ top: (i + 1) * reveal - BAND_H, zIndex: (i + 1) * 10 + 5 }}
         />
       ))}
       {/* THE COVER: the wallet's front panel, in front of every card rather than
           behind the last one. It is why each card shows only its top quarter and
           why none of them appears to be resting on top of the holder. Decorative,
-          so it must not eat taps meant for the cards it crosses; the foot's own
-          toggle sits above it and is interactive. */}
+          so it must not eat taps meant for the cards it crosses; the figures on
+          top of it are their own layer. */}
       <div className="cr-holder-cover" aria-hidden="true" style={{ height: COVER_H }} />
       </div>
-      {openKey && (() => {
-        const s = slots.find((x) => x.key === openKey);
-        // Guarded rather than asserted: a refresh landing while the sheet is open
-        // can retire the card it describes, and a stale key must close the sheet
-        // rather than throw inside it.
-        return s ? <CardSheet slot={s} onClose={() => setOpenKey(null)} /> : null;
-      })()}
-      <div className="cr-holder-foot">
-        {/* Counts the outlines AND the hand-entered cards, so the foot, the stack
-            and the "N cards" on the Credit list above all say the same number. The
-            header underneath is the one that breaks it down. */}
-        {slots.length} {slots.length === 1 ? "card" : "cards"}
+
+      {/* THE FIGURES, on the leather. Two states, one shape: the holder's total
+          when everything is tucked in, and the card's own the moment one is out.
+          The chip row is dropped while a card is out, because the card is over
+          that part of the panel - the same reason Credit Karma's popup has no
+          header of its own.
+
+          INSIDE THE CLIP, and against its bottom edge, because that edge is the
+          cover's. Anchored to the holder instead, the figures sat 13px off the
+          BOTTOM OF THE HOLDER, and the action bar - which grows the holder by
+          however tall its sentence wraps - slid straight over them. */}
+      <div className="cr-holder-panel">
+        {popped ? (
+          <CoverFigures
+            label={popped.inCredit > 0 ? "Card in credit" : "Card reported balance"}
+            amount={popped.inCredit > 0 ? popped.inCredit : popped.owed}
+            currency={popped.currency}
+            used={poppedUsed}
+            limit={popped.limit}
+            fallback={
+              popped.limitSource === "none"
+                ? "No limit reported for this card, so there is nothing to measure the balance against."
+                : "No limit known for this card yet."
+            }
+          />
+        ) : (
+          <>
+            <div className="hp-top">
+              {/* Counts the outlines AND the hand-entered cards, so the chip, the
+                  stack and the "N cards" on the Credit list above all say the same
+                  number. The header underneath is the one that breaks it down. */}
+              <span className="hp-chip">
+                {slots.length} {slots.length === 1 ? "card" : "cards"}
+              </span>
+              <button
+                type="button"
+                className="hp-toggle"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+              >
+                {open ? "Collapse" : "Show all"}
+              </button>
+            </div>
+            <CoverFigures
+              label={netCredit ? "Total in credit" : "Total reported balance"}
+              amount={netCredit ? creditAll : owedAll}
+              currency={currency}
+              used={usedAll}
+              limit={limitAll > 0 ? limitAll : null}
+              scope={scope}
+              fallback="None of your cards reports a limit yet, so there is nothing to measure these balances against."
+            />
+          </>
+        )}
       </div>
+      </div>
+
+      {popped && (
+        <PoppedCard
+          slot={popped}
+          logoSrc={popped.card ? logoFor(popped.card) : null}
+          closeRef={closeRef}
+          onClose={putBack}
+        />
+      )}
+
+      {/* THE ACTION BAR, and it is only drawn where there is an action. Credit
+          Karma's says "Link card" because the card in their popup is not linked;
+          ours says the same thing for the same reason, and says nothing at all
+          for a card that is already linked and named rather than inventing a
+          destination for it. A hand-entered card wants "Link this card" too, but
+          that is the Connections flow and this component has no handler for it -
+          the prop to add is a sibling of `onIdentify`. */}
+      {popped && !popped.card && !popped.hand && (
+        <div className="cr-holder-bar">
+          <span>Name this card and Juniper can tell you what it earns.</span>
+          <button type="button" className="cr-holder-cta" onClick={onIdentify}>
+            Identify
+          </button>
+        </div>
+      )}
     </div>
   );
 }

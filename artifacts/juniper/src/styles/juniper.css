@@ -1633,18 +1633,23 @@
    digits and a picture. Accepted deliberately: the fix then is that card's art,
    or `short_name` on a face with no art at all, not a label over every card in
    the catalog. Treatments in design/wallet-label-variants.html. */
-.jnpr .cr-holder .cr-face-art .cr-face-in{
+/* SCOPED TO THE SLOT, not to the holder. Every rule from here to the end of this
+   group is a STRIP correction - the layout a card takes while it is tucked in and
+   only its top quarter shows. `.cr-pop` is a full face and it lives inside
+   `.cr-holder` too, so a `.cr-holder .cr-face-*` selector reached it and bunched
+   its content against the top edge. The slot is the honest scope. */
+.jnpr .cr-holder-card .cr-face-art .cr-face-in{
   background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.22) 30px,rgba(0,0,0,0) 48px)}
-.jnpr .cr-holder .cr-face-art .cr-face-iss,
-.jnpr .cr-holder .cr-face-art .cr-face-nm{display:none}
+.jnpr .cr-holder-card .cr-face-art .cr-face-iss,
+.jnpr .cr-holder-card .cr-face-art .cr-face-nm{display:none}
 /* And the mask HOLDS THE RIGHT. `.cr-face-top` is space-between, so removing the
    issuer left the mask as an only child and it slid to the left edge, straight on
    top of the Chase octagon that the artwork prints there. Issuers put their mark
    top-left and their own name centre or left; the right corner is the one part of
    a card face that is reliably empty, which is why the mask was there to begin
    with. Found by looking at the render, not by reading the rule. */
-.jnpr .cr-holder .cr-face-art .cr-face-top{justify-content:flex-end}
-.jnpr .cr-holder .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.jnpr .cr-holder-card .cr-face-art .cr-face-top{justify-content:flex-end}
+.jnpr .cr-holder-card .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 /* On a FULL face with art the labels are the artwork's job, so they come off. The
    STRIP layout is excluded, and that exclusion is the whole point: a strip's body
    is covered by the next card, so its labels are the only thing identifying it.
@@ -1759,16 +1764,36 @@
    feature. */
 .jnpr .cr-holder{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 13px;
   border-radius:14px}
-/* No transition: with the collapse gone the clip's height is a function of the
-   card count alone, so there is no state change left for it to animate. */
-.jnpr .cr-holder-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0}
+/* The height animates again. The note here used to say there was no state change
+   left to animate, which was true for exactly as long as the holder had one
+   shape: it now opens, and it tucks itself while a card is out. */
+.jnpr .cr-holder-clip{position:relative;overflow:hidden;border-radius:8px;
+  transition:height .2s ease}
+@media(prefers-reduced-motion:reduce){.jnpr .cr-holder-clip{transition:none}}
+/* ROUNDED ON ALL FOUR CORNERS, and the bottom two are a bug fix. The clip used
+   to be square at the bottom while `.cr-holder-cover` rounded its own bottom
+   corners, so the card behind the cover showed through the two corner slivers
+   the cover's curve left open: a blue or silver nub in each bottom corner of
+   the leather. The clip now owns every corner and the cover is square, so
+   whatever the cover does not paint is clipped away rather than revealed. */
 .jnpr .cr-holder-card{position:absolute;left:0;right:0;padding:0;border:0;background:none;
   cursor:pointer;display:block;border-radius:9px;overflow:hidden}
 .jnpr .cr-holder-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
-/* No `.up` rule any more: tapping a card opens its sheet rather than raising it
-   7px. With a cover in front of every card there is nothing to raise it out of,
-   and the nudge was an answer to "which card is on top", not to "what is this
-   card". See CardSheet in rewards-guide.tsx. */
+/* THE FACE FILLS THE SLOT EXACTLY, and this is a bug fix rather than tidying.
+   `.cr-face-lg` is a fixed 236x149 (200x126 under 640px) while `.cr-holder-card`
+   is left/right-anchored and its height comes from the component, so the two
+   agreed only by accident: the face sat 1px short at the bottom of every slot,
+   and on a phone the media query left a 36px column of bare holder down the
+   right of every card. The face was also rounder than the button clipping it
+   (12px against 9px), which cut a crescent of holder out of both top corners of
+   every revealed strip - the pale and dark nicks reported on 2026-09-01.
+   Stretching the face and inheriting the radius makes the card and its slot the
+   same rectangle, whatever the holder's width turns out to be. */
+.jnpr .cr-holder-card .cr-face-lg{width:100%;height:100%;border-radius:inherit}
+/* No `.up` rule any more: tapping a card brings it OUT of the holder rather than
+   raising it 7px. With a cover in front of every card there is nothing to raise
+   it out of in place, and the nudge was an answer to "which card is on top", not
+   to "what is this card". See `.cr-pop` below. */
 /* The slot each card is tucked into: lit on top, shadow cast downward. */
 .jnpr .cr-holder-band{position:absolute;left:0;right:0;height:7px;pointer-events:none}
 .jnpr .cr-holder-band::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;
@@ -1781,19 +1806,75 @@
    Inside the clip and anchored to its bottom, so it is the last band of the
    stack; the foot then sits over it rather than below it, which is what stops
    the holder growing a second, seam-divided strip of leather under the cards. */
+/* SQUARE, deliberately: the clip above rounds the corners for it. Any radius
+   here cuts a corner out of an opaque panel and shows the card behind it. */
 .jnpr .cr-holder-cover{position:absolute;left:0;right:0;bottom:0;z-index:50;
-  border-radius:2px 2px 8px 8px;border-top:1px solid rgba(255,255,255,.14);
+  border-radius:0;border-top:1px solid rgba(255,255,255,.14);
   box-shadow:0 -12px 22px -14px rgba(0,0,0,.75)}
 /* The stitch across the front panel, the detail that says the cover is the same
    piece of material as the body rather than a bar laid over it. */
 .jnpr .cr-holder-cover::after{content:"";position:absolute;left:14px;right:14px;top:13px;height:1px;
   border-top:1px dashed rgba(255,255,255,.24)}
-.jnpr .cr-holder-foot{position:absolute;left:0;right:0;bottom:19px;z-index:51;text-align:center;
-  font-size:11.5px;font-weight:650}
-/* No `.cr-holder-toggle`: the holder has one shape now. Collapsing used to hide
-   all but three cards, which is what made "4 cards" sit above a stack of three;
-   once that was fixed and it merely tightened the reveal, it cost a line of copy
-   to save 44px of height. The foot states the count and nothing else. */
+/* ── THE FIGURES ON THE COVER ───────────────────────────────────────────────
+   The front panel carries the count, the balance and the utilization sentence.
+   It replaces `.cr-holder-foot`, which stated a two-word count on 120px of blank
+   leather - and the blankness was the report: the most-looked-at surface in the
+   component was the one saying the least.
+
+   Positioned against the HOLDER rather than the clip, so it is never trimmed by
+   the stack's height, and painted above the cover's z-index so it sits on the
+   leather rather than under it. */
+.jnpr .cr-holder-stack{position:absolute;inset:0}
+.jnpr .cr-holder-panel{position:absolute;left:0;right:0;bottom:13px;z-index:60;
+  padding:0 5px 4px;color:var(--hp-ink)}
+.jnpr .hp-top{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.jnpr .hp-chip{font-size:11px;font-weight:750;letter-spacing:.02em;padding:3px 9px;border-radius:20px;
+  background:var(--hp-chip-bg);color:var(--hp-ink);border:1px solid var(--hp-line);white-space:nowrap}
+.jnpr .hp-toggle{margin-left:auto;flex:0 0 auto;font:inherit;font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:20px;background:var(--hp-chip-bg);color:var(--hp-ink);
+  border:1px solid var(--hp-line);cursor:pointer;white-space:nowrap}
+.jnpr .hp-toggle:hover{background:var(--hp-chip-hi)}
+.jnpr .hp-k{font-size:12px;font-weight:600;color:var(--hp-dim)}
+.jnpr .hp-v{font-size:31px;font-weight:800;letter-spacing:-.025em;line-height:1.05;margin-top:1px;
+  color:var(--hp-strong)}
+.jnpr .hp-u{margin-top:5px;font-size:11.5px;color:var(--hp-dim);line-height:1.45}
+.jnpr .hp-u b{color:var(--hp-good);font-weight:750}
+.jnpr .hp-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  border-radius:50%;background:var(--hp-chip-bg);border:1px solid var(--hp-line);color:var(--hp-ink);
+  vertical-align:-3px;cursor:help}
+/* THE ACTION BAR. Full width of the holder, which means out through its padding
+   and over its border, so it reads as the base of the object rather than a
+   button tray sitting inside it. */
+.jnpr .cr-holder-bar{position:relative;z-index:62;margin:13px -13px -14px;padding:12px 14px;
+  border-radius:0 0 13px 13px;background:var(--jnpr-pine);display:flex;align-items:center;gap:11px}
+.jnpr .cr-holder-bar span{flex:1;font-size:12px;line-height:1.4;color:#DCE8DE}
+.jnpr .cr-holder-cta{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:700;padding:8px 13px;
+  border:0;border-radius:9px;background:var(--jnpr-good);color:#fff;cursor:pointer}
+.dark .jnpr .cr-holder-cta{background:var(--jnpr-accent);color:var(--jnpr-on-accent)}
+
+/* ── THE CARD, OUT OF THE HOLDER ────────────────────────────────────────────
+   Wider than the holder on both sides and drawn over the stack. The overhang is
+   what makes it read as the card coming OUT rather than a bigger card appearing
+   inside the wallet, and it is why this element is a child of `.cr-holder` and
+   not of `.cr-holder-clip`, which would trim it on all four sides. */
+.jnpr .cr-pop{position:absolute;left:-11px;right:-11px;top:7px;z-index:70;border-radius:12px;
+  overflow:hidden;line-height:0;
+  box-shadow:0 3px 8px rgba(0,0,0,.34),0 26px 44px -18px rgba(0,0,0,.72);
+  animation:cr-pop-in .19s cubic-bezier(.2,.9,.3,1.2)}
+/* The face is stretched to the popped size rather than drawn at `.cr-face-lg`'s
+   fixed 236px, so the overhang is a property of the holder's width and not a
+   number that has to be kept in step with one. */
+.jnpr .cr-pop .cr-face-lg{width:100%;height:auto;aspect-ratio:1.586;border-radius:12px}
+.jnpr .cr-pop-x{position:absolute;top:11px;right:11px;z-index:2;width:31px;height:31px;
+  border-radius:50%;background:rgba(18,24,18,.46);border:1px solid rgba(255,255,255,.26);
+  color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+  backdrop-filter:blur(7px)}
+.jnpr .cr-pop-x:hover{background:rgba(18,24,18,.66)}
+.jnpr .cr-pop-x:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@keyframes cr-pop-in{from{transform:translateY(9px) scale(.965);opacity:0}
+  to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.jnpr .cr-pop{animation:none}}
+
 
 /* Grain, shared by the leather and canvas finishes: two offset repeating
    gradients at low opacity, which costs nothing and reads as material where a
@@ -1806,57 +1887,94 @@
   content:"";position:absolute;inset:6px;border-radius:10px;pointer-events:none;
   border:1px dashed rgba(255,255,255,.22)}
 
+/* THE INK EACH FINISH PRINTS ITS FIGURES IN, extending the one colour the count
+   already carried. Six finishes times light and dark is the real cost of the
+   feature, and the figures are the part that has to survive it: metal is a LIGHT
+   surface and takes dark ink, the other five take light. The green is picked per
+   finish for the same reason - `--jnpr-good` is a dark pine that disappears into
+   cognac, so leather gets a mint and metal keeps the pine. */
 /* ── cognac leather ── */
 .jnpr .hold-cognac{background:radial-gradient(120% 80% at 30% 0%,#a4643a,#8d5330 55%,#74421f);
   border:1px solid #6b3d1d;
-  box-shadow:inset 0 1px 0 rgba(255,225,196,.22),0 18px 34px -20px rgba(0,0,0,.85)}
+  box-shadow:inset 0 1px 0 rgba(255,225,196,.22),0 18px 34px -20px rgba(0,0,0,.85);
+  --hp-ink:#f3dfc8;
+  --hp-dim:#e0c4a5;
+  --hp-strong:#fff6ea;
+  --hp-good:#8FD8A6;
+  --hp-chip-bg:rgba(255,236,214,.14);
+  --hp-chip-hi:rgba(255,236,214,.24);
+  --hp-line:rgba(255,236,214,.28)}
 .jnpr .hold-cognac::before{opacity:.55;background:
   repeating-linear-gradient(37deg,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,0) 2px 5px),
   repeating-linear-gradient(-52deg,rgba(80,35,10,.13) 0 3px,rgba(0,0,0,0) 3px 7px)}
 .jnpr .hold-cognac::after{border-color:rgba(255,232,205,.42)}
 .jnpr .hold-cognac .cr-holder-band{background:linear-gradient(180deg,#ab6e43,#864c26)}
 .jnpr .hold-cognac .cr-holder-cover{background:linear-gradient(180deg,#a4643a,#8a5029 60%,#7a4522)}
-.jnpr .hold-cognac .cr-holder-foot{color:#f3dfc8}
 
 /* ── black leather ── */
 .jnpr .hold-black{background:radial-gradient(120% 80% at 30% 0%,#2c2f2b,#23261f 55%,#1b1e18);
   border:1px solid #3a3e35;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 18px 34px -20px rgba(0,0,0,.85)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 18px 34px -20px rgba(0,0,0,.85);
+  --hp-ink:#c8d0bf;
+  --hp-dim:#98a08e;
+  --hp-strong:#EDF3EA;
+  --hp-good:#8FD8A6;
+  --hp-chip-bg:rgba(232,239,230,.10);
+  --hp-chip-hi:rgba(232,239,230,.19);
+  --hp-line:rgba(232,239,230,.20)}
 .jnpr .hold-black::before{opacity:.5;background:
   repeating-linear-gradient(37deg,rgba(255,255,255,.022) 0 2px,rgba(0,0,0,0) 2px 5px),
   repeating-linear-gradient(-52deg,rgba(0,0,0,.05) 0 3px,rgba(0,0,0,0) 3px 7px)}
 .jnpr .hold-black::after{border-color:rgba(226,214,192,.30)}
 .jnpr .hold-black .cr-holder-band{background:linear-gradient(180deg,#33372e,#25281f)}
 .jnpr .hold-black .cr-holder-cover{background:linear-gradient(180deg,#2c2f2b,#23261f 60%,#1c1f19)}
-.jnpr .hold-black .cr-holder-foot{color:#a8b09c}
 
 /* ── saffiano: the cross-hatch pressed finish, no stitch ── */
 .jnpr .hold-saffiano{background:linear-gradient(160deg,#3b3f4a,#2a2d35 60%,#20232a);
   border:1px solid #474c58;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85);
+  --hp-ink:#c9cfdb;
+  --hp-dim:#a2a9b8;
+  --hp-strong:#F1F4FA;
+  --hp-good:#8FD8A6;
+  --hp-chip-bg:rgba(240,244,252,.11);
+  --hp-chip-hi:rgba(240,244,252,.20);
+  --hp-line:rgba(240,244,252,.22)}
 .jnpr .hold-saffiano::before{opacity:.6;background:
   repeating-linear-gradient(45deg,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,0) 1px 4px),
   repeating-linear-gradient(-45deg,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,0) 1px 4px)}
 .jnpr .hold-saffiano .cr-holder-band{background:linear-gradient(180deg,#454a56,#31353d)}
 .jnpr .hold-saffiano .cr-holder-cover{background:linear-gradient(180deg,#3b3f4a,#2c2f38 60%,#23262d)}
-.jnpr .hold-saffiano .cr-holder-foot{color:#b6bccb}
 
 /* ── canvas: woven, with a contrast stitch ── */
 .jnpr .hold-canvas{background:linear-gradient(160deg,#5f6553,#4c5142 60%,#3e4236);
   border:1px solid #6d7360;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 34px -20px rgba(0,0,0,.85);
+  --hp-ink:#e6e9da;
+  --hp-dim:#c6cbb6;
+  --hp-strong:#FBFCF4;
+  --hp-good:#A9E4BC;
+  --hp-chip-bg:rgba(250,252,244,.13);
+  --hp-chip-hi:rgba(250,252,244,.22);
+  --hp-line:rgba(250,252,244,.26)}
 .jnpr .hold-canvas::before{opacity:.7;background:
   repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0 1px,rgba(0,0,0,0) 1px 3px),
   repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 3px)}
 .jnpr .hold-canvas::after{border-color:rgba(240,238,220,.34)}
 .jnpr .hold-canvas .cr-holder-band{background:linear-gradient(180deg,#666c58,#4e5344)}
 .jnpr .hold-canvas .cr-holder-cover{background:linear-gradient(180deg,#5f6553,#4d5243 60%,#41463a)}
-.jnpr .hold-canvas .cr-holder-foot{color:#dfe2d2}
 
 /* ── brushed metal: a hard case, so a hairline band rather than a soft one ── */
 .jnpr .hold-metal{background:linear-gradient(100deg,#8f949b,#6f747c 32%,#585d65 58%,#7d828a);
   border:1px solid #9ba0a8;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 18px 34px -20px rgba(0,0,0,.85)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 18px 34px -20px rgba(0,0,0,.85);
+  --hp-ink:#2a2d31;
+  --hp-dim:#4a4f56;
+  --hp-strong:#15181b;
+  --hp-good:#1E7A4A;
+  --hp-chip-bg:rgba(255,255,255,.34);
+  --hp-chip-hi:rgba(255,255,255,.52);
+  --hp-line:rgba(0,0,0,.16)}
 .jnpr .hold-metal::before{opacity:.5;background:
   repeating-linear-gradient(92deg,rgba(255,255,255,.10) 0 1px,rgba(0,0,0,0) 1px 3px),
   repeating-linear-gradient(92deg,rgba(0,0,0,.07) 0 1px,rgba(0,0,0,0) 1px 6px)}
@@ -1864,12 +1982,18 @@
 .jnpr .hold-metal .cr-holder-band::before{background:rgba(255,255,255,.45)}
 .jnpr .hold-metal .cr-holder-cover{background:linear-gradient(100deg,#8f949b,#71767e 40%,#868b93)}
 .jnpr .hold-metal .cr-holder-cover::after{border-top-color:rgba(0,0,0,.20)}
-.jnpr .hold-metal .cr-holder-foot{color:#2a2d31}
 
 /* ── minimal: the anatomy, none of the material. Uses the app's own tokens, so
       it follows a theme change and never dates. ── */
 .jnpr .hold-minimal{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  --hp-ink:var(--jnpr-ink-2);
+  --hp-dim:var(--jnpr-ink-3);
+  --hp-strong:var(--jnpr-ink);
+  --hp-good:var(--jnpr-good);
+  --hp-chip-bg:var(--jnpr-surface-3);
+  --hp-chip-hi:var(--jnpr-line);
+  --hp-line:var(--jnpr-line)}
 .jnpr .hold-minimal .cr-holder-band{background:var(--jnpr-surface-3);height:6px}
 .jnpr .hold-minimal .cr-holder-band::before{background:rgba(255,255,255,.07)}
 .jnpr .hold-minimal .cr-holder-band::after{
@@ -1877,32 +2001,12 @@
 .jnpr .hold-minimal .cr-holder-cover{background:var(--jnpr-surface-2);
   border-top-color:var(--jnpr-line)}
 .jnpr .hold-minimal .cr-holder-cover::after{display:none}
-.jnpr .hold-minimal .cr-holder-foot{color:var(--jnpr-ink-3)}
 
-/* ── THE CARD SHEET ────────────────────────────────────────────────────────
-   What a tap on a card opens. Treatment A of three, rendered in
-   design/card-holder-cover-preview.html: the card at a size worth looking at,
-   with the figures the Credit list above already shows, printed the same way. */
-/* NARROWER THAN THE STANDARD MODAL. The sheet holds one card and three figures,
-   and at 440px it read as a dialog that had taken over the page for a card
-   preview. Sized to the card plus its margins instead, so it looks like the card
-   is the subject rather than the container. */
+/* `.modal.narrow` outlived the card sheet it was written for. The sheet was a
+   dialog that took over the page to show one card; the card now comes out of the
+   holder in place (`.cr-pop`), and the whole `.cs-*` block went with it. The
+   width stays because it is a property of ModalBackdrop, not of that sheet. */
 .jnpr .modal.narrow{max-width:330px;padding:20px}
-.jnpr .cs-head{display:flex;align-items:flex-start;gap:12px}
-.jnpr .cs-h{flex:1;min-width:0;font-size:15px;font-weight:700;color:var(--jnpr-ink);margin:0;
-  line-height:1.3}
-.jnpr .cs-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:2px}
-/* Centred and capped, so the card is the subject rather than something stretched
-   to whatever width the modal happens to be. */
-.jnpr .cs-face{display:flex;justify-content:center;margin:14px 0 2px}
-/* The card comes down to fit the narrower sheet rather than the sheet growing to
-   fit the card, which is what made it feel like it owned the screen. */
-.jnpr .cs-face .cr-face-lg{width:290px;height:183px}
-.jnpr .cs-rows{display:flex;flex-direction:column;gap:8px;margin-top:12px;
-  border-top:1px solid var(--jnpr-line-2);padding-top:12px}
-.jnpr .cs-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:12.5px}
-.jnpr .cs-row .k{color:var(--jnpr-ink-3)}
-.jnpr .cs-row .v{font-weight:650;color:var(--jnpr-ink)}
 
 /* The picker's swatch: the same holder at a size that fits six across. */
 /* Portrait, because a card holder is: the real one is 262 wide by about 290
@@ -1940,11 +2044,11 @@
    content order is rotated: issuer and network on the first line, name second,
    chip and mask pushed to the bottom. That is treatment A's one real cost, since
    the name leaves the bottom of the card where embossing actually is. */
-.jnpr .cr-holder .cr-face-in{justify-content:flex-start;gap:3px}
+.jnpr .cr-holder-card .cr-face-in{justify-content:flex-start;gap:3px}
 /* The chip is pushed to the bottom so it never competes for the visible strip.
    The rest of the order comes from `layout="strip"` in CardFace rather than from
    here, since CSS `order` cannot move the mask up to the issuer's line. */
-.jnpr .cr-holder .cr-face-mid{margin-top:auto}
+.jnpr .cr-holder-card .cr-face-mid{margin-top:auto}
 /* The strip layout gives the name the FULL width of its own line, which is the
    only arrangement where five cards in a pocket are all distinguishable. Two CSS
    attempts got there the wrong way: stacked name and mask clipped the mask to
@@ -1952,9 +2056,9 @@
    cards read "Disco...". The rearrangement is in CardFace's `layout="strip"`,
    because it needs the mask on the issuer's line and `order` only reorders
    siblings. */
-.jnpr .cr-holder .cr-face-nm{-webkit-line-clamp:1;font-size:12.5px;min-width:0}
-.jnpr .cr-holder .cr-face-top{order:0}
-.jnpr .cr-holder .cr-face-mask{margin-top:0;flex:0 0 auto}
+.jnpr .cr-holder-card .cr-face-nm{-webkit-line-clamp:1;font-size:12.5px;min-width:0}
+.jnpr .cr-holder-card .cr-face-top{order:0}
+.jnpr .cr-holder-card .cr-face-mask{margin-top:0;flex:0 0 auto}
 .jnpr .cr-pocket-lip{position:absolute;left:-9px;right:-9px;bottom:0;height:56px;z-index:60;
   border-radius:0 0 16px 16px;background:var(--jnpr-surface-2);
   border:1px solid var(--jnpr-line);border-top:0;
