@@ -96,6 +96,14 @@ export function limitOf(card: { bank_limit: number | null; member_limit: number 
   return { limit: null, source: "none" };
 }
 
+/**
+ * How much Juniper knows about a catalog product (migration 0039).
+ *
+ * `featured` -- researched rates, safe to compute with.
+ * `listed`   -- name, issuer, network, fee, art. No rates. Nameable, not costable.
+ */
+export type CardTier = "featured" | "listed";
+
 export interface Candidate {
   product_id: string;
   name: string;
@@ -108,6 +116,9 @@ export interface Candidate {
   art_url: string | null;
   /** Orders the picker. Never a threshold that skips the member's tap. */
   confidence: number;
+  /** `listed` means Juniper can name this card but has no rates for it. Shown in
+      the picker so the member is told before choosing, not after. */
+  tier: CardTier;
 }
 
 export interface UnidentifiedCard {
@@ -210,10 +221,16 @@ export interface CardRewards {
     assumesPointValue: boolean;
     periods: { month: string; quarter: string; year: string };
   };
+  /** BOTH tiers, deliberately. `featured` products are the ones with researched
+      rates; `listed` ones exist so the Identify picker can name any card a member
+      holds, and so their faces resolve art and colour rather than drawing blank.
+      Anything computing a rate must read `switches`/`upgrades`/`guide`, which the
+      server already builds from featured products only -- never filter this list
+      and do maths on it. */
   catalog: { product_id: string; name: string; short_name: string; issuer: string;
              annual_fee: number; rewards_currency: string; brand_color: string | null;
              network: string | null; point_value_cents: number | null;
-             art_url: string | null }[];
+             art_url: string | null; tier: CardTier }[];
 }
 
 /**

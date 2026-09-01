@@ -54,7 +54,13 @@ function CandidateRow({
       <span>
         <span className="cr-pk-on">{candidate.name}</span>
         <span className="cr-pk-od">
-          {fee} &middot; {candidate.rewards_currency}
+          {/* A listed card can be named but has no researched rates, so it says
+              so here rather than letting the member pick it and then find the
+              earning guide silent about the card they just confirmed. The fee is
+              still real and still worth showing. */}
+          {candidate.tier === "listed"
+            ? <>{fee} &middot; rewards not in Juniper yet</>
+            : <>{fee} &middot; {candidate.rewards_currency}</>}
           {/* The reason this one is first, said out loud rather than left as an
               unexplained highlight. Only shown on a genuinely strong match: a
               useless account name ("CREDIT CARD") scores every candidate at zero,
@@ -98,6 +104,10 @@ export function CardIdentifyDialog({
       .map((p) => ({
         product_id: p.product_id, name: p.name, issuer: p.issuer,
         annual_fee: p.annual_fee, rewards_currency: p.rewards_currency,
+        // Carried through so "show all cards" labels a listed card the same way
+        // the ranked list does. This is the list where it matters most: the long
+        // tail is exactly what the member searches when the six guesses missed.
+        tier: p.tier,
         brand_color: p.brand_color, art_url: p.art_url, confidence: 0,
       }));
   }, [catalog, query]);
