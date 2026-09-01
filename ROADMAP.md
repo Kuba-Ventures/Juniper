@@ -481,11 +481,22 @@ rationale in `docs/CARD_REWARDS.md`.
   dismissal, rather than mounting a second picker in the hero. No new CSS. The docblock was rewritten
   rather than left asserting the opposite of the code, and it records what changed and what changed it.
   States rendered in `design/card-wallet-unidentified.html`.
-- [ ] **(build)** No in-place edit of a manual account, which `0046` makes more visible than it was.
-  Connections offers add and remove only, so a member who entered a card and left the limit blank has to
-  remove it and add it again. The Credit page's row therefore links to "Manage on Connections" rather
-  than promising an editor that is not there. `/api/manual-accounts` already supports update-by-id, so
-  this is a form-prefill and a button, not a new endpoint.
+- [x] **A manual account can be edited in place.** Closes the loop `0046` opened: Connections offered
+  add and remove only, so a member who entered a card and left the limit blank had to remove it and add
+  it again, and the Credit page had to link to "Manage on Connections" because it could not honestly
+  promise an editor. It says **"Edit on Connections"** now. Treatment B of three, rendered in
+  `design/manual-edit-variants.html`: an `Edit` control on the manual row reopens the SAME
+  `ModalBackdrop` that "Add an account" uses, with `ManualAccountForm` prefilled and the heading naming
+  the account, since the row it describes sits behind the backdrop. One component for add and edit, so
+  there is one description of what a credit limit is for rather than two free to drift. No new endpoint:
+  `/api/manual-accounts` has updated in place when given an `id` since `0014` and nothing had ever sent
+  one. Two things the build turned up rather than assumed: the form is **keyed** on the account so
+  switching targets remounts it (its fields seed from initial state, and a stale field on a form that
+  writes a credit limit is the wrong place to be clever), and closing the modal clears the edit target,
+  without which the next "Add an account" would open prefilled and silently overwrite. `credit_limit`
+  and `mask` are deliberately NOT treated alike when their fields are hidden: the limit must be cleared,
+  because `0046`'s CHECK refuses one outside the credit category, while a mask is valid on any category
+  and is preserved, since clearing it would be silent data loss decided by a layout choice.
 - [ ] **The $20,000 Chase Freedom Unlimited is an authorized-user card on somebody else's login, so
   Plaid can never return it. Blocked on a credit-data provider, not on relinking.** Reconciled against
   Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards (Freedom Unlimited $20,000,

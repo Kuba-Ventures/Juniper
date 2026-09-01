@@ -499,14 +499,16 @@ function CardRow({
               A hand-entered card gets no INLINE control either, and that is not an
               oversight: its limit is one field of an account record that also holds
               a name, an institution, a category and a balance, and those are
-              managed together on Connections. Two editors for one number would be
-              two places for it to be changed and one of them would go stale.
-              The link says "Manage" rather than "Edit" on purpose: Connections
-              today offers add and remove and no in-place edit of a manual account,
-              so promising an editor would send the member looking for a control
-              that is not there. */}
+              edited together by the Edit control on the Connections row. Two
+              editors for one number would be two places for it to be changed and
+              one of them would go stale.
+              It now says "Edit" rather than "Manage". The earlier wording was
+              honest about a real gap, Connections offered add and remove only, so
+              promising an editor would have sent the member looking for a control
+              that was not there. That editor exists, so the link says what it
+              does. */}
           {card.origin === "manual" ? (
-            <> · <Link href="/app/connections" className="cl-set">Manage on Connections</Link></>
+            <> · <Link href="/app/connections" className="cl-set">Edit on Connections</Link></>
           ) : !editing && source !== "bank" ? (
             <> · <button type="button" className="cl-set" onClick={() => setEditing(true)}>
               {source === "member" ? "Change limit" : "Set limit"}

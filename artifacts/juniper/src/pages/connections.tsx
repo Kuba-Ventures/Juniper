@@ -144,6 +144,11 @@ export function ConnectionsView() {
   const canForce = import.meta.env.DEV || !!sync?.isDeveloper;
   const [syncing, setSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  // The manual account currently being edited, or null for "adding a new one".
+  // Held as the ACCOUNT rather than its id, so the form seeds from a value that
+  // cannot go stale mid-edit: a refresh landing underneath would otherwise swap
+  // the fields out from under the member's cursor.
+  const [editingManual, setEditingManual] = useState<ManualAccount | null>(null);
   // Whether the add-an-account panel is open. The search used to sit in a card
   // below every linked institution, which put it past the fold for anyone with
   // more than three connections and gave it the same visual weight as the rows
@@ -285,12 +290,30 @@ export function ConnectionsView() {
       )}
       {showManual ? (
         <ManualAccountForm
+          // Keyed on the account, so switching from adding to editing (or between
+          // two accounts) REMOUNTS the form. Its fields seed from initial state,
+          // which a re-render would not revisit, and a stale field on a form that
+          // writes a credit limit is the wrong thing to be clever about.
+          key={editingManual?.id ?? "new"}
+          account={editingManual ?? undefined}
           onSaved={async () => {
             setShowManual(false);
+            setEditingManual(null);
             setAddOpen(false);
             await refresh();
           }}
-          onCancel={() => setShowManual(false)}
+          // Cancelling an EDIT closes the whole panel, cancelling an ADD only
+          // steps back to the picker. The two arrive from different places and
+          // have different backs: somebody adding an account came through "Add an
+          // account" and the search is where they were, but somebody editing came
+          // from a row on the page behind, and dropping them into a bank search
+          // they never asked for is a non-sequitur. Found by clicking it, not by
+          // reading it.
+          onCancel={() => {
+            setShowManual(false);
+            if (editingManual) setAddOpen(false);
+            setEditingManual(null);
+          }}
         />
       ) : (
         // showConnected={false}: the page's own linked-items list names every
@@ -435,6 +458,18 @@ export function ConnectionsView() {
                   <span className="ci-name">
                     {m.institution || m.name} <span className="conn-tag">Manual</span>
                   </span>
+                  {/* A plain text button rather than a second filled one. Every
+                      manual row would otherwise carry two buttons of equal weight
+                      and the list would read as a set of chores. Edit is the safe
+                      action and Remove is the destructive one, so they must not
+                      look alike. */}
+                  <button
+                    className="man-edit"
+                    onClick={() => { setEditingManual(m); setShowManual(true); setAddOpen(true); }}
+                    aria-label={`Edit ${m.name}`}
+                  >
+                    Edit
+                  </button>
                   <button
                     className="btn ghost sm"
                     onClick={() => handleRemoveManual(m.id)}
@@ -485,17 +520,38 @@ export function ConnectionsView() {
       </div>
 
       {addOpen && (
-        <ModalBackdrop wide onClose={() => setAddOpen(false)}>
+        <ModalBackdrop
+          wide
+          onClose={() => { setAddOpen(false); setShowManual(false); setEditingManual(null); }}
+        >
           <div className="conn-add-head">
-            <h3>{showManual ? "Enter an account by hand" : "Add an account"}</h3>
-            <button className="conn-add-x" onClick={() => setAddOpen(false)} aria-label="Close">
+            {/* The row being edited sits behind the backdrop, so the heading is
+                the only thing that can say WHICH account this is. Naming it is
+                what stops somebody typing the Chase limit into the Discover
+                account, which is the same reason #211's limit editor sits on the
+                row it describes. */}
+            <h3>
+              {editingManual
+                ? `Edit ${editingManual.name}`
+                : showManual ? "Enter an account by hand" : "Add an account"}
+            </h3>
+            {/* Clears the edit target too. Without it the next tap on "Add an
+                account" would open prefilled with the account last edited, and
+                saving would silently overwrite it instead of adding anything. */}
+            <button
+              className="conn-add-x"
+              onClick={() => { setAddOpen(false); setShowManual(false); setEditingManual(null); }}
+              aria-label="Close"
+            >
               <X size={15} />
             </button>
           </div>
           <p>
-            {showManual
-              ? "For accounts Plaid can't reach. The balance is yours to maintain: it stays exactly as you type it until you edit it again."
-              : "Search for your bank and tap it to connect. Plaid links one institution per session, so reopen this for the next one."}
+            {editingManual
+              ? "Your own figures, so they stay exactly as you type them until you change them again. Juniper never overwrites them."
+              : showManual
+                ? "For accounts Plaid can't reach. The balance is yours to maintain: it stays exactly as you type it until you edit it again."
+                : "Search for your bank and tap it to connect. Plaid links one institution per session, so reopen this for the next one."}
           </p>
           {addFlow}
         </ModalBackdrop>

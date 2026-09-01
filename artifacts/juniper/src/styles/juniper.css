@@ -928,6 +928,16 @@
 .jnpr .man-hint{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;max-width:64ch;
   margin-top:-4px}
 .jnpr .man-actions{display:flex;justify-content:flex-end;gap:8px}
+/* Edit, on a hand-entered connection row. A plain text button, not a filled one:
+   the row already carries Remove, and two buttons of equal weight on every manual
+   row would make the list read as a set of chores. It also keeps the safe action
+   visually distinct from the destructive one, which matters more here than
+   symmetry does. Same shape as `.cl-set` on the Credit page, for the same
+   reason. */
+.jnpr .man-edit{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
+  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px;flex:0 0 auto}
+.jnpr .man-edit:hover{color:var(--jnpr-ink)}
 .jnpr .conn-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--jnpr-ink-3);background:var(--jnpr-surface-3);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 /* Layer (tier-1) phone-first discovery card */
 .jnpr .layer-card{border:1px solid var(--jnpr-accent-soft);background:var(--jnpr-accent-soft);border-radius:13px;padding:14px;margin-bottom:16px}
