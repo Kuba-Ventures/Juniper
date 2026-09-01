@@ -129,7 +129,25 @@ async function authedFetch(input: string, init?: RequestInit): Promise<Response>
 // `itemId` puts Link into update mode against that existing item, which is how
 // a dead connection is repaired rather than duplicated. Server-side the id is
 // re-checked against the caller's own rows.
-export async function createLinkToken(opts?: { routingNumber?: string | null; itemId?: string | null }): Promise<string | null> {
+/**
+ * Mint a Link token. Returns the token and, when there isn't one, the HTTP status
+ * that explains why.
+ *
+ * The status matters because the caller has to tell the member something, and the
+ * two cases are not the same. 503 means Plaid genuinely is not configured for this
+ * deployment, which is a "not enabled yet" state and permanent until someone
+ * changes an env var. Anything else -- a 400 from Plaid, a 502, a network blip --
+ * is a fault, and telling somebody a feature "isn't enabled yet" when the truth is
+ * that a request failed sends them away instead of having them retry.
+ *
+ * That is not hypothetical: an invalid product in the link-token payload made
+ * every call 400 for a day, and because this function collapsed every failure to
+ * null, the app told everyone linking wasn't enabled. Nobody could connect a bank
+ * and nothing said why.
+ */
+export async function createLinkToken(
+  opts?: { routingNumber?: string | null; itemId?: string | null },
+): Promise<{ token: string | null; status: number | null }> {
   try {
     const res = await authedFetch("/api/plaid/link-token", {
       method: "POST",
@@ -138,11 +156,11 @@ export async function createLinkToken(opts?: { routingNumber?: string | null; it
         ...(opts?.itemId ? { item_id: opts.itemId } : {}),
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { token: null, status: res.status };
     const data = (await res.json()) as { link_token?: string };
-    return data.link_token ?? null;
+    return { token: data.link_token ?? null, status: data.link_token ? null : res.status };
   } catch {
-    return null;
+    return { token: null, status: null };
   }
 }
 
