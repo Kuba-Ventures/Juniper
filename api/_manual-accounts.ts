@@ -94,6 +94,10 @@ export type ManualCreditRow = ManualAccountRow & {
       `utilizationPct` in ./_credit-balance.ts, which returns null rather than 0
       for an unknown limit because those are different facts. */
   credit_limit: number | null;
+  /** Which catalog card this is (migration 0047), for IDENTITY ONLY: name, brand
+      colour and art. NULL means the member has not said, which is a fine place to
+      stay. Never used for rewards: see the note on the select below. */
+  product_id: string | null;
 };
 
 /**
@@ -110,11 +114,19 @@ export async function fetchManualCreditAccounts(uid: string): Promise<ManualCred
   const base = "id,name,institution,category,kind,balance,currency";
   const scope = `manual_accounts?user_id=eq.${uid}&category=eq.credit`;
   const order = "&order=created_at.asc";
+  // Tried most-complete first and degraded one migration at a time, the same
+  // ladder shape `readCatalog` uses: losing 0047's `product_id` must not also
+  // cost 0046's limit, which is the field utilization depends on, so these are
+  // separate steps rather than one fallback.
   try {
-    let r = await adminRest(`${scope}&select=${base},mask,credit_limit${order}`);
+    let r = await adminRest(`${scope}&select=${base},mask,credit_limit,product_id${order}`);
+    if (!r.ok) {
+      r = await adminRest(`${scope}&select=${base},mask,credit_limit${order}`);
+      if (r.ok) console.warn("[manual] product_id unavailable, is migration 0047 applied?");
+    }
     if (!r.ok) {
       r = await adminRest(`${scope}&select=${base}${order}`);
-      if (r.ok) console.warn("[manual] mask and credit_limit unavailable, is migration 0046 applied?");
+      if (r.ok) console.warn("[manual] mask, credit_limit and product_id unavailable, are migrations 0046 and 0047 applied?");
     }
     if (!r.ok) {
       console.error(`[manual] could not read manual credit accounts (${r.status})`);
@@ -140,6 +152,7 @@ export async function fetchManualCreditAccounts(uid: string): Promise<ManualCred
         m.credit_limit == null || !Number.isFinite(Number(m.credit_limit)) || Number(m.credit_limit) <= 0
           ? null
           : Number(m.credit_limit),
+      product_id: m.product_id ?? null,
     }));
   } catch {
     console.error("[manual] read threw for manual credit accounts");

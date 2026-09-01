@@ -123,17 +123,18 @@ function CardWallet({
   // header's "N of M identified" describe the same set. See the docblock: a
   // header saying three over a stack of two reads as a card having gone missing.
   const slots: { key: string; card: LinkedCard | null; label: string; mask: string | null;
-                 issuer: string; hand: boolean }[] = [
+                 issuer: string; hand: boolean; art: string | null; brand: string | null }[] = [
     ...withProduct.map((c) => ({
       key: c.plaid_account_id, card: c, issuer: c.institution,
       label: c.product?.short_name ?? c.account_name, mask: c.mask, hand: false,
+      art: null, brand: null,
     })),
     ...unidentified.map((u) => ({
       // Prefixed: an unidentified card's `plaid_account_id` is in the same
       // namespace as a confirmed one's, and the two lists are disjoint today, but
       // a key collision here would silently drop a face rather than error.
       key: `unk:${u.plaid_account_id}`, card: null, issuer: u.institution,
-      label: "Which card?", mask: u.mask, hand: false,
+      label: "Which card?", mask: u.mask, hand: false, art: null, brand: null,
     })),
     // Hand-entered cards LAST OF ALL, after even the outlines. The pocket then
     // holds every credit card the page knows about, in descending order of how
@@ -141,7 +142,15 @@ function CardWallet({
     // ones it knows only because the member typed them.
     ...manual.map((m) => ({
       key: `hand:${m.manual_account_id}`, card: null, issuer: m.institution,
-      label: m.account_name, mask: m.mask, hand: true,
+      // The product's short name once the member has named it (0047), their own
+      // label until then. Theirs is the better fallback: "Freedom Unlimited" is
+      // what they typed and what they call it.
+      label: m.product?.short_name || m.account_name,
+      mask: m.mask, hand: true,
+      // Identity only. A named card gets its real art and colour and stops
+      // looking like the one thing in the pocket Juniper could not draw.
+      art: m.product?.art_url ?? null,
+      brand: m.product?.brand_color ?? null,
     })),
   ];
 
@@ -186,13 +195,17 @@ function CardWallet({
               // cannot describe the same state differently. A hand-entered card is
               // NOT unknown: the member told us what it is, so it gets a real name
               // and a face, just an unbranded one.
+              // A NAMED hand-entered card is no longer drawn as a hand-entered
+              // one: it has real art and a real colour, so it draws like any
+              // other card. The neutral face says "Juniper cannot draw this",
+              // and once it can, that is no longer true.
               unknown={!c && !s.hand}
-              hand={s.hand}
+              hand={s.hand && !s.art && !s.brand}
               productName={c || s.hand ? s.label : undefined}
               label={c || s.hand ? undefined : s.label}
               mask={s.mask}
-              brandColor={c?.product?.brand_color}
-              artUrl={c?.product?.art_url}
+              brandColor={c?.product?.brand_color ?? s.brand}
+              artUrl={c?.product?.art_url ?? s.art}
               logoSrc={c ? logoFor(c) : null}
             />
           </button>

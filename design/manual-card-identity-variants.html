@@ -1,0 +1,129 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Naming a hand-entered card, three placements</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1200px;margin:0 auto;padding:20px 20px 70px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;max-width:104ch;margin-bottom:12px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:9px;cursor:pointer;margin-bottom:16px}
+.pv-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:start}
+@media(max-width:1050px){.pv-cols{grid-template-columns:1fr}}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:5px}
+.pv-num{display:grid;place-items:center;width:19px;height:19px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:0 0 12px;min-height:96px}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-cost{font-size:11px;color:var(--jnpr-warn);line-height:1.55;margin-top:10px}
+.man-edit{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);background:none;
+  border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  Naming the product on a hand-entered card, so it can borrow the catalog's <b>art, colour and name</b>
+  and nothing else. The catalog already holds the Freedom Unlimited artwork; nothing has ever been able
+  to point at it. <b>Identity only in all three:</b> no rates, no benefits, no switch ideas, because the
+  rewards maths keys on per-account spend a hand-entered card has none of. The question is only
+  <b>where the member says which card it is.</b>
+</div>
+<button class="pv-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+<div class="pv-cols">
+
+  <!-- A -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">A</span> A field on the edit form</div>
+    <div class="pv-note">
+      One more credit-only field beside the limit and the mask, on the form that already exists for
+      exactly these fields. <b>Everything about the card is edited in one place</b>, and the field can
+      say plainly what naming it does and does not buy.
+    </div>
+    <div class="card pad-lg">
+      <div class="man-form">
+        <div class="man-row">
+          <label class="man-field"><span>Account name</span><input value="Freedom Unlimited"></label>
+          <label class="man-field"><span>Institution (optional)</span><input value="Chase"></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field"><span>Category</span><select><option>Credit cards</option></select></label>
+          <label class="man-field"><span>Balance (optional)</span><div class="man-money"><span>$</span><input value="0"></div></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field"><span>Credit limit (optional)</span><div class="man-money"><span>$</span><input value="20,000"></div></label>
+          <label class="man-field"><span>Last 4 digits (optional)</span><input value="4417"></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field" style="grid-column:1/-1"><span>Which card is it? (optional)</span>
+            <select><option>Chase Freedom Unlimited&reg;</option></select></label>
+        </div>
+        <div class="man-hint">
+          Naming it lets Juniper show the card's own artwork. It does not add rewards tracking: Juniper
+          has no transactions for a card you entered by hand.
+        </div>
+        <div class="man-actions"><button class="btn ghost sm">Cancel</button><button class="btn sm">Save changes</button></div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: the naming lives on Connections, two pages from the wallet where the
+      member notices the card looks plain.</div>
+  </div>
+
+  <!-- B -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">B</span> Reuse the Identify picker</div>
+    <div class="pv-note">
+      The hand-entered card joins the Identify prompt, and the member names it with the same searchable
+      picker they used for their linked cards. <b>One way to name any card, wherever it came from.</b>
+    </div>
+    <div class="card pad-lg">
+      <div class="cr-cc">
+        <span class="cr-face cr-face-md cr-face-unk"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span></span><span class="cr-face-nm">Which card?</span></span></span>
+        <div class="cr-cc-b">
+          <h3 class="cr-cc-h">Which Chase card is ····4417?</h3>
+          <p class="cr-cc-d">You added this one by hand. Naming it lets Juniper draw its artwork; it will
+            not add rewards tracking, because there are no transactions behind it.</p>
+        </div>
+        <div class="cr-cc-act"><button class="btn">Identify card</button></div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: the prompt's whole existing copy says the bank did not tell Juniper what
+      the card is, which is not why this one is unnamed. Two states in one prompt, each needing its own
+      sentence, on the surface that must stay clearest.</div>
+  </div>
+
+  <!-- C -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">C</span> On the card itself, in the wallet</div>
+    <div class="pv-note">
+      The plain face is where the member notices, so it is where the control goes. Tapping the
+      hand-entered card in the pocket offers <b>Name this card</b>, opening the same picker.
+      <b>Nearest to the moment of noticing.</b>
+    </div>
+    <div class="card pad-lg" style="width:300px">
+      <div class="cr-pocket" style="height:236px">
+        <button type="button" class="cr-pocket-card" style="top:0;z-index:10">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#1b64a5;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;1575</span></span><span class="cr-face-nm">Sapphire Preferred&reg;</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card up" style="top:54px;z-index:99">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#4a4f4d;color:#e8e8e8;border:1px dashed var(--jnpr-line-2)"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;4417</span></span><span class="cr-face-nm">Freedom Unlimited</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <div class="cr-pocket-lip" aria-hidden="true"></div>
+        <div class="cr-pocket-foot">4 cards</div>
+      </div>
+      <div style="margin-top:12px;text-align:center">
+        <button class="man-edit">Name this card to show its artwork</button>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: a third way into the same picker, and a control that appears only when a
+      card is raised, which is a state most members never enter.</div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

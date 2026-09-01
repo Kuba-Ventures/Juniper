@@ -550,6 +550,44 @@ rationale in `docs/CARD_REWARDS.md`.
   foreign key, but the rewards maths keys on per-account spend from `transactions.account_id` that a
   hand-entered card has none of, so its rates would be right and its "what this is costing you" figures
   blank or wrong. Worth doing only alongside that.
+- [x] **The issuer's mark comes off a card that has real art.** Reported on 2026-09-01 as "circles and
+  squares overlaying the cards". They were institution logos: `.cr-face-logo` flattens Plaid's mark to a
+  pure white silhouette (`brightness(0) invert(1)`), which is right on a synthesized face, since Plaid
+  ships dark marks meant for a light tile and they would vanish into a navy card, and wrong twice on a
+  face showing REAL ART. The artwork is the issuer's own branding, so the silhouette is a second mark
+  competing with the first, and flattened to white it reads as a blank shape laid over the card. The
+  issuer NAME takes its place, which is what the stylesheet was already written for:
+  `.cr-pocket .cr-face-art .cr-face-iss` sets it white with a text-shadow for exactly this case and was
+  unreachable for every institution that has a logo, which is most of them. Only the wallet strip ever
+  saw it; a full face with art hides its whole top line. Verified that a card with a logo and NO art
+  still draws the mark, which is the case the filter exists for.
+- [x] **A hand-entered card can say which card it is** (`0047`), so it stops being the one face in the
+  wallet Juniper cannot draw. The catalog has held the Freedom Unlimited artwork since `0038` and
+  nothing could point at it. Treatment A of three, rendered in
+  `design/manual-card-identity-variants.html`: one more credit-only field on the form that already
+  edits the limit and the mask, so everything about the card is edited in one place.
+  **IDENTITY ONLY, and that boundary is the whole design rather than a first phase.** The column buys
+  the card its name, brand colour and art, and nothing else. `api/_rewards.ts` computes the guide, the
+  switch ideas and the upgrade rows from per-ACCOUNT spend keyed on `transactions.account_id`, and a
+  hand-entered account has no Plaid account id and therefore no transactions, ever, so any figure built
+  on it would be computed over an empty spend set: "you are losing $0 a year on this card" is missing
+  data wearing the clothes of a finding. `identityOf` in `api/card-rewards.ts` is the seam, resolving
+  four presentation fields and never touching the `products` map that feeds the maths. The catalog is
+  deliberately read twice, for two purposes. `scripts/src/check-manual-limit-isolation.ts` grew five
+  checks to hold it, including that a manual row's `product_id` is read exactly once, so a second reader
+  fails a check rather than quietly reaching the rewards figures. The `0046` rule is unchanged and
+  restated in the migration, because this is exactly when a manual card starts looking like a linked one
+  and a rule gets forgotten: the limit still never reaches the Score.
+  **A bug the build turned up:** `identityOf` calls `artOf`, and `manual` is built before the
+  no-linked-accounts early return, so with `artOf` declared where it used to sit it was in the temporal
+  dead zone and naming a card threw a `ReferenceError`. It threw only once a card was actually named,
+  which is to say only for the feature being added. The art map moved above its first use.
+- [ ] **(ops)** Apply `0047`. Deploy first, as with `0037`, though it is additive and safe either way:
+  the column is nullable and every read and write carries a fallback for its absence. Verified against a
+  scratch Postgres before shipping: `0014`, `0046`, then `0047` applies clean, re-running is a no-op, two
+  pre-existing rows survive with `product_id` NULL, a product on a banking account is refused, an unknown
+  product id is refused by the FOREIGN KEY, and deleting a catalog product nulls the name rather than
+  deleting the member's account.
 - [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
   done every member sees the "not yet re-checked" caveat.

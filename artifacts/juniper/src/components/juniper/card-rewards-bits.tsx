@@ -138,6 +138,27 @@ export function CardFace({
   const style = tint
     ? ({ ["--cr-brand" as string]: tint.background, color: tint.color } as React.CSSProperties)
     : undefined;
+  /**
+   * THE ISSUER'S MARK IS DROPPED WHERE THE ARTWORK ALREADY CARRIES IT.
+   *
+   * `.cr-face-logo` flattens Plaid's mark to a pure white silhouette
+   * (`brightness(0) invert(1)`), which is right on a synthesized face: Plaid
+   * ships dark marks meant for a light tile and they would vanish into a navy
+   * card. On a face showing REAL ART it is wrong twice over. The artwork is the
+   * issuer's own branding, so the silhouette is a second mark competing with the
+   * first; and flattened to white it reads as a blank circle or square laid over
+   * the card rather than as a logo, which is how it was reported.
+   *
+   * The issuer NAME takes its place, which is what the stylesheet was already
+   * written for: `.cr-pocket .cr-face-art .cr-face-iss` sets it white with a
+   * text-shadow for exactly this case, and was unreachable for every institution
+   * that has a logo, which is most of them.
+   *
+   * Only the strip layout ever sees this. A full face with art hides its whole
+   * top line, mark and all, because there the labels are the artwork's job.
+   */
+  const showLogo = !!logoSrc && !art;
+
   const name = label ?? productName ?? "";
   const tiny = size === "sm";
   const maskEl = mask
@@ -179,8 +200,8 @@ export function CardFace({
         {artEl}
         <span className="cr-face-in">
           <span className="cr-face-top">
-            {logoSrc
-              ? <img className="cr-face-logo" src={logoSrc} alt="" />
+            {showLogo
+              ? <img className="cr-face-logo" src={logoSrc!} alt="" />
               : <span className="cr-face-iss">{issuer}</span>}
             {maskEl}
           </span>
@@ -197,8 +218,8 @@ export function CardFace({
       {artEl}
       <span className="cr-face-in">
         <span className="cr-face-top">
-          {logoSrc
-            ? <img className="cr-face-logo" src={logoSrc} alt="" />
+          {showLogo
+            ? <img className="cr-face-logo" src={logoSrc!} alt="" />
             : <span className="cr-face-iss">{issuer}</span>}
           {/* A generic contactless glyph, not a network asset. */}
           {!unknown && (

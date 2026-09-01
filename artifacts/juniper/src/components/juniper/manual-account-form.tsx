@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
+import { fetchCardRewards, type CardRewards } from "@/lib/cards";
 import {
   MANUAL_CATEGORIES,
   saveManualAccount,
@@ -79,10 +80,28 @@ export function ManualAccountForm({
     account?.credit_limit != null ? String(account.credit_limit) : "",
   );
   const [mask, setMask] = useState(account?.mask ?? "");
+  const [productId, setProductId] = useState(account?.product_id ?? "");
+  // The catalog, for the "which card is it?" picker. Fetched here rather than
+  // threaded down, because this form is mounted from two places (Connections and
+  // first-run onboarding) and neither holds it. Failure is silent and the field
+  // simply does not appear: naming the card is optional, and a member who cannot
+  // reach the catalog can still add the account, which is the part that matters.
+  const [catalog, setCatalog] = useState<CardRewards["catalog"]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isCredit = category === "credit";
+
+  useEffect(() => {
+    let cancelled = false;
+    // Only for a credit account, and only once: the other categories never show
+    // the field, so fetching for them would be a request nothing reads.
+    if (!isCredit || catalog.length) return;
+    void fetchCardRewards().then((d) => {
+      if (!cancelled && d?.catalog?.length) setCatalog(d.catalog);
+    });
+    return () => { cancelled = true; };
+  }, [isCredit, catalog.length]);
 
   const submit = async () => {
     const trimmed = name.trim();
@@ -104,6 +123,10 @@ export function ManualAccountForm({
     // a card, not because a checking account may not have one.
     const limitDigits = isCredit ? creditLimit.replace(/[^\d.]/g, "") : "";
     const maskDigits = isCredit ? mask.replace(/\D/g, "") : (account?.mask ?? "");
+    // Cleared with the category for the same reason the limit is: 0047's CHECK
+    // refuses a product outside `credit`, so moving a card to Banking has to drop
+    // the name along with the limit.
+    const chosenProduct = isCredit ? productId : "";
     if (limitDigits !== "" && !(Number(limitDigits) > 0)) {
       // Caught here as well as server-side, because zero is the one wrong value
       // somebody types on purpose and a round trip to be told so is a poor way to
@@ -125,6 +148,7 @@ export function ManualAccountForm({
       // left to whatever a previous write put there.
       credit_limit: limitDigits === "" ? null : Number(limitDigits),
       mask: maskDigits === "" ? null : maskDigits.slice(-4),
+      product_id: chosenProduct === "" ? null : chosenProduct,
     });
     setSaving(false);
     if (acct) onSaved(acct);
@@ -213,6 +237,23 @@ export function ManualAccountForm({
               />
             </label>
           </div>
+          {/* NAMING IS OPTIONAL AND SEPARATE FROM THE NUMBERS, so it sits on its
+              own row under them. Hidden entirely when the catalog could not be
+              read, rather than shown empty: an empty picker is a control that
+              cannot be used, which is worse than one that is not offered. */}
+          {catalog.length > 0 && (
+            <div className="man-row">
+              <label className="man-field" style={{ gridColumn: "1 / -1" }}>
+                <span>Which card is it? (optional)</span>
+                <select value={productId} onChange={(e) => setProductId(e.target.value)}>
+                  <option value="">Not sure, or not listed</option>
+                  {catalog.map((c) => (
+                    <option key={c.product_id} value={c.product_id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           {/* Says what the limit is FOR, because a member who skips it will see a
               card on the Credit page reading "Unknown" and no explanation, and
               says what it is not for, because the honest thing about a number
@@ -221,6 +262,12 @@ export function ManualAccountForm({
             The limit lets Juniper work out your utilization across every card, including ones your
             bank cannot show it. It is your number, so it is labelled as yours wherever it appears,
             and it does not affect your Juniper Score.
+            {catalog.length > 0 && (
+              <>
+                {" "}Naming the card lets Juniper draw its artwork. It does not add rewards tracking,
+                because Juniper has no transactions for a card you entered by hand.
+              </>
+            )}
           </div>
         </>
       )}

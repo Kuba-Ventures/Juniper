@@ -1,7 +1,7 @@
 // /api/manual-accounts, CRUD for the caller's manually-added accounts.
 //   GET                                  -> list own manual accounts
 //   POST { name, category, kind, balance, institution?, currency?, id?,
-//          mask?, credit_limit? }
+//          mask?, credit_limit?, product_id? }
 //                                        -> create, or update when `id` is given
 //   DELETE ?id=UUID                      -> remove that account
 // Tier 3 of account discovery: for institutions Plaid can't link (small/regional
@@ -43,6 +43,8 @@ const SELECT_COLS = "id,name,institution,category,kind,balance,currency,created_
 // manual-account list for the length of a deploy that ran ahead of the
 // migration. Same ladder shape as `readCatalog` in api/card-rewards.ts.
 const SELECT_COLS_0046 = `${SELECT_COLS},mask,credit_limit`;
+// Migration 0047. A separate rung so losing it does not also cost 0046's limit.
+const SELECT_COLS_0047 = `${SELECT_COLS_0046},product_id`;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -57,10 +59,14 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === "GET") {
     const scope = `manual_accounts?user_id=eq.${uid}`;
     const order = "&order=created_at.asc";
-    let r = await adminRest(`${scope}&select=${SELECT_COLS_0046}${order}`);
+    let r = await adminRest(`${scope}&select=${SELECT_COLS_0047}${order}`);
+    if (!r.ok) {
+      r = await adminRest(`${scope}&select=${SELECT_COLS_0046}${order}`);
+      if (r.ok) console.warn("[manual] product_id unavailable, is migration 0047 applied?");
+    }
     if (!r.ok) {
       r = await adminRest(`${scope}&select=${SELECT_COLS}${order}`);
-      if (r.ok) console.warn("[manual] mask and credit_limit unavailable, is migration 0046 applied?");
+      if (r.ok) console.warn("[manual] mask, credit_limit and product_id unavailable, are migrations 0046 and 0047 applied?");
     }
     if (!r.ok) return json({ error: "Failed to read accounts" }, 500);
     return json(await r.json());
@@ -77,6 +83,7 @@ export default async function handler(req: Request): Promise<Response> {
       currency?: string;
       mask?: string | null;
       credit_limit?: number | string | null;
+      product_id?: string | null;
     };
 
     const name = (body.name || "").trim();
@@ -131,6 +138,19 @@ export default async function handler(req: Request): Promise<Response> {
       creditLimit = n;
     }
 
+    // Which catalog card this is (migration 0047), for IDENTITY ONLY: name, brand
+    // colour and art. Refused outside the credit category for the same reason the
+    // limit is, and validated as a plain id here; the FOREIGN KEY is what actually
+    // proves it exists, so an unknown id comes back as a failed write rather than
+    // being stored.
+    let productId: string | null = null;
+    if (body.product_id != null && String(body.product_id).trim() !== "") {
+      if (category !== "credit") {
+        return json({ error: "product_id is only valid on a credit account" }, 400);
+      }
+      productId = String(body.product_id).trim();
+    }
+
     const row = {
       user_id: uid,
       name,
@@ -155,10 +175,12 @@ export default async function handler(req: Request): Promise<Response> {
     // including a category change away from credit, so switching a card to Banking
     // clears the limit instead of leaving 0046's CHECK to refuse the update.
     const row0046 = { ...row, mask, credit_limit: creditLimit };
+    const row0047 = { ...row0046, product_id: productId };
     // Whether the member is actually relying on those columns this time. If they
     // are, a fallback would store the account and quietly lose the number they
     // typed, so the honest answer is to say the field is not available yet.
     const needs0046 = mask != null || creditLimit != null;
+    const needs0047 = productId != null;
 
     const target = body.id
       ? `manual_accounts?id=eq.${enc(body.id)}&user_id=eq.${uid}`
@@ -170,14 +192,24 @@ export default async function handler(req: Request): Promise<Response> {
       body: JSON.stringify(payload),
     });
 
-    let r = await write(row0046);
+    let r = await write(row0047);
+    if (!r.ok) {
+      // Down one rung: 0047's column may be missing, or the product id may not
+      // exist, which the FOREIGN KEY refuses. Either way the member asked for it,
+      // so it is not dropped silently.
+      if (needs0047) {
+        console.error("[manual] write with product_id failed, is migration 0047 applied and the product real?");
+        return json({ error: "Could not save that card choice. Try again shortly." }, 503);
+      }
+      r = await write(row0046);
+    }
     if (!r.ok) {
       if (needs0046) {
         console.error("[manual] write with mask/credit_limit failed, is migration 0046 applied?");
         return json({ error: "Could not save the limit for this card yet. Try again shortly." }, 503);
       }
       const retry = await write(row);
-      if (retry.ok) console.warn("[manual] mask and credit_limit unavailable, is migration 0046 applied?");
+      if (retry.ok) console.warn("[manual] mask, credit_limit and product_id unavailable, are migrations 0046 and 0047 applied?");
       r = retry;
     }
     if (!r.ok) {
@@ -189,7 +221,7 @@ export default async function handler(req: Request): Promise<Response> {
     // not the caller's. An INSERT always returns its row, so the fallback below
     // only ever fires on a representation the REST layer declined to send back.
     if (body.id && !rows.length) return json({ error: "Account not found" }, 404);
-    return json(rows[0] ?? row0046);
+    return json(rows[0] ?? row0047);
   }
 
   if (req.method === "DELETE") {
