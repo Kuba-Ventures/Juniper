@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "check-rewards": "tsx ./src/check-rewards.ts",
     "check-credit-balance": "tsx ./src/check-credit-balance.ts",
+    "check-manual-limit-isolation": "tsx ./src/check-manual-limit-isolation.ts",
     "check-category-ids": "tsx ./src/check-category-ids.ts",
     "check-category-resolver": "tsx ./src/check-category-resolver.ts",
     "check-member-categories": "tsx ./src/check-member-categories.ts",

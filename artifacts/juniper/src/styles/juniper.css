@@ -920,6 +920,13 @@
 .jnpr .man-money:focus-within{border-color:var(--jnpr-accent)}
 .jnpr .man-money>span{color:var(--jnpr-ink-3);font-size:13.5px}
 .jnpr .man-money input{border:none;background:transparent;font:inherit;font-size:13.5px;color:var(--jnpr-ink);outline:none;padding:9px 2px;width:100%}
+/* The note under the credit-only fields (migration 0046). Says what the limit is
+   for and, more importantly, what it is not for: a number Juniper cannot check
+   does not move the Juniper Score, and the member should read that here rather
+   than infer it. Sits at the row's own left edge, not indented, because it
+   describes the pair of fields above it rather than either one of them. */
+.jnpr .man-hint{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;max-width:64ch;
+  margin-top:-4px}
 .jnpr .man-actions{display:flex;justify-content:flex-end;gap:8px}
 .jnpr .conn-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--jnpr-ink-3);background:var(--jnpr-surface-3);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 /* Layer (tier-1) phone-first discovery card */
