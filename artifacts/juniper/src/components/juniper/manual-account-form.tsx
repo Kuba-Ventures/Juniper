@@ -8,9 +8,23 @@ import {
 } from "@/lib/manual-accounts";
 
 // The manual-entry form (account discovery, tier 3): add an account by hand for
-// institutions Plaid can't link. Category implies asset vs liability (credit /
-// loans are debts); the server derives `kind` from it. Balance is optional and
-// user-maintained (not live).
+// institutions Plaid can't link, and since this change, EDIT one that exists.
+// Category implies asset vs liability (credit / loans are debts); the server
+// derives `kind` from it. Balance is optional and user-maintained (not live).
+//
+// ── ADD AND EDIT ARE ONE COMPONENT ─────────────────────────────────────────
+//
+// Pass `account` to edit, omit it to add. The same six fields, the same
+// validation, the same credit-only gate, and one description of what a credit
+// limit is for. A second form would be a second place that description lives,
+// free to drift, and the limit is the field where drift does damage.
+//
+// The endpoint has updated in place when given an `id` since 0014. Nothing on the
+// client ever sent one, so an account could be added and removed and never
+// corrected. Harmless while a manual account was just a name and a balance, and
+// not harmless after 0046: a member who left the credit limit blank had to delete
+// the card and enter it again, and the Credit page had to link here saying
+// "Manage" because it could not honestly say "Edit".
 //
 // ── THE CREDIT-ONLY FIELDS (migration 0046) ────────────────────────────────
 //
@@ -30,16 +44,41 @@ import {
 export function ManualAccountForm({
   onSaved,
   onCancel,
+  account,
 }: {
   onSaved: (acct: ManualAccount) => void;
   onCancel: () => void;
+  /**
+   * An existing account to EDIT rather than a new one to add.
+   *
+   * One component for both, because they are the same six fields with the same
+   * validation and the same credit-only gate. A separate edit form would be a
+   * second place to describe a credit limit, free to drift from this one, and the
+   * limit is exactly the field where a drifting description does damage.
+   *
+   * `/api/manual-accounts` already updated in place when given an `id`, since
+   * 0014. Nothing on the client had ever sent one, so an account could be added
+   * and removed and never corrected, and after 0046 that meant a member who left
+   * the limit blank had to delete the card and enter it again.
+   */
+  account?: ManualAccount;
 }) {
-  const [name, setName] = useState("");
-  const [institution, setInstitution] = useState("");
-  const [category, setCategory] = useState<ManualCategory>("banking");
-  const [balance, setBalance] = useState("");
-  const [creditLimit, setCreditLimit] = useState("");
-  const [mask, setMask] = useState("");
+  const editing = account != null;
+  // Seeded from the account ONCE, as initial state rather than synced in an
+  // effect. The form is mounted fresh per account (the modal unmounts on close),
+  // so there is no second render to reconcile, and an effect that wrote these
+  // back would fight the member's own typing.
+  const [name, setName] = useState(account?.name ?? "");
+  const [institution, setInstitution] = useState(account?.institution ?? "");
+  const [category, setCategory] = useState<ManualCategory>(account?.category ?? "banking");
+  // Stored as a positive magnitude with the sign carried by `kind`, so the field
+  // shows the magnitude. `String(0)` is "0" and not "", which matters: a $0
+  // balance is a real answer and blanking it would read as unknown.
+  const [balance, setBalance] = useState(account?.balance != null ? String(account.balance) : "");
+  const [creditLimit, setCreditLimit] = useState(
+    account?.credit_limit != null ? String(account.credit_limit) : "",
+  );
+  const [mask, setMask] = useState(account?.mask ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,9 +92,18 @@ export function ManualAccountForm({
     }
     // Read the credit-only fields ONLY on a credit account, so a member who typed
     // a limit and then changed the category away does not get a 400 for a field
-    // they can no longer see. The visible form is the whole of what is submitted.
+    // they can no longer see.
+    //
+    // The two are NOT treated alike when the fields are hidden, and the asymmetry
+    // follows the database rather than the layout. `credit_limit` MUST be cleared:
+    // 0046's CHECK refuses one outside the credit category, so moving a card to
+    // Banking has to drop it. `mask` has no such constraint and is valid on any
+    // category, so a hidden mask field PRESERVES what is stored rather than
+    // wiping it. Clearing it would be silent data loss decided by a layout
+    // choice, and the form only hides the field because a mask is most useful on
+    // a card, not because a checking account may not have one.
     const limitDigits = isCredit ? creditLimit.replace(/[^\d.]/g, "") : "";
-    const maskDigits = isCredit ? mask.replace(/\D/g, "") : "";
+    const maskDigits = isCredit ? mask.replace(/\D/g, "") : (account?.mask ?? "");
     if (limitDigits !== "" && !(Number(limitDigits) > 0)) {
       // Caught here as well as server-side, because zero is the one wrong value
       // somebody types on purpose and a round trip to be told so is a poor way to
@@ -67,6 +115,8 @@ export function ManualAccountForm({
     setSaving(true);
     const digits = balance.replace(/[^\d.]/g, "");
     const acct = await saveManualAccount({
+      // The id is what turns this POST into an update. Absent on an add.
+      id: account?.id,
       name: trimmed,
       institution: institution.trim() || undefined,
       category,
@@ -78,7 +128,7 @@ export function ManualAccountForm({
     });
     setSaving(false);
     if (acct) onSaved(acct);
-    else setError("Couldn't save that account. Please try again.");
+    else setError(editing ? "Couldn't save those changes. Please try again." : "Couldn't save that account. Please try again.");
   };
 
   return (
@@ -87,7 +137,10 @@ export function ManualAccountForm({
         <label className="man-field">
           <span>Account name</span>
           <input
-            autoFocus
+            // Only on an add. On an edit every field already holds the right
+            // answer and the member came here to change ONE of them, usually not
+            // this one, so stealing focus to the top field is unhelpful.
+            autoFocus={!editing}
             value={name}
             placeholder="e.g. Carter Bank checking"
             onChange={(e) => setName(e.target.value)}
@@ -177,7 +230,7 @@ export function ManualAccountForm({
           <X size={14} /> Cancel
         </button>
         <button className="btn sm" onClick={submit} disabled={saving}>
-          <Check size={14} /> {saving ? "Saving…" : "Add account"}
+          <Check size={14} /> {saving ? "Saving…" : editing ? "Save changes" : "Add account"}
         </button>
       </div>
     </div>
