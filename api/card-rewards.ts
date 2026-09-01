@@ -150,22 +150,62 @@ async function readConfirmations(uid: string): Promise<MemberCardRow[]> {
  * requested as optional and retried without, the same shape as the #211 columns in
  * `readConfirmations` and the per-item health columns in api/plaid/accounts.ts.
  */
-async function readCatalog(): Promise<(CardProduct & { art_url: string | null })[]> {
+/**
+ * How much Juniper knows about a product, from migration 0039.
+ *
+ * `featured` has researched rates and feeds the earning guide, the switch
+ * suggestions and the upgrade rows. `listed` is identity only -- it exists so the
+ * Identify picker can always name a member's card -- and is kept out of anything
+ * rate-driven, because it has no rates to be right about.
+ *
+ * Deliberately declared HERE rather than in api/_rewards.ts, for the same reason
+ * art is: the pure rewards module should not have to know that some products are
+ * withheld from it. It receives featured products and computes. Whether a catalog
+ * row earned its place in that list is this handler's problem.
+ */
+type CardTier = "featured" | "listed";
+
+async function readCatalog(): Promise<
+  (CardProduct & { art_url: string | null; tier: CardTier })[]
+> {
   const base = "id,issuer,network,name,annual_fee,brand_color,rewards_currency," +
     "point_value_cents,base_multiplier,base_unit,source_url,as_of,verified";
   const scope = "card_products?status=eq.active";
+  // Tried most-complete first and degraded one optional column at a time, the
+  // same shape the #211 columns and the per-item health columns use. The point is
+  // that a deploy landing ahead of its migration serves a catalog missing one
+  // field rather than no catalog at all -- and losing `tier` must not also cost
+  // us `art_url`, which is why these are separate steps and not one fallback.
+  const attempts: { select: string; warn?: string }[] = [
+    { select: `${base},art_url,tier` },
+    { select: `${base},art_url`, warn: "tier unavailable, is migration 0039 applied?" },
+    { select: base, warn: "art_url and tier unavailable, are migrations 0035 and 0039 applied?" },
+  ];
   try {
-    let r = await adminRest(`${scope}&select=${base},art_url`);
-    if (!r.ok) {
-      r = await adminRest(`${scope}&select=${base}`);
-      if (r.ok) console.warn("[cards] art_url unavailable, is migration 0035 applied?");
+    let r: Response | null = null;
+    for (const a of attempts) {
+      r = await adminRest(`${scope}&select=${a.select}`);
+      if (r.ok) {
+        if (a.warn) console.warn(`[cards] ${a.warn}`);
+        break;
+      }
     }
-    if (!r.ok) {
-      console.error(`[cards] could not read the card catalog (${r.status})`);
+    if (!r || !r.ok) {
+      console.error(`[cards] could not read the card catalog (${r?.status})`);
       return [];
     }
-    const raw = (await r.json().catch(() => [])) as (CardProduct & { art_url?: string | null })[];
-    return (Array.isArray(raw) ? raw : []).map((p) => ({ ...p, art_url: p.art_url ?? null }));
+    const raw = (await r.json().catch(() => [])) as
+      (CardProduct & { art_url?: string | null; tier?: string })[];
+    // Absent `tier` means the column is not there yet, and every row that existed
+    // before 0039 was researched, so featured is the honest default rather than a
+    // lenient one. An unrecognized value is treated as listed: the failure mode of
+    // wrongly withholding a card from the rewards maths is a quiet gap, and the
+    // failure mode of wrongly including one is a wrong dollar figure.
+    return (Array.isArray(raw) ? raw : []).map((p) => ({
+      ...p,
+      art_url: p.art_url ?? null,
+      tier: p.tier == null ? "featured" : p.tier === "featured" ? "featured" : "listed",
+    }));
   } catch {
     console.error("[cards] read threw for the card catalog");
     return [];
@@ -233,9 +273,24 @@ export default async function handler(req: Request): Promise<Response> {
     productRows.map((p) => [p.id, (p as { art_url?: string | null }).art_url ?? null]),
   );
   const artOf = (id: string) => artById.get(id) ?? null;
+  const tierById = new Map<string, CardTier>(productRows.map((p) => [p.id, p.tier]));
+  const tierOf = (id: string): CardTier => tierById.get(id) ?? "featured";
 
+  // TWO collections, and the split is the whole of #0039 in the handler.
+  //
+  // `products` feeds api/_rewards.ts: the earning guide, the switches, the
+  // upgrades. Featured only. A listed row reaching this map would be computed
+  // with, and since `base_multiplier` is NULL on listed rows the coercion below
+  // would turn it into 0 -- so the member would be told a card they might hold
+  // earns nothing, which is worse than saying nothing at all.
+  //
+  // `identifiable` feeds the Identify picker and the `catalog` payload, and holds
+  // BOTH tiers. That is the point of the tier: a member must be able to name any
+  // card, and every face on the page resolves its art and colour through the
+  // catalog payload, listed cards included, so that none of them draw blank.
+  const featuredRows = productRows.filter((p) => p.tier === "featured");
   const products = new Map<string, CardProduct>(
-    productRows.map((p) => [p.id, {
+    featuredRows.map((p) => [p.id, {
       ...p,
       // PostgREST hands NUMERIC back as a string in some configurations, and a
       // string multiplier would make every rate NaN in silence. Coerced once,
@@ -279,7 +334,19 @@ export default async function handler(req: Request): Promise<Response> {
     account_name: a.account_name,
     mask: a.mask,
   }));
-  const catalog = [...products.values()];
+  // Every product a member could plausibly say they hold, both tiers, for the
+  // picker and for face lookups. Built from productRows rather than the featured
+  // map precisely so a listed card is nameable.
+  const identifiable: CardProduct[] = productRows.map((p) => ({
+    ...p,
+    annual_fee: Number(p.annual_fee) || 0,
+    point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
+    // A listed row has no base rate. Zero here is never used for arithmetic --
+    // nothing in this list reaches api/_rewards.ts's rate maths -- it exists only
+    // so the shape satisfies CardProduct for ranking and naming.
+    base_multiplier: p.base_multiplier == null ? 0 : Number(p.base_multiplier) || 0,
+  }));
+  const catalog = identifiable;
   const unidentified = accounts
     .filter((a) => !answeredProduct(a.plaid_account_id))
     .map((a) => ({
@@ -292,6 +359,10 @@ export default async function handler(req: Request): Promise<Response> {
         annual_fee: Number(c.product.annual_fee) || 0,
         rewards_currency: c.product.rewards_currency, brand_color: c.product.brand_color,
         art_url: artOf(c.product.id),
+        // So the picker can say, before the tap rather than after it, that this
+        // is a card Juniper can name but has no rewards data for. Withholding
+        // that until they have already chosen makes the surface look broken.
+        tier: tierOf(c.product.id),
         confidence: Number(c.confidence.toFixed(3)),
       })),
     }));
@@ -461,6 +532,10 @@ export default async function handler(req: Request): Promise<Response> {
       short_name: shortCardName(p.name, p.issuer),
       network: p.network,
       art_url: artOf(p.id),
+      // Sent so the client can say "Juniper does not have this card's rewards
+      // yet" instead of rendering a rates section that would be empty and read
+      // as "this card earns nothing".
+      tier: tierOf(p.id),
     })),
   });
 }

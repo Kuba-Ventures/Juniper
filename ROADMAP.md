@@ -379,6 +379,27 @@ rationale in `docs/CARD_REWARDS.md`.
   card width is reconstructed from its height at the true 1.586 ratio rather than trimmed to the opaque
   bounds (which measured the ribbon: 1.519). All 18 products now carry art.
 - [ ] **(ops)** Apply `0038_card_art_urls_chase.sql`. Same deploy-first rule as `0037`.
+- [x] **Two-tier catalog** (`0039`). `card_products.tier` is `featured` (researched rates, feeds the
+  earning guide and the switch and upgrade rows) or `listed` (name, issuer, network, fee, art -- exists
+  so the Identify picker can name any card a member holds, and is kept out of everything rate-driven).
+  `base_multiplier` became nullable so "no rate known" is representable instead of defaulting to a
+  plausible-looking 1 percent, and 0031's points-need-a-valuation CHECK now binds featured rows only --
+  otherwise naming a co-brand in a picker would require inventing a cents-per-point for every airline
+  and hotel currency in the country.
+- [x] **Eleven more Chase products** (`0040`, art in `0041`). Every Chase card that earns cash back or
+  Ultimate Rewards: Sapphire Reserve, Reserve for Business, all four Ink cards, Amazon Visa, Prime Visa,
+  DoorDash, Instacart, and Slate Edge as the first `listed` row. Rates read from the issuer's own
+  rewards-program text rather than the comparison-page summary, so these eleven ship `verified = TRUE`.
+  The ~30 co-brands are deliberately excluded: each earns its own currency and would need an invented
+  valuation that then drives the dollar figures in "cards that would beat yours".
+- [ ] **(ops)** Apply `0039`, `0040`, `0041` in order. Deploy first, as with `0037`.
+- [ ] **Benefits for the Sapphire Reserve.** `0040` adds no `card_product_benefit` rows, so a $795 card
+  shows a large fee against modest rates. Its case is almost entirely credits and lounge access. Most
+  visible gap on the surface right now.
+- [ ] **A merchant-scoped earn category.** The taxonomy has no way to say "5 percent at Amazon" or "8x
+  through the Chase Travel portal", so those rates are omitted and the cards are understated -- Prime
+  Visa, Amazon Visa, DoorDash, Instacart, both Sapphire Reserves, Ink Business Premier. Same shape as the
+  rotating-category gap on Freedom Flex and Discover it. One fix covers all of them.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
 - [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at

@@ -5,7 +5,7 @@ Produced the 18 images in artifacts/juniper/public/card-art/ that migrations 003
 and 0038 point at. Kept so any card added later goes through the same pipeline
 rather than a hand pass nobody can reproduce.
 
-    python3 scripts/card-art.py <product-id> <source-url> [--ribbon] [--keep-name]
+    python3 scripts/card-art.py --all          # regenerate every face from the manifest\n    python3 scripts/card-art.py <product-id> <source-url> [--ribbon] [--ribbon-left] [--ribbon-teal] [--keep-name]
 
 Steps, in order, and why each one is here:
 
@@ -69,15 +69,49 @@ def fetch(url):
                               check=True, capture_output=True).stdout
 
 
-def ribbon_mask(a):
+def ribbon_mask(a, side="right", hue="warm"):
+    """Chase's promotional corner ribbon.
+
+    Keyed on colour AND a tight corner triangle. Both SIDE and HUE are flags, and
+    the reason is that every attempt to infer either one failed in a way the
+    output did not admit to:
+
+      * Inferring the side from which corner held more saturated colour chose
+        wrong on both Amazon cards -- one ribbon survived untouched, the other
+        took a quarter of the card with it.
+      * Inferring the hue by sampling the extreme corner picked up the silver card
+        body on the Amazon Visa (median 201,201,201) and the navy body on the
+        Freedom line, so the mask matched the card instead of the ribbon.
+
+    What the lineup actually uses: yellow-green on the Freedom and Slate cards,
+    orange on the Prime Visa, teal on the Amazon Visa. The `warm` key -- green or
+    red dominant over blue -- catches the first two and is also precisely what
+    protects the navy Freedom bodies and the cyan Freedom Flex, which a
+    saturation-only key erases. Teal is blue-dominant, so it needs its own key,
+    and that key is only safe on a card whose body is NOT a saturated blue. The
+    Amazon Visa's body is silver, which is why it is safe there and why this is a
+    flag rather than a default.
+
+    If a future card needs a hue that is not here, add it as another explicit
+    value. Do not make this clever.
+    """
     h, w, _ = a.shape
-    r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    colour = (g > 82) & (g > b * 1.16) & (r > b * 0.98)
+    r, g, b = a[..., 0].astype(float), a[..., 1].astype(float), a[..., 2].astype(float)
+    mx, mn = np.maximum(np.maximum(r, g), b), np.minimum(np.minimum(r, g), b)
+    sat = (mx - mn) / np.maximum(mx, 1.0)
+    if hue == "teal":
+        cast = (b > r * 1.25) & (g > r * 1.25)
+    else:
+        cast = (g > b * 1.12) | (r > b * 1.12)
+    colour = (sat > 0.30) & (mx > 70) & cast
     yy, xx = np.mgrid[0:h, 0:w]
-    corner = (xx > .50 * w) & (yy < .56 * h) & ((xx / w - yy / h) > .02)
+    u = xx / w if side == "left" else 1.0 - xx / w
+    corner = (u + yy / h) < 0.62
     m = colour & corner
+    # Dilated generously: the antialiased edge is what a tighter pass leaves as a
+    # fringe, and the hole is filled by the inpaint either way.
     return np.array(Image.fromarray((m * 255).astype("uint8"))
-                    .filter(ImageFilter.MaxFilter(13))) > 127
+                    .filter(ImageFilter.MaxFilter(17))) > 127
 
 
 def inpaint(a, hole, iters=260):
@@ -112,14 +146,27 @@ def bounds(a, rib):
     return x0, y0, min(int(round(x0 + (y1 - y0) * RATIO)), a.shape[1]), y1
 
 
-def strip_name(a, k=51, y0f=.66, x1f=.60):
+def strip_name(a, k=121, y0f=.62, x1f=.60):
+    """Erase the issuer's embossed PLACEHOLDER cardholder name.
+
+    The band is found by row edge-energy rather than hardcoded, because it moves
+    once the margin is trimmed. Its FULL extent is taken, not the first run of
+    rows: several cards emboss two lines ("D. BARRETT" over "BARRETT CONNECT")
+    and covering only one leaves the other.
+
+    A horizontal median rather than an interpolation between the rows above and
+    below: interpolation streaks badly on any background with diagonal structure.
+    The window is wide (121px at 472) because a narrow one centred inside a dense
+    glyph run returns a glyph pixel -- which on a dark card is a bright smear
+    exactly where the name was, the failure this width is chosen to avoid.
+    """
     h, w, _ = a.shape
     y0, x1 = int(y0f * h), int(x1f * w)
     hf = np.abs(np.diff(a[y0:, :x1, :].mean(2), axis=1)).mean(1)
-    rows = np.where(hf > np.median(hf) * 2.2 + 0.6)[0]
+    rows = np.where(hf > np.median(hf) * 1.9 + 0.5)[0]
     if len(rows) == 0:
         return a, False
-    ya, yb = max(y0 + rows.min() - 3, 1), min(y0 + rows.max() + 4, h - 1)
+    ya, yb = max(y0 + rows.min() - 4, 1), min(y0 + rows.max() + 5, h - 1)
     out, pad = a.copy(), k // 2
     win = np.lib.stride_tricks.sliding_window_view(
         np.pad(a[ya:yb, :, :], ((0, 0), (pad, pad), (0, 0)), mode="edge"), k, axis=1)
@@ -127,14 +174,51 @@ def strip_name(a, k=51, y0f=.66, x1f=.60):
     return out, True
 
 
+SOURCES = "scripts/card-art-sources.tsv"
+
+
+def run_all():
+    """Regenerate every face from card-art-sources.tsv.
+
+    This exists because driving the loop from the shell is a trap. The flags
+    column can hold more than one flag, and zsh -- the shell this repo is
+    developed in -- does NOT word-split an unquoted parameter the way bash does,
+    so `python3 card-art.py "$id" "$url" $flags` passed
+    "--ribbon-left --ribbon-teal" as ONE argument. It matched neither flag, the
+    script fell back to its defaults, and the only symptom was a ribbon quietly
+    surviving on one card out of twenty-nine. Reading the manifest here means the
+    flags are parsed once, by the thing that defines them.
+    """
+    rows = []
+    for line in open(SOURCES, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        parts = line.rstrip("\n").split("\t")
+        rows.append((parts[0], parts[1], (parts[2] if len(parts) > 2 else "").split()))
+    for cid, url, flags in rows:
+        print(process(cid, url, flags))
+    print(f"{len(rows)} faces regenerated")
+
+
 def main():
+    if "--all" in sys.argv:
+        return run_all()
     args = [x for x in sys.argv[1:] if not x.startswith("--")]
     if len(args) != 2:
         sys.exit(__doc__)
     cid, url = args
+    print(process(cid, url, [x for x in sys.argv[1:] if x.startswith("--")]))
+    print("Now add the row to a migration. art_license must record the source URL,"
+          " the date, what was changed, and that there is no licence behind it.")
+
+
+def process(cid, url, flags):
     a = np.array(Image.open(BytesIO(fetch(url))).convert("RGBA")).astype(float)
 
-    rib = ribbon_mask(a) if "--ribbon" in sys.argv else None
+    has_ribbon = any(f.startswith("--ribbon") for f in flags)
+    side = "left" if "--ribbon-left" in flags else "right"
+    hue = "teal" if "--ribbon-teal" in flags else "warm"
+    rib = ribbon_mask(a, side, hue) if has_ribbon else None
     x0, y0, x1, y1 = bounds(a, rib)
     rgb = a[y0:y1, x0:x1, :3]
     hole = (a[y0:y1, x0:x1, 3] <= 40)
@@ -148,13 +232,15 @@ def main():
     arr = np.array(c2.crop((l, t, l + TW, t + TH))).astype(float)
 
     stripped = False
-    if "--keep-name" not in sys.argv:
+    if "--keep-name" not in flags:
         arr, stripped = strip_name(arr)
 
     path = f"{OUT}/{cid}.webp"
     Image.fromarray(arr.astype("uint8")).save(path, "WEBP", quality=88, method=6)
-    print(f"{path}  card {x1-x0}x{y1-y0} ratio {(x1-x0)/(y1-y0):.3f}"
-          f"  inpainted {int(hole.sum())}px  name-strip {'yes' if stripped else 'no band found'}")
+    return (f"{cid:32} {x1-x0}x{y1-y0} ratio {(x1-x0)/(y1-y0):.3f}"
+            f"  ribbon {'-' if rib is None else f'{side}/{hue}'}"
+            f"  inpainted {int(hole.sum()):6d}px"
+            f"  name-strip {'yes' if stripped else 'none found'}")
 
 
 if __name__ == "__main__":
