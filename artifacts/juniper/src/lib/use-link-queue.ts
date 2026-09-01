@@ -140,13 +140,22 @@ export function useLinkQueue(opts?: {
       // A routing number, when the queue item came from Plaid's own search, asks
       // Link to highlight that bank in its list. Absent for "Search all banks"
       // and for institutions Plaid returns without one; Link then opens as usual.
-      const token = await createLinkToken({
+      const { token, status } = await createLinkToken({
         routingNumber: q[at]?.routing_number ?? null,
         // Present only for a repair. Turns the whole open into update mode.
         itemId: q[at]?.item_id ?? null,
       });
       if (!token) {
-        setNotice("Account linking isn't enabled yet. You can add it later from Connections.");
+        // 503 is the only status that means what "isn't enabled yet" says: Plaid
+        // is not configured for this deployment. Every other failure is a fault
+        // and should read like one, so the member retries instead of concluding
+        // the feature does not exist. A bad product in the link-token payload
+        // once made this 400 for a day and the old copy hid it completely.
+        setNotice(
+          status === 503
+            ? "Account linking isn't enabled yet. You can add it later from Connections."
+            : "Couldn't start account linking just now. Please try again in a moment.",
+        );
         finish();
         return;
       }

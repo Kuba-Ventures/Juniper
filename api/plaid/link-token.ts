@@ -105,22 +105,26 @@ export default async function handler(req: Request): Promise<Response> {
       // in `products` instead and cannot be consented this way, so a custom
       // sandbox item will report investments as unavailable to the backfill.
       //
-      // `recurring_transactions` joined the list on 2026-08-31, the day the add
-      // on was granted, and deliberately not a day earlier: naming an unentitled
-      // product here makes /link/token/create fail for every member, not just
-      // the ones who would have used it. It stays out of `products` for the same
-      // reason investments does, requesting a product at link time narrows which
-      // institutions will link, and recurring detection is a nice-to-have that
-      // must never cost someone the ability to connect their bank. What needs
-      // it: api/plaid/recurring-sync.ts, which until now answered every run with
-      // `available: false`.
+      // DO NOT ADD `recurring_transactions` HERE. It was added on 2026-08-31 when
+      // the add on was granted, and it took down linking for every member until
+      // 2026-09-01: Plaid answered every /link/token/create with 400
+      // "recurring_transactions is not a valid product for this field", and the
+      // client turns any failure into "Account linking isn't enabled yet", so the
+      // only symptom was that nobody could connect a bank.
       //
-      // Items linked BEFORE this change consented to investments only, so under
-      // Data Transparency Messaging they may keep refusing recurring until they
-      // are put back through Link in update mode, the same way investments was
-      // in #144. Nothing here fixes those; the sync degrades per item, so a
-      // member with one relinked bank sees that bank's streams and no error.
-      additional_consented_products: ["investments", "recurring_transactions"],
+      // The mistake was treating it as a product. It is not one. Recurring
+      // detection is an ADD ON to `transactions`, entitled on the Plaid account
+      // and read through /transactions/recurring/get; there is no link-time
+      // consent value for it, and `additional_consented_products` takes the same
+      // enum as `products`, which does not contain it. Consenting to
+      // `transactions` -- which plaidProducts() already requests -- is the whole
+      // requirement. See section 2 of docs/RECURRING_DETECTION.md.
+      //
+      // The comment this replaces predicted the right failure for the wrong
+      // reason: it guarded against naming an UNENTITLED product, and the
+      // entitlement was in fact granted. The field simply does not accept the
+      // value, entitled or not.
+      additional_consented_products: ["investments"],
       country_codes: plaidCountryCodes(),
       language: "en",
       ...(redirectUri ? { redirect_uri: redirectUri } : {}),
