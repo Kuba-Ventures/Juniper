@@ -649,6 +649,13 @@ rationale in `docs/CARD_REWARDS.md`.
   was resting against it instead of sitting down inside it. The sheet went from the standard 440px modal
   to a `narrow` 330px one with the card sized to fill it, since at the default width it read as a dialog
   that had taken over the page to show a preview: 24% of the viewport rather than most of it.
+  **Collapse is gone.** It used to hide all but three cards, which is what made "4 cards" sit above a
+  stack of three; that was fixed by making it tighten the reveal instead, and once it only moved a
+  quarter-card's worth of height it was a control costing a line of copy to save 44px. The holder has one
+  shape now: every card, a quarter of each, the cover across the front, and a foot that states the count.
+  The clip's height and the cards' offsets are functions of the card count alone, so both transitions
+  went with it rather than being left to animate a state change that no longer exists. The cover stays at
+  84px: its depth is about looking like a wallet, not about fitting the text it lost.
 - [ ] **(ops)** Apply `0048`. Deploy first, as with `0037`, though it is additive and safe either way:
   the column is nullable and an absent value renders the default holder. Verified against a scratch
   Postgres before shipping: `0001` then `0048` applies clean, re-running is a no-op, a pre-existing

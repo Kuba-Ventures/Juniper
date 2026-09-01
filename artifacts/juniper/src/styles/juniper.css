@@ -1759,17 +1759,11 @@
    feature. */
 .jnpr .cr-holder{position:relative;width:262px;flex:0 0 auto;padding:13px 12px 13px;
   border-radius:14px}
-.jnpr .cr-holder-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0;
-  transition:height .26s cubic-bezier(.2,.7,.3,1)}
-@media (prefers-reduced-motion:reduce){
-  .jnpr .cr-holder-clip{transition:none}
-}
+/* No transition: with the collapse gone the clip's height is a function of the
+   card count alone, so there is no state change left for it to animate. */
+.jnpr .cr-holder-clip{position:relative;overflow:hidden;border-radius:8px 8px 0 0}
 .jnpr .cr-holder-card{position:absolute;left:0;right:0;padding:0;border:0;background:none;
-  cursor:pointer;display:block;border-radius:9px;overflow:hidden;
-  transition:top .26s cubic-bezier(.2,.7,.3,1), transform .2s ease}
-@media (prefers-reduced-motion:reduce){
-  .jnpr .cr-holder-card{transition:none}
-}
+  cursor:pointer;display:block;border-radius:9px;overflow:hidden}
 .jnpr .cr-holder-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
 /* No `.up` rule any more: tapping a card opens its sheet rather than raising it
    7px. With a cover in front of every card there is nothing to raise it out of,
@@ -1796,10 +1790,10 @@
   border-top:1px dashed rgba(255,255,255,.24)}
 .jnpr .cr-holder-foot{position:absolute;left:0;right:0;bottom:19px;z-index:51;text-align:center;
   font-size:11.5px;font-weight:650}
-.jnpr .cr-holder-toggle{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
-  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
-  text-underline-offset:2px}
-.jnpr .cr-holder-toggle:hover{color:var(--jnpr-ink)}
+/* No `.cr-holder-toggle`: the holder has one shape now. Collapsing used to hide
+   all but three cards, which is what made "4 cards" sit above a stack of three;
+   once that was fixed and it merely tightened the reveal, it cost a line of copy
+   to save 44px of height. The foot states the count and nothing else. */
 
 /* Grain, shared by the leather and canvas finishes: two offset repeating
    gradients at low opacity, which costs nothing and reads as material where a
@@ -1823,7 +1817,6 @@
 .jnpr .hold-cognac .cr-holder-band{background:linear-gradient(180deg,#ab6e43,#864c26)}
 .jnpr .hold-cognac .cr-holder-cover{background:linear-gradient(180deg,#a4643a,#8a5029 60%,#7a4522)}
 .jnpr .hold-cognac .cr-holder-foot{color:#f3dfc8}
-.jnpr .hold-cognac .cr-holder-toggle{color:#fff}
 
 /* ── black leather ── */
 .jnpr .hold-black{background:radial-gradient(120% 80% at 30% 0%,#2c2f2b,#23261f 55%,#1b1e18);
@@ -1872,7 +1865,6 @@
 .jnpr .hold-metal .cr-holder-cover{background:linear-gradient(100deg,#8f949b,#71767e 40%,#868b93)}
 .jnpr .hold-metal .cr-holder-cover::after{border-top-color:rgba(0,0,0,.20)}
 .jnpr .hold-metal .cr-holder-foot{color:#2a2d31}
-.jnpr .hold-metal .cr-holder-toggle{color:#1d3f2c}
 
 /* ── minimal: the anatomy, none of the material. Uses the app's own tokens, so
       it follows a theme change and never dates. ── */
