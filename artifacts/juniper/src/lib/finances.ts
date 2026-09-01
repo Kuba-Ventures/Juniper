@@ -176,6 +176,41 @@ export interface FinancesValue {
   // True while an automatic refresh is running, so a surface can say so rather
   // than leaving the member to guess whether the app is doing anything.
   syncing: boolean;
+  /**
+   * True while `data.score` cannot be vouched for, so a surface must withhold the
+   * number rather than draw it.
+   *
+   * ── THE BUG THIS EXISTS TO FIX ────────────────────────────────────────────
+   *
+   * The manual layer is built synchronously from the local profile so a
+   * hand-onboarded member sees their own figures on first paint instead of a
+   * flash of demo data. That reasoning holds for balances and accounts, which are
+   * the member's own either way, and it does NOT hold for the score.
+   *
+   * The score is DERIVED, and derived from a different input set on each layer:
+   * the manual one computes from the income, spending and accounts typed at
+   * onboarding and passes no credit utilization at all. For a member who has BOTH
+   * a profile and linked Plaid, and the seam was written assuming those are
+   * alternatives, first paint therefore showed a profile-derived score and the
+   * live payload replaced it a moment later. Observed in production on 2026-09-01:
+   * 53, then 97. Two different bands, on the surface this app is most careful
+   * about, from figures the member typed months ago.
+   *
+   * `loading && !raw` is exactly "the server has not answered yet", because
+   * `loading` is only ever true before the first fetch resolves and `raw` is only
+   * null until one succeeds. If the fetch FAILS, this goes false with `raw` still
+   * null, and the manual score is drawn: with no server to ask, the member's own
+   * figures are the best answer available and withholding them forever would be
+   * worse than showing them.
+   *
+   * THE TRADE, stated because it is a real one: a manual-only member now waits a
+   * fetch for their score too, where before it painted instantly. Deliberate. It
+   * costs them one round trip on a number that is not urgent, and it buys every
+   * member the guarantee that a score on screen is one Juniper stands behind. The
+   * rest of their dashboard, net worth, accounts, charts, still paints at once,
+   * so the original "no flash of demo data" property is untouched.
+   */
+  scorePending: boolean;
   // Re-read /api/finances without triggering a sync. For a surface that has
   // just changed something server-side and wants the totals to catch up.
   refresh: () => Promise<void>;
@@ -246,6 +281,8 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
         data: mergeLive(raw, manual ?? EMPTY),
         source: "live",
         loading,
+        // Never pending once a payload is in hand: this branch IS the answer.
+        scorePending: false,
         hasTransactions: !!raw.hasTransactions,
         sync: raw.sync,
         syncing,
@@ -255,7 +292,12 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
     // No live payload. Their own onboarding figures if they entered any,
     // otherwise an empty dashboard: a member who has told us nothing is shown
     // nothing, not a demo household's net worth under their name.
-    return { data: manual ?? EMPTY, source: "manual", loading, hasTransactions: false, syncing, refresh: () => load({ afterSync: true }) };
+    return {
+      data: manual ?? EMPTY, source: "manual", loading,
+      // Pending only while the server has not answered yet. See the field's note.
+      scorePending: loading,
+      hasTransactions: false, syncing, refresh: () => load({ afterSync: true }),
+    };
   }, [raw, manual, loading, syncing, load]);
 
   return createElement(FinancesContext.Provider, { value }, children);
@@ -268,5 +310,5 @@ export function useFinances(): FinancesValue {
   // it has no member to speak for.
   // `syncing` false and `refresh` a no-op: with no provider there is nothing
   // to refresh and nothing running.
-  return ctx ?? { data: EMPTY, source: "manual", loading: false, hasTransactions: false, syncing: false, refresh: async () => {} };
+  return ctx ?? { data: EMPTY, source: "manual", loading: false, scorePending: false, hasTransactions: false, syncing: false, refresh: async () => {} };
 }

@@ -12,7 +12,7 @@ import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
 } from "@/lib/plans";
 import {
-  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing,
+  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, SCORE_DASH,
 } from "@/components/juniper/primitives";
 
 // Points down for a decline. The net-worth delta used to be hardcoded up-and-
@@ -365,7 +365,7 @@ export default function Overview({
   showWelcome?: boolean;
   onDismissWelcome?: () => void;
 }) {
-  const { data, hasTransactions } = useFinances();
+  const { data, hasTransactions, scorePending } = useFinances();
   // Institution brand art for the Accounts card. One fetch per page load, cached
   // for a week server-side, and it only ever covers institutions this member has
   // linked. Failure is silent by design: the mark resolver falls through to
@@ -439,14 +439,27 @@ export default function Overview({
         </div>
       )}
 
+      {/* WITHHELD, NOT ZEROED, until the server has answered. The score is derived,
+          and the manual layer derives it from different inputs than the live one,
+          so drawing it on first paint showed a profile-derived 53 replaced a
+          moment later by a live 97. See `scorePending` in lib/finances.ts. The
+          strip keeps its exact shape either way, so nothing moves when the real
+          number arrives. */}
       <div className="score-strip" style={{ marginBottom: 16 }}>
-        <MiniRing score={score.value} />
+        <MiniRing score={score.value} pending={scorePending} />
         <div>
-          <div className="st-t">Juniper Score <span className="band">{score.value} · {score.band}</span></div>
+          <div className="st-t">
+            Juniper Score{" "}
+            <span className={scorePending ? "band pending" : "band"}>
+              {scorePending ? SCORE_DASH : <>{score.value} · {score.band}</>}
+            </span>
+          </div>
           <div className="st-s">
-            {score.delta !== 0
-              ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
-              : <>Your starting score · biggest lever: {score.lever}</>}
+            {scorePending
+              ? <>Working out your score…</>
+              : score.delta !== 0
+                ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
+                : <>Your starting score · biggest lever: {score.lever}</>}
           </div>
         </div>
         <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>

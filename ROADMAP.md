@@ -539,6 +539,26 @@ rationale in `docs/CARD_REWARDS.md`.
 - [ ] **(build)** Move `catalog` out of the `/api/card-rewards` response into its own searchable
   endpoint once the catalog passes a few hundred products. It rides along today only because ten
   products are free to send.
+- [x] **The Juniper Score no longer flashes a number it cannot vouch for.** Reported from production on
+  2026-09-01: a hard refresh showed **53**, then **97**. Not an arithmetic bug and not caused by the
+  `0046` work, which never touched the score path. The cause is in the `lib/finances.ts` seam: the manual
+  layer is built synchronously from the local profile so a hand-onboarded member sees their own figures
+  on first paint instead of demo data, and that reasoning holds for balances, which are the member's own
+  either way, and NOT for the score. The score is DERIVED, and each layer derives it from different
+  inputs: the manual one computes from the income, spending and accounts typed at onboarding and passes
+  no credit utilization at all. The seam assumed manual and live are alternatives; a member with a
+  profile AND linked Plaid is both. Fixed with a `scorePending` flag (`loading && !raw`, exactly "the
+  server has not answered yet") and treatment C of three, rendered in `design/score-flash-variants.html`:
+  the surface keeps its exact shape and dashes the value. A failed fetch clears it, so a member with no
+  server to ask still sees their own figures rather than a permanent dash. **The trade, stated because
+  it is real:** a manual-only member now waits one round trip for their score, where it used to paint at
+  once. The rest of their dashboard still paints immediately. Two things the build found that the mock
+  did not predict: the card height was driven by the trend head's delta chip rather than by the
+  paragraph, so the chip holds its place while pending, and the trend spark and its start value were
+  still drawn from the manual layer, so a dashed "now" sat beside a manual "39". Verified against both
+  real pages mounted with a deliberately slow `/api/finances`: every figure dashed at first paint, the
+  manual score never rendered at all, and the card measured identical in both states (Overview 76px,
+  Score 187px)
 - [ ] **(build)** Widen the `/api/finances` rollup with `limit` and per-account spend, which is what
   would let the Credit page stop reading outside the `lib/finances.ts` seam. Open since #132, and this
   stage widened the exception by one endpoint rather than closing it.

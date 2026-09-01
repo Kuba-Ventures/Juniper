@@ -1,0 +1,145 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The score flash, three treatments</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:20px 20px 60px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;max-width:100ch;margin-bottom:12px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:9px;cursor:pointer;margin-bottom:16px}
+.pv-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:start}
+@media(max-width:1000px){.pv-cols{grid-template-columns:1fr}}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:5px}
+.pv-num{display:grid;place-items:center;width:19px;height:19px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:0 0 12px;min-height:88px}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-cost{font-size:11px;color:var(--jnpr-warn);line-height:1.55;margin-top:10px}
+.pv-stage{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin:14px 0 6px}
+
+/* proposed: the score area with no number yet. A ring track and no fill, because
+   a fill implies a value. */
+.sk-ring{width:46px;height:46px;border-radius:50%;flex:0 0 auto;
+  border:5px solid var(--jnpr-surface-3);box-sizing:border-box}
+.sk-bar{height:11px;border-radius:6px;background:var(--jnpr-surface-3)}
+@media (prefers-reduced-motion:no-preference){
+  .sk-ring,.sk-bar{animation:sk 1.4s ease-in-out infinite}
+  @keyframes sk{0%,100%{opacity:.55}50%{opacity:1}}
+}
+.sk-dash{color:var(--jnpr-ink-3);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  <b>The bug:</b> a member with both an onboarding profile and linked Plaid sees the profile-derived score
+  (53) on first paint, then the live one (97). Two different bands. <b>The question these three answer:</b>
+  what the score area shows in the window before the live fetch resolves. Each is drawn twice, at
+  <b>first paint</b> and <b>settled</b>, because the whole point is what happens between them. The
+  manual-only member is unaffected in all three: their profile score IS the answer, and it still paints
+  immediately.
+</div>
+<div style="font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;max-width:100ch;margin-bottom:14px">
+  <b>C was chosen</b> and is what shipped. Two things the build found that this mock did not predict:
+  the card height was driven by the trend head's delta chip, not by the paragraph, so the chip keeps its
+  place while pending; and the trend spark and its start value were still drawn from the manual layer,
+  so a dashed "now" sat beside a manual "39". Both are withheld now.
+</div>
+<button class="pv-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+<div class="pv-cols">
+
+  <!-- A -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">A</span> No number until it is known</div>
+    <div class="pv-note">
+      The ring draws its track with no fill and the number is withheld. A fill implies a value, so there
+      isn't one. <b>Never shows a wrong number and never shows a stale one.</b> The member waits a beat
+      to learn anything.
+    </div>
+    <div class="pv-stage">First paint</div>
+    <div class="score-strip">
+      <div class="sk-ring"></div>
+      <div style="flex:1;min-width:0">
+        <div class="st-t">Juniper Score</div>
+        <div class="st-s" style="max-width:22ch"><div class="sk-bar"></div></div>
+      </div>
+    </div>
+    <div class="pv-stage">Settled</div>
+    <div class="score-strip">
+      <div class="mini-ring"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="5"></circle><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-good)" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="3.8" transform="rotate(-90 23 23)"></circle></svg><span class="rv tnum">97</span></div>
+      <div>
+        <div class="st-t">Juniper Score <span class="band">97 &middot; Excellent</span></div>
+        <div class="st-s">Your starting score &middot; biggest lever: build your emergency fund</div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: a visible empty state on every load, including the fast ones where the
+      old behaviour was never noticeably wrong.</div>
+  </div>
+
+  <!-- B -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">B</span> Last known score, cached</div>
+    <div class="pv-note">
+      The previous live score is kept in <code>localStorage</code> and painted at once, then replaced when
+      fresh data lands. <b>Instant and almost always right</b>, since a score moves slowly. But it is a
+      remembered number presented as current, which is the habit this page was built to break.
+    </div>
+    <div class="pv-stage">First paint</div>
+    <div class="score-strip">
+      <div class="mini-ring"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="5"></circle><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-good)" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="3.8" transform="rotate(-90 23 23)"></circle></svg><span class="rv tnum">97</span></div>
+      <div>
+        <div class="st-t">Juniper Score <span class="band">97 &middot; Excellent</span></div>
+        <div class="st-s" style="color:var(--jnpr-ink-3)">As of your last visit &middot; checking for changes</div>
+      </div>
+    </div>
+    <div class="pv-stage">Settled</div>
+    <div class="score-strip">
+      <div class="mini-ring"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="5"></circle><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-good)" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="3.8" transform="rotate(-90 23 23)"></circle></svg><span class="rv tnum">97</span></div>
+      <div>
+        <div class="st-t">Juniper Score <span class="band">97 &middot; Excellent</span></div>
+        <div class="st-s">Your starting score &middot; biggest lever: build your emergency fund</div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: a new cache of a derived figure, and a first paint that can still be
+      wrong, just wrong by less. Needs the "as of your last visit" line to stay honest.</div>
+  </div>
+
+  <!-- C -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">C</span> Keep the frame, dash the value</div>
+    <div class="pv-note">
+      The strip renders exactly as it will, with an em-width dash where the number goes and the ring
+      track empty. <b>No layout shift at all</b>, and the shape tells the member a score is coming
+      rather than that one is missing.
+    </div>
+    <div class="pv-stage">First paint</div>
+    <div class="score-strip">
+      <div class="mini-ring"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="5"></circle></svg><span class="rv tnum sk-dash">&ndash;&ndash;</span></div>
+      <div>
+        <div class="st-t">Juniper Score <span class="band sk-dash">&ndash;&ndash; &middot; &nbsp;</span></div>
+        <div class="st-s" style="color:var(--jnpr-ink-3)">Working out your score&hellip;</div>
+      </div>
+    </div>
+    <div class="pv-stage">Settled</div>
+    <div class="score-strip">
+      <div class="mini-ring"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-surface-3)" stroke-width="5"></circle><circle cx="23" cy="23" r="20" fill="none" stroke="var(--jnpr-good)" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="3.8" transform="rotate(-90 23 23)"></circle></svg><span class="rv tnum">97</span></div>
+      <div>
+        <div class="st-t">Juniper Score <span class="band">97 &middot; Excellent</span></div>
+        <div class="st-s">Your starting score &middot; biggest lever: build your emergency fund</div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: two dashes in a ring can read as "no score available" rather than
+      "not yet", which is what the copy underneath has to carry.</div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>
