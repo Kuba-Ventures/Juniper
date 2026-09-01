@@ -1667,6 +1667,22 @@
   border:1px dashed var(--jnpr-line);box-shadow:none}
 .jnpr .cr-face-unk::before,.jnpr .cr-face-unk::after{display:none}
 
+/* A CARD THE MEMBER ENTERED BY HAND (migration 0046). A third state, not a shade
+   of `.cr-face-unk`, and the difference is what each one says. An unknown face is
+   a QUESTION: Juniper is asking which card this is. A hand-entered face is an
+   ANSWER the member already gave, in full, and it carries a real name and mask.
+   It has no brand colour only because no catalog product was named, which is a
+   fact about the catalog and not about the member, so it must not look like a
+   fault.
+   Neutral rather than outlined-and-empty, and the dash is on the edge only, so
+   beside three branded cards it reads as "this one is yours, not your bank's". A
+   touch lighter than the pocket behind it so it still reads as a card. */
+.jnpr .cr-face-hand{background:linear-gradient(150deg,var(--jnpr-surface-3),var(--jnpr-surface-2));
+  color:var(--jnpr-ink-2);border:1px dashed var(--jnpr-line-2);box-shadow:none}
+.jnpr .cr-face-hand::before,.jnpr .cr-face-hand::after{display:none}
+.jnpr .cr-face-hand .cr-face-iss{color:var(--jnpr-ink-3)}
+.jnpr .cr-face-hand .cr-face-nm{color:var(--jnpr-ink)}
+
 /* The point-valuation caveat. Rides on every figure that compares a points card
    against a cash-back card, because that comparison is an assumption. */
 .jnpr .cr-assume{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;

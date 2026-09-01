@@ -99,12 +99,15 @@ const FACE_H = 124;  // matches `.cr-face-lg` height
 function CardWallet({
   cards,
   unidentified,
+  manual,
   logoFor,
   onIdentify,
 }: {
   cards: LinkedCard[];
   /** Cards still to be named, drawn as labelled outlines after the real ones. */
   unidentified: CardRewards["unidentified"];
+  /** Cards the member entered by hand (migration 0046), drawn last of all. */
+  manual: CardRewards["manual"];
   logoFor: (c: LinkedCard) => string | null;
   /** Opens the identify picker. See the note in the docblock about why an
       outline that does nothing would be worse than no outline at all. */
@@ -120,17 +123,25 @@ function CardWallet({
   // header's "N of M identified" describe the same set. See the docblock: a
   // header saying three over a stack of two reads as a card having gone missing.
   const slots: { key: string; card: LinkedCard | null; label: string; mask: string | null;
-                 issuer: string }[] = [
+                 issuer: string; hand: boolean }[] = [
     ...withProduct.map((c) => ({
       key: c.plaid_account_id, card: c, issuer: c.institution,
-      label: c.product?.short_name ?? c.account_name, mask: c.mask,
+      label: c.product?.short_name ?? c.account_name, mask: c.mask, hand: false,
     })),
     ...unidentified.map((u) => ({
       // Prefixed: an unidentified card's `plaid_account_id` is in the same
       // namespace as a confirmed one's, and the two lists are disjoint today, but
       // a key collision here would silently drop a face rather than error.
       key: `unk:${u.plaid_account_id}`, card: null, issuer: u.institution,
-      label: "Which card?", mask: u.mask,
+      label: "Which card?", mask: u.mask, hand: false,
+    })),
+    // Hand-entered cards LAST OF ALL, after even the outlines. The pocket then
+    // holds every credit card the page knows about, in descending order of how
+    // much Juniper can say about each: identified, then asked-about, then the
+    // ones it knows only because the member typed them.
+    ...manual.map((m) => ({
+      key: `hand:${m.manual_account_id}`, card: null, issuer: m.institution,
+      label: m.account_name, mask: m.mask, hand: true,
     })),
   ];
 
@@ -153,14 +164,18 @@ function CardWallet({
             key={s.key}
             className={raised ? "cr-pocket-card up" : "cr-pocket-card"}
             style={{ top: i * REVEAL, zIndex: (i + 1) * 10 }}
-            // The outline says what tapping it DOES, because unlike a real card
-            // it is not a thing to look at, it is a thing to act on.
-            aria-label={c ? `${s.issuer} ${s.label}` : `Identify your ${s.issuer} card`}
-            // A raise is a toggle and an identify is not, so only the real cards
-            // claim a pressed state. Reporting one on the outline would announce
-            // a toggle that does not exist.
-            aria-pressed={c ? raised : undefined}
-            onClick={() => { if (c) setFront(raised ? null : s.key); else onIdentify(); }}
+            // Says what tapping DOES where tapping does something. A hand-entered
+            // card is a thing to look at like any other, so it keeps the plain
+            // descriptive label; an outline is a thing to act on, so it says so.
+            aria-label={c || s.hand ? `${s.issuer} ${s.label}` : `Identify your ${s.issuer} card`}
+            // A raise is a toggle and an identify is not, so only the raisable
+            // cards claim a pressed state. Reporting one on the outline would
+            // announce a toggle that does not exist.
+            aria-pressed={c || s.hand ? raised : undefined}
+            onClick={() => {
+              if (c || s.hand) setFront(raised ? null : s.key);
+              else onIdentify();
+            }}
           >
             <CardFace
               size="lg"
@@ -168,10 +183,13 @@ function CardWallet({
               issuer={s.issuer}
               // `unknown` draws the outline and `label` names it. The pair is the
               // same one the identify prompt itself uses, so the two surfaces
-              // cannot describe the same state differently.
-              unknown={!c}
-              productName={c ? s.label : undefined}
-              label={c ? undefined : s.label}
+              // cannot describe the same state differently. A hand-entered card is
+              // NOT unknown: the member told us what it is, so it gets a real name
+              // and a face, just an unbranded one.
+              unknown={!c && !s.hand}
+              hand={s.hand}
+              productName={c || s.hand ? s.label : undefined}
+              label={c || s.hand ? undefined : s.label}
               mask={s.mask}
               brandColor={c?.product?.brand_color}
               artUrl={c?.product?.art_url}
@@ -184,9 +202,9 @@ function CardWallet({
           taps meant for the cards behind it. */}
       <div className="cr-pocket-lip" aria-hidden="true" />
       <div className="cr-pocket-foot">
-        {/* Counts the OUTLINES too, so the foot, the stack and the header above
-            all say the same number. The header is the one that says how many of
-            them are still to be named. */}
+        {/* Counts the outlines AND the hand-entered cards, so the foot, the stack
+            and the "N cards" on the Credit list above all say the same number. The
+            header underneath is the one that breaks it down. */}
         {slots.length} {slots.length === 1 ? "card" : "cards"}
         {slots.length > 3 && (
           <>
@@ -291,6 +309,7 @@ export function RewardsGuide({
   const shortFor = (productId: string) => faces.get(productId)?.shortName ?? "";
   const artFor = (productId: string) => faces.get(productId)?.artUrl ?? null;
   const totalGain = data.switches.reduce((a, s) => a + s.gain, 0);
+  const handCount = (data.manual ?? []).length;
 
   return (
     <div className="card pad-lg" style={{ marginBottom: 14 }}>
@@ -298,15 +317,22 @@ export function RewardsGuide({
         <CardWallet
           cards={confirmed}
           unidentified={data.unidentified}
+          manual={data.manual ?? []}
           logoFor={logoFor}
           onIdentify={onIdentify}
         />
         <div className="cr-hero-f">
           <div className="eyebrow">Your cards</div>
+          {/* "N of M identified" used to describe the whole stack. It cannot any
+              more: a hand-entered card can never be identified, so counting it in
+              M would leave a total that never completes, and leaving it out
+              contradicts the pocket beside it. The count is therefore about LINKED
+              cards, said so, with the hand-entered ones named separately. */}
           <div className="cr-hero-sub">
             {confirmed.length} of {data.cards.length}{" "}
-            {data.cards.length === 1 ? "card" : "cards"} identified
+            {data.cards.length === 1 ? "linked card" : "linked cards"} identified
             {data.unidentified.length > 0 && <>, {data.unidentified.length} still to go</>}
+            {handCount > 0 && <> · {handCount} added by hand</>}
           </div>
           <div className="cr-hero-stats">
             {benefits && benefits.total > 0 && (

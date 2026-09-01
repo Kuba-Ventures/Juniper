@@ -529,6 +529,27 @@ rationale in `docs/CARD_REWARDS.md`.
   yet identified. Also worth checking on the same pass: the row reads "$328 of $8,000 limit" with a
   "You set this" badge, and the utilization line picks the card up and says one of its limits came from
   the member - Finley
+- [x] **The wallet holds the hand-entered card too.** Reported on 2026-09-01 after `0046` shipped: the
+  Credit cards list said **4 cards** and the wallet under it said **3**, with the Freedom Unlimited the
+  one absent. The same shape of complaint that drove the wallet change above, and the same answer, so
+  the counts agree again. Treatment A of three, rendered in `design/wallet-manual-card-variants.html`.
+  `CardFace` gained a THIRD state, `hand`, rather than reusing `unknown`, and the distinction is the
+  point: an unknown face is a QUESTION Juniper is asking, drawn as a prompt and tappable through to the
+  picker; a hand-entered face is an ANSWER the member already gave in full, with a real name and mask,
+  and it is tappable only to raise it like any other card. It carries no brand colour and no art because
+  no catalog product was named, which is a fact about the catalog rather than about the member, so it is
+  drawn as a neutral face with a dashed edge rather than as an outline that would read as broken.
+  The hero's count had to change with it: "N of M identified" cannot describe a stack that now holds a
+  card which can never be identified, because counting it in M leaves a total that never completes and
+  leaving it out contradicts the pocket beside it. It counts LINKED cards, says so, and names the
+  hand-entered ones separately. **Deliberate boundary, not an oversight:** a member whose ONLY credit
+  card is hand-entered still sees no rewards hero at all, because `RewardsGuide` returns null without an
+  identified card and there would be no rates, benefits or switch ideas to head. Their card still shows
+  in the Credit list and in utilization. Rejected: letting a manual card be IDENTIFIED (treatment B),
+  which `member_cards.plaid_account_id` would allow without a migration since it is plain TEXT with no
+  foreign key, but the rewards maths keys on per-account spend from `transactions.account_id` that a
+  hand-entered card has none of, so its rates would be right and its "what this is costing you" figures
+  blank or wrong. Worth doing only alongside that.
 - [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
   done every member sees the "not yet re-checked" caveat.

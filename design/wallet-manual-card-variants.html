@@ -1,0 +1,158 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The hand-entered card and the wallet, three treatments</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1200px;margin:0 auto;padding:20px 20px 70px}
+.pv-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;max-width:104ch;margin-bottom:12px}
+.pv-intro b{color:var(--jnpr-ink-2)}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:9px;cursor:pointer;margin-bottom:16px}
+.pv-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:start}
+@media(max-width:1050px){.pv-cols{grid-template-columns:1fr}}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:5px}
+.pv-num{display:grid;place-items:center;width:19px;height:19px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:11px;letter-spacing:0}
+.pv-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:0 0 12px;min-height:104px}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-cost{font-size:11px;color:var(--jnpr-warn);line-height:1.55;margin-top:10px}
+/* proposed in A: a face for a card Juniper knows only by what the member typed.
+   No brand colour, because no product was named, so nothing licenses one. */
+.cr-face-hand{border:1px dashed var(--jnpr-line-2)}
+.hand-tag{position:absolute;right:10px;bottom:9px;font-size:9px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+<div class="pv-intro">
+  The Credit cards list says <b>4 cards</b>; the wallet below it says <b>3</b>, and the Freedom Unlimited
+  is the one missing. Same shape of complaint that drove #238, where a header counted three over a stack
+  of two. The difference here: a hand-entered card genuinely has <b>no rewards data</b>, and the wallet is
+  the head of the rewards surface, whose other figures (benefits, unused credits, left on the table) it
+  cannot contribute to. Each option answers "so what does the holder show" differently.
+</div>
+<div style="font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;max-width:104ch;margin-bottom:14px">
+  <b>A was chosen</b> and is what shipped. `CardFace` gained a third state, `hand`, rather than reusing
+  `unknown`: an unknown face is a QUESTION Juniper is asking, and a hand-entered face is an ANSWER the
+  member already gave in full. The hero's count also had to change, since "N of M identified" cannot
+  describe a stack holding a card that can never be identified; it now counts LINKED cards and names the
+  hand-entered ones separately.
+</div>
+<button class="pv-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+<div class="pv-cols">
+
+  <!-- A -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">A</span> Draw it, plainly, and count it</div>
+    <div class="pv-note">
+      The card joins the stack on a neutral face carrying only what the member typed, issuer, name and
+      mask, with no brand colour because no product was named to license one. The foot counts <b>4</b>,
+      so the holder and the list above finally agree.
+    </div>
+    <div class="card pad-lg" style="width:310px">
+      <div class="cr-pocket" style="height:290px">
+        <button type="button" class="cr-pocket-card" style="top:0;z-index:10">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#8c8c8c;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Capital One</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;5012</span></span><span class="cr-face-nm">Quicksilver Student</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:54px;z-index:20">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#6b6b6b;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Discover</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;2776</span></span><span class="cr-face-nm">Discover it&reg; Chrome</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:108px;z-index:30">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#1b64a5;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;1575</span></span><span class="cr-face-nm">Sapphire Preferred&reg;</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:162px;z-index:40">
+          <span class="cr-face cr-face-lg cr-face-strip cr-face-hand" style="--cr-brand:#4a4f4d;color:#e8e8e8"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;4417</span></span><span class="cr-face-nm">Freedom Unlimited</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span><span class="hand-tag">Added by hand</span></span>
+        </button>
+        <div class="cr-pocket-lip" aria-hidden="true"></div>
+        <div class="cr-pocket-foot">4 cards</div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="eyebrow">Your cards</div>
+        <div class="cr-hero-sub">3 of 3 linked cards identified &middot; 1 added by hand</div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: it sits at the front of a hero whose benefits, unused credits and
+      left-on-the-table figures it contributes nothing to, which may read as though it does.</div>
+  </div>
+
+  <!-- B -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">B</span> Draw it, and let it be named</div>
+    <div class="pv-note">
+      The full answer. A hand-entered card becomes identifiable like a linked one, so it gets its real
+      art, its rewards rates, and its benefits. <b>The holder, the guide and the tracker all stop
+      treating it as a second-class card.</b> `member_cards.plaid_account_id` is plain TEXT with no
+      foreign key, so it can hold a manual id without a migration.
+    </div>
+    <div class="card pad-lg" style="width:310px">
+      <div class="cr-pocket" style="height:290px">
+        <button type="button" class="cr-pocket-card" style="top:0;z-index:10">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#8c8c8c;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Capital One</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;5012</span></span><span class="cr-face-nm">Quicksilver Student</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:54px;z-index:20">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#6b6b6b;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Discover</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;2776</span></span><span class="cr-face-nm">Discover it&reg; Chrome</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:108px;z-index:30">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#1b64a5;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;1575</span></span><span class="cr-face-nm">Sapphire Preferred&reg;</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:162px;z-index:40">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#1256a0;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;4417</span></span><span class="cr-face-nm">Freedom Unlimited</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <div class="cr-pocket-lip" aria-hidden="true"></div>
+        <div class="cr-pocket-foot">4 cards</div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="eyebrow">Your cards</div>
+        <div class="cr-hero-sub">4 of 4 cards identified</div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: much the largest. The rewards maths keys on per-account spend from
+      `transactions.account_id`, which a hand-entered card has none of, so its rates would be right and
+      its "what this is costing you" figures would be blank or wrong until that is handled.</div>
+  </div>
+
+  <!-- C -->
+  <div>
+    <div class="pv-lab"><span class="pv-num">C</span> Leave it out, stop the counts conflicting</div>
+    <div class="pv-note">
+      The holder stays the rewards surface and holds only cards with rewards data. What changes is that
+      it <b>says so</b>, and names the card it is leaving out, so nothing reads as missing. The smallest
+      change, and the only one that adds no new claim.
+    </div>
+    <div class="card pad-lg" style="width:310px">
+      <div class="cr-pocket" style="height:236px">
+        <button type="button" class="cr-pocket-card" style="top:0;z-index:10">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#8c8c8c;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Capital One</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;5012</span></span><span class="cr-face-nm">Quicksilver Student</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:54px;z-index:20">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#6b6b6b;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Discover</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;2776</span></span><span class="cr-face-nm">Discover it&reg; Chrome</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <button type="button" class="cr-pocket-card" style="top:108px;z-index:30">
+          <span class="cr-face cr-face-lg cr-face-strip" style="--cr-brand:#1b64a5;color:#fff"><span class="cr-face-in"><span class="cr-face-top"><span class="cr-face-iss">Chase</span><span class="cr-face-mask">&middot;&middot;&middot;&middot;1575</span></span><span class="cr-face-nm">Sapphire Preferred&reg;</span><span class="cr-face-mid"><span class="cr-face-chip"></span></span></span></span>
+        </button>
+        <div class="cr-pocket-lip" aria-hidden="true"></div>
+        <div class="cr-pocket-foot">3 linked cards</div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="eyebrow">Your cards</div>
+        <div class="cr-hero-sub">3 of 3 linked cards identified</div>
+        <div class="cl-note" style="margin-top:8px">
+          Your Chase Freedom Unlimited ····4417 is not here: you added it by hand, so Juniper has no
+          rewards data for it. It still counts toward your utilization above.
+        </div>
+      </div>
+    </div>
+    <div class="pv-cost">Cost: the member still does not see their own card in the holder, which is
+      the thing they asked about.</div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>
