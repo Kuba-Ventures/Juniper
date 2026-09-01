@@ -934,6 +934,16 @@
    visually distinct from the destructive one, which matters more here than
    symmetry does. Same shape as `.cl-set` on the Credit page, for the same
    reason. */
+/* A figure Juniper is not yet prepared to state. Quieter than the real number,
+   because it is a placeholder rather than a value, and set in the same tabular
+   figures so the digits that replace it do not shift the line. The gentle pulse
+   says "coming" rather than "missing", which is the whole distinction this state
+   exists to draw; it is dropped for anybody who asked not to see motion. */
+.jnpr .pending{color:var(--jnpr-ink-3);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){
+  .jnpr .pending{animation:jnpr-pending 1.5s ease-in-out infinite}
+  @keyframes jnpr-pending{0%,100%{opacity:.5}50%{opacity:.95}}
+}
 .jnpr .man-edit{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
   background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
   text-underline-offset:2px;flex:0 0 auto}

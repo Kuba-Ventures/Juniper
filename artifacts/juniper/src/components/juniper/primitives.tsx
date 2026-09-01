@@ -207,16 +207,31 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
 }
 
 /* ---------- score ring ---------- */
-export function MiniRing({ score, d = 46 }: { score: number; d?: number }) {
+export function MiniRing({ score, d = 46, pending = false }: { score: number; d?: number; pending?: boolean }) {
   const r = (d - 6) / 2, c = 2 * Math.PI * r, off = c * (1 - score / 100), cx = d / 2;
   return (
     <div className="mini-ring">
       <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
         <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={5} />
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--jnpr-good)" strokeWidth={5} strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${cx} ${cx})`} />
+        {/* NO ARC WHILE PENDING. An arc is a quantity: any length at all states a
+            score, and the one number we must not state yet is a score. The track
+            alone reads as a ring waiting to be filled. */}
+        {!pending && (
+          <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--jnpr-good)" strokeWidth={5} strokeLinecap="round"
+            strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${cx} ${cx})`} />
+        )}
       </svg>
-      <span className="rv tnum">{score}</span>
+      <span className={pending ? "rv tnum pending" : "rv tnum"}>{pending ? SCORE_DASH : score}</span>
     </div>
   );
 }
+
+/**
+ * What stands in for a score that is not known yet.
+ *
+ * Exported so every surface that withholds one writes the same character, and so
+ * a reader grepping for it finds all of them at once. Two en dashes rather than
+ * an em dash, per the house rule, and rather than "--", which reads as a typo at
+ * the size the score is set in.
+ */
+export const SCORE_DASH = "\u2013\u2013";

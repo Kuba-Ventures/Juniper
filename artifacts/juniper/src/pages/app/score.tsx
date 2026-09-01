@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money, type FactorKey, type ScoreFactor, type ScoreGauge, type ScoreImprovement } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
-import { MiniRing, PlanSpark, PlanIcon, cssVar } from "@/components/juniper/primitives";
+import { MiniRing, PlanSpark, PlanIcon, cssVar, SCORE_DASH } from "@/components/juniper/primitives";
 import {
   useMemberPlans,
   planShape,
@@ -325,7 +325,7 @@ function Improvements({ items }: { items: ScoreImprovement[] }) {
 }
 
 export function Score() {
-  const { data } = useFinances();
+  const { data, scorePending } = useFinances();
   const score = data.score;
   // Points still on the table, the same figure the Ways to improve column ranks
   // by, totalled once so the factor list opens with the size of the opportunity
@@ -343,31 +343,68 @@ export function Score() {
         <div className="credit-hero">
           <div>
             <div className="eyebrow">Your Juniper Score</div>
+            {/* WITHHELD, NOT ZEROED, until the server has answered. The score is
+                derived, and the manual layer derives it from different inputs than
+                the live one, so this drew a profile-derived number for a moment
+                before the live one replaced it. See `scorePending` in
+                lib/finances.ts. The delta goes with it: a change measured against
+                a number we are not showing is not a fact about anything. */}
             <div className="credit-num">
-              <span className="big tnum">{score.value}</span>
-              {score.delta !== 0 && (
+              <span className={scorePending ? "big tnum pending" : "big tnum"}>
+                {scorePending ? SCORE_DASH : score.value}
+              </span>
+              {!scorePending && score.delta !== 0 && (
                 <span className={`delta ${score.delta > 0 ? "up" : "down"}`}>
                   {score.delta > 0 ? <UpArrow /> : null}{score.delta > 0 ? "+" : ""}{score.delta} pts this month
                 </span>
               )}
             </div>
-            <div className="credit-band-lg">{score.band}</div>
+            <div className="credit-band-lg">
+              {scorePending ? <span className="pending">Working out your score…</span> : score.band}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 18 }}>
-              <MiniRing score={score.value} d={54} />
+              <MiniRing score={score.value} d={54} pending={scorePending} />
               <p className="disc" style={{ margin: 0 }}>
-                Proprietary to Juniper, not a credit score. Built from your linked accounts and updated as your money moves. Biggest lever right now: <b>{score.lever}</b>.
+                Proprietary to Juniper, not a credit score. Built from your linked accounts and updated as your money moves.
+                {/* The CLAUSE stays and only its value is withheld, so the paragraph
+                    keeps its line count and the card does not grow by a line when
+                    the real lever arrives. Dropping the clause entirely settled 8px
+                    taller, which is a small jump on the number this page is about. */}
+                {" "}Biggest lever right now: <b className={scorePending ? "pending" : undefined}>
+                  {scorePending ? SCORE_DASH : score.lever}
+                </b>.
               </p>
             </div>
           </div>
           <div className="score-trend">
             <div className="st-head">
               <span className="eyebrow">Score · last {score.trend.length} months</span>
-              <span className={`delta ${score.delta >= 0 ? "up" : "down"}`}>{score.delta >= 0 ? "+" : ""}{score.delta}</span>
+              {/* The chip KEEPS ITS PLACE while pending rather than being removed.
+                  It is the tallest thing in this head, so dropping it settled the
+                  whole card 8px shorter and then grew it back the moment the score
+                  arrived, which is the jump this change exists to remove. A dash
+                  states no delta; an absent chip states no delta either, and costs
+                  a reflow. Measured: .st-head 17px without it, 24px with. */}
+              <span className={scorePending ? "delta pending" : `delta ${score.delta >= 0 ? "up" : "down"}`}>
+                {scorePending ? SCORE_DASH : <>{score.delta >= 0 ? "+" : ""}{score.delta}</>}
+              </span>
             </div>
-            <PlanSpark data={score.trend} k="--jnpr-accent" height={96} />
+            {/* THE TREND IS DERIVED TOO, and from the same manual inputs, so a
+                spark drawn while pending is a chart of a score we are not willing
+                to print. Caught by looking at the rendered page rather than by
+                reading: the foot was still showing the manual layer's first
+                value (39) beside a dashed current one, which is the exact
+                mismatch this change removes. The placeholder holds the spark's
+                own height so the card does not resize when the real one lands. */}
+            {scorePending
+              ? <div style={{ height: 96 }} aria-hidden="true" />
+              : <PlanSpark data={score.trend} k="--jnpr-accent" height={96} />}
             <div className="st-foot">
-              <span>{score.trend[0]} · {score.trend.length} mo ago</span>
-              <span><b className="tnum">{score.value}</b> · now</span>
+              <span>
+                {scorePending ? <span className="pending">{SCORE_DASH}</span> : score.trend[0]}
+                {" "}· {score.trend.length} mo ago
+              </span>
+              <span><b className={scorePending ? "tnum pending" : "tnum"}>{scorePending ? SCORE_DASH : score.value}</b> · now</span>
             </div>
           </div>
         </div>
