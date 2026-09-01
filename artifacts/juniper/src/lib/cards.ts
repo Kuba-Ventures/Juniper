@@ -191,6 +191,11 @@ export interface TrackedBenefit {
   detail: string | null;
   value_amount: number | null;
   period: BenefitPeriod | null;
+  /** ISO date the benefit stops, or null for "no stated end date" (migration
+      0043). Anything already past is filtered out server-side, so a value here is
+      always in the future and is worth telling the member about: a credit ending
+      in three months is one they should use. */
+  expires_on: string | null;
   periodKey: string;
   used: boolean;
   usedAt: string | null;

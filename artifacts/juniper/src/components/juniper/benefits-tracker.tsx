@@ -33,6 +33,17 @@ const GROUP_ICON: Record<string, string> = {
   Travel: "✈️", Airport: "🛄", Shopping: "🛍️", Dining: "🍽️", Protection: "🛡️",
 };
 
+/** "12/31/2027" -> "31 Dec 2027". Parsed as UTC parts rather than through the
+    Date constructor, which would read a bare YYYY-MM-DD as UTC midnight and then
+    print it in local time -- one day early for anybody west of Greenwich. */
+function endsOn(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (!y || !m || !d || !MONTHS[m - 1]) return iso;
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
 function BenefitRow({
   benefit,
   onToggle,
@@ -59,6 +70,11 @@ function BenefitRow({
           {benefit.productName}
           {benefit.detail && <> &middot; {benefit.detail}</>}
           {benefit.used && used && <> &middot; ticked off {used}</>}
+          {/* Said out loud rather than letting the benefit disappear on the day it
+              lapses. Anything already expired is filtered out server-side, so a
+              date here is always still ahead -- and a credit that is ending is
+              exactly the one worth using. */}
+          {benefit.expires_on && <> &middot; <b>ends {endsOn(benefit.expires_on)}</b></>}
         </span>
       </span>
       <span className="cr-bt-val">

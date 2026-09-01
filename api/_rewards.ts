@@ -129,6 +129,18 @@ export interface Benefit {
       summable, and `BenefitSummary.unusedValue` skips them rather than guessing. */
   value_amount: number | null;
   period: BenefitPeriod | null;
+  /** ISO date the benefit stops, or null for "no stated end date" (migration
+      0043). Null is NOT a promise that it renews forever -- an issuer can withdraw
+      a perk whenever it likes -- it means the issuer has published no end date,
+      which is all the catalog can know.
+
+      A benefit past this date is dropped by `trackBenefits`, so it never reaches
+      the tracker, the summary, or the unused-value total. Card perks increasingly
+      carry a stated expiry (five of the Sapphire Reserve's do), and without this
+      they had to be left out entirely: a tracker with no way to represent an
+      ending would still be asking somebody in 2028 to use a credit that stopped
+      in 2027. */
+  expires_on: string | null;
 }
 
 /** A linked Plaid credit account, and the product the member confirmed it is. */
@@ -768,9 +780,19 @@ export function trackBenefits(args: {
   const held = new Set(heldProducts(args.cards, args.products).map((p) => p.id));
   const useByKey = new Map(args.uses.map((u) => [`${u.benefit_id}|${u.period_key}`, u]));
 
+  // Compared as ISO strings on purpose: `expires_on` is a DATE, so it arrives as
+  // "YYYY-MM-DD" with no time and no zone, and lexicographic order on that format
+  // IS chronological order. Parsing it into a Date would invent a midnight in some
+  // timezone and make a benefit lapse a few hours early or late depending on where
+  // the function ran.
+  const todayIso = args.today.toISOString().slice(0, 10);
+
   const tracked: TrackedBenefit[] = [];
   for (const b of args.benefits) {
     if (!held.has(b.product_id)) continue;
+    // Already over. Dropped here rather than in the handler so the tracker, the
+    // group counts and `unusedValue` cannot disagree about what still exists.
+    if (b.expires_on && b.expires_on < todayIso) continue;
     const periodKey = benefitPeriodKey(b.period, args.today);
     const use = useByKey.get(`${b.id}|${periodKey}`);
     tracked.push({
