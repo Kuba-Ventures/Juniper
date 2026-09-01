@@ -47,3 +47,26 @@ export function utilizationPct(owed: number, limit: number | null | undefined): 
   const pct = Math.round((Math.max(0, owed) / limit) * 100);
   return Math.min(100, Math.max(0, pct));
 }
+
+/**
+ * The word that fronts a utilization figure, or null when there is no figure.
+ *
+ * The bands are the ones every issuer and bureau publishes for revolving
+ * utilization, not a Juniper opinion: under 10% is the band the scoring models
+ * reward, 30% is the line the advice repeats, and 50% is where it starts being
+ * described as a problem. Stated as a word because a percentage alone does not
+ * tell somebody whether 27% is good, and this figure now leads the wallet.
+ *
+ * NOT a score and not a rating of the member. It describes one number - balance
+ * against limit - and nothing else, which is why the word sits inside the same
+ * sentence as the figure it is about rather than standing on its own.
+ */
+export type UtilBand = "Excellent" | "Good" | "Fair" | "High";
+
+export function utilizationBand(pct: number | null | undefined): UtilBand | null {
+  if (typeof pct !== "number" || !Number.isFinite(pct)) return null;
+  if (pct < 10) return "Excellent";
+  if (pct < 30) return "Good";
+  if (pct < 50) return "Fair";
+  return "High";
+}
