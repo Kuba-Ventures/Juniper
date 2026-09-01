@@ -133,6 +133,40 @@ export interface UnidentifiedCard {
   candidates: Candidate[];
 }
 
+/**
+ * A credit card the member entered by hand (migration 0046).
+ *
+ * It exists because some cards can NEVER arrive through Plaid: an authorized-user
+ * card on another person's login is invisible to every credential the member
+ * holds, because Plaid returns only the accounts belonging to the login it
+ * authenticates. The bureaus see it and Juniper has no bureau feed, so without
+ * this the utilization denominator is short by that card's limit and the
+ * percentage reads too HIGH.
+ *
+ * LIMIT AND BALANCE, AND NOTHING ELSE. There is no `plaid_account_id`, so there
+ * is no `member_cards` row, so it is never in the Identify queue and never has a
+ * product, rates or benefits. Anything rate-driven reads `cards`; this list is
+ * only ever counted into utilization.
+ */
+export interface ManualCard {
+  manual_account_id: string;
+  /** What the member called the institution, or a stand-in when they gave none. */
+  institution: string;
+  account_name: string;
+  mask: string | null;
+  /** What the member OWES. Zero when they marked the account as an asset, which
+      on a credit account means the issuer owes them. */
+  balance: number;
+  /** What the ISSUER owes the member. The manual equivalent of Plaid's negative
+      credit balance, and drawn as a credit rather than as debt. */
+  inCredit: number;
+  /** The member's own number, and the only limit a manual card has: nothing is
+      reporting one, which is why the account exists. Null means unknown, drawn
+      as "Unknown" rather than as 0%. */
+  limit: number | null;
+  currency: string | null;
+}
+
 export interface GuideCardRef {
   productId: string;
   productName: string;
@@ -215,6 +249,11 @@ export interface BenefitSummary {
 export interface CardRewards {
   linked: boolean;
   cards: LinkedCard[];
+  /** Cards the member entered by hand. Counted into utilization on the Credit
+      page and deliberately nowhere else, and NEVER into the Juniper Score: a
+      limit somebody typed is a claim, and a score built from claims is one the
+      member could raise by typing a bigger number. */
+  manual: ManualCard[];
   unidentified: UnidentifiedCard[];
   guide: GuideEntry[];
   switches: SwitchIdea[];

@@ -415,6 +415,60 @@ rationale in `docs/CARD_REWARDS.md`.
   row to record the same omission and is now the largest single source of understatement in the catalog.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
+- [x] **A credit limit on a hand-entered card** (`0046`). The only route that makes utilization agree
+  with the member's own credit report, because the card it exists for can never arrive through Plaid:
+  see the authorized-user entry below. `manual_accounts` (`0014`) already existed for "anything Plaid
+  cannot reach, entered by hand" and its `category = 'credit'` rows already counted as card debt in net
+  worth, so the one thing missing was the field utilization needs. A member could describe the card and
+  still not fix the number, which is the worst of both. `0046` adds `credit_limit` (NULL means unknown,
+  never zero, the convention `utilizationPct` already relies on) and `mask`, with a CHECK making a limit
+  on a checking account unrepresentable and another refusing zero, since zero would divide.
+  `/api/card-rewards` carries them to the Credit page, which counts them in utilization and badges them
+  **"You added this"**, deliberately distinct from #211's "You set this": that one is a limit on a
+  BANK-LINKED card, where Juniper can see the account and only the limit was missing. A manual card gets
+  no `member_cards` row, so it is never in the Identify queue, never has rewards data, and contributes
+  limit and balance only. States rendered in `design/manual-credit-card.html`.
+- [x] **A member-typed limit still cannot reach the Juniper Score**, and that is now checkable rather
+  than merely commented. Same rule as #211, and the whole risk in `0046`: the Score is a figure Juniper
+  asserts from what it can measure, so a limit somebody typed must not move it, or the member is scoring
+  themselves. The isolation is structural, not a convention. The shared `fetchManualAccounts` the score
+  path reads does not request the column at all; a separate `fetchManualCreditAccounts` does, and only
+  `api/card-rewards.ts` imports it. `scripts/src/check-manual-limit-isolation.ts` asserts the nine facts
+  that hold that up (the shared select, the three score engines, the sole importer, both CHECKs, the
+  migration's ASCII purity, and 0033's own positive-only CHECK), so widening the shared select fails a
+  check rather than quietly making the Score member-editable. Also corrected a comment in
+  `api/_finance-snapshot.ts` that `0046` had made stale: it said a hand-added card carries no credit line
+  at all, which was the old reason for excluding it. A member can now enter one, and it is still
+  excluded, on the stronger ground.
+- [x] **(ops)** **`0046` applied to production on 2026-09-01, by Finley**, ahead of the deploy rather
+  than after it, which is safe for this one: both columns are nullable and every read and write carries
+  a fallback for their absence. Its verification SELECT returned exactly what the migration's own
+  `Expect` comment predicted, **24 manual accounts, 0 with a limit, 0 with a mask**, so no existing row
+  was touched. Verified before that against a scratch Postgres: `0014` then `0046` applies clean,
+  re-running `0046` is a no-op, pre-existing rows survive with both columns NULL, and the CHECKs refuse
+  a limit on a banking account, a zero limit and a negative one.
+- [ ] **Four manual credit accounts already exist in production**, which that same SELECT surfaced and
+  the plan for this work did not anticipate: `credit_accounts = 4`, none of them with a limit. They have
+  been counting as card debt in net worth since `0014` and were invisible on the Credit page, and the
+  moment this ships all four appear there, badged "You added this", reading "no limit added" and "Used:
+  Unknown", and the utilization line says four more are excluded for having no limit. Nothing is wrong
+  with that, it is the feature working on data that predates it, but it means the first thing this
+  change does for the real member is add four rows rather than fix one number, so **look at those four
+  before assuming the page is wrong**. Any of them that are real cards want their limits; any that are
+  duplicates of a Plaid-linked card want removing, since a duplicate would double-count in both net
+  worth and utilization - Finley
+- [ ] **Confirm the four figures on the real member's Credit page** once `0046` is applied and the
+  Freedom Unlimited is entered by hand ($20,000 limit, mask 4417, balance $0). Expect **$562 of $37,900
+  across 4 cards**, which rounds to **1 percent** (`562 / 37900 = 1.48`), the card badged "You added
+  this", the card ABSENT from the Identify prompt, and the **Juniper Score unchanged by the addition**.
+  The last of those is the one that proves the score isolation held in production rather than only in the
+  check script. Note the plan for this work predicted 2 percent, which was a rounding slip; 1 percent is
+  the correct reading of the same arithmetic - Finley
+- [ ] **(build)** No in-place edit of a manual account, which `0046` makes more visible than it was.
+  Connections offers add and remove only, so a member who entered a card and left the limit blank has to
+  remove it and add it again. The Credit page's row therefore links to "Manage on Connections" rather
+  than promising an editor that is not there. `/api/manual-accounts` already supports update-by-id, so
+  this is a form-prefill and a button, not a new endpoint.
 - [ ] **The $20,000 Chase Freedom Unlimited is an authorized-user card on somebody else's login, so
   Plaid can never return it. Blocked on a credit-data provider, not on relinking.** Reconciled against
   Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards (Freedom Unlimited $20,000,

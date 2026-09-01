@@ -3,8 +3,9 @@
 // Everything the Credit page's rewards surface draws, in one request: which
 // linked credit accounts the member has confirmed a product for, which are still
 // waiting to be identified (with ranked guesses attached), the earning guide,
-// what the wrong card is costing them, cards that would beat theirs, and the
-// benefits checklist.
+// what the wrong card is costing them, cards that would beat theirs, the
+// benefits checklist, and the credit cards they entered by hand (migration 0046,
+// limit and balance only, see `manual` below).
 //
 // ONE ENDPOINT ON PURPOSE. The alternative is four (catalog, confirmations,
 // guide, benefits) and four round trips before the page can draw anything, and
@@ -31,6 +32,7 @@ import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
 import { creditPosition } from "./_credit-balance";
+import { fetchManualCreditAccounts } from "./_manual-accounts";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import {
   anyUnverified, benefitPeriodKey, earningGuide, oldestAsOf, rankCandidates,
@@ -242,7 +244,7 @@ export default async function handler(req: Request): Promise<Response> {
   const uid = payload.sub;
 
   const since = isoDaysAgo(WINDOW_DAYS);
-  const [items, confirmations, productRows, earnRows, benefitRows, txns, uses] = await Promise.all([
+  const [items, confirmations, productRows, earnRows, benefitRows, txns, uses, manualRows] = await Promise.all([
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
     readConfirmations(uid),
     readCatalog(),
@@ -257,6 +259,7 @@ export default async function handler(req: Request): Promise<Response> {
       `transactions?user_id=eq.${uid}&date=gte.${since}&select=account_id,amount,date,category,category_id&limit=2000`,
       "transactions"),
     rows<UseRow>(`card_benefit_uses?user_id=eq.${uid}&select=benefit_id,period_key,used_at`, "benefit ticks"),
+    fetchManualCreditAccounts(uid),
   ]);
 
   // ── The member's credit accounts ─────────────────────────────────────────
@@ -282,8 +285,60 @@ export default async function handler(req: Request): Promise<Response> {
         currency: a.currency,
       })));
 
+  // ── Credit cards the member entered by hand ──────────────────────────────
+  //
+  // WHY THIS SURFACE HAS TO KNOW ABOUT THEM. Some cards can never arrive through
+  // Plaid, however many times somebody relinks: an authorized-user card on
+  // another person's login is invisible to every credential the member holds,
+  // because Plaid returns only the accounts belonging to the login it
+  // authenticates. The bureaus see it, and Juniper has no bureau feed
+  // (ROADMAP.md Stage 10). Utilization was therefore wrong rather than merely
+  // incomplete, since a limit missing from the denominator makes the percentage
+  // too HIGH: $562 / $17,900 = 3 percent against the member's own report's
+  // $562 / $37,900 = 1.5 percent.
+  //
+  // THEY CARRY LIMIT AND BALANCE, AND NOTHING ELSE. A manual account has no
+  // `member_cards` row, so it is never in the Identify queue, never has a
+  // product, and never reaches the earning guide, the switch ideas, the upgrade
+  // rows or the benefits tracker. All of those key on a `plaid_account_id` that
+  // a hand-entered account does not have, and none of them could say anything
+  // true about a card Juniper knows only the limit of.
+  //
+  // Sent as its own list rather than mixed into `cards` for that reason: one
+  // array whose members sometimes have a plaid_account_id and sometimes do not
+  // would put the burden on every reader. The Credit page merges the two for its
+  // utilization list, which is the only place the distinction stops mattering.
+  const manual = manualRows.map((m) => {
+    const held = Math.abs(m.balance ?? 0);
+    // `kind` carries the sign on a manual account, the same convention
+    // `sumManualAccounts` uses: `balance` is a magnitude. A credit account marked
+    // `asset` is one the issuer owes the member, which is the manual equivalent
+    // of Plaid's negative balance, and must not be drawn as debt. See
+    // ./_credit-balance.ts for why that distinction is load-bearing.
+    const owes = m.kind !== "asset";
+    return {
+      manual_account_id: m.id,
+      institution: m.institution || "Added by hand",
+      account_name: m.name,
+      mask: m.mask,
+      balance: owes ? held : 0,
+      inCredit: owes ? 0 : held,
+      // The member's own number, and the ONLY limit a manual account has: there
+      // is no bank reporting one, which is the whole reason the account exists.
+      // NULL means unknown, and the surface says "Unknown" rather than 0%.
+      limit: m.credit_limit,
+      currency: m.currency,
+    };
+  });
+
   if (!accounts.length) {
-    return json({ linked: false, cards: [], unidentified: [], guide: [], switches: [], upgrades: [], benefits: null });
+    // No Plaid credit accounts. `manual` still travels: a member whose only card
+    // is a hand-entered one should see it, and `linked: false` means "no linked
+    // card to identify", which is what the rewards sections are gated on.
+    return json({
+      linked: false, cards: [], unidentified: [], guide: [], switches: [],
+      upgrades: [], benefits: null, manual,
+    });
   }
 
   // Kept apart from `products` because the pure module's CardProduct has no art:
@@ -458,6 +513,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   return json({
     linked: true,
+    // Cards the member entered by hand. Limit and balance only, and no product:
+    // see the note where this is built.
+    manual,
     // Confirmed cards, each carrying the product it is and the balance and limit
     // the bank reports, so the hero can draw faces and totals from one list.
     cards: accounts.map((a) => {

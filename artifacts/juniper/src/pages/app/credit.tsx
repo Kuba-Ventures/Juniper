@@ -4,7 +4,7 @@ import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
-import { forgetCard, limitOf, setCardLimit, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import { forgetCard, limitOf, setCardLimit, useCardRewards, type LinkedCard as RewardsCard, type ManualCard } from "@/lib/cards";
 import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
@@ -56,6 +56,35 @@ import { CardSwitches } from "@/components/juniper/card-switches";
 // per-account spend, which is the follow-up this page has been waiting on since
 // #132 and is deliberately not attempted here.
 //
+// ── CARDS THE MEMBER ENTERED BY HAND (migration 0046) ──────────────────────
+//
+// Some credit cards can NEVER arrive through Plaid, however many times somebody
+// relinks. The case that forced this: a card issued to the member as an
+// authorized user on another person's login. Plaid returns only the accounts
+// belonging to the login it authenticates, so no credential the member holds will
+// ever surface it. Credit Karma and the issuer's own site show it because they
+// read credit-bureau data, and Juniper has no bureau feed (ROADMAP.md Stage 10).
+//
+// That made this page's utilization WRONG rather than merely incomplete, because
+// a limit missing from the denominator makes the percentage too HIGH: 3 percent
+// here against 1.5 percent on the member's own credit report, on the same
+// balance. So a manual credit account with a limit is folded into the card list
+// and the utilization figure, carrying LIMIT AND BALANCE and nothing else.
+//
+// It gets no product, no rates, no benefits and NO PLACE IN THE IDENTIFY PROMPT,
+// because all of those key on a `plaid_account_id` a hand-entered account does
+// not have, and none of them could say anything true about a card Juniper knows
+// only the limit of. It is badged "You added this", distinct from #211's "You set
+// this", which means a member-supplied limit on a BANK-LINKED card.
+//
+// AND IT MUST NOT REACH THE JUNIPER SCORE. Same rule as #211's member limits, and
+// the sentence under the utilization figure says so on screen. A limit somebody
+// typed is a claim; the Score is a figure Juniper asserts from what it can
+// measure, and a member able to move it by typing a bigger number would be
+// scoring themselves. The isolation is structural, not a convention: the column
+// is absent from the shared `fetchManualAccounts` select the score path reads.
+// See api/_manual-accounts.ts and migration 0046.
+//
 // The rewards sections render NOTHING until a card is identified, and that is not
 // an empty state, it is the honest one: Plaid does not say which product an
 // account is, so until the member confirms, Juniper has no rates to show and says
@@ -63,6 +92,13 @@ import { CardSwitches } from "@/components/juniper/card-switches";
 
 type LinkedCard = {
   key: string;
+  // Where the row came from, and it changes what the row is allowed to offer. A
+  // hand-entered card (migration 0046) has no Plaid account behind it, so it can
+  // never be identified, never has rates, and its limit is edited on Connections
+  // rather than inline here. Kept as a discriminator rather than inferred from
+  // `institutionId == null`, which would be true of a linked account whose item
+  // predates the institution-id passthrough.
+  origin: "linked" | "manual";
   // Plaid's id for the issuer, so the brand map (keyed by id) can be read
   // directly rather than matched on a display name.
   institutionId: string | null;
@@ -107,6 +143,7 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
       .filter((a) => (a.type ?? "").toLowerCase() === "credit")
       .map((a) => ({
         key: a.account_id,
+        origin: "linked" as const,
         institutionId: it.institution_id ?? null,
         institution: it.institution_name || "Linked institution",
         name: a.name,
@@ -123,11 +160,51 @@ function linkedCards(items: PlaidItem[]): LinkedCard[] {
   );
 }
 
+// The same row shape, from the cards the member entered by hand (migration 0046),
+// so one list and one utilization sum cover both. A manual card has no bank
+// behind it, so `limit` (the bank's number) is null by construction and the
+// member's own figure is the only one there is.
+function manualCards(list: ManualCard[]): LinkedCard[] {
+  return list.map((m) => ({
+    // Prefixed, because a manual account id and a Plaid account id are different
+    // namespaces and React needs one key space across the merged list.
+    key: `manual:${m.manual_account_id}`,
+    origin: "manual" as const,
+    // Nothing to look a brand mark up by: a hand-typed institution name is not
+    // Plaid's institution id, and guessing one from the name is how you end up
+    // drawing the Chase logo on somebody's local credit union.
+    institutionId: null,
+    institution: m.institution,
+    name: m.account_name,
+    mask: m.mask,
+    balance: m.balance,
+    inCredit: m.inCredit,
+    limit: null,
+    memberLimit: m.limit,
+    currency: m.currency,
+  }));
+}
+
 // Which limit a card actually uses, and where it came from. Delegates to
 // `limitOf` in lib/cards.ts so the precedence is defined once: the BANK's number
 // wins where it exists, because it is the fact and the member's was a stand-in
 // for its absence.
 const limitFor = (c: LinkedCard) => limitOf({ bank_limit: c.limit, member_limit: c.memberLimit });
+
+// THE PROVENANCE BADGE, and it is the load-bearing piece of both features rather
+// than decoration: a number somebody typed must never be indistinguishable from
+// one their bank reported.
+//
+// TWO different member-supplied cases, and they are not the same claim, so they
+// do not share a label. "You set this" (#211) is a limit the member typed for a
+// card their BANK reports, where Juniper can see the account and only the limit
+// was missing. "You added this" (0046) is a whole card Juniper cannot see at all,
+// where the member is the source of the account's existence as well as its limit.
+// Collapsing them would tell somebody their linked card was hand-entered.
+const limitBadge = (c: LinkedCard, source: string): string | null => {
+  if (c.origin === "manual") return "You added this";
+  return source === "member" ? "You set this" : null;
+};
 
 // Kept as a thin alias so every call site reads the same, and so the clamping and
 // the null-for-no-limit rule live in one place. See lib/credit-balance.ts.
@@ -195,6 +272,12 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
   // those is stated too. A percentage built partly from numbers somebody typed is
   // only as good as what they typed, and a member who has forgotten they set one
   // would otherwise have no way to know this figure rests on it.
+  //
+  // Since 0046 that count also includes cards the member entered by hand, which
+  // are member-supplied end to end. They are counted TOGETHER in one sentence
+  // rather than in two, because the disclosure the member needs from this figure
+  // is a single fact ("some of this rests on your own numbers"); the per-card rows
+  // below are where the two cases are told apart.
   const rated = cards.map((c) => ({ card: c, ...limitFor(c) }));
   const withLimit = rated.filter((r) => r.limit != null);
   const excluded = cards.length - withLimit.length;
@@ -205,7 +288,7 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
         <div>
           <div className="eyebrow">Overall utilization</div>
           <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", marginTop: 6, maxWidth: "48ch", lineHeight: 1.55 }}>
-            None of your linked cards report a credit limit, so there is nothing to measure a balance
+            None of your cards report a credit limit, so there is nothing to measure a balance
             against. Refreshing your data on Connections re-reads limits from your bank, and you can
             set a limit yourself on any card below.
           </div>
@@ -225,7 +308,14 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
         <div style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", marginTop: 2 }}>
           {money(balance, currency)} of {money(limit, currency)} across {withLimit.length}{" "}
           {withLimit.length === 1 ? "card" : "cards"}
-          {excluded > 0 && `, ${excluded} more excluded for reporting no limit`}
+          {/* "reporting no limit" was true when every card on this page came from a
+              bank. A hand-entered card has nothing reporting anything, so the
+              phrasing is about the ABSENCE of a limit rather than about a bank
+              failing to send one. This is not hypothetical: production already
+              holds four manual credit accounts, none of them with a limit yet, so
+              this line would have blamed four banks for a field the member has
+              simply not filled in. */}
+          {excluded > 0 && `, ${excluded} more excluded for having no limit`}
         </div>
         {memberSet > 0 && (
           <div className="cl-note">
@@ -371,6 +461,7 @@ function CardRow({
 }) {
   const [editing, setEditing] = useState(false);
   const { limit, source } = limitFor(card);
+  const badge = limitBadge(card, source);
   const used = limit != null ? pct(card.balance, limit) : null;
   return (
     <div className="card-row">
@@ -382,31 +473,47 @@ function CardRow({
           {/* A card in credit is not debt, and saying "$328 owed" about a refund is
               the kind of specific, confident wrongness this page exists to avoid.
               The amount still shows, because the member wants to know it is there. */}
+          {/* "not reported" is only true of a LINKED card: on a hand-entered one
+              there is no bank reporting anything, and blaming the absence on a
+              report the member never expected reads as a fault rather than as a
+              field they have not filled in. */}
           {card.inCredit > 0
             ? <><b>{money(card.inCredit, card.currency)} in credit</b>{limit != null
                 ? <> of a {money(limit, card.currency)} limit</>
-                : <>, limit not reported</>}</>
+                : card.origin === "manual" ? <>, no limit added</> : <>, limit not reported</>}</>
             : <>{money(card.balance, card.currency)}{limit != null
                 ? <> of {money(limit, card.currency)} limit</>
-                : <> owed, limit not reported</>}</>}
+                : card.origin === "manual" ? <> owed, no limit added</> : <> owed, limit not reported</>}</>}
           {/* THE BADGE IS NOT DECORATION. A number the member typed must never be
               indistinguishable from one their bank reported: the first is a claim
               and the second is a fact, and a utilization built on a mix of them is
-              only as good as the claim. */}
-          {source === "member" && <span className="cl-mine">You set this</span>}
+              only as good as the claim. Two member-supplied cases, two labels: see
+              `limitBadge`. */}
+          {badge && <span className="cl-mine">{badge}</span>}
           {/* OFFERED ONLY WHERE THERE IS SOMETHING TO ANSWER. A card whose bank
               reports a limit gets no control, because `limitOf` gives the bank's
               number precedence: a member limit set on such a card would be stored
               and change nothing on screen, which is worse than an absent control.
               The bank's figure is the fact, and there is nothing here for the
-              member to improve on. */}
-          {!editing && source !== "bank" && (
+              member to improve on.
+              A hand-entered card gets no INLINE control either, and that is not an
+              oversight: its limit is one field of an account record that also holds
+              a name, an institution, a category and a balance, and those are
+              managed together on Connections. Two editors for one number would be
+              two places for it to be changed and one of them would go stale.
+              The link says "Manage" rather than "Edit" on purpose: Connections
+              today offers add and remove and no in-place edit of a manual account,
+              so promising an editor would send the member looking for a control
+              that is not there. */}
+          {card.origin === "manual" ? (
+            <> · <Link href="/app/connections" className="cl-set">Manage on Connections</Link></>
+          ) : !editing && source !== "bank" ? (
             <> · <button type="button" className="cl-set" onClick={() => setEditing(true)}>
               {source === "member" ? "Change limit" : "Set limit"}
             </button></>
-          )}
+          ) : null}
         </div>
-        {editing && (
+        {editing && card.origin === "linked" && (
           <LimitForm
             card={card}
             onCancel={() => setEditing(false)}
@@ -470,9 +577,25 @@ export function Credit() {
     return m;
   }, [rewards.data]);
 
+  // The cards the member entered by hand (migration 0046), projected into the
+  // same row shape. `?? []` rather than a guard: the rewards endpoint failing
+  // must not take the linked cards down with it, which is the same degradation
+  // `memberLimits` above already chooses.
+  const manual = useMemo(() => manualCards(rewards.data?.manual ?? []), [rewards.data]);
+
+  // ONE list, and the order is deliberate: linked cards first, hand-entered ones
+  // after. A member's linked cards are the page's subject and a hand-entered one
+  // is a correction they made to it, so interleaving them by name would bury the
+  // distinction the badges exist to draw.
+  //
+  // Null only while the Plaid read is still in flight. A member whose ONLY credit
+  // card is a hand-entered one still gets a list, which is the case that made
+  // this feature necessary in the first place.
   const withLimits = useMemo(
-    () => cards?.map((c) => ({ ...c, memberLimit: memberLimits.get(c.key) ?? null })) ?? null,
-    [cards, memberLimits],
+    () => cards == null
+      ? null
+      : [...cards.map((c) => ({ ...c, memberLimit: memberLimits.get(c.key) ?? null })), ...manual],
+    [cards, memberLimits, manual],
   );
 
   // Both halves re-read: a limit changes utilization here AND the rewards
@@ -550,8 +673,12 @@ export function Credit() {
             <CardRow
               card={c}
               brands={brands}
-              identified={identifiedNames.get(c.key) ?? null}
-              onChange={() => void unidentify(c.key)}
+              // A hand-entered card has no product and cannot be identified, so
+              // there is nothing to name and nothing to undo. Both are held to
+              // null explicitly rather than left to the map missing the key,
+              // because that would be the right answer by accident.
+              identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
+              onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
               onLimitChanged={() => void afterLimitChange()}
               key={c.key}
             />

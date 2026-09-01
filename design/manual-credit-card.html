@@ -1,0 +1,210 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A credit card entered by hand (0046)</title>
+<!-- The real stylesheet, linked and NOT copied, so nothing here can drift from
+     what the app ships. This preview adds NO new class of its own except the
+     `pv-` scaffolding: every card class below already exists, and the one style
+     0046 adds (`.man-hint`) is in juniper.css and is exercised here. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:900px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:82ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-sec{margin:34px 0 0;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 14px;max-width:92ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+  <div class="pv-head">
+    <div>
+      <div class="pv-title">A credit card entered by hand, on the Credit page (migration 0046)</div>
+      <div class="pv-sub">
+        The states the Credit page can now draw, against the real stylesheet. Not a set of variants:
+        the treatment was decided in the plan, and this exists so the copy and the badges can be read
+        rather than described. The figures are the reconciliation case: a $20,000 Chase Freedom
+        Unlimited that is an authorized-user card on another person's login, which Plaid can never
+        return, against three cards Juniper does see.
+      </div>
+    </div>
+    <button class="pv-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle theme</button>
+  </div>
+
+  <!-- 1 -->
+  <div class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">1</span> Utilization, before and after</div>
+    <div class="pv-note">
+      The whole point of the feature. <b>Before:</b> three linked cards, $17,900 of limit, and the
+      figure runs high because the denominator is short by a card Juniper cannot see.
+      <b>After:</b> the hand-entered card joins the sum and the page agrees with the member's own
+      credit report. The sentence under the figure is the existing #211 disclosure, which now covers
+      both kinds of member-supplied limit.
+    </div>
+    <div class="card pad-lg">
+      <div class="card-head"><h3>Credit cards</h3><span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">3 cards</span></div>
+      <div class="util-hero">
+        <div>
+          <div class="eyebrow">Overall utilization</div>
+          <div class="big tnum">3%</div>
+          <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px">$562 of $17,900 across 3 cards</div>
+        </div>
+        <div class="ub">
+          <div class="bar" style="height:10px"><i style="width:3%;background:var(--jnpr-accent)"></i></div>
+          <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:7px">Scoring models generally favor staying under 30% of your limit.</div>
+        </div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="card pad-lg">
+      <div class="card-head"><h3>Credit cards</h3><span style="font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600">4 cards</span></div>
+      <div class="util-hero">
+        <div>
+          <div class="eyebrow">Overall utilization</div>
+          <div class="big tnum">1%</div>
+          <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px">$562 of $37,900 across 4 cards</div>
+          <div class="cl-note">
+            One of those limits is one you set rather than one your bank reported.
+            Your Juniper Score uses bank-reported limits only.
+          </div>
+        </div>
+        <div class="ub">
+          <div class="bar" style="height:10px"><i style="width:1%;background:var(--jnpr-accent)"></i></div>
+          <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:7px">Scoring models generally favor staying under 30% of your limit.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">2</span> The three provenance states, side by side</div>
+    <div class="pv-note">
+      The badges are the load-bearing part. <b>No badge</b> means the bank reported the limit: a fact.
+      <b>You set this</b> (#211) means the member typed a limit for a card the bank DOES report, where
+      only the limit was missing. <b>You added this</b> (0046) means the member is the source of the
+      card's existence as well as its limit. Three different claims, so they do not share a label.
+    </div>
+    <div class="card pad-lg">
+      <div class="card-row">
+        <div class="tile" style="background:var(--jnpr-c4)">C</div>
+        <div class="ci">
+          <div class="cn">Chase &middot; Sapphire Preferred</div>
+          <div class="csub">&middot;&middot;&middot;&middot;1575 &middot; $434 of $9,000 limit</div>
+        </div>
+        <div class="util">
+          <div class="ut"><span>Used</span><span>5%</span></div>
+          <div class="bar"><i style="width:5%;background:var(--jnpr-accent)"></i></div>
+        </div>
+      </div>
+      <div class="card-row">
+        <div class="tile" style="background:var(--jnpr-c4)">C</div>
+        <div class="ci">
+          <div class="cn">Capital One &middot; Quicksilver Student</div>
+          <div class="csub">&middot;&middot;&middot;&middot;5012 &middot; $128 of $4,400 limit<span class="cl-mine">You set this</span> &middot; <button type="button" class="cl-set">Change limit</button></div>
+        </div>
+        <div class="util">
+          <div class="ut"><span>Used</span><span>3%</span></div>
+          <div class="bar"><i style="width:3%;background:var(--jnpr-accent)"></i></div>
+        </div>
+      </div>
+      <div class="card-row">
+        <div class="tile" style="background:var(--jnpr-c4)">C</div>
+        <div class="ci">
+          <div class="cn">Chase &middot; Freedom Unlimited</div>
+          <div class="csub">&middot;&middot;&middot;&middot;4417 &middot; $0 of $20,000 limit<span class="cl-mine">You added this</span> &middot; <a href="#" class="cl-set">Manage on Connections</a></div>
+        </div>
+        <div class="util">
+          <div class="ut"><span>Used</span><span>0%</span></div>
+          <div class="bar"><i style="width:0%;background:var(--jnpr-accent)"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">3</span> A hand-entered card with no limit yet</div>
+    <div class="pv-note">
+      It reads <b>"no limit added"</b>, not "limit not reported": there is no bank reporting anything,
+      and blaming the absence on a report the member never expected reads as a fault rather than as a
+      field they have not filled in. The link is the way out of the dead end, and it says
+      <b>Manage</b> rather than Edit because Connections offers add and remove and no in-place edit.
+    </div>
+    <div class="card pad-lg">
+      <div class="card-row">
+        <div class="tile" style="background:var(--jnpr-c4)">C</div>
+        <div class="ci">
+          <div class="cn">Chase &middot; Freedom Unlimited</div>
+          <div class="csub">$0 owed, no limit added<span class="cl-mine">You added this</span> &middot; <a href="#" class="cl-set">Manage on Connections</a></div>
+        </div>
+        <div class="util"><div class="ut"><span>Used</span><span>Unknown</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="pv-sec">
+    <div class="pv-lab"><span class="pv-num">4</span> The form, with and without the credit-only fields</div>
+    <div class="pv-note">
+      Limit and mask appear only on <code>Credit cards</code>. Not tidiness: 0046's CHECK makes a limit
+      on a checking account unrepresentable and the endpoint rejects it with a 400, so a field that
+      could collect one would be a field that could only produce an error. The note says what the
+      limit is for and, more importantly, that it does not move the Juniper Score.
+    </div>
+    <div class="card pad-lg">
+      <div class="man-form">
+        <div class="man-row">
+          <label class="man-field"><span>Account name</span><input value="Carter Bank checking"></label>
+          <label class="man-field"><span>Institution (optional)</span><input value="Carter Bank &amp; Trust"></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field"><span>Category</span><select><option>Banking</option></select></label>
+          <label class="man-field"><span>Balance (optional)</span><div class="man-money"><span>$</span><input value="4,200"></div></label>
+        </div>
+        <div class="man-actions">
+          <button class="btn ghost sm">Cancel</button><button class="btn sm">Add account</button>
+        </div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="card pad-lg">
+      <div class="man-form">
+        <div class="man-row">
+          <label class="man-field"><span>Account name</span><input value="Freedom Unlimited"></label>
+          <label class="man-field"><span>Institution (optional)</span><input value="Chase"></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field"><span>Category</span><select><option>Credit cards</option></select></label>
+          <label class="man-field"><span>Balance (optional)</span><div class="man-money"><span>$</span><input value="0"></div></label>
+        </div>
+        <div class="man-row">
+          <label class="man-field"><span>Credit limit (optional)</span><div class="man-money"><span>$</span><input value="20,000"></div></label>
+          <label class="man-field"><span>Last 4 digits (optional)</span><input value="4417"></label>
+        </div>
+        <div class="man-hint">
+          The limit lets Juniper work out your utilization across every card, including ones your
+          bank cannot show it. It is your number, so it is labelled as yours wherever it appears,
+          and it does not affect your Juniper Score.
+        </div>
+        <div class="man-actions">
+          <button class="btn ghost sm">Cancel</button><button class="btn sm">Add account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

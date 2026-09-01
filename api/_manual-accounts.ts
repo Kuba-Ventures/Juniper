@@ -63,3 +63,86 @@ export function sumManualAccounts(list: ManualAccountRow[]): ManualTotals {
   }
   return t;
 }
+
+// ── Manual CREDIT accounts, read on their own ────────────────────────────────
+//
+// The Credit page needs two fields no other manual-account reader does: the
+// `credit_limit` a member typed for a card Plaid cannot reach (migration 0046)
+// and the `mask` that makes it identifiable beside a linked card. This is a
+// SEPARATE fetch with a SEPARATE row type rather than two more columns on
+// `ManualAccountRow`, and the separation is the point.
+//
+// `fetchManualAccounts` above is read by api/_finance-snapshot.ts (Juniper Score
+// inputs), api/plaid/networth-snapshot.ts, api/plaid/networth-backfill.ts and
+// api/finances.ts. A member-typed limit must never reach the Score: it is a
+// CLAIM, the Score is a figure Juniper asserts from what it can measure, and a
+// member able to raise their own score by typing a generous number would be
+// scoring themselves. Same rule as `member_cards.credit_limit` in 0033.
+//
+// Keeping the column out of the shared select is what makes that structural
+// rather than a convention somebody has to remember: the score path cannot read
+// what it is never handed. Adding `credit_limit` to `ManualAccountRow` would put
+// it one property access away in four files, and the comment forbidding it would
+// be the only thing standing there.
+
+/** A manual credit-card account, plus the two fields only the Credit page reads. */
+export type ManualCreditRow = ManualAccountRow & {
+  id: string;
+  /** Last four digits the member typed, or null. */
+  mask: string | null;
+  /** What the member says the limit is. NULL means unknown, never zero: see
+      `utilizationPct` in ./_credit-balance.ts, which returns null rather than 0
+      for an unknown limit because those are different facts. */
+  credit_limit: number | null;
+};
+
+/**
+ * The member's manually-added CREDIT accounts, degrading if 0046 is unapplied.
+ *
+ * PostgREST rejects the WHOLE select on one unknown column, and returning [] on
+ * that failure would drop every hand-entered card off the Credit page for the
+ * length of a deploy window. So the 0046 columns are requested as optional and
+ * retried without, the same ladder shape as `rowsWithOptional` and `readCatalog`
+ * in api/card-rewards.ts. Without them a manual card still lists, with its limit
+ * unknown, which is exactly what it was before 0046.
+ */
+export async function fetchManualCreditAccounts(uid: string): Promise<ManualCreditRow[]> {
+  const base = "id,name,institution,category,kind,balance,currency";
+  const scope = `manual_accounts?user_id=eq.${uid}&category=eq.credit`;
+  const order = "&order=created_at.asc";
+  try {
+    let r = await adminRest(`${scope}&select=${base},mask,credit_limit${order}`);
+    if (!r.ok) {
+      r = await adminRest(`${scope}&select=${base}${order}`);
+      if (r.ok) console.warn("[manual] mask and credit_limit unavailable, is migration 0046 applied?");
+    }
+    if (!r.ok) {
+      console.error(`[manual] could not read manual credit accounts (${r.status})`);
+      return [];
+    }
+    const raw = (await r.json().catch(() => [])) as Partial<ManualCreditRow>[];
+    return (Array.isArray(raw) ? raw : []).map((m) => ({
+      id: String(m.id ?? ""),
+      name: String(m.name ?? ""),
+      institution: m.institution ?? null,
+      category: String(m.category ?? "credit"),
+      kind: String(m.kind ?? "liability"),
+      // PostgREST hands NUMERIC back as a string in some configurations, and a
+      // string limit would make every percentage NaN in silence. Coerced here,
+      // once, exactly as api/card-rewards.ts does for the catalog's numerics.
+      balance: m.balance == null ? null : Number(m.balance),
+      currency: m.currency ?? null,
+      mask: m.mask ?? null,
+      // Zero or negative is refused by 0046's CHECK, but this value has been
+      // through a text field and a REST layer, so it is not trusted here either:
+      // anything that is not a usable positive limit reads as unknown.
+      credit_limit:
+        m.credit_limit == null || !Number.isFinite(Number(m.credit_limit)) || Number(m.credit_limit) <= 0
+          ? null
+          : Number(m.credit_limit),
+    }));
+  } catch {
+    console.error("[manual] read threw for manual credit accounts");
+    return [];
+  }
+}

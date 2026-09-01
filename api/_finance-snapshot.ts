@@ -126,9 +126,13 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // a limit and no balance is legitimately 0% of that line.
   //
   // BANK-REPORTED LIMITS ONLY, and this is load-bearing rather than incidental.
-  // Since #211 a member can supply a limit for a card their issuer does not
-  // report one for (`member_cards.credit_limit`), and that number is shown on the
-  // Credit page with a "You set this" badge. It is deliberately NOT read here.
+  // TWO member-supplied limits now exist and NEITHER is read here. Since #211 a
+  // member can supply a limit for a card their issuer does not report one for
+  // (`member_cards.credit_limit`), shown on the Credit page with a "You set this"
+  // badge; and since migration 0046 they can enter a whole card by hand with its
+  // own limit (`manual_accounts.credit_limit`), badged "You added this", for a
+  // card Plaid can never reach at all, an authorized-user card on somebody else's
+  // login being the case that forced it. Both are deliberately NOT read here.
   // This utilization feeds the Juniper Score's credit factor at weight 0.15, and
   // the Score is a figure Juniper asserts about the member: folding in a
   // self-reported denominator would let anybody raise their own score by typing
@@ -136,7 +140,10 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // a flat placeholder from this same factor for the same reason, and a null
   // factor renormalizes the remaining weights, so a member whose only limits are
   // self-reported correctly gets an unmeasured credit factor rather than a
-  // flattering one. Do not "helpfully" join member_cards in here.
+  // flattering one. Do not "helpfully" join member_cards or select
+  // manual_accounts.credit_limit in here; the shared `fetchManualAccounts` does
+  // not even request that column, which is what keeps this structural rather than
+  // a rule somebody has to remember.
   let utilBalance = 0, utilLimit = 0;
   for (const it of items) {
     for (const a of it.accounts || []) {
@@ -163,8 +170,15 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   }
 
   // Real credit health, from the linked cards, computed before the manual
-  // balances fold in below: a hand-added card carries a balance and no credit
-  // line, so counting it would report utilization of a limit nobody entered.
+  // balances fold in below, so a hand-added card's balance cannot land in the
+  // numerator of a ratio its limit is kept out of.
+  //
+  // The reason changed with migration 0046 and the exclusion did not. It used to
+  // be that a hand-added card carried a balance and no credit line at all, so
+  // counting it would have reported utilization of a limit nobody had entered.
+  // A member can now enter that limit, and it is STILL excluded, on the stronger
+  // ground above: it is a number they typed, and the Score is Juniper's own
+  // assertion. The Credit page counts it and says whose it is.
   const creditUtilization = utilLimit > 0 ? utilBalance / utilLimit : undefined;
 
   // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
