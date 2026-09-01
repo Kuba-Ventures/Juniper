@@ -4,7 +4,10 @@ import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
-import { forgetCard, limitOf, setCardLimit, useCardRewards, type LinkedCard as RewardsCard, type ManualCard } from "@/lib/cards";
+import { forgetCard, setCardLimit, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import {
+  limitFor, linkedCards, manualCards, utilizationSummary, type CreditCardRow as LinkedCard,
+} from "@/lib/credit-cards";
 import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
@@ -91,40 +94,10 @@ import type { HolderStyle } from "@/lib/holder-style";
 // account is, so until the member confirms, Juniper has no rates to show and says
 // so through the identify prompt instead of guessing. See card-identify.tsx.
 
-type LinkedCard = {
-  key: string;
-  // Where the row came from, and it changes what the row is allowed to offer. A
-  // hand-entered card (migration 0046) has no Plaid account behind it, so it can
-  // never be identified, never has rates, and its limit is edited on Connections
-  // rather than inline here. Kept as a discriminator rather than inferred from
-  // `institutionId == null`, which would be true of a linked account whose item
-  // predates the institution-id passthrough.
-  origin: "linked" | "manual";
-  // Plaid's id for the issuer, so the brand map (keyed by id) can be read
-  // directly rather than matched on a display name.
-  institutionId: string | null;
-  institution: string;
-  name: string;
-  mask: string | null;
-  // What the member OWES. Plaid reports a credit balance as positive when owed
-  // and negative when the account is in credit, and this used to take the
-  // magnitude with it, which drew "the issuer owes you $328" as "you owe $328"
-  // and read 7% of a limit the member was using none of. See lib/credit-balance.
-  balance: number;
-  // What the ISSUER owes the member: an overpayment, or a refund that landed after
-  // the statement cleared. Kept apart from `balance` because the row has to be
-  // able to say which of the two it is drawing.
-  inCredit: number;
-  // null whenever the bank does not report a limit, and also on every snapshot
-  // written before the server started sanitizing `limit` through. This is the
-  // BANK's number: a fact.
-  limit: number | null;
-  // #211: what the MEMBER typed for a card the bank reports no limit for. A
-  // claim, kept in its own field rather than folded into `limit`, because every
-  // surface that draws it has to be able to say which of the two it drew.
-  memberLimit: number | null;
-  currency: string | null;
-};
+// The row shape, the two projections into it, and the limit precedence all
+// live in lib/credit-cards.ts now, because the Overview's Cards and rewards
+// widget is a shorter version of this page and the two must not be able to
+// disagree about a percentage. See that file's header.
 
 const money = (n: number, currency: string | null): string => {
   const cur = currency || "USD";
@@ -134,63 +107,6 @@ const money = (n: number, currency: string | null): string => {
     return `$${Math.round(n).toLocaleString("en-US")}`;
   }
 };
-
-// Credit accounts are `type === "credit"` in Plaid's taxonomy (cards plus the odd
-// line of credit). Loans are a separate type and belong to the debt surfaces, not
-// to a utilization calculation.
-function linkedCards(items: PlaidItem[]): LinkedCard[] {
-  return items.flatMap((it) =>
-    (it.accounts ?? [])
-      .filter((a) => (a.type ?? "").toLowerCase() === "credit")
-      .map((a) => ({
-        key: a.account_id,
-        origin: "linked" as const,
-        institutionId: it.institution_id ?? null,
-        institution: it.institution_name || "Linked institution",
-        name: a.name,
-        mask: a.mask,
-        balance: creditPosition(a.balance).owed,
-        inCredit: creditPosition(a.balance).inCredit,
-        limit: a.limit != null && a.limit > 0 ? a.limit : null,
-        // Filled in by the Credit component from /api/card-rewards, which is the
-        // only reader of member_cards. This function stays a pure projection of
-        // the Plaid snapshot.
-        memberLimit: null,
-        currency: a.currency,
-      })),
-  );
-}
-
-// The same row shape, from the cards the member entered by hand (migration 0046),
-// so one list and one utilization sum cover both. A manual card has no bank
-// behind it, so `limit` (the bank's number) is null by construction and the
-// member's own figure is the only one there is.
-function manualCards(list: ManualCard[]): LinkedCard[] {
-  return list.map((m) => ({
-    // Prefixed, because a manual account id and a Plaid account id are different
-    // namespaces and React needs one key space across the merged list.
-    key: `manual:${m.manual_account_id}`,
-    origin: "manual" as const,
-    // Nothing to look a brand mark up by: a hand-typed institution name is not
-    // Plaid's institution id, and guessing one from the name is how you end up
-    // drawing the Chase logo on somebody's local credit union.
-    institutionId: null,
-    institution: m.institution,
-    name: m.account_name,
-    mask: m.mask,
-    balance: m.balance,
-    inCredit: m.inCredit,
-    limit: null,
-    memberLimit: m.limit,
-    currency: m.currency,
-  }));
-}
-
-// Which limit a card actually uses, and where it came from. Delegates to
-// `limitOf` in lib/cards.ts so the precedence is defined once: the BANK's number
-// wins where it exists, because it is the fact and the member's was a stand-in
-// for its absence.
-const limitFor = (c: LinkedCard) => limitOf({ bank_limit: c.limit, member_limit: c.memberLimit });
 
 // THE PROVENANCE BADGE, and it is the load-bearing piece of both features rather
 // than decoration: a number somebody typed must never be indistinguishable from
@@ -279,11 +195,8 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
   // rather than in two, because the disclosure the member needs from this figure
   // is a single fact ("some of this rests on your own numbers"); the per-card rows
   // below are where the two cases are told apart.
-  const rated = cards.map((c) => ({ card: c, ...limitFor(c) }));
-  const withLimit = rated.filter((r) => r.limit != null);
-  const excluded = cards.length - withLimit.length;
-  const memberSet = withLimit.filter((r) => r.source === "member").length;
-  if (!withLimit.length) {
+  const sum = utilizationSummary(cards);
+  if (!sum) {
     return (
       <div className="util-hero">
         <div>
@@ -297,18 +210,15 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
       </div>
     );
   }
-  const balance = withLimit.reduce((a, r) => a + r.card.balance, 0);
-  const limit = withLimit.reduce((a, r) => a + (r.limit ?? 0), 0);
-  const used = pct(balance, limit);
-  const currency = withLimit[0].card.currency;
+  const { balance, limit, used, currency, counted, excluded, memberSet } = sum;
   return (
     <div className="util-hero">
       <div>
         <div className="eyebrow">Overall utilization</div>
         <div className="big tnum">{used}%</div>
         <div style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", marginTop: 2 }}>
-          {money(balance, currency)} of {money(limit, currency)} across {withLimit.length}{" "}
-          {withLimit.length === 1 ? "card" : "cards"}
+          {money(balance, currency)} of {money(limit, currency)} across {counted}{" "}
+          {counted === 1 ? "card" : "cards"}
           {/* "reporting no limit" was true when every card on this page came from a
               bank. A hand-entered card has nothing reporting anything, so the
               phrasing is about the ABSENCE of a limit rather than about a bank

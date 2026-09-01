@@ -1,0 +1,913 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The member arranges their Overview, three treatments (#251)</title>
+<!-- The real stylesheet, linked and NOT copied, so a treatment cannot drift from
+     what the app ships. Everything proposed here is prefixed `dw-` (dashboard
+     widgets), checked against juniper.css for collisions before a line of it was
+     written. Anything unprefixed below (.card, .score-strip, .bud, .row, .bar,
+     .eyebrow, .big-num, .cf-foot) already exists and ships today. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:82ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.65;margin:16px 0 26px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:44px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 14px;max-width:92ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+.pv-stage{background:var(--jnpr-ground);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);padding:18px}
+
+/* ── the board: one ordered stream, two columns ────────────────────────────
+   The current page has two DIFFERENT grids: a 1.5fr/1fr hero (net worth beside
+   plans) and two 1fr/1fr rows. Neither survives free reordering, because the
+   pairing is a property of the pair and the member is moving one card at a
+   time. So the board is one flow: every widget is a half, and a widget declares
+   `wide` for the case where it lands on a row alone. Net worth loses its 1.5fr
+   privilege, which is the price of letting somebody else choose the order. */
+.dw-board{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.dw-board > *{min-width:0}
+.dw-w.full{grid-column:1/-1}
+@media(max-width:860px){.dw-board{grid-template-columns:1fr}.dw-w.full{grid-column:auto}}
+
+/* ── arrange controls in the greeting band ─────────────────────────────────
+   The control lives on the band that already sits above the cards, because a
+   mode you enter needs its switch where the thing being changed starts. */
+.dw-greet{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dw-arr{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#EAF3EC;
+  font:inherit;font-size:12.5px;font-weight:650;padding:8px 14px;border-radius:9px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto}
+.dw-arr:hover{background:rgba(255,255,255,.16)}
+.dw-arr.on{background:#EAF3EC;color:var(--jnpr-accent-deep);border-color:#EAF3EC}
+.dw-arr svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.9}
+
+/* ── edit affordances (treatment A) ───────────────────────────────────────── */
+.dw-w{position:relative}
+.dw-board.editing .dw-w > .card,
+.dw-board.editing .dw-w > .score-strip{outline:1.5px dashed var(--jnpr-accent);outline-offset:3px;cursor:grab}
+.dw-board.editing .dw-w{animation:dw-jig 2.4s ease-in-out infinite}
+.dw-board.editing .dw-w:nth-child(2n){animation-delay:-1.2s}
+@keyframes dw-jig{0%,100%{transform:rotate(-.22deg)}50%{transform:rotate(.22deg)}}
+@media(prefers-reduced-motion:reduce){.dw-board.editing .dw-w{animation:none}}
+.dw-w.dw-drag{opacity:.4}
+.dw-w.dw-drop > .card{outline-color:var(--jnpr-good)}
+.dw-x,.dw-grip{position:absolute;z-index:3;display:grid;place-items:center;width:26px;height:26px;
+  border-radius:50%;border:1px solid var(--jnpr-line);background:var(--jnpr-surface);
+  box-shadow:var(--jnpr-shadow);color:var(--jnpr-ink-2);cursor:pointer;font:inherit;padding:0}
+.dw-x{top:-9px;right:-9px;font-size:16px;line-height:1}
+.dw-x:hover{background:var(--jnpr-bad-soft);color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+.dw-grip{top:-9px;left:-9px;cursor:grab}
+.dw-grip svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.dw-board:not(.editing) .dw-x,.dw-board:not(.editing) .dw-grip{display:none}
+
+/* ── the shelf of widgets that are off ─────────────────────────────────────
+   HIDDEN, NOT DELETED, and the shelf is where that difference is visible. A
+   member who turns Budgets off has to be able to find Budgets again without
+   being told where to look, and a new widget shipped later shows up here rather
+   than nowhere. */
+.dw-shelf{margin-top:16px;border:1px dashed var(--jnpr-line);border-radius:var(--jnpr-r-sm);
+  background:var(--jnpr-surface-2);padding:13px 15px}
+.dw-shelf-h{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin-bottom:9px}
+.dw-chips{display:flex;flex-wrap:wrap;gap:8px}
+.dw-chip{font:inherit;font-size:12px;font-weight:600;color:var(--jnpr-ink-2);background:var(--jnpr-surface);
+  border:1px solid var(--jnpr-line);border-radius:20px;padding:6px 12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px}
+.dw-chip:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.dw-chip b{font-weight:700;color:var(--jnpr-accent)}
+.dw-shelf-e{font-size:12px;color:var(--jnpr-ink-3)}
+
+/* ── treatment B: the arrange panel ───────────────────────────────────────── */
+.dw-split{display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start}
+@media(max-width:980px){.dw-split{grid-template-columns:1fr}}
+.dw-panel{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);
+  box-shadow:var(--jnpr-shadow);padding:16px;position:sticky;top:16px}
+.dw-panel h3{font-size:14px;margin:0}
+.dw-panel .dw-p-sub{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:5px 0 12px}
+.dw-row{display:flex;align-items:center;gap:10px;padding:9px 2px;cursor:grab}
+.dw-row + .dw-row{border-top:1px solid var(--jnpr-line-2)}
+.dw-row.dw-drag{opacity:.4}
+.dw-row .dw-h{color:var(--jnpr-ink-3);display:grid;place-items:center;width:14px;flex:0 0 auto}
+.dw-row .dw-h svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.dw-row .dw-n{flex:1;min-width:0;font-size:12.5px;color:var(--jnpr-ink);font-weight:600}
+.dw-row .dw-n span{display:block;font-size:10.5px;color:var(--jnpr-ink-3);font-weight:500;margin-top:2px}
+.dw-row.off .dw-n{color:var(--jnpr-ink-3)}
+.dw-sw{flex:0 0 auto;width:34px;height:20px;border-radius:20px;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface-3);position:relative;cursor:pointer;padding:0}
+.dw-sw i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:var(--jnpr-ink-3);transition:transform .13s ease,background .13s ease}
+.dw-sw.on{background:var(--jnpr-accent-soft);border-color:var(--jnpr-accent)}
+.dw-sw.on i{transform:translateX(14px);background:var(--jnpr-accent)}
+
+/* ── treatment C: the map ──────────────────────────────────────────────────
+   The page shrinks to a scale model of itself: same grid, same proportions,
+   labels instead of contents, so the whole arrangement is on one screen and a
+   drag is short. */
+.dw-map{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dw-tile{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);
+  box-shadow:var(--jnpr-shadow);padding:12px 13px;cursor:grab;position:relative;min-height:62px;
+  display:flex;flex-direction:column;justify-content:center;gap:3px}
+.dw-tile.full{grid-column:1/-1}
+.dw-tile.dw-drag{opacity:.4}
+.dw-tile .tt{font-size:12.5px;font-weight:650;color:var(--jnpr-ink)}
+.dw-tile .ts{font-size:10.5px;color:var(--jnpr-ink-3)}
+.dw-tile .dw-x{width:22px;height:22px;top:-7px;right:-7px;font-size:14px}
+.dw-tile .dw-dots{position:absolute;top:11px;right:12px;color:var(--jnpr-ink-3)}
+.dw-tile .dw-dots svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.dw-mapwrap{border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);background:var(--jnpr-surface-2);padding:15px}
+.dw-maphead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.dw-maphead .h{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.dw-maphead .s{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px;max-width:60ch;line-height:1.55}
+.dw-done{font:inherit;font-size:12.5px;font-weight:650;padding:8px 15px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--jnpr-accent);background:var(--jnpr-accent);color:var(--jnpr-on-accent)}
+
+
+/* ── the chosen shape: a map made of the real cards, shrunk ────────────────
+   The tiles are NOT a second drawing of each widget. Each one holds the SAME
+   markup the page renders, scaled with a transform, so the map cannot show a
+   card the Overview does not, and a change to a card is a change to its tile
+   by construction. Same rule the card holder had to satisfy in #250: two
+   surfaces, one set of rows.
+
+   Clipped to a uniform height rather than scaled to fit, because a map wants
+   equal tiles and a card wants its own height. What survives the clip is the
+   top of each card, which is where every one of them puts the thing that
+   identifies it. */
+.dw-scrim{position:absolute;inset:0;background:rgba(8,14,9,.55);border-radius:var(--jnpr-r);
+  backdrop-filter:blur(1.5px)}
+.dw-stage2{position:relative}
+.dw-modal{position:absolute;left:50%;top:26px;transform:translateX(-50%);width:min(760px,calc(100% - 32px));
+  background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);
+  box-shadow:var(--jnpr-shadow-lg);padding:18px;z-index:5}
+.dw-mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.dw-mhead h3{margin:0;font-size:15px;color:var(--jnpr-ink)}
+.dw-mhead p{margin:4px 0 0;font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;max-width:56ch}
+.dw-mact{display:flex;gap:8px;flex:0 0 auto}
+.dw-btn{font:inherit;font-size:12.5px;font-weight:650;padding:8px 15px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--jnpr-accent);background:var(--jnpr-accent);color:var(--jnpr-on-accent)}
+.dw-btn.ghost{background:none;border-color:var(--jnpr-line);color:var(--jnpr-ink-2)}
+.dw-saved{font-size:11.5px;color:var(--jnpr-good);font-weight:650;align-self:center}
+
+.dw-map2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.dw-map2.one{grid-template-columns:1fr}
+.dw-t{position:relative;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);
+  background:var(--jnpr-surface-2);overflow:hidden;cursor:grab;touch-action:none;user-select:none}
+.dw-t.full{grid-column:1/-1}
+.dw-map2.one .dw-t.full{grid-column:auto}
+.dw-t.lift{cursor:grabbing;box-shadow:var(--jnpr-shadow-lg);border-color:var(--jnpr-accent);
+  transform:scale(1.02);z-index:3;position:relative}
+.dw-t.ghost{opacity:.32}
+.dw-tbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--jnpr-line-2);
+  background:var(--jnpr-surface)}
+.dw-tbar .g{color:var(--jnpr-ink-3);display:grid;place-items:center;flex:0 0 auto}
+.dw-tbar .g svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.dw-tbar .n{flex:1;min-width:0;font-size:12px;font-weight:650;color:var(--jnpr-ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dw-tbar .h{font-size:10px;color:var(--jnpr-ink-3);font-weight:600;white-space:nowrap}
+.dw-off{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface-2);color:var(--jnpr-ink-2);cursor:pointer;font:inherit;font-size:13px;
+  line-height:1;display:grid;place-items:center;padding:0}
+.dw-off:hover{background:var(--jnpr-bad-soft);color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+/* The clipped, scaled copy of the real card. `pointer-events:none` so the
+   contents cannot be clicked, searched or focused while they are furniture:
+   a search box inside a 0.35-scale preview is a keyboard trap nobody can see. */
+.dw-prev{position:relative;height:118px;overflow:hidden;background:var(--jnpr-ground)}
+.dw-prev-in{position:absolute;top:0;left:0;transform-origin:top left;pointer-events:none;padding:10px}
+.dw-prev::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;
+  background:linear-gradient(to bottom,transparent,var(--jnpr-ground))}
+.dw-t.full .dw-prev{height:92px}
+
+/* The phone, same modal at the width a phone gives it: one column, taller
+   tiles, and the same drag. The mobile Overview is already single column
+   (`.hero`/`.two` collapse at 860px), so the map matches the page it maps. */
+.dw-two-up{display:grid;grid-template-columns:1fr 392px;gap:20px;align-items:start}
+@media(max-width:1040px){.dw-two-up{grid-template-columns:1fr}}
+.dw-phone{border:9px solid #23271F;border-radius:34px;background:var(--jnpr-ground);
+  box-shadow:var(--jnpr-shadow-lg);overflow:hidden;height:660px;position:relative}
+.dw-phone .dw-modal{position:static;transform:none;width:auto;border:0;border-radius:0;
+  box-shadow:none;height:100%;overflow:auto;padding:14px}
+/* On the phone the map stays ONE column, because the Overview is one column
+   there and a two-column map would describe an order the page does not have.
+   The compactness comes from the clip rather than from the scale: each tile is
+   the top strip of the real card at real size, which is legible on a small
+   screen, where a card shrunk to a third of a 375px width is not. */
+/* Tall enough to reach the card's first real figure, not just its title: at
+   64px every tile showed only the head, which the bar above it already says. */
+.dw-phone .dw-prev{height:104px}
+.dw-phone .dw-t.full .dw-prev{height:72px}
+.dw-phone .dw-prev::after{height:22px}
+.dw-phone-cap{text-align:center;font-size:11px;color:var(--jnpr-ink-3);margin-top:8px;font-weight:600}
+
+/* Small bits of widget content the real cards draw with components. */
+.dw-spark{width:100%;height:44px;display:block}
+.dw-mini-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--jnpr-ink-3);margin-top:8px}
+.dw-mini-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.dw-home{font-size:10.5px;color:var(--jnpr-ink-3);font-weight:600}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+
+<div class="pv-head">
+  <div>
+    <div class="pv-title">The member arranges their own Overview, three treatments (issue #251)</div>
+    <div class="pv-sub">
+      Eight widgets, the seven the Overview draws today plus Cards and rewards from the Credit page.
+      All three treatments are live: drag to reorder, turn one off, turn it back on. What differs is
+      where arranging happens, and therefore what the member is looking at while they decide.
+    </div>
+  </div>
+  <button class="pv-toggle" id="t">Light / dark</button>
+</div>
+
+<div class="pv-flag">
+  <b>Four rules hold in all three, and they are what makes this a layout feature rather than a
+  settings page.</b><br>
+  <b>1. Hidden is not deleted, and the stored value is the hidden set plus the order, never the
+  visible list.</b> A widget shipped next month is absent from every stored layout, so a stored
+  visible list would silently switch it off for every existing member. Stored as the negative, it
+  appears for everybody and can then be turned off.<br>
+  <b>2. A hidden widget must never hide a fact.</b> The "one of those limits is one you set" note
+  under utilization and the point-value disclosure under rewards are the honest half of their
+  figures. A summary widget that cannot carry its own caveat does not carry the figure either.<br>
+  <b>3. An empty widget does not hold its slot.</b> Budgets with no budgets and transactions with no
+  feed collapse out of the flow rather than sitting as titled boxes with nothing in them. The connect
+  nudge is not a widget and cannot be arranged.<br>
+  <b>4. Every widget names where its full version lives</b>, and both surfaces read the same helpers,
+  so the summary and the page can be redundant but never contradict.
+</div>
+
+<div class="pv-note" style="max-width:92ch;margin-bottom:26px">
+  <b>One consequence worth seeing before choosing.</b> Today the page has a 1.5fr/1fr hero row (net
+  worth beside plans) and two equal rows below it. Free ordering cannot keep that: the pairing is a
+  property of the pair, and the member moves one card at a time. So all three treatments flow the
+  widgets into equal halves, with a widget going full width when it lands on a row alone. Net worth
+  loses its wider column. That is the cost of the feature, and it is the same in A, B and C.
+</div>
+
+
+<!-- ══ D ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">D</span> Chosen: a map made of the real cards, in a sheet</div>
+  <div class="pv-note">
+    <b>C's map with A's cards in it.</b> Arrange opens a sheet over the page holding a scale model of
+    the Overview, and every tile is the <b>same markup the page renders</b>, scaled with a transform and
+    clipped to a uniform height, so a tile cannot show a card the Overview does not and a change to a
+    card is a change to its tile by construction. Drag with a mouse or a finger, minus takes a widget
+    off, Save writes the arrangement to the member and Cancel puts it back. The phone beside it is the
+    same sheet at 375px: one column, because the Overview is one column there and a two-column map would
+    describe an order the page does not have, with each tile clipped to the card's top strip at real size
+    rather than shrunk, since a card at a third of 375px is not legible. Reload this page
+    and the arrangement comes back, which is the persistence the real thing gets from a
+    <code>dashboard_layout</code> column rather than from this preview's localStorage.
+  </div>
+
+  <div class="dw-two-up">
+    <div class="pv-stage dw-stage2" id="stageD">
+      <div class="greet dw-greet">
+        <div>
+          <h1>Good morning, Finley</h1>
+          <div class="meta"><span>Monday, September 1</span><span>&middot;</span>
+            <span class="up">Net worth up $1,240 this month</span></div>
+        </div>
+        <button class="dw-arr" id="arrD">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
+          <span>Arrange</span>
+        </button>
+      </div>
+      <div class="dw-board" id="boardD"></div>
+      <div class="dw-scrim" id="scrimD" hidden></div>
+      <div class="dw-modal" id="modalD" hidden>
+        <div class="dw-mhead">
+          <div>
+            <h3>Arrange your Overview</h3>
+            <p>Drag a card to move it. The minus takes it off your Overview: its full version stays on
+              its own page, and you can put it back below.</p>
+          </div>
+          <div class="dw-mact">
+            <span class="dw-saved" id="savedD" hidden>Saved</span>
+            <button class="dw-btn ghost" id="cancelD">Cancel</button>
+            <button class="dw-btn" id="saveD">Save</button>
+          </div>
+        </div>
+        <div class="dw-map2" id="mapD" data-half="550" data-full="1116"></div>
+        <div class="dw-shelf" style="margin-top:12px">
+          <div class="dw-shelf-h">Not on your Overview</div>
+          <div class="dw-chips" id="trayD"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="dw-phone">
+        <div class="dw-modal">
+          <div class="dw-mhead">
+            <div><h3>Arrange your Overview</h3></div>
+            <div class="dw-mact"><button class="dw-btn" id="saveDp">Save</button></div>
+          </div>
+          <div class="dw-map2 one" id="mapDp" data-half="331" data-full="331"></div>
+          <div class="dw-shelf" style="margin-top:12px">
+            <div class="dw-shelf-h">Not on your Overview</div>
+            <div class="dw-chips" id="trayDp"></div>
+          </div>
+        </div>
+      </div>
+      <div class="dw-phone-cap">The same sheet at 375px, one column, same drag by finger</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ A ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">A</span> Jiggle in place, on the real cards</div>
+  <div class="pv-note">
+    <b>Arrange turns the page itself into the editor.</b> The cards keep their contents, gain a grip
+    and a remove badge, and tilt just enough to say the page is in a mode. Widgets turned off drop
+    into a shelf at the bottom that is only visible while arranging. This is the reference the issue
+    names, and it is the only treatment where the member is looking at the actual card while deciding
+    whether they want it. The cost is real: the drags are long (a full net-worth card is 300px tall,
+    so moving it past three others is a scroll and a drop), and a jiggling page is the treatment most
+    likely to need a keyboard fallback built beside it rather than after it.
+  </div>
+  <div class="pv-stage">
+    <div class="greet dw-greet">
+      <div>
+        <h1>Good morning, Finley</h1>
+        <div class="meta"><span>Monday, September 1</span><span>&middot;</span>
+          <span class="up">Net worth up $1,240 this month</span></div>
+      </div>
+      <button class="dw-arr" id="arrA">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
+        <span>Arrange</span>
+      </button>
+    </div>
+    <div class="dw-board" id="boardA"></div>
+    <div class="dw-shelf" id="shelfA" hidden>
+      <div class="dw-shelf-h">Not on your Overview</div>
+      <div class="dw-chips" id="chipsA"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ B ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">B</span> A panel beside the page, list on the right</div>
+  <div class="pv-note">
+    <b>Arrange opens a list of the widgets next to the page, and the page reorders live as the list
+    is dragged.</b> Eight short rows, each with a handle, the name, where its full version lives, and
+    a switch. Nothing on the page moves under the cursor, so the drag targets are 40px rows rather
+    than 300px cards, the whole set is visible at once without scrolling, and a switch is a control
+    a keyboard and a screen reader already understand. The cost: the member is arranging names, one
+    step removed from the thing itself, which is exactly the abstraction the iPhone reference avoids.
+  </div>
+  <div class="pv-stage">
+    <div class="greet dw-greet">
+      <div>
+        <h1>Good morning, Finley</h1>
+        <div class="meta"><span>Monday, September 1</span><span>&middot;</span>
+          <span class="up">Net worth up $1,240 this month</span></div>
+      </div>
+      <button class="dw-arr on" id="arrB">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
+        <span>Done</span>
+      </button>
+    </div>
+    <div class="dw-split">
+      <div class="dw-board" id="boardB"></div>
+      <div class="dw-panel">
+        <h3>Your Overview</h3>
+        <p class="dw-p-sub">Drag to reorder. Switch one off and it leaves your Overview: its full
+          version stays on its own page.</p>
+        <div id="listB"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ C ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">C</span> The page shrinks to a map of itself</div>
+  <div class="pv-note">
+    <b>Arrange collapses the Overview into a scale model: the same grid, the same proportions, labels
+    instead of contents.</b> Eight tiles on one screen, so every drag is short and the whole
+    arrangement is visible while making it, and dragging a tile is still dragging the widget rather
+    than its name. The cost: the transition into the map is the one animation this feature genuinely
+    needs (without it the page appears to have been replaced), and a tile is a promise about a card
+    the member cannot see while they place it.
+  </div>
+  <div class="pv-stage">
+    <div class="dw-mapwrap">
+      <div class="dw-maphead">
+        <div>
+          <div class="h">Arranging your Overview</div>
+          <div class="s">Drag a tile to move it. The minus takes it off your Overview, and its full
+            version stays on its own page.</div>
+        </div>
+        <button class="dw-done" id="doneC">Done</button>
+      </div>
+      <div class="dw-map" id="mapC"></div>
+      <div class="dw-shelf" style="margin-top:14px">
+        <div class="dw-shelf-h">Not on your Overview</div>
+        <div class="dw-chips" id="chipsC"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* The eight widgets, in today's order. `size` is the width a widget takes when
+   it shares a row; `full` is a widget that always spans both columns because a
+   half-width version of it would be a different card (the score strip is a
+   single line, not a box). `home` is where the unabridged version lives, which
+   every treatment states on the widget itself. */
+const WIDGETS = [
+  { id:"score",    title:"Juniper Score",         home:"/app/score",       full:true },
+  { id:"networth", title:"Net worth and cashflow", home:"/app (this page)", full:false },
+  { id:"plans",    title:"Your plans",            home:"/app/plans",       full:false },
+  { id:"spend",    title:"Where it went",         home:"/app/transactions", full:false },
+  { id:"budgets",  title:"Budgets",               home:"/app/transactions", full:false },
+  { id:"txns",     title:"Recent transactions",   home:"/app/transactions", full:false },
+  { id:"accounts", title:"Accounts",              home:"/app/connections", full:false },
+  { id:"cards",    title:"Cards and rewards",     home:"/app/credit",      full:false },
+];
+const BY_ID = Object.fromEntries(WIDGETS.map(w => [w.id, w]));
+
+const ROW = (mark, color, name, meta, amt, cls) =>
+  `<div class="row"><div class="tile" style="background:${color}">${mark}</div>
+   <div><div class="nm">${name}</div><div class="mt">${meta}</div></div>
+   <div class="amt ${cls||""}">${amt}</div></div>`;
+
+/* Card contents. Deliberately the summary and not the section page: each one is
+   the smallest true version of its figure, with the caveat that figure cannot be
+   drawn without (rule 2 above) travelling with it. */
+const BODY = {
+  score: `<div class="score-strip">
+      <svg viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="22" r="18" fill="none"
+        stroke="var(--jnpr-line)" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none"
+        stroke="var(--jnpr-good)" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="110 113" transform="rotate(-90 22 22)"/>
+        <text x="22" y="26" text-anchor="middle" font-size="13" font-weight="700"
+        fill="var(--jnpr-ink)">97</text></svg>
+      <div>
+        <div class="st-t">Juniper Score <span class="band">97 &middot; Excellent</span></div>
+        <div class="st-s"><b>+3 pts</b> this month &middot; biggest lever: utilization</div>
+      </div>
+      <a class="link" href="#">See breakdown &rarr;</a>
+    </div>`,
+  networth: `<div class="card pad-lg">
+      <div class="card-head">
+        <div><div class="eyebrow">Net worth</div>
+          <div style="display:flex;align-items:flex-end;gap:12px;margin-top:6px">
+            <span class="big-num tnum">$184,320</span>
+            <span class="delta up" style="margin-bottom:5px">2.4%</span></div></div>
+      </div>
+      <svg class="dw-spark" viewBox="0 0 300 44" preserveAspectRatio="none">
+        <path d="M0 36 L40 33 L80 34 L120 26 L160 24 L200 17 L240 15 L300 8" fill="none"
+          stroke="var(--jnpr-accent)" stroke-width="2" stroke-linejoin="round"/></svg>
+      <div class="cf-foot">
+        <div><div class="l">Income &middot; September</div><div class="v pos tnum">+$8,400</div></div>
+        <div><div class="l">Spent</div><div class="v tnum">$4,120</div></div>
+        <div><div class="l">Saved</div><div class="v acc tnum">$4,280</div></div>
+      </div>
+    </div>`,
+  plans: `<div class="card">
+      <div class="card-head"><h3>Your plans</h3><a class="link" href="#">+ New</a></div>
+      <div class="bud ok"><div class="t"><span>House deposit</span>
+        <span class="r"><b class="tnum">$18k</b> of $60k</span></div>
+        <div class="bar"><i style="width:30%"></i></div></div>
+      <div class="bud ok"><div class="t"><span>Emergency fund</span>
+        <span class="r"><b class="tnum">$9k</b> of $12k</span></div>
+        <div class="bar"><i style="width:75%"></i></div></div>
+    </div>`,
+  spend: `<div class="card">
+      <div class="card-head"><h3>Where it went: $4,120</h3><span class="head-note">September</span></div>
+      <svg viewBox="0 0 120 120" width="108" height="108" style="display:block;margin:2px auto 0">
+        <circle cx="60" cy="60" r="44" fill="none" stroke="var(--jnpr-c1)" stroke-width="20"
+          stroke-dasharray="104 172" transform="rotate(-90 60 60)"/>
+        <circle cx="60" cy="60" r="44" fill="none" stroke="var(--jnpr-c3)" stroke-width="20"
+          stroke-dasharray="69 207" transform="rotate(40 60 60)"/>
+        <circle cx="60" cy="60" r="44" fill="none" stroke="var(--jnpr-c2)" stroke-width="20"
+          stroke-dasharray="55 221" transform="rotate(130 60 60)"/>
+        <circle cx="60" cy="60" r="44" fill="none" stroke="var(--jnpr-c7)" stroke-width="20"
+          stroke-dasharray="48 228" transform="rotate(202 60 60)"/></svg>
+      <div class="dw-mini-legend">
+        <span><i style="background:var(--jnpr-c1)"></i>Housing $1,540</span>
+        <span><i style="background:var(--jnpr-c3)"></i>Groceries $1,020</span>
+        <span><i style="background:var(--jnpr-c2)"></i>Dining $815</span>
+        <span><i style="background:var(--jnpr-c7)"></i>Other $745</span>
+      </div>
+    </div>`,
+  budgets: `<div class="card">
+      <div class="card-head"><h3>Budgets</h3></div>
+      <div class="bud ok"><div class="t"><span>Groceries</span>
+        <span class="r"><b class="tnum">$1,020</b> of $1,200</span></div>
+        <div class="bar"><i style="width:85%"></i></div></div>
+      <div class="bud over"><div class="t"><span>Dining</span>
+        <span class="r"><b class="tnum">$815</b> of $600 &middot; <span class="flag">$215 over</span></span></div>
+        <div class="bar"><i style="width:100%"></i></div></div>
+    </div>`,
+  txns: `<div class="card">
+      <div class="card-head"><h3>Transactions</h3><a class="link" href="#">All &rarr;</a></div>
+      <div class="rows">
+        ${ROW("W","var(--jnpr-c1)","Whole Foods","Groceries &middot; Aug 30","-$84.20")}
+        ${ROW("S","var(--jnpr-c2)","Sunrise Coffee","Dining &middot; Aug 30","-$6.40")}
+        ${ROW("P","var(--jnpr-c3)","Payroll","Income &middot; Aug 29","+$4,200.00","inc")}
+      </div>
+    </div>`,
+  accounts: `<div class="card">
+      <div class="card-head"><h3>Accounts</h3><a class="link" href="#">Manage</a></div>
+      <div class="rows">
+        <div class="subhead">Cash</div>
+        ${ROW("C","#1152A0","Total Checking","Chase","$6,410")}
+        ${ROW("A","#B0563F","Savings","Ally","$21,900")}
+        <div class="subhead">Debts</div>
+        ${ROW("C","#8C8F94","Quicksilver","Capital One","-$328")}
+      </div>
+    </div>`,
+  cards: `<div class="card">
+      <div class="card-head"><h3>Cards and rewards</h3><a class="link" href="#">Credit &rarr;</a></div>
+      <div class="util-hero" style="margin-bottom:12px;padding-bottom:12px">
+        <div><div class="eyebrow">Utilization</div><div class="big tnum">6%</div>
+          <div style="font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px">$533 of $9,000</div>
+          <div class="cl-note" style="font-size:11px;color:var(--jnpr-ink-3);margin-top:6px;line-height:1.5">
+            One of those limits is one you set rather than one your bank reported.
+          </div>
+        </div>
+      </div>
+      <div class="rows">
+        ${ROW("C","#1152A0","Sapphire Preferred","3x on dining, use it tonight","$533")}
+      </div>
+    </div>`,
+};
+
+/* ── drag plumbing, shared by all three ────────────────────────────────────
+   Native HTML5 drag and drop, which is what this preview needs and NOT a
+   recommendation for the build: the shipped version needs a keyboard path
+   ("move up"/"move down" on each widget, or arrow keys once grabbed), and
+   native DnD gives none. Whichever treatment wins, that path is part of it. */
+function dropRef(container, sel, x, y) {
+  const els = [...container.querySelectorAll(sel)].filter((e) => !e.classList.contains("dw-drag"));
+  let best = null, bestD = Infinity;
+  for (const el of els) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < bestD) { bestD = d; best = { el, cx, cy }; }
+  }
+  if (!best) return null;
+  const before = y < best.cy - 6 ? true : y > best.cy + 6 ? false : x < best.cx;
+  return before ? best.el : best.el.nextSibling;
+}
+
+function wireDrag(container, sel, onSettled) {
+  let dragged = null;
+  container.addEventListener("dragstart", (e) => {
+    const el = e.target.closest(sel);
+    if (!el || !container.contains(el)) return;
+    dragged = el;
+    el.classList.add("dw-drag");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", el.dataset.w || ""); } catch (_) { /* Firefox */ }
+  });
+  container.addEventListener("dragover", (e) => {
+    if (!dragged) return;
+    e.preventDefault();
+    const ref = dropRef(container, sel, e.clientX, e.clientY);
+    if (ref !== dragged) container.insertBefore(dragged, ref);
+  });
+  container.addEventListener("drop", (e) => e.preventDefault());
+  container.addEventListener("dragend", () => {
+    if (!dragged) return;
+    dragged.classList.remove("dw-drag");
+    dragged = null;
+    onSettled([...container.querySelectorAll(sel)].map((el) => el.dataset.w));
+  });
+}
+
+const GRIP = `<svg viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></svg>`;
+
+/* Each treatment holds the same two values the member's profile would hold: an
+   ORDER and a HIDDEN SET. Never a visible list. See rule 1. */
+function makeState() {
+  return { order: WIDGETS.map((w) => w.id), hidden: new Set() };
+}
+
+
+/* ══ D: the chosen shape ═════════════════════════════════════════════════
+   One state, three renderers: the page behind, the desktop map, the phone map.
+   The map tiles hold BODY[id], the same markup the page renders, so this file
+   has one description of each card rather than a card and a picture of a card. */
+(() => {
+  const KEY = "jnpr_dash_preview";
+  const board = document.getElementById("boardD");
+  const scrim = document.getElementById("scrimD");
+  const modal = document.getElementById("modalD");
+  const maps = [
+    { el: document.getElementById("mapD"), tray: document.getElementById("trayD") },
+    { el: document.getElementById("mapDp"), tray: document.getElementById("trayDp") },
+  ];
+
+  // Stored as ORDER + HIDDEN, never as the visible list, so a widget shipped
+  // after this was saved appears rather than being silently off. Unknown ids
+  // are dropped and missing ones appended in their default position, which is
+  // the same reconciliation the real column needs on every read.
+  function load() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (_) { /* first run */ }
+    const st = makeState();
+    if (!saved) return st;
+    const known = new Set(WIDGETS.map((w) => w.id));
+    const order = (saved.order || []).filter((id) => known.has(id));
+    for (const w of WIDGETS) if (!order.includes(w.id)) order.splice(WIDGETS.indexOf(w), 0, w.id);
+    return { order, hidden: new Set((saved.hidden || []).filter((id) => known.has(id))) };
+  }
+  const save = (st) => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ order: st.order, hidden: [...st.hidden], v: 1 }));
+    } catch (_) { /* a private window cannot remember, and that is survivable */ }
+  };
+  const clone = (st) => ({ order: [...st.order], hidden: new Set(st.hidden) });
+
+  let saved = load();      // what the member has committed
+  let draft = clone(saved); // what the sheet is showing
+
+  const shown = (st) => st.order.filter((id) => !st.hidden.has(id));
+
+  function renderBoard() {
+    board.innerHTML = shown(saved).map((id) => {
+      const w = BY_ID[id];
+      return `<div class="dw-w ${w.full ? "full" : ""}" data-w="${id}">${BODY[id]}</div>`;
+    }).join("");
+  }
+
+  function renderMaps() {
+    for (const m of maps) {
+      m.el.innerHTML = shown(draft).map((id) => {
+        const w = BY_ID[id];
+        return `<div class="dw-t ${w.full ? "full" : ""}" data-w="${id}">
+          <div class="dw-tbar">
+            <span class="g">${GRIP}</span>
+            <span class="n">${w.title}</span>
+            <span class="h">${w.home}</span>
+            <button class="dw-off" data-off="${id}" aria-label="Take ${w.title} off your Overview">&minus;</button>
+          </div>
+          <div class="dw-prev"><div class="dw-prev-in">${BODY[id]}</div></div>
+        </div>`;
+      }).join("");
+      const off = draft.order.filter((id) => draft.hidden.has(id));
+      m.tray.innerHTML = off.length
+        ? off.map((id) => `<button class="dw-chip" data-on="${id}"><b>+</b>${BY_ID[id].title}</button>`).join("")
+        : `<span class="dw-shelf-e">Everything is on your Overview.</span>`;
+      scaleTiles(m.el);
+    }
+  }
+
+  // The scale is the tile's own width over the width the card has on the real
+  // page, so the preview is that card at that size and not an approximation of
+  // it. Re-run on resize, because the tile width is a grid track.
+  function scaleTiles(map) {
+    const half = Number(map.dataset.half), full = Number(map.dataset.full);
+    for (const t of map.querySelectorAll(".dw-t")) {
+      const base = t.classList.contains("full") ? full : half;
+      const inner = t.querySelector(".dw-prev-in");
+      const w = t.clientWidth;
+      if (!w) continue; // not laid out yet; the open path re-runs this
+      inner.style.width = `${base}px`;
+      inner.style.transform = `scale(${w / base})`;
+    }
+  }
+  addEventListener("resize", () => maps.forEach((m) => scaleTiles(m.el)));
+
+  function open() {
+    draft = clone(saved);
+    // Shown BEFORE the tiles are drawn, not after: the scale of each preview is
+    // its tile's own width, and a tile inside a `hidden` sheet measures zero,
+    // which scales every card to nothing.
+    scrim.hidden = false;
+    modal.hidden = false;
+    renderMaps();
+  }
+  function close() { scrim.hidden = true; modal.hidden = true; }
+
+  document.getElementById("arrD").onclick = open;
+  document.getElementById("cancelD").onclick = close;
+  scrim.onclick = close;
+  for (const id of ["saveD", "saveDp"]) {
+    document.getElementById(id).onclick = () => {
+      saved = clone(draft);
+      save(saved);
+      renderBoard();
+      close();
+      const flag = document.getElementById("savedD");
+      flag.hidden = false;
+      setTimeout(() => { flag.hidden = true; }, 1800);
+    };
+  }
+
+  for (const m of maps) {
+    m.el.addEventListener("click", (e) => {
+      const off = e.target.closest("[data-off]");
+      if (!off) return;
+      draft.hidden.add(off.dataset.off);
+      renderMaps();
+    });
+    m.tray.addEventListener("click", (e) => {
+      const on = e.target.closest("[data-on]");
+      if (!on) return;
+      draft.hidden.delete(on.dataset.on);
+      renderMaps();
+    });
+    // Pointer events rather than HTML5 drag and drop, because native DnD does
+    // not fire for touch at all, and this sheet has to work on the phone the
+    // member is holding.
+    wirePointerDrag(m.el, (ids) => {
+      const set = new Set(ids);
+      let i = 0;
+      // The hidden ones keep their slot in the stored order, so switching one
+      // back on returns it where it was rather than to the end.
+      draft.order = draft.order.map((id) => (set.has(id) ? ids[i++] : id));
+      // Both maps redraw, so the phone and the sheet cannot end up showing
+      // different arrangements of one draft.
+      renderMaps();
+    });
+  }
+
+  function wirePointerDrag(map, onSettled) {
+    let el = null, pid = null;
+    map.addEventListener("pointerdown", (e) => {
+      const t = e.target.closest(".dw-t");
+      if (!t || e.target.closest("button")) return;
+      e.preventDefault();
+      el = t; pid = e.pointerId;
+      t.setPointerCapture(pid);
+      t.classList.add("lift");
+    });
+    map.addEventListener("pointermove", (e) => {
+      if (!el || e.pointerId !== pid) return;
+      const ref = nearest(map, el, e.clientX, e.clientY);
+      if (ref !== el) map.insertBefore(el, ref);
+    });
+    const end = () => {
+      if (!el) return;
+      el.classList.remove("lift");
+      el = null; pid = null;
+      onSettled([...map.querySelectorAll(".dw-t")].map((t) => t.dataset.w));
+    };
+    map.addEventListener("pointerup", end);
+    map.addEventListener("pointercancel", end);
+  }
+
+  function nearest(map, dragged, x, y) {
+    let best = null, bestD = Infinity;
+    for (const t of map.querySelectorAll(".dw-t")) {
+      if (t === dragged) continue;
+      const r = t.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const d = (x - cx) ** 2 + (y - cy) ** 2;
+      if (d < bestD) { bestD = d; best = { t, cx, cy }; }
+    }
+    if (!best) return null;
+    const before = y < best.cy - 6 ? true : y > best.cy + 6 ? false : x < best.cx;
+    return before ? best.t : best.t.nextSibling;
+  }
+
+  renderBoard();
+  renderMaps();
+})();
+
+/* ══ A: jiggle in place ══════════════════════════════════════════════════ */
+(() => {
+  const st = makeState();
+  let editing = false;
+  const board = document.getElementById("boardA");
+  const shelf = document.getElementById("shelfA");
+  const chips = document.getElementById("chipsA");
+  const btn = document.getElementById("arrA");
+
+  function render() {
+    board.classList.toggle("editing", editing);
+    board.innerHTML = st.order.filter((id) => !st.hidden.has(id)).map((id) => {
+      const w = BY_ID[id];
+      return `<div class="dw-w ${w.full ? "full" : ""}" data-w="${id}" draggable="${editing}">
+        <button class="dw-grip" aria-label="Move ${w.title}">${GRIP}</button>
+        <button class="dw-x" data-off="${id}" aria-label="Remove ${w.title} from your Overview">&minus;</button>
+        ${BODY[id]}</div>`;
+    }).join("");
+    shelf.hidden = !editing;
+    const off = st.order.filter((id) => st.hidden.has(id));
+    chips.innerHTML = off.length
+      ? off.map((id) => `<button class="dw-chip" data-on="${id}"><b>+</b>${BY_ID[id].title}
+          <span class="dw-home">${BY_ID[id].home}</span></button>`).join("")
+      : `<span class="dw-shelf-e">Everything is on your Overview.</span>`;
+    btn.classList.toggle("on", editing);
+    btn.querySelector("span").textContent = editing ? "Done" : "Arrange";
+  }
+
+  btn.onclick = () => { editing = !editing; render(); };
+  board.addEventListener("click", (e) => {
+    const off = e.target.closest("[data-off]");
+    if (off) { st.hidden.add(off.dataset.off); render(); }
+  });
+  chips.addEventListener("click", (e) => {
+    const on = e.target.closest("[data-on]");
+    if (on) { st.hidden.delete(on.dataset.on); render(); }
+  });
+  wireDrag(board, ".dw-w", (ids) => {
+    // The hidden ones keep their place in the stored order, so switching one
+    // back on returns it where it was rather than to the bottom.
+    const shown = new Set(ids);
+    let i = 0;
+    st.order = st.order.map((id) => (shown.has(id) ? ids[i++] : id));
+  });
+  render();
+})();
+
+/* ══ B: the panel beside the page ════════════════════════════════════════ */
+(() => {
+  const st = makeState();
+  const board = document.getElementById("boardB");
+  const list = document.getElementById("listB");
+
+  function renderBoard() {
+    board.innerHTML = st.order.filter((id) => !st.hidden.has(id)).map((id) => {
+      const w = BY_ID[id];
+      return `<div class="dw-w ${w.full ? "full" : ""}" data-w="${id}">${BODY[id]}</div>`;
+    }).join("");
+  }
+  function renderList() {
+    list.innerHTML = st.order.map((id) => {
+      const w = BY_ID[id], on = !st.hidden.has(id);
+      return `<div class="dw-row ${on ? "" : "off"}" data-w="${id}" draggable="true">
+        <span class="dw-h">${GRIP}</span>
+        <span class="dw-n">${w.title}<span>Full version: ${w.home}</span></span>
+        <button class="dw-sw ${on ? "on" : ""}" data-t="${id}" role="switch" aria-checked="${on}"
+          aria-label="Show ${w.title} on your Overview"><i></i></button></div>`;
+    }).join("");
+  }
+  list.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-t]");
+    if (!t) return;
+    const id = t.dataset.t;
+    st.hidden.has(id) ? st.hidden.delete(id) : st.hidden.add(id);
+    renderList(); renderBoard();
+  });
+  wireDrag(list, ".dw-row", (ids) => { st.order = ids; renderBoard(); });
+  renderList(); renderBoard();
+})();
+
+/* ══ C: the map ══════════════════════════════════════════════════════════ */
+(() => {
+  const st = makeState();
+  const map = document.getElementById("mapC");
+  const chips = document.getElementById("chipsC");
+
+  function render() {
+    map.innerHTML = st.order.filter((id) => !st.hidden.has(id)).map((id) => {
+      const w = BY_ID[id];
+      return `<div class="dw-tile ${w.full ? "full" : ""}" data-w="${id}" draggable="true">
+        <button class="dw-x" data-off="${id}" aria-label="Remove ${w.title} from your Overview">&minus;</button>
+        <span class="dw-dots">${GRIP}</span>
+        <span class="tt">${w.title}</span>
+        <span class="ts">Full version: ${w.home}</span></div>`;
+    }).join("");
+    const off = st.order.filter((id) => st.hidden.has(id));
+    chips.innerHTML = off.length
+      ? off.map((id) => `<button class="dw-chip" data-on="${id}"><b>+</b>${BY_ID[id].title}</button>`).join("")
+      : `<span class="dw-shelf-e">Everything is on your Overview.</span>`;
+  }
+  map.addEventListener("click", (e) => {
+    const off = e.target.closest("[data-off]");
+    if (off) { st.hidden.add(off.dataset.off); render(); }
+  });
+  chips.addEventListener("click", (e) => {
+    const on = e.target.closest("[data-on]");
+    if (on) { st.hidden.delete(on.dataset.on); render(); }
+  });
+  wireDrag(map, ".dw-tile", (ids) => {
+    const shown = new Set(ids);
+    let i = 0;
+    st.order = st.order.map((id) => (shown.has(id) ? ids[i++] : id));
+  });
+  render();
+  document.getElementById("doneC").onclick = () => { /* preview only: the map is the state */ };
+})();
+
+document.getElementById("t").onclick = () => document.documentElement.classList.toggle("dark");
+</script>
+</body>
+</html>

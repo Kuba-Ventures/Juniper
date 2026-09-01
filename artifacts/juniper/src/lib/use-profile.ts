@@ -16,6 +16,7 @@ import {
   type UserProfile,
 } from "@/lib/profile";
 import { asHolderStyle } from "@/lib/holder-style";
+import { asDashboardLayout } from "@/lib/dashboard-layout";
 
 export function nameFromEmail(email: string): string {
   if (!email) return "there";
@@ -95,6 +96,12 @@ export function useProfile(email: string, metaName?: string): UseProfile {
             // client should not trust a constraint in a database it cannot see,
             // and this value ends up in a class name.
             holderStyle: asHolderStyle(data.holder_style) ?? prev?.holderStyle,
+            // Narrowed for the same reason, and with more at stake: 0049's CHECK
+            // constrains the shape but deliberately not the widget ids, since
+            // they are the app's registry and a closed list there would mean a
+            // migration before every new card. So the client is the only thing
+            // that can drop an id it does not know.
+            dashboardLayout: asDashboardLayout(data.dashboard_layout) ?? prev?.dashboardLayout,
           };
           saveProfileLocal(next, email);
           return next;
@@ -127,6 +134,7 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         // Null, not omitted, so clearing a choice actually clears it. `?? null`
         // rather than `|| null` because "" is not a value this field can hold.
         holder_style: p.holderStyle ?? null,
+        dashboard_layout: p.dashboardLayout ?? null,
       });
     },
     [email, displayName],

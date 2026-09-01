@@ -142,6 +142,14 @@ export default function JuniperApp() {
                 goalsReady={ready}
                 showWelcome={showWelcome}
                 onDismissWelcome={dismissWelcome}
+                // How this member arranged their Overview (migration 0049),
+                // saved through the same profile path holder_style takes, so it
+                // lands in localStorage and in `user_profiles` together and
+                // travels with the member rather than with this browser.
+                // Spread over the CURRENT profile rather than a fresh object:
+                // saving a layout must not blank somebody's income.
+                layout={profile?.dashboardLayout ?? null}
+                onLayout={(next) => saveProfile({ ...(profile ?? {}), dashboardLayout: next })}
               />
             )}
           </Route>
