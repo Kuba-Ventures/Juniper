@@ -124,8 +124,7 @@ const FACE_H = Math.round(HOLDER_W / 1.586); // ID-1: 85.60mm x 53.98mm
  * each card shows about a quarter of itself, which is what the reference
  * photograph shows and what makes four cards legible in the height of one.
  */
-const REVEAL_OPEN = Math.round(FACE_H / 4);   // a quarter of the card
-const REVEAL_CLOSED = 26;
+const REVEAL = Math.round(FACE_H / 4);   // a quarter of the card
 /**
  * The front panel's height, matching `.cr-holder-cover`.
  *
@@ -256,7 +255,6 @@ function CardWallet({
   holderStyle: HolderStyle | null;
 }) {
   const withProduct = cards.filter((c) => c.product);
-  const [collapsed, setCollapsed] = useState(false);
   // Which card's sheet is open, by slot key. Replaces the old "which card is
   // raised 7px", which stopped meaning anything once a cover sat in front of
   // every card: there is nothing to raise a card out of, and 7px was never an
@@ -314,14 +312,19 @@ function CardWallet({
   // three, which is what made "4 cards" sit above a stack of three, and it never
   // needed to: closing the holder tightens the reveal, it does not hide cards.
   // A member with eight cards gets a shorter holder, not a truncated one.
-  const step = collapsed ? REVEAL_CLOSED : REVEAL_OPEN;
   // The clip's height, and the clip is what keeps the stack inside the holder:
-  // every card is FACE_H tall and only `step` of it is meant to show, so without
+  // every card is FACE_H tall and only REVEAL of it is meant to show, so without
   // `overflow:hidden` the last one hangs out. That was the reported bug.
   //
   // The front card gets the same reveal as the others and then the cover crosses
   // it, which is the whole point of the cover: nothing lies ON the holder.
-  const clipH = step * slots.length + COVER_H;
+  //
+  // NO COLLAPSED STATE. It used to hide all but three cards, which is what made
+  // "4 cards" sit above a stack of three; that was fixed by making it tighten the
+  // reveal instead, and once it only moved a quarter-card's worth of height it
+  // was a control that cost a line of copy to save 44px. A holder is now one
+  // shape: every card, a quarter of each, the cover across the front.
+  const clipH = REVEAL * slots.length + COVER_H;
 
   return (
     <div className={`cr-holder ${holderClass(holderStyle)}`}>
@@ -334,7 +337,7 @@ function CardWallet({
             type="button"
             key={s.key}
             className="cr-holder-card"
-            style={{ top: i * step, height: FACE_H, zIndex: (i + 1) * 10 }}
+            style={{ top: i * REVEAL, height: FACE_H, zIndex: (i + 1) * 10 }}
             // Says what tapping DOES, and the two do different things: a card
             // Juniper can describe opens its sheet, and an outline opens the
             // picker, because there is nothing to describe yet.
@@ -381,7 +384,7 @@ function CardWallet({
           key={`band:${s.key}`}
           className="cr-holder-band"
           aria-hidden="true"
-          style={{ top: (i + 1) * step - BAND_H, zIndex: (i + 1) * 10 + 5 }}
+          style={{ top: (i + 1) * REVEAL - BAND_H, zIndex: (i + 1) * 10 + 5 }}
         />
       ))}
       {/* THE COVER: the wallet's front panel, in front of every card rather than
@@ -403,14 +406,6 @@ function CardWallet({
             and the "N cards" on the Credit list above all say the same number. The
             header underneath is the one that breaks it down. */}
         {slots.length} {slots.length === 1 ? "card" : "cards"}
-        {slots.length > 1 && (
-          <>
-            {" "}&middot;{" "}
-            <button type="button" className="cr-holder-toggle" onClick={() => setCollapsed((v) => !v)}>
-              {collapsed ? "Show all" : "Collapse"}
-            </button>
-          </>
-        )}
       </div>
     </div>
   );
