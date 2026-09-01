@@ -626,6 +626,24 @@ rationale in `docs/CARD_REWARDS.md`.
   so the labels removed a change earlier came straight back. All ten rescoped.
   The real cost of the feature is not the styles, it is that six of them times light/dark times
   collapsed/expanded is 24 states, which is why the set is six and not ten.
+- [x] **A cover on the front, and a tap opens the card rather than nudging it.** Two follow-ups from
+  looking at the shipped holder beside the reference photograph. **The cover:** the front card used to
+  lie fully visible on top of the pocket, which is not how a wallet works, so `.cr-holder-cover` now sits
+  in front of the WHOLE stack and every card shows about a quarter of itself (`FACE_H / 4`), which is
+  what the photograph shows and what makes four cards legible in the height of one. The foot sits on the
+  cover rather than below it, so the holder does not grow a second seam-divided strip of leather under
+  the cards. Each material has its own cover, since the panel is the same leather as the body.
+  **The tap:** it moved the card seven pixels, a leftover from when the holder was a loose stack and
+  raising a card was the only way to read the one behind it. With a cover in front of every card there is
+  nothing to raise it out of, and seven pixels was never an answer to "what is this card". It now opens
+  a **card sheet**, treatment A of three rendered in `design/card-holder-cover-preview.html`: the card at
+  a size worth looking at with the figures the Credit list already shows, printed the same way. The
+  figures are resolved on the SLOT rather than in the sheet, so `limitOf`'s precedence keeps one
+  definition. `.cr-holder-card.up` is deleted rather than left dead.
+  Verified against the real component on four cards chosen to exercise the rules: a card in credit reads
+  "In credit" and 0% used rather than being drawn as debt, a card with no limit reads "Not known" and
+  "Unknown" rather than 0%, a member-set limit is badged "Yours", and a hand-entered card carries "You
+  added this".
 - [ ] **(ops)** Apply `0048`. Deploy first, as with `0037`, though it is additive and safe either way:
   the column is nullable and an absent value renders the default holder. Verified against a scratch
   Postgres before shipping: `0001` then `0048` applies clean, re-running is a no-op, a pre-existing
