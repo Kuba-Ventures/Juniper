@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
   money, moneyK, money2,
@@ -14,6 +14,14 @@ import {
 import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, SCORE_DASH,
 } from "@/components/juniper/primitives";
+import {
+  WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
+  type DashboardLayout,
+} from "@/lib/dashboard-layout";
+import {
+  CardsWidget, RecurringWidget, useCardsWidget, useRecurringWidget,
+} from "@/components/juniper/overview-widgets";
+import type { PlaidItem } from "@/lib/plaid";
 
 // Points down for a decline. The net-worth delta used to be hardcoded up-and-
 // green, which was safe only while the number came from a demo household that
@@ -350,12 +358,139 @@ function YourPlansCard({ goals, goalsReady }: { goals: string[]; goalsReady: boo
   );
 }
 
+// ── ARRANGING (issue #251) ─────────────────────────────────────────────────
+//
+// The Overview is the most-visited page in the app and it used to be the same
+// page for everybody, in an order somebody chose once. It is now the member's:
+// Arrange turns the cards themselves into the editor, they drag them where they
+// want them, and a card they do not want goes to a shelf rather than away.
+//
+// Treatment A of four, rendered in design/dashboard-widgets-variants.html. The
+// three it beat were a list of widget names in a side panel, a scale model of
+// the page in a sheet, and a hybrid of the two. What won is the one where the
+// member is looking at the actual card while deciding whether they want it.
+//
+// FOUR RULES HOLD HERE, and they are what makes this a layout feature rather
+// than a settings page. They are stated where they are enforced, and this is the
+// index:
+//   1. The stored value is the order and the HIDDEN set, never the visible list.
+//      See lib/dashboard-layout.ts, which is where that argument lives.
+//   2. A hidden widget must never hide a fact. A summary that cannot carry its
+//      own caveat does not carry the figure either: the member-set-limit note
+//      travels with utilization, the point-value disclosure with a rewards rate,
+//      the unset-cadence count with the recurring total.
+//   3. An empty widget does not hold its slot. A widget with nothing to say
+//      collapses out of the flow rather than sitting as a titled box with
+//      nothing under it, and it is drawn as a placeholder ONLY while arranging,
+//      so the slot the member gave it is still theirs to move.
+//   4. Empty states are not widgets. ConnectNudge is not arrangeable and never
+//      enters the order: it is the page's answer to having no data at all.
+//
+// PERSONAL OVERVIEW ONLY, deliberately. The shared space builds its nav from
+// what the partnership holds rather than from a declaration
+// (components/juniper/shared-frame.tsx), so "which cards are on it" is already
+// answered there by the content, and a second, member-owned answer would be a
+// third source of truth about a page two people share. Whether one member may
+// arrange a page both of them look at is a question about the partnership, not
+// about layout, and it is not answered here.
+
+/** The keyboard's version of a drag. A grip is a real button, so it is reachable
+ *  by Tab, and the arrows move the card it belongs to. Without this the whole
+ *  feature is mouse-only, which is the defect #190 fixed on plan cards. */
+const NUDGE_KEYS: Record<string, -1 | 1> = {
+  ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1,
+};
+
+const GripIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={13} height={13}><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" /></svg>
+);
+
+const ArrangeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" width={14} height={14}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+);
+
+/** Drawn in a widget's place while arranging, when the widget has nothing to
+ *  show. Rule 3: it must not occupy a slot on the live page, and the member must
+ *  still be able to move the slot they chose for it. */
+function EmptySlot({ title, why }: { title: string; why: string }) {
+  return (
+    <div className="card dash-empty">
+      <div className="card-head"><h3>{title}</h3></div>
+      <p>{why}</p>
+    </div>
+  );
+}
+
+function LoadingSlot({ title }: { title: string }) {
+  return (
+    <div className="card dash-empty">
+      <div className="card-head"><h3>{title}</h3></div>
+      <p>Loading…</p>
+    </div>
+  );
+}
+
+/**
+ * Which widgets sit on which row, and whether the last one stretches.
+ *
+ * The page used to have two different grids, a 1.5fr/1fr hero and two equal
+ * rows. Neither survives free ordering: the pairing is a property of the pair
+ * and the member moves one card at a time. So every widget is a half, a widget
+ * marked `full` spans the row, and a half left ALONE on the final row stretches
+ * rather than sitting beside a hole. Net worth losing its wider column is the
+ * price of the feature and is paid here.
+ */
+function withSpans(ids: string[]): { id: string; full: boolean }[] {
+  const out: { id: string; full: boolean }[] = [];
+  let col = 0;
+  for (const id of ids) {
+    const full = !!WIDGET_BY_ID[id]?.full;
+    out.push({ id, full });
+    col = full ? 0 : col === 0 ? 1 : 0;
+  }
+  const last = out[out.length - 1];
+  if (last && !last.full && col === 1) last.full = true;
+  return out;
+}
+
+function ScoreWidget({ score, pending }: { score: FinanceData["score"]; pending: boolean }) {
+  return (
+    /* WITHHELD, NOT ZEROED, until the server has answered. The score is derived,
+       and the manual layer derives it from different inputs than the live one,
+       so drawing it on first paint showed a profile-derived 53 replaced a
+       moment later by a live 97. See `scorePending` in lib/finances.ts. The
+       strip keeps its exact shape either way, so nothing moves when the real
+       number arrives. */
+    <div className="score-strip">
+      <MiniRing score={score.value} pending={pending} />
+      <div>
+        <div className="st-t">
+          Juniper Score{" "}
+          <span className={pending ? "band pending" : "band"}>
+            {pending ? SCORE_DASH : <>{score.value} · {score.band}</>}
+          </span>
+        </div>
+        <div className="st-s">
+          {pending
+            ? <>Working out your score…</>
+            : score.delta !== 0
+              ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
+              : <>Your starting score · biggest lever: {score.lever}</>}
+        </div>
+      </div>
+      <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
+    </div>
+  );
+}
+
 export default function Overview({
   name,
   goals = [],
   goalsReady = false,
   showWelcome,
   onDismissWelcome,
+  layout = null,
+  onLayout,
 }: {
   name: string;
   goals?: string[];
@@ -364,13 +499,20 @@ export default function Overview({
   goalsReady?: boolean;
   showWelcome?: boolean;
   onDismissWelcome?: () => void;
+  /** How this member arranged their Overview (migration 0049), or null for
+      "has not arranged anything", which is not the same as arranging the
+      default: an unarranged member moves if the default order ever changes. */
+  layout?: DashboardLayout | null;
+  onLayout?: (next: DashboardLayout) => void;
 }) {
   const { data, hasTransactions, scorePending } = useFinances();
-  // Institution brand art for the Accounts card. One fetch per page load, cached
-  // for a week server-side, and it only ever covers institutions this member has
-  // linked. Failure is silent by design: the mark resolver falls through to
-  // bundled art and then a monogram, so a logo is a nicety, never a dependency.
+  // Institution brand art for the Accounts card, and the credit accounts the
+  // Cards widget reads. One fetch per page load, cached for a week server-side,
+  // and it only ever covers institutions this member has linked. Failure is
+  // silent by design: the mark resolver falls through to bundled art and then a
+  // monogram, so a logo is a nicety, never a dependency.
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
+  const [items, setItems] = useState<PlaidItem[] | null>(null);
   useEffect(() => {
     let cancelled = false;
     // Two calls rather than one: the logo endpoint keys its week-long cache on
@@ -379,12 +521,17 @@ export default function Overview({
     // the id set a newly linked bank would sit on a cached miss and show a
     // monogram for a week.
     fetchPlaidItems()
-      .then((items) => fetchInstitutionLogos(items.map((it) => it.institution_id)))
+      .then((list) => {
+        if (!cancelled) setItems(list);
+        return fetchInstitutionLogos(list.map((it) => it.institution_id));
+      })
       .then((m) => {
         if (!cancelled) setBrands(m);
       })
       .catch(() => {
-        /* a logo is a nicety: the resolver falls through to bundled art, then a monogram */
+        // A logo is a nicety: the resolver falls through to bundled art, then a
+        // monogram. `items` staying null costs the Cards widget its list, which
+        // is why that widget treats null as still-loading rather than as empty.
       });
     return () => {
       cancelled = true;
@@ -401,30 +548,222 @@ export default function Overview({
   // a manual dashboard, where the two come from different places.
   const totalSpent = spending.reduce((a, s) => a + s.v, 0);
   // With no transaction feed (manual entry, or a fresh link whose transactions
-  // haven't landed), spending and budgets have nothing real to show, so swap
-  // them for an honest connect nudge.
+  // haven't landed), spending, budgets and the recent-transactions list have
+  // nothing real to show, so they collapse and an honest connect nudge takes
+  // their place at the foot of the page.
   //
   // Gated on the server's `hasTransactions`, not on source === "live", which is
   // now true for a member who only has balances (api/finances.ts gates per
-  // section). Everything behind this flag is now the member's own: the
-  // Subscriptions panel that used to sit under it was built entirely from seeded
-  // rows, and since the gate only opens for members with a REAL feed, the people
-  // shown invented subscriptions were exactly the linked ones. The panel is
-  // gone. The "Your plans" card does not sit behind the flag either: real plans
-  // exist whether or not a transaction feed does, so it reads them directly and
-  // shows its own empty state.
+  // section).
   const hasTxns = hasTransactions && (transactions.length > 0 || spending.length > 0);
+
+  // ── the member's arrangement ─────────────────────────────────────────────
+  const [editing, setEditing] = useState(false);
+  const [order, setOrder] = useState<string[]>(() => resolveOrder(layout));
+  const [hidden, setHidden] = useState<Set<string>>(
+    () => new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id)),
+  );
+  const [announce, setAnnounce] = useState("");
+
+  // ── the write side reads the refs, not the state ─────────────────────────
+  //
+  // Both mutations below can fire more than once before React re-renders: two
+  // chips tapped in the same tick, or a held arrow key repeating. Reading
+  // `order`/`hidden` out of the closure loses every write but the last, which is
+  // not theoretical: adding both shelf widgets at once put exactly one of them
+  // back. The refs are updated synchronously, so the second call in a tick sees
+  // the first.
+  const orderRef = useRef(order);
+  const hiddenRef = useRef(hidden);
+  useEffect(() => { orderRef.current = order; }, [order]);
+  useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
+
+
+  // The profile resolves after first paint, so the stored layout arrives late.
+  // Adopted only while NOT arranging: a remote answer landing mid-drag would
+  // pull the card out from under the member's finger.
+  useEffect(() => {
+    if (editing) return;
+    const nextOrder = resolveOrder(layout);
+    const nextHidden = new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id));
+    orderRef.current = nextOrder;
+    hiddenRef.current = nextHidden;
+    setOrder(nextOrder);
+    setHidden(nextHidden);
+  }, [layout, editing]);
+
+  // Written through the profile, so the arrangement lands in localStorage and in
+  // `user_profiles` by the same path holder_style takes, and travels with the
+  // member to every device rather than living on this one. Debounced, because a
+  // keyboard nudge held down would otherwise be one POST per keypress.
+  const saveTimer = useRef<number | null>(null);
+  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>) => {
+    if (!onLayout) return;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id)));
+    }, 500);
+  }, [onLayout]);
+  useEffect(() => () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); }, []);
+
+  const setShown = (id: string, on: boolean) => {
+    const next = new Set(hiddenRef.current);
+    if (on) next.delete(id); else next.add(id);
+    hiddenRef.current = next;
+    setHidden(next);
+    persist(orderRef.current, next);
+    setAnnounce(`${WIDGET_BY_ID[id]?.title} ${on ? "added to" : "taken off"} your Overview`);
+  };
+
+  const nudge = (id: string, delta: -1 | 1) => {
+    const next = withNudged(orderRef.current, id, delta);
+    if (next === orderRef.current) return;
+    orderRef.current = next;
+    setOrder(next);
+    persist(next, hiddenRef.current);
+    const visible = next.filter((w) => !hiddenRef.current.has(w));
+    setAnnounce(`${WIDGET_BY_ID[id]?.title} moved to ${visible.indexOf(id) + 1} of ${visible.length}`);
+  };
+
+  // Pointer events rather than the native HTML5 drag, which does not fire for
+  // touch at all: this has to work on the phone the member is holding. The
+  // capture is taken on the BOARD rather than on the card, because the card is
+  // re-rendered mid-drag as the order changes and a capture on it would be lost
+  // with the node it was taken on.
+  const board = useRef<HTMLDivElement>(null);
+  // Which card is being dragged, in a ref for the same reason the order is: the
+  // handlers below can run before React has re-rendered with the new state, and
+  // a `pointerup` that reads a stale null leaves the board stuck mid-drag. The
+  // state copy exists only to put a class on the card.
+  const dragRef = useRef<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const onCardPointerDown = (e: React.PointerEvent, id: string) => {
+    if (!editing) return;
+    if ((e.target as HTMLElement).closest("button")) return; // the remove badge
+    e.preventDefault();
+    // Capture so the drag survives the pointer leaving the card, which it does
+    // immediately: the cards reorder under the finger. Guarded because capture
+    // throws on a pointer the browser no longer considers active, and losing the
+    // capture is survivable (the board still sees the moves) while throwing here
+    // would leave the page in a mode with no drag at all.
+    try { board.current?.setPointerCapture(e.pointerId); } catch { /* not fatal */ }
+    dragRef.current = id;
+    setDragId(id);
+  };
+  const onBoardPointerMove = (e: React.PointerEvent) => {
+    const id = dragRef.current;
+    if (!id || !board.current) return;
+    const over = widgetUnder(board.current, id, e.clientX, e.clientY);
+    if (!over) return;
+    const next = withMoved(orderRef.current, id, over);
+    if (next === orderRef.current) return;
+    orderRef.current = next;
+    setOrder(next);
+  };
+  const endDrag = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setDragId(null);
+    persist(orderRef.current, hiddenRef.current);
+  };
+
+  const cardsOn = !hidden.has("cards");
+  const recurringOn = !hidden.has("recurring");
+  const cardsData = useCardsWidget(cardsOn, items);
+  const recurringData = useRecurringWidget(recurringOn);
+
+  // Every widget, drawn once. A widget's own emptiness is decided here rather
+  // than inside it, because the board has to know whether to give it a slot
+  // before it draws one (rule 3).
+  const nodes: Record<string, ReactNode> = {
+    score: <ScoreWidget score={score} pending={scorePending} />,
+    networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} />,
+    plans: <YourPlansCard goals={goals} goalsReady={goalsReady} />,
+    spend: (
+      <div className="card">
+        {/* No month picker. /api/finances rolls up the CURRENT month and
+           nothing else, so the three pills that used to sit here (June, July,
+           Aug, with July lit whatever the date) were inert and mislabeled at
+           once. The month is stated instead. */}
+        <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{cashflow.month}</span></div>
+        <SpendingDonut data={spending} />
+      </div>
+    ),
+    budgets: (
+      <div className="card">
+        <div className="card-head"><h3>Budgets</h3></div>
+        <Budgets items={budgets} spending={spending} />
+      </div>
+    ),
+    txns: <TransactionsPanel items={transactions} />,
+    accounts: (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {accounts.cash.length + accounts.invest.length + accounts.debt.length === 0 ? (
+          <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>
+            No accounts yet. <Link href="/app/connections" className="link">Connect one</Link> to see balances here.
+          </div>
+        ) : (
+          <div className="rows">
+            {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} brands={brands} />}
+            {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} brands={brands} />}
+            {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} brands={brands} />}
+          </div>
+        )}
+      </div>
+    ),
+    cards: cardsData.loading
+      ? <LoadingSlot title="Cards and rewards" />
+      : <CardsWidget data={cardsData} />,
+    recurring: recurringData.loading
+      ? <LoadingSlot title="Recurring charges" />
+      : <RecurringWidget data={recurringData} />,
+  };
+
+  // Why each widget has nothing to say, in the member's terms, because the
+  // placeholder states it while they arrange.
+  const emptyWhy: Record<string, string | null> = {
+    score: null,
+    networth: null,
+    plans: null,
+    spend: hasTxns ? null : "Connect an account and your spending breakdown appears here.",
+    budgets: hasTxns ? null : "Connect an account and your budgets appear here.",
+    txns: hasTxns ? null : "Connect an account and your recent transactions appear here.",
+    accounts: null,
+    cards: cardsData.empty ? "No credit cards linked yet." : null,
+    recurring: recurringData.empty ? "No recurring charges detected yet." : null,
+  };
+
+  const shownIds = order.filter((id) => !hidden.has(id));
+  // Rule 3 again, at the point it bites: an empty widget is skipped on the live
+  // page and drawn as a placeholder while arranging.
+  const laidOut = withSpans(shownIds.filter((id) => editing || !emptyWhy[id]));
+  const offIds = order.filter((id) => hidden.has(id));
+
   return (
     <div className="frame">
-      <div className="greet">
-        <h1>Good morning, {first}</h1>
-        <div className="meta">
-          <span>{today}</span>
-          <span>·</span>
-          {netWorth.changeAbs > 0
-            ? <span className="up">Net worth up {money(netWorth.changeAbs)} this month</span>
-            : <span>Here's your financial picture</span>}
+      <div className="greet dash-greet">
+        <div>
+          <h1>Good morning, {first}</h1>
+          <div className="meta">
+            <span>{today}</span>
+            <span>·</span>
+            {netWorth.changeAbs > 0
+              ? <span className="up">Net worth up {money(netWorth.changeAbs)} this month</span>
+              : <span>Here's your financial picture</span>}
+          </div>
         </div>
+        {/* The switch for a MODE, on the band the cards start under. Arranging
+           is something you enter and leave, which is the half of the iPhone
+           reference that matters; the tilt is the other half and is decoration. */}
+        <button
+          className={editing ? "dash-arr on" : "dash-arr"}
+          onClick={() => { setEditing((v) => !v); setAnnounce(editing ? "Done arranging" : "Arranging your Overview"); }}
+        >
+          <ArrangeIcon />
+          {editing ? "Done" : "Arrange"}
+        </button>
       </div>
 
       {showWelcome && (
@@ -439,77 +778,107 @@ export default function Overview({
         </div>
       )}
 
-      {/* WITHHELD, NOT ZEROED, until the server has answered. The score is derived,
-          and the manual layer derives it from different inputs than the live one,
-          so drawing it on first paint showed a profile-derived 53 replaced a
-          moment later by a live 97. See `scorePending` in lib/finances.ts. The
-          strip keeps its exact shape either way, so nothing moves when the real
-          number arrives. */}
-      <div className="score-strip" style={{ marginBottom: 16 }}>
-        <MiniRing score={score.value} pending={scorePending} />
-        <div>
-          <div className="st-t">
-            Juniper Score{" "}
-            <span className={scorePending ? "band pending" : "band"}>
-              {scorePending ? SCORE_DASH : <>{score.value} · {score.band}</>}
-            </span>
-          </div>
-          <div className="st-s">
-            {scorePending
-              ? <>Working out your score…</>
-              : score.delta !== 0
-                ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
-                : <>Your starting score · biggest lever: {score.lever}</>}
-          </div>
-        </div>
-        <Link href="/app/score" className="link" style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>See breakdown →</Link>
-      </div>
-
-      <div className="grid hero" style={{ marginBottom: 16 }}>
-        <NetWorthCard netWorth={netWorth} cashflow={cashflow} />
-        <YourPlansCard goals={goals} goalsReady={goalsReady} />
-      </div>
-
-      {hasTxns && (
-        <div className="grid two" style={{ marginBottom: 16 }}>
-          <div className="card">
-            {/* No month picker. /api/finances rolls up the CURRENT month and
-               nothing else, so the three pills that used to sit here (June,
-               July, Aug, with July lit whatever the date) were inert and
-               mislabeled at once. The month is stated instead. */}
-            <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{cashflow.month}</span></div>
-            <SpendingDonut data={spending} />
-          </div>
-          <div className="card">
-            {/* No Edit control. /api/budgets already does full CRUD on the
-               member's limits, but no client code calls it, and a button that
-               opens nothing is worse than no button. Wiring that endpoint up is
-               a feature for a later stage, not part of this cleanup. */}
-            <div className="card-head"><h3>Budgets</h3></div>
-            <Budgets items={budgets} spending={spending} />
-          </div>
-        </div>
+      {editing && (
+        <p className="dash-hint">
+          Drag a card to move it, or focus its handle and use the arrow keys. The minus takes a card off
+          your Overview: its full version stays on its own page, and you can put it back below.
+        </p>
       )}
 
-      {/* Last block on the page now that Subscriptions is gone, so no trailing
-         margin: `.frame` already carries the bottom gutter. */}
-      <div className="grid two">
-        {hasTxns ? <TransactionsPanel items={transactions} /> : <ConnectNudge />}
-        <div className="card">
-          <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
-          {accounts.cash.length + accounts.invest.length + accounts.debt.length === 0 ? (
-            <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>
-              No accounts yet. <Link href="/app/connections" className="link">Connect one</Link> to see balances here.
+      <div
+        className={editing ? "dash-board editing" : "dash-board"}
+        ref={board}
+        onPointerMove={onBoardPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        // The capture can be lost without a pointerup (a browser gesture, a
+        // context menu, the tab losing focus). Without this the board would stay
+        // in a drag nobody is performing.
+        onLostPointerCapture={endDrag}
+      >
+        {laidOut.map(({ id, full }) => {
+          const meta = WIDGET_BY_ID[id];
+          const why = emptyWhy[id];
+          return (
+            <div
+              key={id}
+              data-widget={id}
+              className={`dash-w${full ? " full" : ""}${dragId === id ? " dragging" : ""}`}
+              onPointerDown={(e) => onCardPointerDown(e, id)}
+            >
+              {editing && (
+                <>
+                  <button
+                    className="dash-grip"
+                    aria-label={`Move ${meta.title}. Use the arrow keys.`}
+                    onKeyDown={(e) => {
+                      const d = NUDGE_KEYS[e.key];
+                      if (!d) return;
+                      e.preventDefault();
+                      nudge(id, d);
+                    }}
+                  >
+                    <GripIcon />
+                  </button>
+                  <button
+                    className="dash-x"
+                    aria-label={`Take ${meta.title} off your Overview`}
+                    onClick={() => setShown(id, false)}
+                  >
+                    −
+                  </button>
+                </>
+              )}
+              {why ? <EmptySlot title={meta.title} why={why} /> : nodes[id]}
             </div>
+          );
+        })}
+      </div>
+
+      {editing && (
+        <div className="dash-shelf">
+          <div className="dash-shelf-h">Not on your Overview</div>
+          {offIds.length === 0 ? (
+            <span className="dash-shelf-e">Everything is on your Overview.</span>
           ) : (
-            <div className="rows">
-              {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} brands={brands} />}
-              {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} brands={brands} />}
-              {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} brands={brands} />}
+            <div className="dash-chips">
+              {offIds.map((id) => (
+                <button key={id} className="dash-chip" onClick={() => setShown(id, true)}>
+                  <b>+</b>{WIDGET_BY_ID[id].title}
+                  <span className="dash-chip-h">{WIDGET_BY_ID[id].homeLabel}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* RULE 4: an empty state is not a widget. This is the page's answer to
+         having no transaction feed at all, it is not something the member chose
+         to put here, and it never enters the order. */}
+      {!hasTxns && !editing && (
+        <div style={{ marginTop: 16 }}>
+          <ConnectNudge />
+        </div>
+      )}
+
+      <div className="sr-only" aria-live="polite">{announce}</div>
     </div>
   );
+}
+
+/** The widget the pointer is over, by nearest centre, ignoring the one being
+ *  dragged. Nearest rather than hit-testing, so a drag into the gap between two
+ *  cards still lands somewhere rather than doing nothing. */
+function widgetUnder(board: HTMLElement, dragged: string, x: number, y: number): string | null {
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const el of board.querySelectorAll<HTMLElement>("[data-widget]")) {
+    const id = el.dataset.widget;
+    if (!id || id === dragged) continue;
+    const r = el.getBoundingClientRect();
+    const d = (x - (r.left + r.width / 2)) ** 2 + (y - (r.top + r.height / 2)) ** 2;
+    if (d < bestD) { bestD = d; best = id; }
+  }
+  return best;
 }

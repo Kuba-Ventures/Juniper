@@ -701,6 +701,73 @@ rationale in `docs/CARD_REWARDS.md`.
   would let the Credit page stop reading outside the `lib/finances.ts` seam. Open since #132, and this
   stage widened the exception by one endpoint rather than closing it.
 
+## Stage 15: The member arranges their own Overview **(build)**, *shipped, behind one unapplied migration*
+
+The dashboard was the most-visited page in the app and the same page for everybody, in an order
+somebody chose once and re-argued in comments on the file more than once. It is now the member's:
+which cards are on it, and in what order. Issue #251. Design record:
+`design/dashboard-widgets-variants.html`, four rendered treatments, A chosen.
+
+- [x] **(design)** Four treatments rendered and compared: the cards themselves as the editor (A), a
+  list of widget names in a side panel (B), the page shrunk to a labelled map in a sheet (C), and a
+  hybrid holding scale copies of the real cards (D). **A chosen**, because it is the only one where
+  the member is looking at the actual card while deciding whether they want it. The cost is real and
+  was named rather than designed around: the drags are 300px cards, so a keyboard path had to be built
+  beside it rather than after it.
+- [x] **(build)** `dashboard_layout` on `user_profiles` (migration `0049`), holding **the order and
+  the hidden set, never the visible list**. A widget added later is absent from every layout saved
+  before it existed, so a stored visible list would switch every new card OFF for every existing
+  member, with nothing on screen to say one exists, and it would do it to exactly the people who have
+  used Juniper long enough to have arranged their page. The CHECK constrains the SHAPE and
+  deliberately not the widget ids, unlike `holder_style` in `0048`: the ids are the app's registry, so
+  a closed list would mean a migration before every new card.
+- [x] **(build)** The registry and the reconciliation in `src/lib/dashboard-layout.ts`. A widget the
+  stored order does not mention keeps its REGISTRY position rather than being appended, so a card
+  added in the middle of the default lands in the middle for a member who arranged the ones around it.
+  Absence means "the registry decides", which is what lets a widget ship off.
+- [x] **(build)** Two widgets that ship OFF, in the shelf: **Cards and rewards** (Credit) and
+  **Recurring charges** (Transactions). Off because #251's own rule is that a member who never touches
+  this sees exactly the page they saw before, and a summary of a surface that already has its own page
+  should be something they asked for. A widget in the shelf costs nothing: both hooks take `active` and
+  do not fetch while it is false.
+- [x] **(build)** One set of rows behind both surfaces. `src/lib/credit-cards.ts` now owns the card
+  projection, the limit precedence and the utilization figure, and the Credit page reads it too, so the
+  widget and the page cannot answer "what is your utilization" differently. Same failure the shared
+  "Together" total had when a figure was derived apart from the list it sat above.
+- [x] **(build)** A hidden widget cannot hide a fact. The member-set-limit note travels with
+  utilization, the point-value disclosure with a rewards rate, the unset-cadence count with the
+  recurring total, in the widget as on the page.
+- [x] **(build)** An empty widget does not hold its slot: it collapses out of the live page and is
+  drawn as a dashed placeholder ONLY while arranging, so the slot the member gave it is still theirs to
+  move. `ConnectNudge` is not a widget and never enters the order.
+- [x] **(build)** Pointer events rather than the native HTML5 drag, which does not fire for touch at
+  all, plus a real keyboard path: every grip is a button, and the arrow keys move the card it belongs
+  to, with the move announced. Three stale-closure bugs were caught by driving the real component
+  rather than by reading it: two shelf chips tapped in one tick put only one widget back, a held arrow
+  key would have done the same, and a fast tap could leave the board stuck mid-drag. The order, the
+  hidden set and the dragged id are all refs for that reason.
+- [ ] **(ops)** Apply `0049_dashboard_layout.sql` to the production Supabase project. Additive and
+  safe in either order with the deploy: the column is nullable and a member with no layout gets the
+  default order, which is the page exactly as it stands today. Verified against a scratch Postgres
+  before shipping: `0001` then `0049` applies clean, re-running is a no-op, a pre-existing profile row
+  survives with `dashboard_layout` NULL, a real layout is accepted, and each of a non-object, a
+  non-string id, a missing `order`, a missing `hidden`, a string `v` and a 65-element order is refused.
+  **The missing-key cases are the ones worth knowing about:** `->` on an absent key returns SQL NULL,
+  `jsonb_typeof(NULL)` is NULL, and a CHECK whose expression is NULL PASSES, so the first version of
+  the constraint accepted a layout with no `order` at all - Finley
+- [ ] **(build)** Personal Overview only, deliberately. The shared space builds its nav from what the
+  partnership holds rather than from a declaration (`components/juniper/shared-frame.tsx`), so "which
+  cards are on it" is already answered there by the content, and a second, member-owned answer would be
+  a third source of truth about a page two people share. Whether one member may arrange a page both of
+  them look at is a question about the partnership, not about layout - Finley
+- [ ] **(build)** Resizable widgets, a widget gallery, and per-widget settings are out of scope and
+  stay out. Order and visibility only. The nearest real request beyond that is a card the member
+  DEFINES (pick a category, pick a metric), which needs a stored definition per card rather than a
+  stored order, and is a different feature - Finley
+- [ ] **(build)** Five more widgets could ship off in the shelf with an hour each, since each is an
+  existing component with a home page: Score levers, Benefits tracker, Connection health, and the
+  Together summary. Not built - Finley
+
 ## Critical path (read this first)
 
 **Stages 3 → 4 are the real product.** Everything Mint-like ("I miss the budgeting / expense reports") lives in **Stage 3**, which is gated on **Plaid transactions + Production access (Stage 6)**. Design and shell (Stages 1–2) are fast; the **data engine (Stage 3) is where the real weeks go.**

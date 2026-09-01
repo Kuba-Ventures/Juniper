@@ -2165,3 +2165,88 @@
    know the percentage rests on it. */
 .jnpr .cl-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin-top:6px;
   max-width:56ch}
+
+/* ---------- the member's own Overview (issue #251) ----------------------- */
+
+/* The greeting band carries the switch for a mode, so it becomes a row. */
+.jnpr .greet.dash-greet{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.jnpr .dash-arr{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#EAF3EC;
+  font:inherit;font-size:12.5px;font-weight:650;padding:8px 14px;border-radius:9px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto}
+.jnpr .dash-arr:hover{background:rgba(255,255,255,.16)}
+.jnpr .dash-arr.on{background:#EAF3EC;color:var(--jnpr-accent-deep);border-color:#EAF3EC}
+.jnpr .dash-hint{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.6;margin:0 2px 14px;max-width:78ch}
+
+/* ONE flow, not the two grids this page used to have. The 1.5fr/1fr hero and the
+   two equal rows below it could not survive free ordering, because the pairing
+   is a property of the pair and the member moves one card at a time. Every
+   widget is a half; `full` spans the row; a half left alone on the last row is
+   given `full` by the layout pass in overview.tsx rather than by a selector,
+   since only the render knows which one that is. */
+.jnpr .dash-board{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.jnpr .dash-board > *{min-width:0}
+.jnpr .dash-w{position:relative}
+.jnpr .dash-w.full{grid-column:1/-1}
+@media(max-width:860px){.jnpr .dash-board{grid-template-columns:1fr}.jnpr .dash-w.full{grid-column:auto}}
+
+/* Arranging is a mode, and it looks like one: a dashed edge on every card, a
+   tilt small enough to read as "these are loose" rather than as an animation,
+   and no way to click through to anything underneath. `touch-action:none` is
+   what stops a drag on a phone scrolling the page instead of moving the card. */
+.jnpr .dash-board.editing .dash-w{animation:dash-jig 2.4s ease-in-out infinite;touch-action:none;cursor:grab}
+.jnpr .dash-board.editing .dash-w:nth-child(2n){animation-delay:-1.2s}
+.jnpr .dash-board.editing .dash-w > .card,
+.jnpr .dash-board.editing .dash-w > .score-strip{outline:1.5px dashed var(--jnpr-accent);outline-offset:3px}
+/* The card's own contents are furniture while arranging: a link, a search box or
+   a range pill inside a card being dragged is a control nobody meant to press,
+   and a focusable one inside it is a keyboard trap in a mode with its own
+   keyboard path. The two handles opt back in. */
+.jnpr .dash-board.editing .dash-w > .card,
+.jnpr .dash-board.editing .dash-w > .score-strip{pointer-events:none;user-select:none}
+.jnpr .dash-board.editing .dash-grip,
+.jnpr .dash-board.editing .dash-x{pointer-events:auto}
+.jnpr .dash-w.dragging{opacity:.45;animation:none}
+@keyframes dash-jig{0%,100%{transform:rotate(-.22deg)}50%{transform:rotate(.22deg)}}
+@media(prefers-reduced-motion:reduce){.jnpr .dash-board.editing .dash-w{animation:none}}
+
+.jnpr .dash-grip,.jnpr .dash-x{position:absolute;z-index:3;display:grid;place-items:center;
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--jnpr-line);
+  background:var(--jnpr-surface);box-shadow:var(--jnpr-shadow);color:var(--jnpr-ink-2);
+  cursor:pointer;font:inherit;padding:0}
+.jnpr .dash-grip{top:-9px;left:-9px;cursor:grab}
+.jnpr .dash-x{top:-9px;right:-9px;font-size:17px;line-height:1}
+.jnpr .dash-x:hover{background:var(--jnpr-bad-soft);color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
+.jnpr .dash-grip:focus-visible,.jnpr .dash-x:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+
+/* Drawn only while arranging, in the slot of a widget with nothing to show, so
+   the member can still move the place they gave it. */
+.jnpr .dash-empty{border-style:dashed;box-shadow:none;background:var(--jnpr-surface-2)}
+.jnpr .dash-empty p{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.6;margin:0}
+
+/* HIDDEN, NOT DELETED, and the shelf is where that difference is visible: a
+   member who turns Budgets off has to be able to find Budgets again without
+   being told where to look. */
+.jnpr .dash-shelf{margin-top:16px;border:1px dashed var(--jnpr-line);border-radius:var(--jnpr-r-sm);
+  background:var(--jnpr-surface-2);padding:13px 15px}
+.jnpr .dash-shelf-h{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin-bottom:9px}
+.jnpr .dash-shelf-e{font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .dash-chips{display:flex;flex-wrap:wrap;gap:8px}
+.jnpr .dash-chip{font:inherit;font-size:12.5px;font-weight:600;color:var(--jnpr-ink-2);
+  background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:20px;
+  padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.jnpr .dash-chip:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.jnpr .dash-chip b{color:var(--jnpr-accent)}
+.jnpr .dash-chip-h{font-size:10.5px;color:var(--jnpr-ink-3);font-weight:600}
+
+/* The one instruction each of the two new widgets ends on: what to do with the
+   figure above it. */
+.jnpr .ow-tip{margin-top:14px;padding-top:12px;border-top:1px solid var(--jnpr-line-2);
+  display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.5}
+.jnpr .ow-tip-c{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3)}
+.jnpr .ow-tip-n{font-size:11px;color:var(--jnpr-ink-3);line-height:1.5}
+
+/* Announcements for the keyboard path: present for a screen reader, absent from
+   the page. */
+.jnpr .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}

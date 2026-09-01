@@ -1,4 +1,5 @@
 import type { HolderStyle } from "@/lib/holder-style";
+import type { DashboardLayout } from "@/lib/dashboard-layout";
 
 // A single account or loan the member entered by hand during onboarding (no
 // Plaid link). These drive the dashboard's net worth, accounts list, and
@@ -35,6 +36,11 @@ export type UserProfile = {
       means they have not chosen, which is NOT the same as choosing the default:
       an unchosen member moves if the default ever changes. */
   holderStyle?: HolderStyle;
+  /** How they arranged their Overview (migration 0049): the widget order and the
+      set they switched off, never the visible list. Undefined means they have
+      not arranged anything, which is likewise not the same as saving the
+      default order. See lib/dashboard-layout.ts. */
+  dashboardLayout?: DashboardLayout;
 };
 
 function profileKey(email?: string) {
