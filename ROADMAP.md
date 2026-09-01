@@ -415,14 +415,30 @@ rationale in `docs/CARD_REWARDS.md`.
   row to record the same omission and is now the largest single source of understatement in the catalog.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
-- [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at
-  all.** Reconciled against Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards
-  (Freedom Unlimited $20,000, Sapphire Preferred $9,000, Discover it Chrome $4,500, Quicksilver Student
-  $4,400) and Juniper sees $17,900 across three. The $20,000 difference is exactly the Freedom Unlimited.
-  The stored snapshot is not the cause: `sanitizeAccounts` drops nothing and `networth-snapshot` rewrites
-  the account list from Plaid's live response on every run. So either it sits behind a second Chase login
-  that was never linked, or it was deselected during Link's account-selection step. Affects net worth and
-  utilization, not just this page - Finley
+- [ ] **The $20,000 Chase Freedom Unlimited is an authorized-user card on somebody else's login, so
+  Plaid can never return it. Blocked on a credit-data provider, not on relinking.** Reconciled against
+  Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards (Freedom Unlimited $20,000,
+  Sapphire Preferred $9,000, Discover it Chrome $4,500, Quicksilver Student $4,400) and Juniper sees
+  $17,900 across three. The $20,000 difference is exactly the Freedom Unlimited. The cause, established
+  2026-09-01: the card was issued ~2023 as an authorized-user card on Finley's father's Chase login, and
+  Finley holds no credentials for it. Plaid returns only the accounts belonging to the login it
+  authenticates, so **no Chase credential Finley holds will ever surface this card**, and relinking Chase
+  cannot help. Credit Karma, Monarch and Chase's own site show it because they read credit-bureau data
+  rather than linked accounts. This supersedes the two earlier hypotheses recorded here (a second
+  unlinked Chase login, and deselection during Link's account-selection step); **both were wrong**, and
+  the stored snapshot was never the cause either (`sanitizeAccounts` drops nothing and
+  `networth-snapshot` rewrites the account list from Plaid's live response on every run). Not fixable
+  through Plaid at all: it is gated on the same credit-data provider Stage 10 score tracking waits on.
+  A member-entered manual credit account is the only route that makes the figures match the report.
+  Affects net worth and utilization, not just this page
+- [ ] **Utilization and the Juniper Score read low on limit for this member, and it is not an
+  arithmetic bug.** A consequence of the authorized-user card above, recorded separately so nobody
+  re-diagnoses it in the code: with a $562 balance, Juniper computes `$562 / $17,900 = 3%` while the
+  bureau computes `$562 / $37,900 = 1.5%`, because Juniper's denominator is missing the $20,000 limit it
+  cannot see. Juniper therefore runs **high**, in the safe direction. Immaterial at this balance,
+  material if a balance is ever carried. The Juniper Score inherits the same skew through its
+  utilization factor. The arithmetic in `api/_credit-balance.ts` is correct; the denominator is
+  incomplete. Closes when the limit is present, whether by a manual credit account or by a provider
 - [ ] **Set a limit on a real card and confirm the Identify prompt still counts it.** The one assumption
   in #211 that has never touched Postgres: `product_answered` is written FALSE only when a limit
   CREATES the row, so setting a limit on an unidentified card must leave it in the Identify queue. If it
