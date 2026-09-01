@@ -746,8 +746,10 @@ which cards are on it, and in what order. Issue #251. Design record:
   rather than by reading it: two shelf chips tapped in one tick put only one widget back, a held arrow
   key would have done the same, and a fast tap could leave the board stuck mid-drag. The order, the
   hidden set and the dragged id are all refs for that reason.
-- [ ] **(ops)** Apply `0049_dashboard_layout.sql` to the production Supabase project. Additive and
-  safe in either order with the deploy: the column is nullable and a member with no layout gets the
+- [x] **(ops)** **`0049` applied to production on 2026-09-01, by Finley**, before the deploy. Its
+  verification SELECT returned exactly what the migration's own `Expect` comment predicted,
+  **4 profiles, 0 arranged**, so no existing row was touched. Additive and safe in either order with
+  the deploy anyway: the column is nullable and a member with no layout gets the
   default order, which is the page exactly as it stands today. Verified against a scratch Postgres
   before shipping: `0001` then `0049` applies clean, re-running is a no-op, a pre-existing profile row
   survives with `dashboard_layout` NULL, a real layout is accepted, and each of a non-object, a
