@@ -10,6 +10,7 @@ import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
+import type { HolderStyle } from "@/lib/holder-style";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -545,7 +546,7 @@ function CardRow({
   );
 }
 
-export function Credit() {
+export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | null }) {
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
   const rewards = useCardRewards();
@@ -708,6 +709,7 @@ export function Credit() {
             data={rewards.data}
             logoFor={rewardsLogo(brands)}
             onIdentify={() => setIdentifyRequest((n) => n + 1)}
+            holderStyle={holderStyle}
           />
           {rewards.data.benefits && (
             <BenefitsTracker

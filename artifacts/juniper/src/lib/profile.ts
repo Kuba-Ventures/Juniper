@@ -1,3 +1,5 @@
+import type { HolderStyle } from "@/lib/holder-style";
+
 // A single account or loan the member entered by hand during onboarding (no
 // Plaid link). These drive the dashboard's net worth, accounts list, and
 // Juniper Score before/instead of a live connection. Balances are stored as
@@ -29,6 +31,10 @@ export type UserProfile = {
   dob?: string;
   household?: "solo" | "partner";
   completedAt?: string;
+  /** Which card holder their cards are drawn in (migration 0048). Undefined
+      means they have not chosen, which is NOT the same as choosing the default:
+      an unchosen member moves if the default ever changes. */
+  holderStyle?: HolderStyle;
 };
 
 function profileKey(email?: string) {

@@ -15,6 +15,7 @@ import {
   saveProfile as saveProfileLocal,
   type UserProfile,
 } from "@/lib/profile";
+import { asHolderStyle } from "@/lib/holder-style";
 
 export function nameFromEmail(email: string): string {
   if (!email) return "there";
@@ -90,6 +91,10 @@ export function useProfile(email: string, metaName?: string): UseProfile {
             totalDebt: (data.total_debt as number | undefined) ?? prev?.totalDebt,
             goals: (data.goals as string[] | undefined) ?? prev?.goals,
             completedAt: (data.updated_at as string | undefined) ?? prev?.completedAt,
+            // Narrowed rather than cast: the column is CHECKed (0048), but a
+            // client should not trust a constraint in a database it cannot see,
+            // and this value ends up in a class name.
+            holderStyle: asHolderStyle(data.holder_style) ?? prev?.holderStyle,
           };
           saveProfileLocal(next, email);
           return next;
@@ -110,7 +115,8 @@ export function useProfile(email: string, metaName?: string): UseProfile {
       setProfileState(p);
       const nextName = name?.trim() || displayName;
       if (nextName && nextName !== displayName) setDisplayName(nextName);
-      // Only the financial fields have remote columns; accounts/connections stay local.
+      // The financial fields and the holder choice have remote columns;
+      // accounts/connections stay local.
       void postRemoteProfile({
         name: nextName,
         monthly_income: p.monthlyIncome ?? null,
@@ -118,6 +124,9 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         total_savings: p.totalSavings ?? null,
         total_debt: p.totalDebt ?? null,
         goals: p.goals ?? null,
+        // Null, not omitted, so clearing a choice actually clears it. `?? null`
+        // rather than `|| null` because "" is not a value this field can hold.
+        holder_style: p.holderStyle ?? null,
       });
     },
     [email, displayName],

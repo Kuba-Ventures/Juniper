@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useFinances } from "@/lib/finances";
 import { SettingsModal } from "@/components/juniper/settings-modal";
+import type { HolderStyle } from "@/lib/holder-style";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
@@ -54,7 +55,17 @@ function isActive(current: string, path: string) {
   return current === path || current.startsWith(path + "/");
 }
 
-export function AppBar({ name, email }: { name: string; email?: string }) {
+export function AppBar({
+  name, email, holderStyle = null, onHolderStyle,
+}: {
+  name: string;
+  email?: string;
+  /** Passed straight through to the settings modal's Appearance section. The bar
+      does not use it; it is the only component mounted high enough to own the
+      modal and low enough to have the profile handed to it. */
+  holderStyle?: HolderStyle | null;
+  onHolderStyle?: (s: HolderStyle) => void;
+}) {
   const [loc, setLocation] = useLocation();
   const { data: finances, source } = useFinances();
   const [open, setOpen] = useState<null | "account">(null);
@@ -141,7 +152,15 @@ export function AppBar({ name, email }: { name: string; email?: string }) {
           ))}
         </nav>
       </div>
-      {settings && <SettingsModal name={name} email={email ?? ""} onClose={() => setSettings(false)} />}
+      {settings && (
+        <SettingsModal
+          name={name}
+          email={email ?? ""}
+          onClose={() => setSettings(false)}
+          holderStyle={holderStyle}
+          onHolderStyle={onHolderStyle}
+        />
+      )}
     </div>
   );
 }
