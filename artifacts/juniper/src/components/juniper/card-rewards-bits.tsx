@@ -44,6 +44,7 @@ export function CardFace({
   logoSrc,
   size = "md",
   unknown = false,
+  hand = false,
   label,
   layout = "card",
   artUrl,
@@ -65,6 +66,21 @@ export function CardFace({
   size?: CardFaceSize;
   /** No product confirmed yet, so draw the outline rather than a colour. */
   unknown?: boolean;
+  /**
+   * A card the member entered by hand (migration 0046), so Juniper knows its name
+   * and nothing else about it.
+   *
+   * A THIRD state, not a shade of `unknown`. An unknown card is one Juniper is
+   * ASKING about and its face is a prompt. A hand-entered card has already been
+   * answered, by the member, in full: it has a name and a mask and it is not
+   * waiting for anything. It just has no product behind it, so there is no brand
+   * colour to borrow and no art to draw, which is a fact about the catalog rather
+   * than about the member.
+   *
+   * Drawn as a neutral face with a dashed edge: enough to say "this one is yours,
+   * not your bank's" beside three branded cards, without implying it is broken.
+   */
+  hand?: boolean;
   /** Overrides the product name, for the outline state ("Which card?"). */
   label?: string;
   /**
@@ -92,7 +108,7 @@ export function CardFace({
    */
   artUrl?: string | null;
 }) {
-  const art = !unknown && artUrl ? artUrl : null;
+  const art = !unknown && !hand && artUrl ? artUrl : null;
   // `cr-face-strip` is on the element rather than inferred from an ancestor,
   // because the stylesheet has to tell the two layouts apart. With art present a
   // FULL face hides its labels (the artwork carries its own branding), and a
@@ -103,6 +119,7 @@ export function CardFace({
   const cls = [
     "cr-face", `cr-face-${size}`,
     unknown ? "cr-face-unk" : "",
+    hand ? "cr-face-hand" : "",
     art ? "cr-face-art" : "",
     layout === "strip" ? "cr-face-strip" : "",
   ].filter(Boolean).join(" ");
@@ -114,7 +131,10 @@ export function CardFace({
   //
   // The gradient is derived in CSS from `--cr-brand`, so a flat hex reads as a
   // moulded surface and nothing new has to be stored per product.
-  const tint = unknown ? null : brandTint(brandColor);
+  // No tint on a hand-entered card for the same reason as an unknown one: no
+  // product was named, so no brand colour is licensed. `.cr-face-hand` paints a
+  // neutral surface in CSS instead.
+  const tint = unknown || hand ? null : brandTint(brandColor);
   const style = tint
     ? ({ ["--cr-brand" as string]: tint.background, color: tint.color } as React.CSSProperties)
     : undefined;
