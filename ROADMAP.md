@@ -582,6 +582,23 @@ rationale in `docs/CARD_REWARDS.md`.
   no-linked-accounts early return, so with `artOf` declared where it used to sit it was in the temporal
   dead zone and naming a card threw a `ReferenceError`. It threw only once a card was actually named,
   which is to say only for the feature being added. The art map moved above its first use.
+- [x] **The card art names the card, and the overlay stops competing with it.** Reported on 2026-09-01
+  as the labels clogging the holder. The pocket painted issuer, mask and product name over every card,
+  and the reason recorded in the stylesheet was that a covered card shows only its top 54px while the
+  artwork's own name may sit below that line. **Rendered against the real catalog art, the premise did
+  not hold:** all four of the member's cards print their own name inside the visible band (QUICKSILVER,
+  DISCOVER it, SAPPHIRE PREFERRED, freedom UNLIMITED), and on the two Chase cards the overlay sat
+  directly on top of the issuer's own wordmark, so it was covering a readable strip rather than rescuing
+  an unreadable one. Treatment A of four, rendered in `design/wallet-label-variants.html`, which drew
+  each option over the production artwork rather than over a mock. The mask STAYS, because it is the one
+  thing the artwork can never carry and is what tells two Chase cards apart. The scrim narrows to match
+  the one line it now covers. **A bug the render caught:** `.cr-face-top` is space-between, so removing
+  the issuer left the mask an only child and it slid to the left edge, straight onto the Chase octagon
+  the artwork prints there; it is pinned right, where it always sat. **Accepted and unchanged:** the
+  Capital One art puts its wordmark top-right, so the mask overlaps it there, exactly as it did before
+  this change. **The known risk, stated rather than designed around:** a future card whose art carries no
+  name in its top 54px will read as four digits and a picture. The fix then is that card's art, not a
+  label over every card in the catalog.
 - [ ] **(ops)** Apply `0047`. Deploy first, as with `0037`, though it is additive and safe either way:
   the column is nullable and every read and write carries a fallback for its absence. Verified against a
   scratch Postgres before shipping: `0014`, `0046`, then `0047` applies clean, re-running is a no-op, two

@@ -1606,13 +1606,44 @@
    card already has its own. */
 .jnpr .cr-face-art::before,.jnpr .cr-face-art::after{display:none}
 .jnpr .cr-face-art .cr-face-chip,.jnpr .cr-face-art .cr-face-wave{display:none}
-/* The name and mask stay, and get a scrim so they are readable over any artwork,
-   light or dark. Only in the strip layout: on a full face the art speaks for
-   itself and a scrim would just cover it. */
+/* ── THE MASK STAYS. THE ISSUER AND THE PRODUCT NAME COME OFF. ──────────────
+   Only where there is ART, and only in the strip layout.
+
+   This used to paint issuer, name and mask over every card in the pocket, and
+   the reason recorded here was that a covered card shows only its top 54px while
+   the artwork's own name may sit below that line, so the labels were the only
+   thing identifying it. Reported on 2026-09-01 as the labels clogging the
+   holder, and the premise turned out not to hold.
+
+   RENDERED AGAINST THE REAL CATALOG ART, all four of the member's cards print
+   their own name inside the visible band: QUICKSILVER, DISCOVER it, SAPPHIRE
+   PREFERRED, freedom UNLIMITED. The overlay was not rescuing an unreadable strip,
+   it was covering a readable one, and on the Chase cards it sat directly on top
+   of the issuer's own wordmark. Two names, one obscuring the other.
+
+   The mask stays because it is the one thing the artwork can never carry: it is
+   what tells two Chase cards apart, and #168 has the note about "Disco..." to
+   show what happens without it.
+
+   The scrim narrows to match. It exists to keep text readable over light artwork
+   and now has one short line to cover, so a band that reached 74px would be
+   dimming artwork for nothing.
+
+   IF A FUTURE CARD'S ART CARRIES NO NAME in its top 54px, it will read as four
+   digits and a picture. Accepted deliberately: the fix then is that card's art,
+   or `short_name` on a face with no art at all, not a label over every card in
+   the catalog. Treatments in design/wallet-label-variants.html. */
 .jnpr .cr-pocket .cr-face-art .cr-face-in{
-  background:linear-gradient(180deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.34) 46px,rgba(0,0,0,0) 74px)}
+  background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.22) 30px,rgba(0,0,0,0) 48px)}
 .jnpr .cr-pocket .cr-face-art .cr-face-iss,
-.jnpr .cr-pocket .cr-face-art .cr-face-nm,
+.jnpr .cr-pocket .cr-face-art .cr-face-nm{display:none}
+/* And the mask HOLDS THE RIGHT. `.cr-face-top` is space-between, so removing the
+   issuer left the mask as an only child and it slid to the left edge, straight on
+   top of the Chase octagon that the artwork prints there. Issuers put their mark
+   top-left and their own name centre or left; the right corner is the one part of
+   a card face that is reliably empty, which is why the mask was there to begin
+   with. Found by looking at the render, not by reading the rule. */
+.jnpr .cr-pocket .cr-face-art .cr-face-top{justify-content:flex-end}
 .jnpr .cr-pocket .cr-face-art .cr-face-mask{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 /* On a FULL face with art the labels are the artwork's job, so they come off. The
    STRIP layout is excluded, and that exclusion is the whole point: a strip's body

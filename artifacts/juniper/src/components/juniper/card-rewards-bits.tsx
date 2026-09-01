@@ -156,6 +156,15 @@ export function CardFace({
    *
    * Only the strip layout ever sees this. A full face with art hides its whole
    * top line, mark and all, because there the labels are the artwork's job.
+   *
+   * DIVISION OF LABOUR with the stylesheet, so this does not read as two
+   * mechanisms for one outcome. This decides whether the issuer's MARK is drawn,
+   * because that is a question about which element to render at all. The
+   * stylesheet decides whether the issuer NAME and the PRODUCT NAME are drawn
+   * (`.cr-pocket .cr-face-art .cr-face-iss/.cr-face-nm`), because those elements
+   * exist either way and it is purely a question of showing them. On an art face
+   * in the strip the net effect of both is the same and deliberate: the mask, and
+   * nothing else, over the artwork.
    */
   const showLogo = !!logoSrc && !art;
 
