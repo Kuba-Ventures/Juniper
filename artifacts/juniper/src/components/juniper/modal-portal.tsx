@@ -16,18 +16,25 @@ export function ModalBackdrop({
   children,
   onClose,
   wide = false,
+  narrow = false,
 }: {
   children: ReactNode;
   onClose: () => void;
   /** Widens the panel to 560px, for content that is a list of choices rather
       than a paragraph and two buttons. See `.modal.wide` in juniper.css. */
   wide?: boolean;
+  /** Narrows it to 330px, for content whose subject is a single object rather
+      than a decision: the card sheet is one card and three figures, and at the
+      default width it read as a dialog that had taken over the page to show a
+      preview. See `.modal.narrow`. Ignored if `wide` is also set, which would be
+      a contradiction rather than a combination. */
+  narrow?: boolean;
 }) {
   const content = (
     <div className="jnpr" style={{ display: "contents" }}>
       <div className="modal-bg" onClick={onClose}>
         <div
-          className={wide ? "modal wide" : "modal"}
+          className={wide ? "modal wide" : narrow ? "modal narrow" : "modal"}
           role="dialog"
           aria-modal="true"
           onClick={(e) => e.stopPropagation()}

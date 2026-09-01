@@ -126,9 +126,16 @@ const FACE_H = Math.round(HOLDER_W / 1.586); // ID-1: 85.60mm x 53.98mm
  */
 const REVEAL_OPEN = Math.round(FACE_H / 4);   // a quarter of the card
 const REVEAL_CLOSED = 26;
-/** The front panel's height, matching `.cr-holder-cover`. It holds the count and
-    the collapse toggle, so it cannot be thinner than that text plus its padding. */
-const COVER_H = 54;
+/**
+ * The front panel's height, matching `.cr-holder-cover`.
+ *
+ * Deep rather than thin, and the depth is the point: a wallet's front panel is a
+ * substantial piece of the object, not a lip. At 54 it read as a strip laid under
+ * the cards, and the front card in particular looked like it was resting against
+ * it rather than sitting down inside it. The floor is the count plus its padding;
+ * everything above that floor is what makes it look like a pocket.
+ */
+const COVER_H = 84;
 /** The slot band's height, matching `.cr-holder-band`. */
 const BAND_H = 7;
 
@@ -175,7 +182,7 @@ function CardSheet({ slot, onClose }: { slot: Slot; onClose: () => void }) {
   const used = utilizationPct(slot.owed, slot.limit);
   const cur = slot.currency;
   return (
-    <ModalBackdrop onClose={onClose}>
+    <ModalBackdrop narrow onClose={onClose}>
       <div className="cs-head">
         <h3 className="cs-h">{slot.label}</h3>
         <button type="button" className="conn-add-x" onClick={onClose} aria-label="Close">
