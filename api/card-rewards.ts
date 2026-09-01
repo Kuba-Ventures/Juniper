@@ -79,6 +79,24 @@ interface MemberCardRow {
 interface TxnRow { account_id: string | null; amount: number; date: string; category: string | null; category_id: string | null }
 interface UseRow { benefit_id: string; period_key: string; used_at: string }
 
+/**
+ * Like `rows`, but for a select carrying a column that may not exist yet.
+ *
+ * `rows` degrades a failed read to `[]`, which is right for a missing TABLE and
+ * badly wrong for a missing COLUMN: naming `expires_on` in the benefits select
+ * before migration 0043 has run would turn one absent field into ZERO benefits,
+ * and the Credit page would quietly lose its whole tracker for the length of the
+ * deploy window. Same shape as readCatalog's ladder, and the same reason.
+ */
+async function rowsWithOptional<T>(
+  base: string, optional: string[], what: string,
+): Promise<T[]> {
+  const full = await adminRest(`${base},${optional.join(",")}`);
+  if (full.ok) return (await full.json().catch(() => [])) as T[];
+  console.warn(`[cards] ${what}: ${optional.join(", ")} unavailable, is migration 0043 applied?`);
+  return rows<T>(base, what);
+}
+
 async function rows<T>(query: string, what: string): Promise<T[]> {
   try {
     const r = await adminRest(query);
@@ -231,9 +249,10 @@ export default async function handler(req: Request): Promise<Response> {
     rows<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
       "earn rates"),
-    rows<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
-           value_amount: number | null; period: BenefitPeriod | null }>(
-      "card_product_benefits?select=id,product_id,benefit_group,name,detail,value_amount,period", "card benefits"),
+    rowsWithOptional<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
+           value_amount: number | null; period: BenefitPeriod | null; expires_on?: string | null }>(
+      "card_product_benefits?select=id,product_id,benefit_group,name,detail,value_amount,period",
+      ["expires_on"], "card benefits"),
     rows<TxnRow>(
       `transactions?user_id=eq.${uid}&date=gte.${since}&select=account_id,amount,date,category,category_id&limit=2000`,
       "transactions"),
@@ -312,6 +331,10 @@ export default async function handler(req: Request): Promise<Response> {
     if (list) list.push(row); else earnByProduct.set(row.product_id, [row]);
   }
   const benefits: Benefit[] = benefitRows.map((b) => ({
+    // Absent (column not there yet) and NULL both mean "no stated end date", so
+    // the benefit is kept. Defaulting the other way would hide every benefit on a
+    // deploy that ran ahead of 0043.
+    expires_on: (b as { expires_on?: string | null }).expires_on ?? null,
     id: b.id, product_id: b.product_id, group: b.benefit_group, name: b.name,
     detail: b.detail, period: b.period,
     value_amount: b.value_amount == null ? null : Number(b.value_amount),

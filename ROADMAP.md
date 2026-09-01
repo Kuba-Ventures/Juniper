@@ -393,13 +393,26 @@ rationale in `docs/CARD_REWARDS.md`.
   The ~30 co-brands are deliberately excluded: each earns its own currency and would need an invented
   valuation that then drives the dollar figures in "cards that would beat yours".
 - [ ] **(ops)** Apply `0039`, `0040`, `0041` in order. Deploy first, as with `0037`.
-- [ ] **Benefits for the Sapphire Reserve.** `0040` adds no `card_product_benefit` rows, so a $795 card
-  shows a large fee against modest rates. Its case is almost entirely credits and lounge access. Most
-  visible gap on the surface right now.
-- [ ] **A merchant-scoped earn category.** The taxonomy has no way to say "5 percent at Amazon" or "8x
-  through the Chase Travel portal", so those rates are omitted and the cards are understated -- Prime
-  Visa, Amazon Visa, DoorDash, Instacart, both Sapphire Reserves, Ink Business Premier. Same shape as the
-  rotating-category gap on Freedom Flex and Discover it. One fix covers all of them.
+- [x] **Benefits for the premium cards** (`0044`, schema in `0043`). 59 rows across the two Sapphire
+  Reserves, Ink Business Preferred and Premier, and the three cards `0042` adds. Coverage LIMITS carry a
+  NULL value rather than their limit: `value_amount` is summed by the tracker, so "up to $10,000 per
+  item" of purchase protection is not $10,000 of annual value.
+- [x] **`expires_on` on benefits** (`0043`). Card perks increasingly carry a published end date -- six of
+  the Sapphire Reserve's do -- and without a column for it they had to be omitted entirely, because a
+  tracker with no way to represent an ending would ask somebody in 2028 to use a credit that stopped in
+  2027. `trackBenefits` drops an expired benefit before it reaches the tracker, the group counts or the
+  unused-value total; the client shows "ends 31 Dec 2027" rather than letting one vanish silently.
+- [x] **Three premium products** (`0042`, art in `0045`): Amex Platinum, Amex Gold, Capital One Venture X.
+  Membership Rewards is valued at 1.0 cent -- Amex's own statement-credit floor, deliberately conservative
+  -- on the same basis the Capital One miles row already used, so nothing is invented.
+- [ ] **(ops)** Apply `0042`, `0043`, `0044`, `0045` in order. Deploy first, as with `0037`.
+- [ ] **A merchant- and portal-scoped earn category.** The taxonomy cannot say "5 percent at Amazon",
+  "8x through Chase Travel", "5x through Amex Travel" or "10x through Capital One Travel", so those rates
+  are omitted and the cards are understated: Prime Visa, Amazon Visa, DoorDash, Instacart, both Sapphire
+  Reserves, Ink Business Premier, **and now the Amex Platinum and Venture X, whose every headline rate is
+  portal-booked**. The Platinum consequently reads as a 1x card whose case is entirely its credits. Same
+  shape as the rotating-category gap on Freedom Flex and Discover it. This is the fourth migration in a
+  row to record the same omission and is now the largest single source of understatement in the catalog.
 - [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
   it cannot disturb 0032's rows or anything already verified by hand.
 - [ ] **The Chase card Juniper sees is the Sapphire Preferred, and a second Chase card is not linked at

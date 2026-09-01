@@ -32,3 +32,6 @@ chase-amazon-visa	https://creditcards.chase.com/content/dam/jpmc-marketplace/car
 chase-prime-visa	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/prime-visa.png	--ribbon-left
 chase-doordash	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/doordash_card.png	
 chase-instacart	https://creditcards.chase.com/content/dam/jpmc-marketplace/card-art/instacart_card.png	
+amex-platinum	https://icm.aexp-static.com/acquisition/card-art/NUS000000237_480x304_straight_noname.png	--keep-name
+amex-gold	https://icm.aexp-static.com/acquisition/card-art/NUS000000174_480x304_straight_noname.png	--keep-name
+capital-one-venture-x	https://ecm.capitalone.com/WCM/card/products/venture-x-card-art.png	--keep-name
