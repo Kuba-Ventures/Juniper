@@ -308,7 +308,14 @@ function OverallUtilization({ cards }: { cards: LinkedCard[] }) {
         <div style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", marginTop: 2 }}>
           {money(balance, currency)} of {money(limit, currency)} across {withLimit.length}{" "}
           {withLimit.length === 1 ? "card" : "cards"}
-          {excluded > 0 && `, ${excluded} more excluded for reporting no limit`}
+          {/* "reporting no limit" was true when every card on this page came from a
+              bank. A hand-entered card has nothing reporting anything, so the
+              phrasing is about the ABSENCE of a limit rather than about a bank
+              failing to send one. This is not hypothetical: production already
+              holds four manual credit accounts, none of them with a limit yet, so
+              this line would have blamed four banks for a field the member has
+              simply not filled in. */}
+          {excluded > 0 && `, ${excluded} more excluded for having no limit`}
         </div>
         {memberSet > 0 && (
           <div className="cl-note">

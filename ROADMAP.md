@@ -440,11 +440,23 @@ rationale in `docs/CARD_REWARDS.md`.
   `api/_finance-snapshot.ts` that `0046` had made stale: it said a hand-added card carries no credit line
   at all, which was the old reason for excluding it. A member can now enter one, and it is still
   excluded, on the stronger ground.
-- [ ] **(ops)** Apply `0046`. Deploy first, as with `0037`, though this one is additive and safe in
-  either order since both columns are nullable and every write and read carries a fallback for their
-  absence. Verified before shipping against a scratch Postgres, not just by reading: `0014` then `0046`
-  applies clean, re-running `0046` is a no-op, three pre-existing rows survive with both columns NULL,
-  and the CHECKs refuse a limit on a banking account, a zero limit and a negative one.
+- [x] **(ops)** **`0046` applied to production on 2026-09-01, by Finley**, ahead of the deploy rather
+  than after it, which is safe for this one: both columns are nullable and every read and write carries
+  a fallback for their absence. Its verification SELECT returned exactly what the migration's own
+  `Expect` comment predicted, **24 manual accounts, 0 with a limit, 0 with a mask**, so no existing row
+  was touched. Verified before that against a scratch Postgres: `0014` then `0046` applies clean,
+  re-running `0046` is a no-op, pre-existing rows survive with both columns NULL, and the CHECKs refuse
+  a limit on a banking account, a zero limit and a negative one.
+- [ ] **Four manual credit accounts already exist in production**, which that same SELECT surfaced and
+  the plan for this work did not anticipate: `credit_accounts = 4`, none of them with a limit. They have
+  been counting as card debt in net worth since `0014` and were invisible on the Credit page, and the
+  moment this ships all four appear there, badged "You added this", reading "no limit added" and "Used:
+  Unknown", and the utilization line says four more are excluded for having no limit. Nothing is wrong
+  with that, it is the feature working on data that predates it, but it means the first thing this
+  change does for the real member is add four rows rather than fix one number, so **look at those four
+  before assuming the page is wrong**. Any of them that are real cards want their limits; any that are
+  duplicates of a Plaid-linked card want removing, since a duplicate would double-count in both net
+  worth and utilization - Finley
 - [ ] **Confirm the four figures on the real member's Credit page** once `0046` is applied and the
   Freedom Unlimited is entered by hand ($20,000 limit, mask 4417, balance $0). Expect **$562 of $37,900
   across 4 cards**, which rounds to **1 percent** (`562 / 37900 = 1.48`), the card badged "You added
