@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine, Plus, X } from "lucide-react";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
@@ -13,6 +13,7 @@ import {
   layerEnabled,
   normInstitutionName,
   itemNeedsRelink,
+  institutionNet,
   type InstitutionBrand,
   type InstitutionBrandMap,
   type PlaidItem,
@@ -123,6 +124,38 @@ function connectionStatus(item: PlaidItem): { text: string; tone: "ok" | "warn" 
   return { text: `Updated ${ago}`, tone: "ok" };
 }
 
+/* One entry in the gallery: a Plaid connection or a hand-entered account.
+   #265 chose the gallery over the flat list this page used to be, where every row
+   looked like every other row and two institutions carrying six accounts each ran
+   the page past the fold. Both kinds draw the same tile, so the page reads as a
+   set of institutions rather than as two stacked lists of different shapes, and
+   the detail surface below switches on `kind` only for the parts that genuinely
+   differ: Reconnect goes to Plaid, Edit goes to the member's own figures. */
+type Tile =
+  | { key: string; kind: "plaid"; name: string; item: PlaidItem }
+  | { key: string; kind: "manual"; name: string; manual: ManualAccount };
+
+// A minus sign (U+2212) rather than a hyphen, and applied outside the currency
+// format, so a negative figure lines up with the one on a manual liability row.
+function signedMoney(n: number, currency: string): string {
+  return `${n < 0 ? "−" : ""}${money(Math.abs(n), currency)}`;
+}
+
+/* The figure a tile states. A connection is summed by institutionNet, which signs
+   it the way net worth is signed; a hand-entered account is one balance the member
+   typed, and its own `kind` says which way it points. Null either way when there is
+   nothing to state, so the tile renders no figure instead of "$0". */
+function tileFigure(t: Tile): { total: number; currency: string } | null {
+  if (t.kind === "plaid") return institutionNet(t.item);
+  if (t.manual.balance == null) return null;
+  return {
+    total: t.manual.kind === "liability" ? -t.manual.balance : t.manual.balance,
+    currency: t.manual.currency || "USD",
+  };
+}
+
+const tileCount = (t: Tile) => (t.kind === "plaid" ? t.item.accounts.length : 1);
+
 export function ConnectionsView() {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [manualAccts, setManualAccts] = useState<ManualAccount[]>([]);
@@ -156,6 +189,12 @@ export function ConnectionsView() {
   // now behind "Add account" in the page header, where every other page action
   // on this app lives.
   const [addOpen, setAddOpen] = useState(false);
+  // Which tile's accounts are open, or null for "whichever is first". Held as the
+  // key rather than the index, since a removal reorders the grid, and resolved
+  // below by lookup rather than kept in sync by an effect: disconnecting the open
+  // institution falls back to the first remaining one on its own.
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     const [next, manual] = await Promise.all([fetchPlaidItems(), fetchManualAccounts()]);
@@ -274,6 +313,50 @@ export function ConnectionsView() {
     for (const m of manualAccts) if (m.institution) map.set(normInstitutionName(m.institution), m.institution);
     return map;
   }, [items, manualAccts]);
+
+  // Plaid connections first, then the hand-entered accounts, which is the order
+  // the page has always listed them in. Keys are prefixed because an item_id and a
+  // manual account id come from different tables and must never collide.
+  const tiles = useMemo<Tile[]>(
+    () => [
+      ...items.map((item) => ({
+        key: `p:${item.item_id}`,
+        kind: "plaid" as const,
+        name: item.institution_name || "Linked institution",
+        item,
+      })),
+      ...manualAccts.map((m) => ({
+        key: `m:${m.id}`,
+        kind: "manual" as const,
+        name: m.institution || m.name,
+        manual: m,
+      })),
+    ],
+    [items, manualAccts],
+  );
+
+  // Falling back to the first tile is what keeps the detail surface from ever
+  // being empty while the member has connections, on first load and after a
+  // removal alike.
+  const selected = useMemo(
+    () => tiles.find((t) => t.key === openKey) ?? tiles[0] ?? null,
+    [tiles, openKey],
+  );
+
+  const openTile = useCallback((key: string) => {
+    setOpenKey(key);
+    // The accounts open on a second surface below a grid that is three rows tall
+    // on a phone, so the thing the member just asked for can land off-screen.
+    // Nudged into view only when it actually is off-screen: scrolling a pane that
+    // is already visible moves the page for no reason.
+    requestAnimationFrame(() => {
+      const el = detailRef.current;
+      if (!el) return;
+      if (el.getBoundingClientRect().bottom <= window.innerHeight) return;
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+    });
+  }, []);
 
   // One connect flow, rendered in two places: inline on first run, and inside
   // the header's panel once the member has connections. Declared here rather
@@ -397,102 +480,175 @@ export function ConnectionsView() {
           <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
         ) : (
           <>
-            {items.map((item) => (
-              <div className="conn-item" key={item.item_id}>
-                <div className="conn-inst">
-                  <InstitutionMark
-                    name={item.institution_name || "Linked institution"}
-                    brand={item.institution_id ? brands[item.institution_id] : undefined}
-                    glyph={<Building2 size={19} />}
-                  />
-                  <span className="ci-name">
-                    {item.institution_name || "Linked institution"}
-                    {(() => {
-                      const st = connectionStatus(item);
-                      return st ? <span className={`ci-status ${st.tone}`}>{st.text}</span> : null;
-                    })()}
-                  </span>
-                  {itemNeedsRelink(item) && (
-                    // Repairs this item rather than adding a second one for the
-                    // same bank: passing item_id puts Plaid Link into update
-                    // mode against the existing access_token.
-                    <button
-                      className="btn sm"
-                      onClick={() => void start([{
-                        institution_id: item.institution_id ?? undefined,
-                        name: item.institution_name ?? undefined,
-                        item_id: item.item_id,
-                      }])}
-                      disabled={connecting}
-                      aria-label={`Reconnect ${item.institution_name || "this institution"}`}
-                    >
-                      <RefreshCw size={13} /> {connecting ? "Opening…" : "Reconnect"}
-                    </button>
-                  )}
+            {/* The gallery. A tile per institution states its mark, how many
+                accounts it holds and what they come to, which is what a page whose
+                subject is brands should read as at a glance. Everything the list
+                said before is still said: the freshness line, the reconnect prompt
+                and the cached-balance note sit on the tile that owns them, and the
+                accounts themselves are one tap away rather than all on screen at
+                once. */}
+            <div className="conn-grid">
+              {tiles.map((t) => {
+                const st = t.kind === "plaid" ? connectionStatus(t.item) : null;
+                const fig = tileFigure(t);
+                return (
                   <button
-                    className="btn ghost sm"
-                    onClick={() => handleRemove(item.item_id)}
-                    disabled={removingId === item.item_id}
-                    aria-label={`Disconnect ${item.institution_name || "this institution"}`}
+                    type="button"
+                    className="conn-tile"
+                    key={t.key}
+                    // aria-pressed rather than aria-selected: these are toggles in a
+                    // plain grid, not a tablist, and calling them tabs would promise
+                    // arrow-key navigation this does not implement.
+                    aria-pressed={selected?.key === t.key}
+                    aria-controls="conn-detail"
+                    onClick={() => openTile(t.key)}
                   >
-                    <Trash2 size={13} /> {removingId === item.item_id ? "Removing…" : "Remove"}
-                  </button>
-                </div>
-                {item.accounts.map((a) => (
-                  <div className="conn-acct" key={a.account_id}>
-                    <span className="ca-name">{accountLine(a)}</span>
-                    {a.balance != null && <span className="ca-bal tnum">{money(a.balance, a.currency)}</span>}
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            {manualAccts.map((m) => (
-              <div className="conn-item" key={m.id}>
-                <div className="conn-inst">
-                  {/* No Plaid id on a hand-added account, so this only ever
-                      reaches the local brand map or the pencil glyph. The
-                      "Manual" tag beside it still carries that meaning when a
-                      logo resolves. */}
-                  <InstitutionMark name={m.institution || m.name} glyph={<PencilLine size={17} />} />
-                  <span className="ci-name">
-                    {m.institution || m.name} <span className="conn-tag">Manual</span>
-                  </span>
-                  {/* A plain text button rather than a second filled one. Every
-                      manual row would otherwise carry two buttons of equal weight
-                      and the list would read as a set of chores. Edit is the safe
-                      action and Remove is the destructive one, so they must not
-                      look alike. */}
-                  <button
-                    className="man-edit"
-                    onClick={() => { setEditingManual(m); setShowManual(true); setAddOpen(true); }}
-                    aria-label={`Edit ${m.name}`}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn ghost sm"
-                    onClick={() => handleRemoveManual(m.id)}
-                    disabled={removingManualId === m.id}
-                    aria-label="Remove manual account"
-                  >
-                    <Trash2 size={13} /> {removingManualId === m.id ? "Removing…" : "Remove"}
-                  </button>
-                </div>
-                <div className="conn-acct">
-                  <span className="ca-name">{m.name} · {catLabel(m.category)}</span>
-                  {m.balance != null && (
-                    <span
-                      className="ca-bal tnum"
-                      style={m.kind === "liability" ? { color: "var(--jnpr-bad)" } : undefined}
-                    >
-                      {m.kind === "liability" ? "−" : ""}
-                      {money(m.balance, m.currency)}
+                    <InstitutionMark
+                      name={t.name}
+                      brand={
+                        t.kind === "plaid" && t.item.institution_id
+                          ? brands[t.item.institution_id]
+                          : undefined
+                      }
+                      glyph={t.kind === "plaid" ? <Building2 size={19} /> : <PencilLine size={17} />}
+                    />
+                    <span className="ct-body">
+                      <span className="ct-name">
+                        {t.name}
+                        {t.kind === "manual" && <span className="conn-tag">Manual</span>}
+                      </span>
+                      <span className="ct-count">
+                        {tileCount(t)} account{tileCount(t) === 1 ? "" : "s"}
+                      </span>
+                      {st && <span className={`ci-status ${st.tone}`}>{st.text}</span>}
                     </span>
-                  )}
-                </div>
+                    {fig && (
+                      <span className={`ct-bal tnum${fig.total < 0 ? " neg" : ""}`}>
+                        {signedMoney(fig.total, fig.currency)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* The accounts inside the open institution, plus the actions that act
+                on it. Sits after the grid in the DOM as well as on the page, so it
+                is the next thing in the tab order after the tile that opened it. */}
+            {selected && (
+              <div className="conn-item conn-detail" id="conn-detail" ref={detailRef}>
+                {selected.kind === "plaid" ? (
+                  <>
+                    <div className="conn-inst">
+                      <InstitutionMark
+                        name={selected.name}
+                        brand={
+                          selected.item.institution_id
+                            ? brands[selected.item.institution_id]
+                            : undefined
+                        }
+                        glyph={<Building2 size={19} />}
+                      />
+                      <span className="ci-name">
+                        {selected.name}
+                        {(() => {
+                          const st = connectionStatus(selected.item);
+                          return st ? <span className={`ci-status ${st.tone}`}>{st.text}</span> : null;
+                        })()}
+                      </span>
+                      {itemNeedsRelink(selected.item) && (
+                        // Repairs this item rather than adding a second one for the
+                        // same bank: passing item_id puts Plaid Link into update
+                        // mode against the existing access_token.
+                        <button
+                          className="btn sm"
+                          onClick={() => void start([{
+                            institution_id: selected.item.institution_id ?? undefined,
+                            name: selected.item.institution_name ?? undefined,
+                            item_id: selected.item.item_id,
+                          }])}
+                          disabled={connecting}
+                          aria-label={`Reconnect ${selected.name}`}
+                        >
+                          <RefreshCw size={13} /> {connecting ? "Opening…" : "Reconnect"}
+                        </button>
+                      )}
+                      <button
+                        className="btn ghost sm"
+                        onClick={() => handleRemove(selected.item.item_id)}
+                        disabled={removingId === selected.item.item_id}
+                        aria-label={`Disconnect ${selected.name}`}
+                      >
+                        <Trash2 size={13} />{" "}
+                        {removingId === selected.item.item_id ? "Removing…" : "Remove"}
+                      </button>
+                    </div>
+                    {selected.item.accounts.map((a) => (
+                      <div className="conn-acct" key={a.account_id}>
+                        <span className="ca-name">{accountLine(a)}</span>
+                        {a.balance != null && (
+                          <span className="ca-bal tnum">{money(a.balance, a.currency)}</span>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className="conn-inst">
+                      {/* No Plaid id on a hand-added account, so this only ever
+                          reaches the local brand map or the pencil glyph. The
+                          "Manual" tag beside it still carries that meaning when a
+                          logo resolves. */}
+                      <InstitutionMark name={selected.name} glyph={<PencilLine size={17} />} />
+                      <span className="ci-name">
+                        {selected.name} <span className="conn-tag">Manual</span>
+                      </span>
+                      {/* A plain text button rather than a second filled one. Edit
+                          is the safe action and Remove is the destructive one, so
+                          they must not look alike. */}
+                      <button
+                        className="man-edit"
+                        onClick={() => {
+                          setEditingManual(selected.manual);
+                          setShowManual(true);
+                          setAddOpen(true);
+                        }}
+                        aria-label={`Edit ${selected.manual.name}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn ghost sm"
+                        onClick={() => handleRemoveManual(selected.manual.id)}
+                        disabled={removingManualId === selected.manual.id}
+                        aria-label="Remove manual account"
+                      >
+                        <Trash2 size={13} />{" "}
+                        {removingManualId === selected.manual.id ? "Removing…" : "Remove"}
+                      </button>
+                    </div>
+                    <div className="conn-acct">
+                      <span className="ca-name">
+                        {selected.manual.name} · {catLabel(selected.manual.category)}
+                      </span>
+                      {selected.manual.balance != null && (
+                        <span
+                          className="ca-bal tnum"
+                          style={
+                            selected.manual.kind === "liability"
+                              ? { color: "var(--jnpr-bad)" }
+                              : undefined
+                          }
+                        >
+                          {selected.manual.kind === "liability" ? "−" : ""}
+                          {money(selected.manual.balance, selected.manual.currency)}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-            ))}
+            )}
 
             {/* First run only. With nothing linked there is no list to push
                 the search below, and a member who has just arrived needs the

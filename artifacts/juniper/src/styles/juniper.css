@@ -1053,27 +1053,72 @@
 .jnpr .nudge-card p{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.55;max-width:34ch;margin:0}
 
 /* connections page fitted into the routed .jnpr shell */
-.jnpr .conn-wrap{max-width:680px;margin:0 auto}
+/* Widened from 680px for the #265 gallery: 920 holds four tiles at their 196px
+   minimum, and stops the account rows in the detail pane below running to a width
+   nothing in them needs. */
+.jnpr .conn-wrap{max-width:920px;margin:0 auto}
 .jnpr .conn-item{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:14px;padding:16px 18px}
 .jnpr .conn-item + .conn-item{margin-top:12px}
 .jnpr .conn-inst{display:flex;align-items:center;gap:13px}
-.jnpr .conn-inst .ci-mark{width:38px;height:38px;border-radius:10px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;flex:0 0 auto}
+.jnpr .ci-mark{width:38px;height:38px;border-radius:10px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center;flex:0 0 auto}
 /* The institution's own brand mark, when Plaid or the bundled map has one. White
    plate in both themes on purpose, the same choice .blogo and .inst-logo already
    make: these PNGs are dark artwork on transparency, so painting them straight
    onto the dark-mode surface would erase them. `contain` plus padding rather than
    `cover` because Plaid's logos are not all square and cropping a wordmark is
    worse than letterboxing it. */
-.jnpr .conn-inst .ci-logo{width:38px;height:38px;border-radius:10px;object-fit:contain;padding:3px;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto;display:block}
+.jnpr .ci-logo{width:38px;height:38px;border-radius:10px;object-fit:contain;padding:3px;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto;display:block}
 /* Monogram tinted with the bank's own primary_color, for an institution Plaid has
    a brand color but no artwork for. Background and letter color both arrive
    inline from brandTint(); the border is what keeps a near-black brand color from
    dissolving into the dark-mode surface. */
-.jnpr .conn-inst .ci-mono{width:38px;height:38px;border-radius:10px;border:1px solid var(--jnpr-line);display:grid;place-items:center;font-weight:700;font-size:16px;flex:0 0 auto}
+.jnpr .ci-mono{width:38px;height:38px;border-radius:10px;border:1px solid var(--jnpr-line);display:grid;place-items:center;font-weight:700;font-size:16px;flex:0 0 auto}
 .jnpr .conn-inst .ci-name{font-size:15px;font-weight:650;color:var(--jnpr-ink);flex:1;min-width:0}
 .jnpr .conn-acct{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:9px;margin-top:9px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
 .jnpr .conn-acct .ca-name{color:var(--jnpr-ink-2);min-width:0}
 .jnpr .conn-acct .ca-bal{color:var(--jnpr-ink);font-weight:650;flex:0 0 auto}
+
+/* The #265 gallery. A tile per institution, so a page whose subject is brands
+   reads as brands: before this the page was one flat list where every row looked
+   like every other row, and with two institutions carrying six accounts each it
+   ran well past the fold. The tile states the mark, the account count and what
+   the accounts come to; the accounts themselves open in .conn-detail below. */
+.jnpr .conn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:11px}
+.jnpr .conn-tile{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:14px;
+  padding:14px;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;
+  flex-direction:column;gap:10px;box-shadow:var(--jnpr-shadow);
+  transition:border-color .15s,transform .15s}
+.jnpr .conn-tile:hover{border-color:color-mix(in srgb,var(--jnpr-accent) 45%,var(--jnpr-line));transform:translateY(-1px)}
+/* The open tile, ringed rather than filled: a filled tile would restate the
+   institution's own brand colour in Juniper's, and the mark is what identifies
+   the row. */
+.jnpr .conn-tile[aria-pressed="true"]{border-color:var(--jnpr-accent);
+  box-shadow:0 0 0 1px var(--jnpr-accent),var(--jnpr-shadow)}
+.jnpr .conn-tile .ct-body{min-width:0}
+.jnpr .conn-tile .ct-name{display:block;font-size:14px;font-weight:650;color:var(--jnpr-ink);line-height:1.3}
+.jnpr .conn-tile .ct-count{display:block;font-size:12px;font-weight:600;color:var(--jnpr-ink-3);margin-top:1px}
+/* Pinned to the foot of the tile. The tiles in a row are stretched to the tallest,
+   and a two-line status on one of them (a connection needing a relink says so and
+   dates it) would otherwise leave its neighbours' figures floating at different
+   heights. */
+.jnpr .conn-tile .ct-bal{display:block;margin-top:auto;font-size:19px;font-weight:650;
+  letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .conn-tile .ct-bal.neg{color:var(--jnpr-bad)}
+@media (prefers-reduced-motion:reduce){
+  .jnpr .conn-tile{transition:none}
+  .jnpr .conn-tile:hover{transform:none}
+}
+/* Two up on a phone rather than the one auto-fill gives at this width: a column
+   of seven full-width tiles is the list this replaced, only taller, and it would
+   put the accounts three screens below the tile that opens them. */
+@media (max-width:560px){
+  .jnpr .conn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .jnpr .conn-tile{padding:12px}
+  .jnpr .conn-tile .ct-bal{font-size:17px}
+}
+/* The open institution's accounts. A .conn-item, so the rows inside it are the
+   same rows the page has always drawn. */
+.jnpr .conn-detail{margin-top:14px}
 
 /* credit: the score panel is a not-live notice, not a number. Copy width is
    capped so the paragraph stays readable next to the wide card list below it. */
