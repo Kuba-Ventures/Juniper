@@ -523,7 +523,19 @@ export function ConnectionsView() {
                       {st && <span className={`ci-status ${st.tone}`}>{st.text}</span>}
                     </span>
                     {fig && (
-                      <span className={`ct-bal tnum${fig.total < 0 ? " neg" : ""}`}>
+                      // `zero` is what lets the stylesheet quieten a figure that
+                      // came to nothing (#270): a card owing nothing, or a balance
+                      // the member typed as zero. It cannot be a CSS rule on its
+                      // own, since CSS cannot see the value, and the class has to
+                      // be the ONLY thing that changes: a grey "$0" still means
+                      // counted and zero, while no figure at all still means there
+                      // was nothing institutionNet could state. Those two must not
+                      // come to look alike.
+                      <span
+                        className={`ct-bal tnum${fig.total < 0 ? " neg" : ""}${
+                          fig.total === 0 ? " zero" : ""
+                        }`}
+                      >
                         {signedMoney(fig.total, fig.currency)}
                       </span>
                     )}
