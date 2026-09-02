@@ -22,11 +22,18 @@
 // registry decides" is what lets a future widget ship either way and still
 // reach every existing member's shelf.
 
-/** A widget's shape on the board. Not every widget can honestly draw at every
- *  size (a half-width Score is a ring; there is no half-width version of a
- *  factor rail), so a widget declares which sizes it HAS rather than being
- *  scaled. See issue #259. */
-export type WidgetSize = "half" | "full";
+/** One size a widget can honestly draw at: a stable id (what gets stored and
+ *  compared, never shown), a label for the picker (in the member's words),
+ *  and whether it spans both columns. `full` is a property of the SIZE and
+ *  not of the widget, because two sizes can share a column width and still be
+ *  genuinely different cards: the Score's strip and its ring are both
+ *  half-width, and neither is the other one scaled. See issue #259. */
+export interface WidgetSizeOption {
+  id: string;
+  label: string;
+  /** Spans both columns. Absent or false means a half-width column. */
+  full?: boolean;
+}
 
 /** A widget's identity, its title, and where the unabridged version lives.
  *  Pure data: the components are wired up in pages/app/overview.tsx, which is
@@ -42,16 +49,16 @@ export interface WidgetMeta {
   /** The sizes this widget can honestly draw at, first entry is the default a
    *  member who has never touched sizing sees. A single entry means there is
    *  no choice to offer: the size picker only ever appears for a widget with
-   *  more than one. `"full"` spans both columns. */
-  sizes: WidgetSize[];
-  /** How each size reads in the member's words, for the size picker. Falls
-   *  back to a plain default (see `sizeLabel`) for a widget that does not name
-   *  its own, which is every widget with only one size, since it never shows a
-   *  picker at all. */
-  sizeLabels?: Partial<Record<WidgetSize, string>>;
+   *  more than one. */
+  sizes: WidgetSizeOption[];
   /** Ships off, waiting in the shelf. See the header. */
   defaultOff?: boolean;
 }
+
+/** The one size every widget without a real choice yet declares: a single
+ *  entry, so `sizeFor` and the picker both treat "not built yet" the same as
+ *  "genuinely one shape", which is the honest state of most widgets today. */
+const DEFAULT_SIZES: WidgetSizeOption[] = [{ id: "default", label: "Compact" }];
 
 /** The registry, in the order a member who has never arranged anything sees.
  *  The first seven are the page as it stood before #251, unchanged and in the
@@ -59,16 +66,20 @@ export interface WidgetMeta {
 export const WIDGETS: WidgetMeta[] = [
   {
     id: "score", title: "Juniper Score", home: "/app/score", homeLabel: "Score",
-    sizes: ["half", "full"], sizeLabels: { half: "Ring", full: "Full breakdown" },
+    sizes: [
+      { id: "strip", label: "Strip" },
+      { id: "ring", label: "Ring" },
+      { id: "full", label: "Full breakdown", full: true },
+    ],
   },
-  { id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page", sizes: ["half"] },
-  { id: "plans", title: "Your plans", home: "/app/plans", homeLabel: "Plans", sizes: ["half"] },
-  { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"] },
-  { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions", sizes: ["half"] },
-  { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"] },
-  { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections", sizes: ["half"] },
-  { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", sizes: ["half"], defaultOff: true },
-  { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"], defaultOff: true },
+  { id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page", sizes: DEFAULT_SIZES },
+  { id: "plans", title: "Your plans", home: "/app/plans", homeLabel: "Plans", sizes: DEFAULT_SIZES },
+  { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
+  { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
+  { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
+  { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections", sizes: DEFAULT_SIZES },
+  { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", sizes: DEFAULT_SIZES, defaultOff: true },
+  { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES, defaultOff: true },
 ];
 
 export const WIDGET_BY_ID: Record<string, WidgetMeta> =
@@ -122,22 +133,26 @@ export function asDashboardLayout(v: unknown): DashboardLayout | null {
   };
 }
 
-/** The size a widget draws at: the member's own choice if they made one AND it
- *  is still one of that widget's declared sizes (a build that removed a size
- *  must not honor a stale choice for it), otherwise the widget's own default,
- *  which is its first declared size. */
-export function sizeFor(layout: DashboardLayout | null, id: string): WidgetSize {
-  const declared = WIDGET_BY_ID[id]?.sizes ?? (["half"] as WidgetSize[]);
+/** The size id a widget draws at: the member's own choice if they made one AND
+ *  it is still one of that widget's declared sizes (a build that removed a
+ *  size must not honor a stale choice for it), otherwise the widget's own
+ *  default, which is its first declared size. */
+export function sizeFor(layout: DashboardLayout | null, id: string): string {
+  const declared = WIDGET_BY_ID[id]?.sizes ?? DEFAULT_SIZES;
   const chosen = layout?.sizes[id];
-  if (chosen && (declared as string[]).includes(chosen)) return chosen as WidgetSize;
-  return declared[0];
+  if (chosen && declared.some((s) => s.id === chosen)) return chosen;
+  return declared[0].id;
 }
 
-const DEFAULT_SIZE_LABEL: Record<WidgetSize, string> = { half: "Compact", full: "Full width" };
+/** Whether a size spans both columns, looked up by id rather than assumed,
+ *  since two of a widget's own sizes can share a column width. */
+export function sizeIsFull(id: string, sizeId: string): boolean {
+  return !!WIDGET_BY_ID[id]?.sizes.find((s) => s.id === sizeId)?.full;
+}
 
-/** How a size reads in the picker, in the widget's own words if it named one. */
-export function sizeLabel(id: string, size: WidgetSize): string {
-  return WIDGET_BY_ID[id]?.sizeLabels?.[size] ?? DEFAULT_SIZE_LABEL[size];
+/** How a size reads in the picker, in the widget's own words. */
+export function sizeLabel(id: string, sizeId: string): string {
+  return WIDGET_BY_ID[id]?.sizes.find((s) => s.id === sizeId)?.label ?? sizeId;
 }
 
 /**
@@ -179,13 +194,13 @@ export function isShown(layout: DashboardLayout | null, id: string): boolean {
 export function layoutFrom(
   order: string[],
   shown: (id: string) => boolean,
-  size: (id: string) => WidgetSize,
+  size: (id: string) => string,
 ): DashboardLayout {
   const sizes: Record<string, string> = {};
   for (const id of order) {
     if (!(id in WIDGET_BY_ID)) continue;
     const chosen = size(id);
-    if (chosen !== WIDGET_BY_ID[id].sizes[0]) sizes[id] = chosen;
+    if (chosen !== WIDGET_BY_ID[id].sizes[0].id) sizes[id] = chosen;
   }
   return {
     v: LAYOUT_VERSION,
