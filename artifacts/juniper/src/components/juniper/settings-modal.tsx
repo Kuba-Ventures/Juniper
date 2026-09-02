@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { HOLDER_STYLES, HOLDER_LABEL, holderClass, type HolderStyle } from "@/lib/holder-style";
 import { useFinances } from "@/lib/finances";
 import { timeAgo } from "@/lib/auto-sync";
-import { syncFinances } from "@/lib/plaid";
+import { rebuildNetworthHistory, syncFinances } from "@/lib/plaid";
 
 // Wipe this account back to a brand-new state, server profile + plans and all
 // local caches (profile, onboarded flag, welcome tip), then hard-reload into
@@ -64,6 +64,12 @@ export function SettingsModal({
   const [refreshed, setRefreshed] = useState(false);
   const { sync, syncing, refresh } = useFinances();
   const isDeveloper = import.meta.env.DEV || !!sync?.isDeveloper;
+  // The rebuild reports what it did rather than saying "Done", because it is the
+  // one control here that deletes rows: a member pressing it deserves to read
+  // how many reconstructed days were replaced and how many recorded ones were
+  // left alone. See api/plaid/networth-backfill.ts.
+  const [busyRebuild, setBusyRebuild] = useState(false);
+  const [rebuildNote, setRebuildNote] = useState<string | null>(null);
   // Its own busy flag rather than the context's `syncing`, which is true only
   // for the AUTOMATIC background refresh. Sharing it left the button disabled
   // while a background sync it had not started was running.
@@ -102,6 +108,25 @@ export function SettingsModal({
     } finally {
       setBusyRefresh(false);
     }
+  };
+
+  const doRebuild = async () => {
+    setBusyRebuild(true);
+    setRebuildNote(null);
+    const res = await rebuildNetworthHistory();
+    setBusyRebuild(false);
+    if (!res) { setRebuildNote("Please sign in again."); return; }
+    if (!res.ok) { setRebuildNote(res.error ?? "Couldn't rebuild the history."); return; }
+    if (!res.days) { setRebuildNote("Nothing earlier to reconstruct."); return; }
+    const bits = [`${res.cleared} reconstructed ${res.cleared === 1 ? "day" : "days"} replaced`];
+    if (res.recordedKept) bits.push(`${res.recordedKept} recorded ${res.recordedKept === 1 ? "day" : "days"} left alone`);
+    if (res.investmentsUnavailable) {
+      bits.push(`${res.investmentsUnavailable} ${res.investmentsUnavailable === 1 ? "connection" : "connections"} could not report investment flows, so their invested balance is still carried back flat`);
+    } else if (res.investmentsAdjusted) {
+      bits.push(`investments adjusted for contributions on ${res.investmentsAdjusted} ${res.investmentsAdjusted === 1 ? "connection" : "connections"}`);
+    }
+    setRebuildNote(bits.join(", ") + ".");
+    refresh();
   };
 
   const doReset = async () => {
@@ -230,6 +255,21 @@ export function SettingsModal({
                   </div>
                   <button className="btn ghost sm" disabled={busyRefresh || refreshed} onClick={doRefresh}>
                     {busyRefresh ? "Refreshing…" : refreshed ? "Done" : "Refresh"}
+                  </button>
+                </div>
+
+                <div className="dev-row">
+                  <div className="dev-t">
+                    <div className="dev-n">Rebuild net-worth history</div>
+                    <div className="dev-s">
+                      Redoes the reconstructed days before your first recorded snapshot, which is worth doing after
+                      relinking a bank that can now report investment flows it could not before. Days Juniper actually
+                      recorded are never touched.
+                    </div>
+                    {rebuildNote && <div className="dev-warn">{rebuildNote}</div>}
+                  </div>
+                  <button className="btn ghost sm" disabled={busyRebuild} onClick={doRebuild}>
+                    {busyRebuild ? "Rebuilding…" : "Rebuild"}
                   </button>
                 </div>
 

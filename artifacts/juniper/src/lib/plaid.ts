@@ -304,6 +304,53 @@ export type SyncResult = {
 // (the sync resumes from its cursor; the snapshot upserts one row per day).
 // Degrades quietly when Plaid / storage isn't configured yet so callers never
 // block the UI on it.
+/**
+ * Rebuild the reconstructed part of the member's net-worth history (issue from
+ * the Schwab relink; see api/plaid/networth-backfill.ts).
+ *
+ * The ordinary backfill fires on every sync and is a no-op once the days exist,
+ * deliberately: a reconstruction is derived from TODAY's balances, so rewriting
+ * it on every sync would make the member's own past wobble as the market moves.
+ * This asks for the one case where that default is wrong, which is when the
+ * INPUTS changed: an item relinked to consent to a product it could not serve
+ * before can now answer for a stretch that was carried back flat.
+ *
+ * Not called by `syncFinances()` and it must not be: this is something somebody
+ * asks for, and the endpoint reports what it cleared so they can check it.
+ */
+export async function rebuildNetworthHistory(): Promise<{
+  ok: boolean;
+  cleared?: number;
+  written?: number;
+  days?: number;
+  recordedKept?: number;
+  investmentsAdjusted?: number;
+  investmentsUnavailable?: number;
+  error?: string;
+} | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch("/api/plaid/networth-backfill?rebuild=1", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return { ok: false, error: String(data.error ?? `HTTP ${res.status}`) };
+    return {
+      ok: true,
+      cleared: Number(data.cleared ?? 0),
+      written: Number(data.written ?? 0),
+      days: Number(data.days ?? 0),
+      recordedKept: Number(data.recorded_kept ?? 0),
+      investmentsAdjusted: Number(data.investments_adjusted ?? 0),
+      investmentsUnavailable: Number(data.investments_unavailable ?? 0),
+    };
+  } catch {
+    return { ok: false, error: "Couldn't reach the server." };
+  }
+}
+
 export async function syncFinances(): Promise<SyncResult> {
   // Transactions + net worth first (they populate what the score reads), then
   // snapshot the Juniper Score for the trend/delta history.
