@@ -1,4 +1,5 @@
 import { getAccessToken } from "@/lib/supabase";
+import { creditPosition } from "@/lib/credit-balance";
 
 // Client-side helpers for the Plaid connection flow. All access tokens live
 // server-side; the client only ever sees sanitized account snapshots.
@@ -44,6 +45,45 @@ const DEAD_ITEM_CODES = new Set(["ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN"])
 
 export function itemNeedsRelink(item: PlaidItem): boolean {
   return !!item.last_error_code && DEAD_ITEM_CODES.has(item.last_error_code);
+}
+
+/**
+ * What one institution's accounts come to, signed the way net worth is signed:
+ * assets add, what is owed subtracts. Null when the institution has nothing this
+ * can state a figure from, so a caller renders no figure rather than "$0".
+ *
+ * The asset/debt split mirrors api/_finance-snapshot.ts, WHICH IS CANONICAL, for
+ * the same reason lib/credit-balance.ts mirrors api/_credit-balance.ts: the
+ * Connections gallery puts a figure on every institution tile and the client
+ * cannot import from api/. If that split changes, change this too. An account
+ * type outside the five below contributes nothing, exactly as it contributes
+ * nothing to net worth, rather than being guessed into the total.
+ */
+export function institutionNet(item: PlaidItem): { total: number; currency: string } | null {
+  let total = 0;
+  let currency: string | null = null;
+  let counted = 0;
+  for (const a of item.accounts ?? []) {
+    if (typeof a.balance !== "number" || !Number.isFinite(a.balance)) continue;
+    const type = (a.type ?? "").toLowerCase();
+    const cur = a.currency || "USD";
+    // The first counted account fixes the currency, and anything reporting a
+    // different one is left out. Summing across currencies at 1:1 would be a
+    // made-up number, and converting is not this function's job.
+    if (currency == null) currency = cur;
+    else if (cur !== currency) continue;
+    if (type === "depository" || type === "investment" || type === "brokerage") total += a.balance;
+    // creditPosition, not Math.abs: an overpaid card is money the issuer owes
+    // the member, so it adds to the institution's figure rather than subtracting.
+    else if (type === "credit") {
+      const { owed, inCredit } = creditPosition(a.balance);
+      total += inCredit - owed;
+    } else if (type === "loan") total -= Math.abs(a.balance);
+    else continue;
+    counted += 1;
+  }
+  if (!counted || currency == null) return null;
+  return { total, currency };
 }
 
 // Brand metadata for one institution, mirroring InstitutionBrand in
