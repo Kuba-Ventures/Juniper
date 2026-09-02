@@ -16,7 +16,7 @@ import {
 } from "@/components/juniper/primitives";
 import {
   WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
-  sizeFor, sizeLabel, type DashboardLayout, type WidgetSize,
+  sizeFor, sizeLabel, sizeIsFull, type DashboardLayout,
 } from "@/lib/dashboard-layout";
 import {
   CardsWidget, RecurringWidget, useCardsWidget, useRecurringWidget,
@@ -442,11 +442,11 @@ function LoadingSlot({ title }: { title: string }) {
  * sitting beside a hole. Net worth losing its wider column is the price of
  * free ordering and is paid here.
  */
-function withSpans(ids: string[], sizeOf: (id: string) => WidgetSize): { id: string; full: boolean }[] {
+function withSpans(ids: string[], sizeOf: (id: string) => string): { id: string; full: boolean }[] {
   const out: { id: string; full: boolean }[] = [];
   let col = 0;
   for (const id of ids) {
-    const full = sizeOf(id) === "full";
+    const full = sizeIsFull(id, sizeOf(id));
     out.push({ id, full });
     col = full ? 0 : col === 0 ? 1 : 0;
   }
@@ -455,13 +455,15 @@ function withSpans(ids: string[], sizeOf: (id: string) => WidgetSize): { id: str
   return out;
 }
 
-/** The Score at half width is a strip; at full width it is the same factor
- *  rails /app/score draws, from `components/juniper/score-factors.tsx`, so the
- *  two can never disagree about what a factor's rail shows. Issue #259: a
- *  widget declares which sizes it HAS rather than being scaled, because a
- *  half-width ring and a full-width breakdown are different cards, not one
- *  card at two zoom levels. */
-function ScoreWidget({ score, pending, size }: { score: FinanceData["score"]; pending: boolean; size: WidgetSize }) {
+/** The Score at half width is either the strip (default) or a bigger centered
+ *  ring, sized and laid out like the spending donut so a member who wants the
+ *  Score to read as prominently as "Where it went" has that option; at full
+ *  width it is the same factor rails /app/score draws, from
+ *  `components/juniper/score-factors.tsx`, so the two can never disagree about
+ *  what a factor's rail shows. Issue #259: a widget declares which sizes it
+ *  HAS rather than being scaled, because a strip, a ring, and a full-width
+ *  breakdown are three different cards, not one card at three zoom levels. */
+function ScoreWidget({ score, pending, size }: { score: FinanceData["score"]; pending: boolean; size: string }) {
   if (size === "full") {
     return (
       <div className="card pad-lg">
@@ -481,6 +483,37 @@ function ScoreWidget({ score, pending, size }: { score: FinanceData["score"]; pe
             are derived too, and a manual-layer rail replaced a moment later by
             a live one would be the exact flash #240 fixed, just moved here. */}
         {pending ? <div style={{ height: 96 }} aria-hidden="true" /> : <Factors items={score.factors} />}
+      </div>
+    );
+  }
+  if (size === "ring") {
+    return (
+      <div className="card score-ring">
+        <div className="card-head">
+          <h3>Juniper Score</h3>
+          <Link href="/app/score" className="link">See breakdown →</Link>
+        </div>
+        {/* Same grid the spending donut uses (170px ring column + a details
+            column), so a member who wants this card to carry the same visual
+            weight as "Where it went" gets exactly that, not an approximation
+            of it. */}
+        <div className="donut-wrap">
+          <div className="chart">
+            <MiniRing score={score.value} pending={pending} d={170} />
+          </div>
+          <div>
+            <span className={pending ? "band pending" : "band"}>
+              {pending ? SCORE_DASH : <>{score.value} · {score.band}</>}
+            </span>
+            <div className="st-s">
+              {pending
+                ? <>Working out your score…</>
+                : score.delta !== 0
+                  ? <><b>{score.delta >= 0 ? "+" : ""}{score.delta} pts</b> this month · biggest lever: {score.lever}</>
+                  : <>Your starting score · biggest lever: {score.lever}</>}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -600,7 +633,7 @@ export default function Overview({
   // Issue #259: every widget's current size, keyed by id. Populated for every
   // widget in the registry, not only the ones with a choice to make, so a
   // reader never has to fall back to a default mid-render.
-  const [sizes, setSizes] = useState<Record<string, WidgetSize>>(
+  const [sizes, setSizes] = useState<Record<string, string>>(
     () => Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id)])),
   );
   // Which widget's size menu is open, one at a time, closed by choosing a size,
@@ -646,7 +679,7 @@ export default function Overview({
   // member to every device rather than living on this one. Debounced, because a
   // keyboard nudge held down would otherwise be one POST per keypress.
   const saveTimer = useRef<number | null>(null);
-  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>, nextSizes: Record<string, WidgetSize>) => {
+  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>, nextSizes: Record<string, string>) => {
     if (!onLayout) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
@@ -676,7 +709,7 @@ export default function Overview({
 
   // Issue #259: the member's own choice of size, one widget at a time. Reads
   // the same refs-not-state rule as `setShown`/`nudge` for the same reason.
-  const setWidgetSize = (id: string, size: WidgetSize) => {
+  const setWidgetSize = (id: string, size: string) => {
     const next = { ...sizesRef.current, [id]: size };
     sizesRef.current = next;
     setSizes(next);
@@ -911,11 +944,11 @@ export default function Overview({
                       <div className="dash-size-c-menu">
                         {meta.sizes.map((s) => (
                           <button
-                            key={s}
-                            className={sizes[id] === s ? "dash-size-c-item on" : "dash-size-c-item"}
-                            onClick={() => setWidgetSize(id, s)}
+                            key={s.id}
+                            className={sizes[id] === s.id ? "dash-size-c-item on" : "dash-size-c-item"}
+                            onClick={() => setWidgetSize(id, s.id)}
                           >
-                            <span>{sizeLabel(id, s)}</span>
+                            <span>{s.label}</span>
                             <span className="ck" aria-hidden>✓</span>
                           </button>
                         ))}

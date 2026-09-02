@@ -209,8 +209,15 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
 /* ---------- score ring ---------- */
 export function MiniRing({ score, d = 46, pending = false }: { score: number; d?: number; pending?: boolean }) {
   const r = (d - 6) / 2, c = 2 * Math.PI * r, off = c * (1 - score / 100), cx = d / 2;
+  // Sized inline from `d` rather than trusting the class's own 46px, which is
+  // right only for the default: a caller drawing a bigger ring (the Overview's
+  // "Ring" size, issue #259, wants the same visual weight the spending donut
+  // has) needs the wrapper and the number both to scale with it, not just the
+  // svg inside a fixed box. The ratio is the current fixed 15px read against
+  // the default 46px, so nothing changes for an existing caller.
+  const fontSize = Math.max(11, Math.round(d * (15 / 46)));
   return (
-    <div className="mini-ring">
+    <div className="mini-ring" style={{ width: d, height: d }}>
       <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
         <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={5} />
         {/* NO ARC WHILE PENDING. An arc is a quantity: any length at all states a
@@ -221,7 +228,7 @@ export function MiniRing({ score, d = 46, pending = false }: { score: number; d?
             strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${cx} ${cx})`} />
         )}
       </svg>
-      <span className={pending ? "rv tnum pending" : "rv tnum"}>{pending ? SCORE_DASH : score}</span>
+      <span className={pending ? "rv tnum pending" : "rv tnum"} style={{ fontSize }}>{pending ? SCORE_DASH : score}</span>
     </div>
   );
 }

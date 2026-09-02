@@ -221,11 +221,12 @@
 
 /* ---------- score strip ---------- */
 .jnpr .score-strip{display:flex;align-items:center;gap:15px;padding:14px 18px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);background:var(--jnpr-surface);box-shadow:var(--jnpr-shadow)}
-.jnpr .mini-ring{position:relative;width:46px;height:46px;flex:0 0 auto}
+.jnpr .mini-ring{position:relative;flex:0 0 auto}
 .jnpr .mini-ring .rv{position:absolute;inset:0;display:grid;place-items:center;font-weight:750;font-size:15px;color:var(--jnpr-ink)}
 .jnpr .score-strip .st-t{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--jnpr-ink)}
-.jnpr .score-strip .band{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-good);background:var(--jnpr-good-soft);padding:2px 8px;border-radius:20px}
+.jnpr .score-strip .band,.jnpr .score-ring .band{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-good);background:var(--jnpr-good-soft);padding:2px 8px;border-radius:20px;display:inline-block}
 .jnpr .score-strip .st-s{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:2px}.jnpr .score-strip .st-s b{color:var(--jnpr-ink-2)}
+.jnpr .score-ring .st-s{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:8px}.jnpr .score-ring .st-s b{color:var(--jnpr-ink-2)}
 .jnpr .score-strip .link{margin-left:auto;white-space:nowrap}
 
 /* ---------- charts ---------- */
