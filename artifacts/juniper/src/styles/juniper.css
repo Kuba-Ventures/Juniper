@@ -265,8 +265,12 @@
 .jnpr .plan-lg .pt{font-weight:700;font-size:16px;color:var(--jnpr-ink)}
 .jnpr .plan-lg .pn{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
 .jnpr .plan-lg .body{padding:16px 18px}
-.jnpr .plan-lg .nums{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
-.jnpr .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+/* `gap` and `nowrap` are what let the inline-edit pencil sit on this line.
+   Without them the pencil pushes "/ $60,000" onto a second row on a narrow
+   card, and the figure stops reading as one number. The percentage on the
+   right wraps instead, which it already did. */
+.jnpr .plan-lg .nums{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:10px}
+.jnpr .plan-lg .nums .big{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink);white-space:nowrap}
 .jnpr .plan-lg .nums .big small{font-size:12px;color:var(--jnpr-ink-3);font-weight:550}
 .jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
 .jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
@@ -283,6 +287,26 @@
 .jnpr .edit-hint:focus-visible{opacity:1;outline:2px solid var(--jnpr-accent);outline-offset:3px;border-radius:4px}
 .jnpr .edit-hint:hover{color:var(--jnpr-ink)}
 .jnpr .plan-foot{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--jnpr-line-2)}
+
+/* Inline edit on a card: the pencil follows the same reveal as .edit-hint
+   above, hover or focus-within, so a card at rest still reads as a card and a
+   keyboard user is never handed an invisible control. */
+.jnpr .pen{opacity:0;transition:opacity .15s;background:none;border:0;padding:2px;margin-left:5px;
+  cursor:pointer;color:var(--jnpr-ink-3);vertical-align:middle;line-height:0;display:inline-flex}
+.jnpr .plan-lg:hover .pen,
+.jnpr .plan-lg:focus-within .pen{opacity:1}
+.jnpr .pen:hover{color:var(--jnpr-accent)}
+.jnpr .pen:focus-visible{opacity:1;outline:2px solid var(--jnpr-accent);outline-offset:2px;border-radius:4px}
+.jnpr .pen:disabled{cursor:default;opacity:.4}
+.jnpr .pen svg{width:13px;height:13px;display:block}
+/* Sized to sit in the line it replaces rather than resize the card around it. */
+.jnpr .inline-in{font-family:inherit;background:var(--jnpr-surface);color:var(--jnpr-ink);border:0;
+  border-bottom:1.5px solid var(--jnpr-accent);outline:none;padding:0 2px 1px;border-radius:3px 3px 0 0;
+  font-variant-numeric:tabular-nums}
+.jnpr .inline-in.t{font-size:16px;font-weight:700;width:100%;max-width:230px}
+.jnpr .inline-in.n{font-size:22px;font-weight:750;letter-spacing:-.02em;width:130px}
+.jnpr .plan-err{margin-top:10px;background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);
+  color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:7px 10px;font-size:11.5px}
 .jnpr .plan-ask{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:650;color:var(--jnpr-accent-deep);background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);border-radius:20px;padding:6px 12px;cursor:pointer}
 .jnpr .plan-ask:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}
 .jnpr .plan-ask svg{width:14px;height:14px}
@@ -384,6 +408,16 @@
 .jnpr .plan-ex .ex-s{font-size:11px;color:var(--jnpr-ink-3);margin-top:1px}
 .jnpr .plan-ex .bar{opacity:.65}
 .jnpr .plan-ex .ex-b{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.5;margin:9px 0 0}
+/* An example is illustration until someone wants it. This is the one control
+   that turns it into a starting point, so it is always visible: a dismissible
+   card is not a place to hide an action behind hover. */
+.jnpr .plan-ex .ex-foot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:9px;
+  border-top:1px solid var(--jnpr-line-2)}
+.jnpr .plan-ex .ex-use{font-family:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent-deep);
+  background:var(--jnpr-accent-soft);border:1px solid color-mix(in srgb,var(--jnpr-accent) 28%,transparent);
+  border-radius:20px;padding:5px 11px;cursor:pointer}
+.jnpr .plan-ex .ex-use:hover{background:color-mix(in srgb,var(--jnpr-accent) 16%,transparent)}
+.jnpr .plan-ex .ex-use:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
 
 
 /* ---------- summary strip (shared bills) + list rows ---------- */
@@ -1585,6 +1619,14 @@
 .jnpr .plan-lg.unstarted:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
 .jnpr .plan-lg.unstarted .big{color:var(--jnpr-ink-3);font-weight:650}
 .jnpr .plan-lg.unstarted .bar{opacity:.35}
+/* The quick add. A real input at rest, not a control that has to be found:
+   the number is the only thing standing between a signup goal and a plan. */
+.jnpr .quick-target{display:flex;align-items:center;gap:7px;margin-top:12px}
+.jnpr .quick-target .qt-pre{font-size:13px;font-weight:650;color:var(--jnpr-ink-2)}
+.jnpr .qt-in{font-family:inherit;font-size:14px;font-weight:700;color:var(--jnpr-ink);
+  background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:8px;padding:6px 9px;
+  width:120px;font-variant-numeric:tabular-nums}
+.jnpr .qt-in:focus{outline:2px solid var(--jnpr-accent);outline-offset:1px;border-color:transparent}
 /* The Overview row equivalent, same restraint. */
 .jnpr .plan-row.waiting .bar{opacity:.35}
 
