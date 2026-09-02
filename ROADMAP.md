@@ -416,10 +416,7 @@ rationale in `docs/CARD_REWARDS.md`.
   the sequence that got mangled would arrive as broken as the thing it repairs.
 - [x] **(ops)** Apply `0035` and `0036` to the production Supabase project. Both applied; verified
   against `information_schema`.
-- [ ] **(ops)** Apply `0037_card_art_urls.sql` to the production Supabase project. Fills `art_url` for
-  15 of the 18 products; `0038` fills the remaining three. Ends with a verification SELECT: every row carrying a URL should report `ok`
-  true. **Deploy the branch first** - the URLs point at `/card-art/*.webp` on Juniper's own origin, so
-  applying it ahead of the deploy leaves 15 faces briefly falling back to the synthesized render.
+
 - [x] **Decide where card art comes from.** Decided: rehost the issuers' own renders on Juniper's origin
   as a stopgap, margin-trimmed, with the issuers' placeholder cardholder names ("D. BARRETT",
   "LEE M CARDHOLDER", "LINDA WALKER") erased so a stranger's name never appears on a member's card.
@@ -430,7 +427,7 @@ rationale in `docs/CARD_REWARDS.md`.
   antialiased edge without also erasing the word UNLIMITED. The ribbon juts past the card edge, so the
   card width is reconstructed from its height at the true 1.586 ratio rather than trimmed to the opaque
   bounds (which measured the ribbon: 1.519). All 18 products now carry art.
-- [ ] **(ops)** Apply `0038_card_art_urls_chase.sql`. Same deploy-first rule as `0037`.
+
 - [x] **Two-tier catalog** (`0039`). `card_products.tier` is `featured` (researched rates, feeds the
   earning guide and the switch and upgrade rows) or `listed` (name, issuer, network, fee, art -- exists
   so the Identify picker can name any card a member holds, and is kept out of everything rate-driven).
@@ -444,7 +441,7 @@ rationale in `docs/CARD_REWARDS.md`.
   rewards-program text rather than the comparison-page summary, so these eleven ship `verified = TRUE`.
   The ~30 co-brands are deliberately excluded: each earns its own currency and would need an invented
   valuation that then drives the dollar figures in "cards that would beat yours".
-- [ ] **(ops)** Apply `0039`, `0040`, `0041` in order. Deploy first, as with `0037`.
+
 - [x] **Benefits for the premium cards** (`0044`, schema in `0043`). 59 rows across the two Sapphire
   Reserves, Ink Business Preferred and Premier, and the three cards `0042` adds. Coverage LIMITS carry a
   NULL value rather than their limit: `value_amount` is summed by the tracker, so "up to $10,000 per
@@ -457,7 +454,7 @@ rationale in `docs/CARD_REWARDS.md`.
 - [x] **Three premium products** (`0042`, art in `0045`): Amex Platinum, Amex Gold, Capital One Venture X.
   Membership Rewards is valued at 1.0 cent -- Amex's own statement-credit floor, deliberately conservative
   -- on the same basis the Capital One miles row already used, so nothing is invented.
-- [ ] **(ops)** Apply `0042`, `0043`, `0044`, `0045` in order. Deploy first, as with `0037`.
+
 - [ ] **A merchant- and portal-scoped earn category.** The taxonomy cannot say "5 percent at Amazon",
   "8x through Chase Travel", "5x through Amex Travel" or "10x through Capital One Travel", so those rates
   are omitted and the cards are understated: Prime Visa, Amazon Visa, DoorDash, Instacart, both Sapphire
@@ -465,8 +462,7 @@ rationale in `docs/CARD_REWARDS.md`.
   portal-booked**. The Platinum consequently reads as a 1x card whose case is entirely its credits. Same
   shape as the rotating-category gap on Freedom Flex and Discover it. This is the fourth migration in a
   row to record the same omission and is now the largest single source of understatement in the catalog.
-- [ ] **(ops)** Apply `0034` to the production Supabase project. `ON CONFLICT DO NOTHING` throughout, so
-  it cannot disturb 0032's rows or anything already verified by hand.
+
 - [x] **A credit limit on a hand-entered card** (`0046`). The only route that makes utilization agree
   with the member's own credit report, because the card it exists for can never arrive through Plaid:
   see the authorized-user entry below. `manual_accounts` (`0014`) already existed for "anything Plaid
@@ -708,17 +704,24 @@ rationale in `docs/CARD_REWARDS.md`.
   The clip's height and the cards' offsets are functions of the card count alone, so both transitions
   went with it rather than being left to animate a state change that no longer exists. The cover stays at
   84px: its depth is about looking like a wallet, not about fitting the text it lost.
-- [ ] **(ops)** Apply `0048`. Deploy first, as with `0037`, though it is additive and safe either way:
-  the column is nullable and an absent value renders the default holder. Verified against a scratch
-  Postgres before shipping: `0001` then `0048` applies clean, re-running is a no-op, a pre-existing
-  profile row survives with `holder_style` NULL, a known style is accepted, an unknown one is refused,
-  and a value shaped to escape a class attribute is refused.
-- [ ] **(ops)** Apply `0047`. Deploy first, as with `0037`, though it is additive and safe either way:
-  the column is nullable and every read and write carries a fallback for its absence. Verified against a
-  scratch Postgres before shipping: `0014`, `0046`, then `0047` applies clean, re-running is a no-op, two
-  pre-existing rows survive with `product_id` NULL, a product on a banking account is refused, an unknown
-  product id is refused by the FOREIGN KEY, and deleting a catalog product nulls the name rather than
-  deleting the member's account.
+- [x] **#250 reversed three of the paragraphs above, and they are left standing because the reasoning
+  is the record.** Read against the code on 2026-09-02, since a stage that describes the shape of a
+  thing is worth checking against the thing: the cover is **168px**, not 84 (`COVER_H` in
+  `components/juniper/rewards-guide.tsx`, commented as the block plus the stitch plus the room the
+  numbers need); the **card sheet is deleted**, `CardSheet` and its `.cs-*` block are both gone, and a
+  tap now pops the card out of the holder rather than opening a modal over the page; and **Collapse is
+  back**, as "Show all" / "Collapse" at `rewards-guide.tsx:553`, which reverses #248's "the holder has
+  one shape" directly. `FACE_H` is still derived from the ID-1 ratio rather than from a constant, which
+  is the one decision in this run that survived every revision of the holder
+
+- [x] **(ops)** **`0031` to `0048` are all applied to production**, which replaces the eleven separate
+  "Apply 00xx" boxes that used to sit in this stage and had gone stale as they were ticked off in the
+  Supabase editor and not here. Settled on 2026-09-02 by reading the schema and the data rather than
+  the checkboxes: **32 card products (31 featured, all 32 carrying art), 52 earn rows, 109 benefits of
+  which 10 have an `expires_on`, 4 `member_cards` rows, 5 manual credit accounts (1 with a member-set
+  limit, 1 identified to a catalog product), and 1 profile with a holder style chosen.** Every column
+  those figures rest on belongs to a migration in this range, so the range is applied. With 0049 the
+  tree is 0001 to 0049
 - [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
   done every member sees the "not yet re-checked" caveat.
