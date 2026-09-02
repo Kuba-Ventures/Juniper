@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useSearch } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
@@ -70,10 +70,17 @@ function prefillFor(key: PrefillKey, b: Balances): Prefill {
 }
 
 type Filter = "active" | "completed" | "all";
+
+// Numbers an example plan hands to the create form. Only the two figures the
+// illustration itself owns: its target and its monthly amount. Never its
+// `current`, which is progress the member has not made, and seeding it would
+// be inventing a balance they never gave us.
+type Seed = { target: number; monthly: number };
+
 type ModalState =
   | null
   | { k: "new" }
-  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; fromGoal?: boolean }
+  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; fromGoal?: boolean; seed?: Seed }
   | { k: "edit"; domain: string };
 
 const TEMPLATES: { label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey }[] = [
@@ -161,6 +168,54 @@ const CloseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
 );
 
+// Local rather than added to the shared ICONS map in primitives.tsx: this is
+// the only surface with an inline edit, and a plan shape icon and an edit
+// affordance are different kinds of thing.
+const PencilIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.5 4.5l4 4L8 20H4v-4z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+/* ------------------------------------------------------------------ *
+ * Inline edit: one field, opened in place.
+ *
+ * Same keys the retired plan detail used, so the habit carries over: Enter
+ * commits, Escape reverts, clicking away commits. `doneRef` rather than state
+ * because Enter fires the commit and then blur fires straight after it, and a
+ * state flag read on that second call is still the value from before the
+ * render.
+ * ------------------------------------------------------------------ */
+function InlineField({ kind, initial, label, onCommit, onCancel }: {
+  kind: "title" | "target";
+  initial: string;
+  label: string;
+  onCommit: (raw: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const doneRef = useRef(false);
+  const finish = (save: boolean) => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (save) onCommit(value); else onCancel();
+  };
+  return (
+    <input
+      className={`inline-in ${kind === "title" ? "t" : "n"}`}
+      autoFocus
+      aria-label={label}
+      value={value}
+      inputMode={kind === "target" ? "numeric" : undefined}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { e.preventDefault(); finish(true); }
+        if (e.key === "Escape") { e.preventDefault(); finish(false); }
+      }}
+      onBlur={() => finish(true)}
+    />
+  );
+}
+
 /* ------------------------------------------------------------------ *
  * Real plans: one row -> everything the card needs.
  * ------------------------------------------------------------------ */
@@ -235,24 +290,107 @@ function viewOf(plan: Plan): PlanView {
   };
 }
 
-function PlanCard({ v, onOpen, onAsk, chatCount }: { v: PlanView; onOpen: () => void; onAsk: () => void; chatCount: number }) {
+function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
+  v: PlanView;
+  onOpen: () => void;
+  onAsk: () => void;
+  chatCount: number;
+  /** Write one changed field back to the row. Resolves false if it did not save. */
+  onPatch: (patch: { name?: string; target?: number }) => Promise<boolean>;
+}) {
   const copy = SHAPE_COPY[v.shape];
+  // Which field is open, if any. One at a time: two live inputs on one card
+  // means two pending writes racing over the same row.
+  const [editing, setEditing] = useState<null | "title" | "target">(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const commit = async (field: "title" | "target", raw: string) => {
+    setEditing(null);
+    setError("");
+    const patch: { name?: string; target?: number } = {};
+    if (field === "title") {
+      const name = raw.trim();
+      // An empty title is not a save. A plan with no name reads as a bug on
+      // every other surface, so a cleared field reverts instead of writing.
+      if (!name || name === v.title) return;
+      patch.name = name;
+    } else {
+      const target = parseNum(raw);
+      // Nothing is written until a target is set, which cuts both ways: a zero
+      // typed here is a cleared field, not a request for a plan Juniper cannot
+      // track. Clearing a target back to nothing stays in the modal, where the
+      // consequence is spelled out.
+      if (target <= 0 || target === v.target) return;
+      patch.target = target;
+    }
+    setBusy(true);
+    const ok = await onPatch(patch);
+    setBusy(false);
+    if (!ok) setError("That did not save. Check your connection and try again.");
+  };
+
+  const pencil = (field: "title" | "target", label: string) => (
+    <button
+      className="pen"
+      disabled={busy}
+      aria-label={label}
+      onClick={(e) => { e.stopPropagation(); setError(""); setEditing(field); }}
+    >
+      <PencilIcon />
+    </button>
+  );
+
   return (
     // Deliberately NOT role="button". A plan card contains a button already
     // (Ask Juniper), and interactive content nested inside a button is invalid
     // and announces badly. The click here is a mouse shortcut layered over the
     // real control in the footer, which is a button, focusable, and labelled.
-    <div className={`card plan-lg ${v.done ? "done" : ""}`} onClick={onOpen}>
+    //
+    // The shortcut stands down while a field is open. Clicking away from an
+    // inline edit is how you commit it, and having that same click also throw
+    // the full modal over the card makes the quick route slower than the one
+    // it was meant to replace.
+    <div className={`card plan-lg ${v.done ? "done" : ""}`} onClick={() => { if (!editing) onOpen(); }}>
       <div className="ph">
         <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={SHAPE_ICON[v.shape]} /></div>
-        <div style={{ flex: 1 }}><div className="pt">{v.title}</div><div className="pn">{v.note}</div></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {editing === "title" ? (
+            <InlineField
+              kind="title"
+              initial={v.title}
+              label={`Rename ${v.title}`}
+              onCommit={(raw) => void commit("title", raw)}
+              onCancel={() => setEditing(null)}
+            />
+          ) : (
+            <div className="pt">
+              {v.title}
+              {pencil("title", `Rename ${v.title}`)}
+            </div>
+          )}
+          <div className="pn">{v.note}</div>
+        </div>
         <span className={`status ${v.statusClass}`}>{v.statusLabel}</span>
       </div>
       <div className="body">
         <div className="nums">
           <div className="big tnum">
-            {v.target > 0 ? money(v.current) : "Not set"}
-            {v.target > 0 ? <small> / {money(v.target)}</small> : null}
+            {editing === "target" ? (
+              <InlineField
+                kind="target"
+                initial={numStr(v.target)}
+                label={`${copy.targetLabel} for ${v.title}`}
+                onCommit={(raw) => void commit("target", raw)}
+                onCancel={() => setEditing(null)}
+              />
+            ) : (
+              <>
+                {v.target > 0 ? money(v.current) : "Not set"}
+                {v.target > 0 ? <small> / {money(v.target)}</small> : null}
+                {pencil("target", `${copy.targetLabel} for ${v.title}`)}
+              </>
+            )}
           </div>
           <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>{v.pct}% {copy.progressWord}</div>
         </div>
@@ -262,6 +400,7 @@ function PlanCard({ v, onOpen, onAsk, chatCount }: { v: PlanView; onOpen: () => 
           {v.dateLabel && <span className="pm-date">{v.dateLabel}</span>}
         </div>
         <div className="next"><b>{v.done ? "Outcome:" : "Next:"}</b> {v.next}</div>
+        {error && <div className="plan-err">{error}</div>}
         <div className="plan-foot">
           <button
             className="edit-hint"
@@ -359,7 +498,34 @@ function offerFor(goal: string, i: number): GoalOffer {
 //
 // Every figure is "Not set" rather than a zero. A zero would be a number the
 // member never gave, which is the dishonesty that rule exists to prevent.
-function UnstartedCard({ goal, color, onStart }: { goal: string; color: PlanColor; onStart: () => void }) {
+function UnstartedCard({ goal, color, talk, onStart, onQuickStart }: {
+  goal: string;
+  color: PlanColor;
+  /** A goal no plan shape can hold honestly, so it gets the planner, not a target. */
+  talk: boolean;
+  onStart: () => void;
+  /** Create the row with this target and nothing else invented. False if it did not save. */
+  onQuickStart: (target: number) => Promise<boolean>;
+}) {
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const start = async () => {
+    const target = parseNum(amount);
+    // The whole of the 2026-08-26 rule, in one branch. An empty field or a zero
+    // leaves the goal exactly as it was: an offer, not a row.
+    if (target <= 0) {
+      setError("Set an amount first and Juniper will start tracking it.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const ok = await onQuickStart(target);
+    setBusy(false);
+    if (!ok) setError("That did not save. Check your connection and try again.");
+  };
+
   return (
     // Same shape as PlanCard: the card is a mouse shortcut, the footer button
     // is the control. It used to be role="button" with a button inside it.
@@ -378,11 +544,45 @@ function UnstartedCard({ goal, color, onStart }: { goal: string; color: PlanColo
           <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>no target yet</div>
         </div>
         <div className="bar"><i style={{ width: "0%", background: cssVar(color) }} /></div>
-        <div className="next"><b>Next:</b> set a target and Juniper starts tracking it</div>
-        <div className="plan-foot">
-          <button className="btn sm" onClick={(e) => { e.stopPropagation(); onStart(); }}
-            aria-label={`Set a target for ${goal}`}>Set a target</button>
-        </div>
+        <div className="next"><b>Next:</b> {talk ? "no amount to track, so Juniper can talk this one through" : "set a target and Juniper starts tracking it"}</div>
+        {error && <div className="plan-err">{error}</div>}
+        {talk ? (
+          <div className="plan-foot">
+            <button className="btn sm" onClick={(e) => { e.stopPropagation(); onStart(); }}
+              aria-label={`Talk through ${goal} with Juniper`}>Talk it through</button>
+          </div>
+        ) : (
+          <>
+            {/* The quick route. Typing a number here is the whole of creating
+                the plan, so the full form stops being the only way in. The stop
+                on the wrapper is because the card itself is a click shortcut to
+                that form, and a click meant for this input must not open it. */}
+            <div className="quick-target" onClick={(e) => e.stopPropagation()}>
+              <span className="qt-pre">$</span>
+              <input
+                className="qt-in tnum"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void start(); } }}
+                inputMode="numeric"
+                placeholder="10,000"
+                aria-label={`Target amount for ${goal}`}
+              />
+              <button className="btn sm" disabled={busy} onClick={() => void start()}>
+                {busy ? "Starting…" : "Start it"}
+              </button>
+            </div>
+            <div className="plan-foot">
+              <button
+                className="edit-hint"
+                onClick={(e) => { e.stopPropagation(); onStart(); }}
+                aria-label={`More options for ${goal}`}
+              >
+                More options
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -406,26 +606,30 @@ type Example = {
   target: number;
   monthly: number;
   blurb: string;
+  // Which real balance a plan taken from this example should seed itself from.
+  // The member's own money beats the illustration's numbers wherever we have
+  // it, which is the same rule the template list already follows.
+  prefill: PrefillKey;
 };
 
 const EXAMPLES: Example[] = [
   {
-    id: "home", title: "Buy a home", shape: "buy", color: "--jnpr-c1",
+    id: "home", title: "Buy a home", shape: "buy", color: "--jnpr-c1", prefill: "cash",
     current: 28000, target: 60000, monthly: 850,
     blurb: "A down payment built month by month, with the ready date moving as the balance grows.",
   },
   {
-    id: "loans", title: "Pay off student loans", shape: "payoff", color: "--jnpr-c2",
+    id: "loans", title: "Pay off student loans", shape: "payoff", color: "--jnpr-c2", prefill: "debt",
     current: 7600, target: 22400, monthly: 520,
     blurb: "A balance and a rate, turned into a date the debt is actually gone.",
   },
   {
-    id: "emergency", title: "Emergency fund", shape: "save", color: "--jnpr-c3",
+    id: "emergency", title: "Emergency fund", shape: "save", color: "--jnpr-c3", prefill: "emergency",
     current: 7400, target: 21000, monthly: 400,
     blurb: "Six months of spending set aside, sized from what you actually spend.",
   },
   {
-    id: "trip", title: "Six months abroad", shape: "save", color: "--jnpr-c5",
+    id: "trip", title: "Six months abroad", shape: "save", color: "--jnpr-c5", prefill: null,
     current: 3100, target: 14000, monthly: 450,
     blurb: "Any goal you can name, not just the ones on the template list.",
   },
@@ -455,7 +659,7 @@ function saveDismissed(userId: string, ids: string[]) {
   }
 }
 
-function ExampleCard({ e, onDismiss }: { e: Example; onDismiss: () => void }) {
+function ExampleCard({ e, onDismiss, onUse }: { e: Example; onDismiss: () => void; onUse: () => void }) {
   const copy = SHAPE_COPY[e.shape];
   const pct = Math.min(100, Math.round((e.current / e.target) * 100));
   return (
@@ -472,11 +676,20 @@ function ExampleCard({ e, onDismiss }: { e: Example; onDismiss: () => void }) {
       </div>
       <div className="bar"><i style={{ width: `${pct}%`, background: cssVar(e.color) }} /></div>
       <p className="ex-b">{e.blurb}</p>
+      {/* An illustration that fits is worth taking. This opens the same create
+          form the New plan button does, already carrying the example's shape,
+          colour, target and monthly amount, so the member changes a number
+          rather than retyping what the card already said. */}
+      <div className="ex-foot">
+        <button className="ex-use" onClick={onUse} aria-label={`Start a plan from the ${e.title} example`}>
+          Use this plan
+        </button>
+      </div>
     </div>
   );
 }
 
-function ExampleSection({ userId }: { userId: string }) {
+function ExampleSection({ userId, onUse }: { userId: string; onUse: (e: Example) => void }) {
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(userId));
 
   // Re-read when the signed-in member changes, so switching accounts in one
@@ -499,7 +712,7 @@ function ExampleSection({ userId }: { userId: string }) {
         <p>Not your data. A few common goals, here to show how a plan tracks. Dismiss any you do not want to see again.</p>
       </div>
       <div className="grid ex-grid">
-        {shown.map((e) => <ExampleCard key={e.id} e={e} onDismiss={() => dismiss(e.id)} />)}
+        {shown.map((e) => <ExampleCard key={e.id} e={e} onDismiss={() => dismiss(e.id)} onUse={() => onUse(e)} />)}
       </div>
     </section>
   );
@@ -678,6 +891,55 @@ export default function Plans({ profile = null, profileReady = false }: {
     setModal({ k: "form", label: o.goal, shape: o.shape, color: o.color, prefill: o.prefill, fromGoal: true });
   };
 
+  // Quick add from a signup goal: the target the member just typed, and nothing
+  // else invented. Shape and colour come from `offerFor`, the same judgement
+  // the full form would have applied, so the card that appears matches the one
+  // they were looking at. No monthly amount and no date, because they gave us
+  // neither: the card lands on "New" and asks for the monthly next.
+  const quickStartGoal = async (g: UnplannedGoal, i: number, target: number) => {
+    const o = offerFor(g.goal, i);
+    const saved = await savePlan({
+      domain: uniqueDomain(g.goal, plans),
+      status: "in_progress",
+      goal: {
+        headline: SHAPE_COPY[o.shape].headline(g.goal, target),
+        name: g.goal,
+        shape: o.shape,
+        color: o.color,
+        target_value: target,
+        current_value: 0,
+        monthly_contribution: 0,
+      },
+    });
+    if (!saved) return false;
+    upsertLocal(saved);
+    setFilter("active");
+    return true;
+  };
+
+  // One inline edit from a plan card. Merges the single changed field into
+  // whatever the row already holds rather than rebuilding the goal, so a target
+  // date, a payoff rate, and a headline written by the guided dialogue all
+  // survive a rename. `goalFrom` deliberately deletes fields it does not show;
+  // this path shows two, so it must not use it.
+  const patchPlan = async (plan: Plan, patch: { name?: string; target?: number }) => {
+    const goal: PlanGoal = { ...(plan.goal ?? { headline: "" }) };
+    if (patch.name !== undefined) goal.name = patch.name;
+    if (patch.target !== undefined) goal.target_value = patch.target;
+    // Only when the row has none, on the same grounds as `goalFrom`: an
+    // existing headline is synthesis text we did not write.
+    if (!String(goal.headline ?? "").trim()) {
+      goal.headline = SHAPE_COPY[planShape(plan)].headline(
+        String(goal.name ?? planTitle(plan)),
+        Number(goal.target_value ?? 0),
+      );
+    }
+    const saved = await savePlan({ domain: plan.domain, goal });
+    if (!saved) return false;
+    upsertLocal(saved);
+    return true;
+  };
+
   const session = useSession();
   const chatCountFor = (t: string) => threads.filter((x) => x.planTitle === t).length;
 
@@ -694,7 +956,18 @@ export default function Plans({ profile = null, profileReady = false }: {
     const want = new URLSearchParams(search).get("new");
     if (!want) return;
     const t = TEMPLATES.find((x) => domainFromName(x.label) === want);
-    setModal(t ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill } : { k: "new" });
+    // An example is a second thing the slug can name, and it seeds the form the
+    // same way its own "Use this plan" button does. Same normalizer for both,
+    // so a link to an example survives the example being reworded only as far
+    // as its slug survives, which is the deal the templates already take.
+    const ex = t ? undefined : EXAMPLES.find((x) => domainFromName(x.title) === want);
+    setModal(
+      t
+        ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill }
+        : ex
+          ? { k: "form", label: ex.title, shape: ex.shape, color: ex.color, prefill: ex.prefill, seed: { target: ex.target, monthly: ex.monthly } }
+          : { k: "new" },
+    );
     navigate("/app/plans", { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
@@ -733,6 +1006,9 @@ export default function Plans({ profile = null, profileReady = false }: {
   const linked = source === "live";
 
   const views = useMemo(() => plans.map(viewOf), [plans]);
+  // Domain is the row's key, so this is how a card gets back to the plan it was
+  // built from without threading the row through PlanView.
+  const byDomain = useMemo(() => new Map(plans.map((p) => [p.domain, p])), [plans]);
   const shown = views.filter((v) => (filter === "all" ? true : filter === "completed" ? v.done : !v.done));
   const editing = modal?.k === "edit" ? plans.find((p) => p.domain === modal.domain) ?? null : null;
 
@@ -795,6 +1071,10 @@ export default function Plans({ profile = null, profileReady = false }: {
                 chatCount={chatCountFor(v.title)}
                 onOpen={() => setModal({ k: "edit", domain: v.domain })}
                 onAsk={() => navigate(`/app/ask?plan=${encodeURIComponent(v.title)}`)}
+                onPatch={async (patch) => {
+                  const p = byDomain.get(v.domain);
+                  return p ? patchPlan(p, patch) : false;
+                }}
               />
             ))
           ) : null}
@@ -810,7 +1090,9 @@ export default function Plans({ profile = null, profileReady = false }: {
               key={g.goal}
               goal={g.goal}
               color={g.color}
+              talk={offerFor(g.goal, i).kind === "talk"}
               onStart={() => startGoal(g, i)}
+              onQuickStart={(target) => quickStartGoal(g, i, target)}
             />
           ))}
           {!shown.length && !showsGoalCards ? (
@@ -823,7 +1105,19 @@ export default function Plans({ profile = null, profileReady = false }: {
 
       {/* Examples sit last, below the member's own plans, and only once we know
           who is signed in (the dismissal list is per account). */}
-      {session?.user.id && <ExampleSection userId={session.user.id} />}
+      {session?.user.id && (
+        <ExampleSection
+          userId={session.user.id}
+          onUse={(e) => setModal({
+            k: "form",
+            label: e.title,
+            shape: e.shape,
+            color: e.color,
+            prefill: e.prefill,
+            seed: { target: e.target, monthly: e.monthly },
+          })}
+        />
+      )}
 
       {modal?.k === "new" && (
         <Backdrop onClose={close}>
@@ -869,7 +1163,7 @@ export default function Plans({ profile = null, profileReady = false }: {
 function CreateForm({
   state, prefill, existing, fromGoal = false, onBack, onCreated,
 }: {
-  state: { label: string; shape: PlanShape; color: PlanColor };
+  state: { label: string; shape: PlanShape; color: PlanColor; seed?: Seed };
   prefill: Prefill;
   existing: Plan[];
   /** Opened from a signup goal rather than from the template picker. */
@@ -884,9 +1178,13 @@ function CreateForm({
     name: isCustom ? "" : state.label,
     shape: state.shape,
     color: state.color,
+    // `current` never comes from an example. The illustration's progress is
+    // money the member has not put anywhere, and writing it in as theirs is
+    // exactly the dishonesty the examples are labelled against.
     current: numStr(prefill.current),
-    target: numStr(prefill.target),
-    monthly: "",
+    // Real balances first, the example's figure only where we have nothing.
+    target: numStr(prefill.target || state.seed?.target),
+    monthly: numStr(state.seed?.monthly),
     date: "",
     rate: "",
   });
@@ -936,9 +1234,14 @@ function CreateForm({
           ? "One of the goals you picked at signup. Set a target and Juniper starts tracking it from here."
           : "Name it, pick how it works, and set a target. You can change all of it later."}
       </p>
-      {prefill.hint && (
+      {prefill.hint ? (
         <div className="prefill-hint"><PlanIcon name="target" /><span>{prefill.hint}</span></div>
-      )}
+      ) : state.seed ? (
+        <div className="prefill-hint">
+          <PlanIcon name="target" />
+          <span>Filled in from the example, so there is something to change rather than a blank form. Every figure is yours to overwrite.</span>
+        </div>
+      ) : null}
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
       <div className="modal-actions">
