@@ -9,10 +9,11 @@
 // reads, so the full history gets its own read endpoint and /api/finances is
 // left alone.
 //
-// PATCH is the one write here: it re-categorizes a single transaction, storing
-// the member's choice with `category_source = 'user'` so the Plaid sync knows to
-// leave it alone (see api/plaid/transactions-sync.ts, which preserves overrides
-// across its merge-duplicates upsert). Everything else on this endpoint reads.
+// PATCH is the one write here: it re-categorizes one transaction, or several at
+// once (`ids`, #260), storing the member's choice with `category_source = 'user'`
+// so the Plaid sync knows to leave it alone (see api/plaid/transactions-sync.ts,
+// which preserves overrides across its merge-duplicates upsert). Everything else
+// on this endpoint reads.
 //
 // The GET was a READ-SIDE change only. api/plaid/transactions-sync.ts already pages
 // until has_more is false with no date cap, so the `transactions` table already
@@ -179,17 +180,28 @@ const pickerOptions = (tax: Taxonomy) =>
     hidden: (g.hidden ?? []).map((l) => ({ id: l.id, label: l.label, emoji: l.emoji, custom: !BUILTIN_LEAF_IDS.has(l.id) })),
   }));
 
-// PATCH /api/transactions  { id, category }
-// Re-categorizes one of the caller's own transactions. Scoped by user_id in the
-// filter itself, so a valid JWT cannot reach somebody else's row, and the write
-// is rejected rather than coerced when the label is not in the taxonomy: a
+// PATCH /api/transactions  { id, category }  or  { ids: [...], category }
+// Re-categorizes the caller's own transactions. Scoped by user_id in the filter
+// itself, so a valid JWT cannot reach somebody else's row, and the write is
+// rejected rather than coerced when the label is not in the taxonomy: a
 // free-text category would fall through groupOf() into "Everything else" and
 // quietly leave the money uncounted where the member put it.
+//
+// `ids` is the bulk form: the rows a member selected in the table get one
+// category in ONE write, rather than a PATCH per row racing each other and the
+// rollup refresh that follows. Every row is written as `user`, the same as a
+// single correction, because that is what it is: a statement about these
+// charges, made by hand. A merchant rule never overrules it (see
+// _category-precedence.ts). Capped at MAX_LIMIT, which is the most rows one page
+// can hold, so a legitimate selection cannot exceed it.
 async function patchCategory(req: Request, uid: string): Promise<Response> {
-  const body = (await req.json().catch(() => ({}))) as { id?: string; category?: string };
-  const id = (body.id || "").trim();
+  const body = (await req.json().catch(() => ({}))) as { id?: string; ids?: unknown; category?: string };
+  const bulk = Array.isArray(body.ids);
+  const ids = [...new Set(
+    (bulk ? (body.ids as unknown[]).map((v) => String(v ?? "")) : [body.id || ""]).map((v) => v.trim()),
+  )];
   const category = (body.category || "").trim();
-  if (!UUID.test(id)) return json({ error: "Invalid `id`" }, 400);
+  if (!ids.length || ids.length > MAX_LIMIT || ids.some((id) => !UUID.test(id))) return json({ error: "Invalid `id`" }, 400);
   // Validated against THIS member's taxonomy. Both levels are accepted: a leaf
   // is the normal case, and a group label is what a row categorized at group
   // precision already carries (see groupOf's note in _categorize.ts), so
@@ -197,7 +209,9 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   const tax = await taxonomyFor(uid);
   if (!tax.writableLabels.has(category)) return json({ error: "Unknown category" }, 400);
 
-  const res = await adminRest(`transactions?id=eq.${id}&user_id=eq.${uid}`, {
+  // Validated, not escaped: every id passed the UUID test above, so the list
+  // can go straight into the filter.
+  const res = await adminRest(`transactions?id=in.(${ids.join(",")})&user_id=eq.${uid}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({
@@ -218,19 +232,24 @@ async function patchCategory(req: Request, uid: string): Promise<Response> {
   }
   // No rows means the id is not this member's. Answered as a 404 rather than a
   // success, because a silent no-op would show the member a category that is
-  // not stored anywhere.
-  const updated = (await res.json().catch(() => [])) as { category?: string }[];
+  // not stored anywhere. In the bulk form the rows that ARE theirs are written
+  // and returned, and a client applies exactly what came back.
+  const updated = (await res.json().catch(() => [])) as { id: string; category?: string }[];
   if (!updated.length) return json({ error: "Not found" }, 404);
 
-  const stored = updated[0].category ?? category;
   // Through classify, like every read, so the row the client swaps in is
-  // labelled exactly as the next page load will label it.
-  const row = tax.classify(tax.categoryIdOf(stored), stored);
-  // Everything the row paints itself from, so the client can apply the whole
-  // answer rather than half of it: a row that took the new label and kept the
-  // old icon is what shipped before this.
-  const hue = tax.groups.find((g) => g.label === row.g)?.hue ?? null;
-  return json({ id, c: row.c, g: row.g, k: row.k, e: row.e, hue, userSet: true });
+  // labelled exactly as the next page load will label it. Everything the row
+  // paints itself from, so the client can apply the whole answer rather than
+  // half of it: a row that took the new label and kept the old icon is what
+  // shipped before this.
+  const shape = (t: { id: string; category?: string }) => {
+    const stored = t.category ?? category;
+    const row = tax.classify(tax.categoryIdOf(stored), stored);
+    const hue = tax.groups.find((g) => g.label === row.g)?.hue ?? null;
+    return { id: t.id, c: row.c, g: row.g, k: row.k, e: row.e, hue, userSet: true };
+  };
+  if (!bulk) return json(shape(updated[0]));
+  return json({ rows: updated.map(shape), count: updated.length });
 }
 
 export default async function handler(req: Request): Promise<Response> {

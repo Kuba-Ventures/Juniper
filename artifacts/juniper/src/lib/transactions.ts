@@ -172,3 +172,25 @@ export async function setTransactionCategory(
     return null;
   }
 }
+
+// PATCH several transactions to one category, in one write (#260). Returns the
+// rows the server stored, which can be fewer than were asked for if an id was
+// not the member's; the caller applies exactly what came back. Null on any
+// failure, and then nothing on screen has moved, because nothing did.
+export type TxnCategoryUpdate = { id: string; c: string; g: string; k: TxnRow["k"]; e: string; hue: number | null };
+export async function setTransactionsCategory(ids: string[], category: string): Promise<TxnCategoryUpdate[] | null> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids, category }),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { rows?: TxnCategoryUpdate[] };
+    return body.rows ?? null;
+  } catch {
+    return null;
+  }
+}
