@@ -63,6 +63,31 @@ async function post(action: string, extra: Record<string, unknown> = {}): Promis
 export const invitePartner = (partnerName?: string) => post("invite", partnerName?.trim() ? { partnerName: partnerName.trim() } : {});
 export const acceptInvite = (token: string) => post("accept", { token });
 export const disconnectPartner = () => post("disconnect");
+/**
+ * Who sent an invite, for the page the invited person lands on (issue #172).
+ *
+ * The ONE call in this module that carries no session, because the person making
+ * it does not have one yet: they are holding a link and are about to be asked to
+ * create an account. It is gated on the token instead, and it returns the
+ * inviter's first name and nothing else. See api/_invite-lookup.ts for the
+ * reasoning and for exactly what that discloses.
+ *
+ * Never rejects, and a failure is indistinguishable from an invite whose sender
+ * cannot be named: both come back with `inviter: null`, and every surface that
+ * reads this has wording for that case. An invitation that cannot be signed is
+ * still an invitation, and it must not render as an error.
+ */
+export async function fetchInviteInfo(token: string): Promise<{ pending: boolean; inviter: string | null }> {
+  try {
+    const res = await fetch(`/api/partner/invite?token=${encodeURIComponent(token)}`);
+    if (!res.ok) return { pending: false, inviter: null };
+    const data = (await res.json()) as { pending?: boolean; inviter?: string | null };
+    return { pending: !!data.pending, inviter: data.inviter ?? null };
+  } catch {
+    return { pending: false, inviter: null };
+  }
+}
+
 export const setSharingPrefs = (prefs: Partial<PartnerPrefs>) => post("set-prefs", prefs);
 export const setAccountShare = (accountId: string, scope: WritableScope) => post("set-account-share", { accountId, scope });
 export const addSharedGoal = (title: string, icon: string, target: number) => post("add-goal", { title, icon, target });

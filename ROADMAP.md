@@ -124,6 +124,26 @@ Shell is done; remaining screens and states:
 - [x] **Reframe the domains as goals funded from real balances** ♻️ — the new Plans page's create flow seeds a goal from the member's linked balances (a debt-payoff goal targets actual debt, an emergency fund uses 6× real spend + current cash, retirement pulls in invested balances), and the header reflects "funded from your linked balances" once live. *(Per-plan account designation — pinning a specific account to a goal — is a future refinement.)*
 - [x] **Auto-fill plan inputs (savings / debt) from linked balances** → `prefillFor()` in `src/pages/app/plans.tsx` reads `useFinances()` and pre-fills target/saved with a "from your accounts" hint per template.
 - [x] **Solo default with "invite partner" layer** ♻️ — solo-first `PartnerPanel` on Plans + an **individual↔shared workspace** in the app shell (switcher + account-menu invite, shared sub-nav) and a full shared UI: Overview, Accounts, Goals, Bills, Activity/chat, and privacy-toggle Sharing (`src/pages/app/shared/*`, `lib/workspace.tsx`). Design locked in `design/juniper-partner-*.html`.
+- [x] **An invite says who sent it, in the message and on the page** *(issue #172, treatment B of
+  three rendered in `design/partner-invite-preview-variants.html`)*. The link previewed as the
+  marketing card, a watercolour house and "build your financial future, together", so nothing in the
+  first thing an invited person saw said they had been invited, by whom, or to what. **The constraint
+  that shaped it: a link preview is built by a crawler that does not run JavaScript**, and every route
+  is rewritten to one static `index.html`, so no React change could touch it. `api/invite-preview.ts`
+  now serves `/invite/partner/:token`: it resolves the token to the inviter's first name, takes the
+  BUILT shell and swaps six tags in it, and hands the same HTML to crawler and person alike, with no
+  user-agent sniffing. The image is static (`design/invite-og-card.html` rendered to
+  `public/invite-og.png`, 1200x630) and the NAME is what varies, because the name is the bold line a
+  reader actually reads and a static image needs no per-request rendering. `api/_invite-lookup.ts` is
+  the one unauthenticated read on this API, gated on the token rather than a session because the
+  person asking has no account yet; it returns ONE field, the inviter's first name, only for a token
+  that is pending right now, and refuses anything that is not 32 hex characters before a query is
+  built. The landing page names them, pairs their initial with an empty "you", and states the three
+  facts that decide whether a reasonable person accepts (the shared space, private until chosen
+  account by account, transactions never shared) rather than asking for trust. Sign-up carries the
+  name through, since "Join Finley on Juniper" landing on a page that never mentions Finley is where
+  the thread would break. No migration: every field already existed. The name is a nicety and never a
+  dependency, and the unnamed wording is real copy rather than a fallback nobody looked at
 - [x] **Partner data model (backend)** → migration `0012_partnerships.sql` (`partnerships`, `partner_sharing_prefs`, `shared_goals`, `shared_goal_contributions` — server-only, restrictive RLS) + `api/partner.ts` (GET shared overview with **combined net worth rolled up from both members' `plaid_items` honoring each member's `share_balances`**, + POST invite/accept/disconnect/set-prefs/add-goal/add-contribution). Frontend seam `lib/partner.ts` (`usePartner()`): the workspace auto-connects from a real partnership, the invite modal mints a real link, `/invite/partner/:token` accepts it, and the shared Overview + Sharing read/write live (demo fallback until synced). *(Account-level share flags, bills, and chat persistence are additive follow-ups; combined net worth + shared goals + sharing prefs are live.)*
 - [x] **Finish the shared data layer** → migration `0013_shared_layer.sql` (`account_shares`, `shared_bills`, `shared_messages`, `shared_reactions` — server-only) + endpoints: per-account share scope in `/api/partner` (GET returns both members' accounts by scope, `set-account-share` action), `api/partner/bills.ts` (list/add/delete), `api/partner/activity.ts` (messages + 👍 reactions, toggle). Shared **Accounts** (per-account Shared/Balance/Private, tap-to-change on your own), **Bills** (live add/delete), and **Activity** (live partner chat + reactions) all read/write live, with demo fallback.
 - Ops to activate: apply migrations `0012` + `0013`; a real shared space needs both partners linked + synced. Until then the shared workspace shows the demo preview.

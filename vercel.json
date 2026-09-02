@@ -6,21 +6,41 @@
   "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "juniper-api-server.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "juniper-api-server.vercel.app"
+        }
+      ],
       "destination": "https://www.juniperplan.com/",
       "permanent": false
     },
     {
       "source": "/:path((?!api/).*)",
-      "has": [{ "type": "host", "value": "juniper-api-server.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "juniper-api-server.vercel.app"
+        }
+      ],
       "destination": "https://www.juniperplan.com/:path",
       "permanent": false
     }
   ],
   "crons": [
-    { "path": "/api/cron/daily-sync", "schedule": "0 9 * * *" }
+    {
+      "path": "/api/cron/daily-sync",
+      "schedule": "0 9 * * *"
+    }
   ],
   "rewrites": [
-    { "source": "/((?!api/|.*\\..+).*)", "destination": "/index.html" }
+    {
+      "source": "/invite/partner/:token",
+      "destination": "/api/invite-preview?token=:token"
+    },
+    {
+      "source": "/((?!api/|.*\\..+).*)",
+      "destination": "/index.html"
+    }
   ]
 }
