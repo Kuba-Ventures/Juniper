@@ -16,11 +16,12 @@ import {
 } from "@/components/juniper/primitives";
 import {
   WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
-  type DashboardLayout,
+  sizeFor, sizeLabel, type DashboardLayout, type WidgetSize,
 } from "@/lib/dashboard-layout";
 import {
   CardsWidget, RecurringWidget, useCardsWidget, useRecurringWidget,
 } from "@/components/juniper/overview-widgets";
+import { Factors } from "@/components/juniper/score-factors";
 import type { PlaidItem } from "@/lib/plaid";
 
 // Points down for a decline. The net-worth delta used to be hardcoded up-and-
@@ -436,15 +437,16 @@ function LoadingSlot({ title }: { title: string }) {
  * The page used to have two different grids, a 1.5fr/1fr hero and two equal
  * rows. Neither survives free ordering: the pairing is a property of the pair
  * and the member moves one card at a time. So every widget is a half, a widget
- * marked `full` spans the row, and a half left ALONE on the final row stretches
- * rather than sitting beside a hole. Net worth losing its wider column is the
- * price of the feature and is paid here.
+ * SIZED full (issue #259: a member's own choice, not a fixed registry flag)
+ * spans the row, and a half left ALONE on the final row stretches rather than
+ * sitting beside a hole. Net worth losing its wider column is the price of
+ * free ordering and is paid here.
  */
-function withSpans(ids: string[]): { id: string; full: boolean }[] {
+function withSpans(ids: string[], sizeOf: (id: string) => WidgetSize): { id: string; full: boolean }[] {
   const out: { id: string; full: boolean }[] = [];
   let col = 0;
   for (const id of ids) {
-    const full = !!WIDGET_BY_ID[id]?.full;
+    const full = sizeOf(id) === "full";
     out.push({ id, full });
     col = full ? 0 : col === 0 ? 1 : 0;
   }
@@ -453,7 +455,35 @@ function withSpans(ids: string[]): { id: string; full: boolean }[] {
   return out;
 }
 
-function ScoreWidget({ score, pending }: { score: FinanceData["score"]; pending: boolean }) {
+/** The Score at half width is a strip; at full width it is the same factor
+ *  rails /app/score draws, from `components/juniper/score-factors.tsx`, so the
+ *  two can never disagree about what a factor's rail shows. Issue #259: a
+ *  widget declares which sizes it HAS rather than being scaled, because a
+ *  half-width ring and a full-width breakdown are different cards, not one
+ *  card at two zoom levels. */
+function ScoreWidget({ score, pending, size }: { score: FinanceData["score"]; pending: boolean; size: WidgetSize }) {
+  if (size === "full") {
+    return (
+      <div className="card pad-lg">
+        <div className="card-head">
+          <h3>Juniper Score</h3>
+          <Link href="/app/score" className="link">Full page →</Link>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, margin: "2px 0 14px" }}>
+          <span className={pending ? "big-num tnum pending" : "big-num tnum"}>{pending ? SCORE_DASH : score.value}</span>
+          {!pending && score.delta !== 0 && (
+            <span className={`delta ${score.delta > 0 ? "up" : "down"}`}>
+              {score.delta > 0 ? "+" : ""}{score.delta} pts this month
+            </span>
+          )}
+        </div>
+        {/* Same WITHHELD-not-ZEROED rule as the strip below: the factor rails
+            are derived too, and a manual-layer rail replaced a moment later by
+            a live one would be the exact flash #240 fixed, just moved here. */}
+        {pending ? <div style={{ height: 96 }} aria-hidden="true" /> : <Factors items={score.factors} />}
+      </div>
+    );
+  }
   return (
     /* WITHHELD, NOT ZEROED, until the server has answered. The score is derived,
        and the manual layer derives it from different inputs than the live one,
@@ -482,6 +512,10 @@ function ScoreWidget({ score, pending }: { score: FinanceData["score"]; pending:
     </div>
   );
 }
+
+const ChevronDownIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={12} height={12}><path d="M6 9l6 6 6-6" /></svg>
+);
 
 export default function Overview({
   name,
@@ -563,20 +597,31 @@ export default function Overview({
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id)),
   );
+  // Issue #259: every widget's current size, keyed by id. Populated for every
+  // widget in the registry, not only the ones with a choice to make, so a
+  // reader never has to fall back to a default mid-render.
+  const [sizes, setSizes] = useState<Record<string, WidgetSize>>(
+    () => Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id)])),
+  );
+  // Which widget's size menu is open, one at a time, closed by choosing a size,
+  // by clicking anywhere else, or by leaving arrange mode.
+  const [sizeMenuOpen, setSizeMenuOpen] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
 
   // ── the write side reads the refs, not the state ─────────────────────────
   //
   // Both mutations below can fire more than once before React re-renders: two
   // chips tapped in the same tick, or a held arrow key repeating. Reading
-  // `order`/`hidden` out of the closure loses every write but the last, which is
-  // not theoretical: adding both shelf widgets at once put exactly one of them
-  // back. The refs are updated synchronously, so the second call in a tick sees
-  // the first.
+  // `order`/`hidden`/`sizes` out of the closure loses every write but the last,
+  // which is not theoretical: adding both shelf widgets at once put exactly one
+  // of them back. The refs are updated synchronously, so the second call in a
+  // tick sees the first.
   const orderRef = useRef(order);
   const hiddenRef = useRef(hidden);
+  const sizesRef = useRef(sizes);
   useEffect(() => { orderRef.current = order; }, [order]);
   useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
+  useEffect(() => { sizesRef.current = sizes; }, [sizes]);
 
 
   // The profile resolves after first paint, so the stored layout arrives late.
@@ -586,10 +631,14 @@ export default function Overview({
     if (editing) return;
     const nextOrder = resolveOrder(layout);
     const nextHidden = new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id));
+    const nextSizes = Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id)]));
     orderRef.current = nextOrder;
     hiddenRef.current = nextHidden;
+    sizesRef.current = nextSizes;
     setOrder(nextOrder);
     setHidden(nextHidden);
+    setSizes(nextSizes);
+    setSizeMenuOpen(null);
   }, [layout, editing]);
 
   // Written through the profile, so the arrangement lands in localStorage and in
@@ -597,11 +646,11 @@ export default function Overview({
   // member to every device rather than living on this one. Debounced, because a
   // keyboard nudge held down would otherwise be one POST per keypress.
   const saveTimer = useRef<number | null>(null);
-  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>) => {
+  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>, nextSizes: Record<string, WidgetSize>) => {
     if (!onLayout) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id)));
+      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id), (id) => nextSizes[id]));
     }, 500);
   }, [onLayout]);
   useEffect(() => () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); }, []);
@@ -611,7 +660,7 @@ export default function Overview({
     if (on) next.delete(id); else next.add(id);
     hiddenRef.current = next;
     setHidden(next);
-    persist(orderRef.current, next);
+    persist(orderRef.current, next, sizesRef.current);
     setAnnounce(`${WIDGET_BY_ID[id]?.title} ${on ? "added to" : "taken off"} your Overview`);
   };
 
@@ -620,10 +669,31 @@ export default function Overview({
     if (next === orderRef.current) return;
     orderRef.current = next;
     setOrder(next);
-    persist(next, hiddenRef.current);
+    persist(next, hiddenRef.current, sizesRef.current);
     const visible = next.filter((w) => !hiddenRef.current.has(w));
     setAnnounce(`${WIDGET_BY_ID[id]?.title} moved to ${visible.indexOf(id) + 1} of ${visible.length}`);
   };
+
+  // Issue #259: the member's own choice of size, one widget at a time. Reads
+  // the same refs-not-state rule as `setShown`/`nudge` for the same reason.
+  const setWidgetSize = (id: string, size: WidgetSize) => {
+    const next = { ...sizesRef.current, [id]: size };
+    sizesRef.current = next;
+    setSizes(next);
+    setSizeMenuOpen(null);
+    persist(orderRef.current, hiddenRef.current, next);
+    setAnnounce(`${WIDGET_BY_ID[id]?.title} shown as ${sizeLabel(id, size).toLowerCase()}`);
+  };
+
+  // Closes an open size menu on a click anywhere else, the same behavior a
+  // native <select> gets for free. Only listens while a menu is actually open,
+  // so this costs nothing on every render of a page most members never arrange.
+  useEffect(() => {
+    if (!sizeMenuOpen) return;
+    const close = () => setSizeMenuOpen(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [sizeMenuOpen]);
 
   // Pointer events rather than the native HTML5 drag, which does not fire for
   // touch at all: this has to work on the phone the member is holding. The
@@ -665,7 +735,7 @@ export default function Overview({
     if (!dragRef.current) return;
     dragRef.current = null;
     setDragId(null);
-    persist(orderRef.current, hiddenRef.current);
+    persist(orderRef.current, hiddenRef.current, sizesRef.current);
   };
 
   const cardsOn = !hidden.has("cards");
@@ -677,7 +747,7 @@ export default function Overview({
   // than inside it, because the board has to know whether to give it a slot
   // before it draws one (rule 3).
   const nodes: Record<string, ReactNode> = {
-    score: <ScoreWidget score={score} pending={scorePending} />,
+    score: <ScoreWidget score={score} pending={scorePending} size={sizes.score} />,
     networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} />,
     plans: <YourPlansCard goals={goals} goalsReady={goalsReady} />,
     spend: (
@@ -738,7 +808,7 @@ export default function Overview({
   const shownIds = order.filter((id) => !hidden.has(id));
   // Rule 3 again, at the point it bites: an empty widget is skipped on the live
   // page and drawn as a placeholder while arranging.
-  const laidOut = withSpans(shownIds.filter((id) => editing || !emptyWhy[id]));
+  const laidOut = withSpans(shownIds.filter((id) => editing || !emptyWhy[id]), (id) => sizes[id]);
   const offIds = order.filter((id) => hidden.has(id));
 
   return (
@@ -820,6 +890,38 @@ export default function Overview({
                   >
                     <GripIcon />
                   </button>
+                  {/* Issue #259: only a widget that declares more than one size
+                      gets a picker at all, and it lives in the top-right
+                      corner beside the remove badge, visible only while
+                      arranging, same as the grip and the badge either side
+                      of it. */}
+                  {meta.sizes.length > 1 && (
+                    <div className={sizeMenuOpen === id ? "dash-size-c open" : "dash-size-c"}>
+                      <button
+                        className="dash-size-c-btn"
+                        aria-label={`Choose how ${meta.title} is shown`}
+                        aria-expanded={sizeMenuOpen === id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSizeMenuOpen((v) => (v === id ? null : id));
+                        }}
+                      >
+                        <ChevronDownIcon />
+                      </button>
+                      <div className="dash-size-c-menu">
+                        {meta.sizes.map((s) => (
+                          <button
+                            key={s}
+                            className={sizes[id] === s ? "dash-size-c-item on" : "dash-size-c-item"}
+                            onClick={() => setWidgetSize(id, s)}
+                          >
+                            <span>{sizeLabel(id, s)}</span>
+                            <span className="ck" aria-hidden>✓</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <button
                     className="dash-x"
                     aria-label={`Take ${meta.title} off your Overview`}

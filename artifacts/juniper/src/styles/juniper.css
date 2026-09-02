@@ -2464,7 +2464,8 @@
 .jnpr .dash-board.editing .dash-w > .card,
 .jnpr .dash-board.editing .dash-w > .score-strip{pointer-events:none;user-select:none}
 .jnpr .dash-board.editing .dash-grip,
-.jnpr .dash-board.editing .dash-x{pointer-events:auto}
+.jnpr .dash-board.editing .dash-x,
+.jnpr .dash-board.editing .dash-size-c{pointer-events:auto}
 .jnpr .dash-w.dragging{opacity:.45;animation:none}
 @keyframes dash-jig{0%,100%{transform:rotate(-.22deg)}50%{transform:rotate(.22deg)}}
 @media(prefers-reduced-motion:reduce){.jnpr .dash-board.editing .dash-w{animation:none}}
@@ -2477,6 +2478,28 @@
 .jnpr .dash-x{top:-9px;right:-9px;font-size:17px;line-height:1}
 .jnpr .dash-x:hover{background:var(--jnpr-bad-soft);color:var(--jnpr-bad);border-color:var(--jnpr-bad)}
 .jnpr .dash-grip:focus-visible,.jnpr .dash-x:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+
+/* Issue #259: a widget with more than one declared size gets this, top-right
+   beside the remove badge (not beside the grip: the grip is the drag handle,
+   the two things a member removes or resizes belong together). Arrange-mode
+   only, same as the grip and the badge either side of it. */
+.jnpr .dash-size-c{position:absolute;z-index:4;top:-9px;right:26px}
+.jnpr .dash-size-c-btn{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;
+  border:1px solid var(--jnpr-line);background:var(--jnpr-surface);box-shadow:var(--jnpr-shadow);
+  color:var(--jnpr-ink-2);cursor:pointer;font:inherit;padding:0}
+.jnpr .dash-size-c-btn:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.jnpr .dash-size-c-btn:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+.jnpr .dash-size-c-menu{position:absolute;top:32px;right:0;min-width:158px;background:var(--jnpr-surface);
+  border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);box-shadow:var(--jnpr-shadow);
+  padding:5px;display:none;flex-direction:column}
+.jnpr .dash-size-c.open .dash-size-c-menu{display:flex}
+.jnpr .dash-size-c-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--jnpr-ink-2);background:none;border:0;
+  border-radius:6px;padding:7px 9px;cursor:pointer;text-align:left;width:100%}
+.jnpr .dash-size-c-item:hover{background:var(--jnpr-surface-3)}
+.jnpr .dash-size-c-item.on{color:var(--jnpr-accent)}
+.jnpr .dash-size-c-item .ck{opacity:0;color:var(--jnpr-accent)}
+.jnpr .dash-size-c-item.on .ck{opacity:1}
 
 /* Drawn only while arranging, in the slot of a widget with nothing to show, so
    the member can still move the place they gave it. */

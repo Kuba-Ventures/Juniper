@@ -22,6 +22,12 @@
 // registry decides" is what lets a future widget ship either way and still
 // reach every existing member's shelf.
 
+/** A widget's shape on the board. Not every widget can honestly draw at every
+ *  size (a half-width Score is a ring; there is no half-width version of a
+ *  factor rail), so a widget declares which sizes it HAS rather than being
+ *  scaled. See issue #259. */
+export type WidgetSize = "half" | "full";
+
 /** A widget's identity, its title, and where the unabridged version lives.
  *  Pure data: the components are wired up in pages/app/overview.tsx, which is
  *  the only thing that renders them. */
@@ -33,9 +39,16 @@ export interface WidgetMeta {
   home: string;
   /** How that page is named on screen, in the member's words. */
   homeLabel: string;
-  /** Spans both columns. A half-width version of these would be a different
-   *  card rather than a smaller one. */
-  full?: boolean;
+  /** The sizes this widget can honestly draw at, first entry is the default a
+   *  member who has never touched sizing sees. A single entry means there is
+   *  no choice to offer: the size picker only ever appears for a widget with
+   *  more than one. `"full"` spans both columns. */
+  sizes: WidgetSize[];
+  /** How each size reads in the member's words, for the size picker. Falls
+   *  back to a plain default (see `sizeLabel`) for a widget that does not name
+   *  its own, which is every widget with only one size, since it never shows a
+   *  picker at all. */
+  sizeLabels?: Partial<Record<WidgetSize, string>>;
   /** Ships off, waiting in the shelf. See the header. */
   defaultOff?: boolean;
 }
@@ -44,26 +57,35 @@ export interface WidgetMeta {
  *  The first seven are the page as it stood before #251, unchanged and in the
  *  same order, which is what makes the default a no-op. */
 export const WIDGETS: WidgetMeta[] = [
-  { id: "score", title: "Juniper Score", home: "/app/score", homeLabel: "Score", full: true },
-  { id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page" },
-  { id: "plans", title: "Your plans", home: "/app/plans", homeLabel: "Plans" },
-  { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions" },
-  { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions" },
-  { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions" },
-  { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections" },
-  { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", defaultOff: true },
-  { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", defaultOff: true },
+  {
+    id: "score", title: "Juniper Score", home: "/app/score", homeLabel: "Score",
+    sizes: ["half", "full"], sizeLabels: { half: "Ring", full: "Full breakdown" },
+  },
+  { id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page", sizes: ["half"] },
+  { id: "plans", title: "Your plans", home: "/app/plans", homeLabel: "Plans", sizes: ["half"] },
+  { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"] },
+  { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions", sizes: ["half"] },
+  { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"] },
+  { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections", sizes: ["half"] },
+  { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", sizes: ["half"], defaultOff: true },
+  { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: ["half"], defaultOff: true },
 ];
 
 export const WIDGET_BY_ID: Record<string, WidgetMeta> =
   Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
 
 /** The stored shape. `v` is here so a later change of meaning can be told from
- *  this one rather than guessed at from the keys present. */
+ *  this one rather than guessed at from the keys present. `sizes` is optional
+ *  rather than a `v: 2`, because adding it does not change what `order` or
+ *  `hidden` mean: a layout saved before #259 is simply one with no entries in
+ *  it, which is exactly "every widget at its default size". Migration 0050. */
 export interface DashboardLayout {
   v: 1;
   order: string[];
   hidden: string[];
+  /** Widget id -> the size the member chose, holding only entries that DIFFER
+   *  from the widget's own default. See `sizeFor` for how absence resolves. */
+  sizes: Record<string, string>;
 }
 
 export const LAYOUT_VERSION = 1 as const;
@@ -74,17 +96,48 @@ export const LAYOUT_VERSION = 1 as const;
  *  client should not trust a constraint in a database it cannot see: this column
  *  is the one on that table written by a client, and a row written by an older
  *  build, or by anything other than this app, must not reach the renderer as a
- *  layout. Unknown ids are dropped here rather than filtered at every call site. */
+ *  layout. Unknown ids are dropped here rather than filtered at every call site.
+ *
+ *  `sizes` is narrowed to known widget ids with a string value ONLY here; it is
+ *  deliberately NOT checked against that widget's own declared sizes, which is
+ *  `sizeFor`'s job, the same split `isShown` already makes between "is this id
+ *  real" (here) and "what does the registry say about it" (there). */
 export function asDashboardLayout(v: unknown): DashboardLayout | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
   const o = v as Record<string, unknown>;
   if (!Array.isArray(o.order) || !Array.isArray(o.hidden)) return null;
   const known = (x: unknown): x is string => typeof x === "string" && x in WIDGET_BY_ID;
+  const rawSizes = o.sizes && typeof o.sizes === "object" && !Array.isArray(o.sizes)
+    ? (o.sizes as Record<string, unknown>)
+    : {};
+  const sizes: Record<string, string> = {};
+  for (const [id, size] of Object.entries(rawSizes)) {
+    if (id in WIDGET_BY_ID && typeof size === "string") sizes[id] = size;
+  }
   return {
     v: LAYOUT_VERSION,
     order: [...new Set(o.order.filter(known))],
     hidden: [...new Set(o.hidden.filter(known))],
+    sizes,
   };
+}
+
+/** The size a widget draws at: the member's own choice if they made one AND it
+ *  is still one of that widget's declared sizes (a build that removed a size
+ *  must not honor a stale choice for it), otherwise the widget's own default,
+ *  which is its first declared size. */
+export function sizeFor(layout: DashboardLayout | null, id: string): WidgetSize {
+  const declared = WIDGET_BY_ID[id]?.sizes ?? (["half"] as WidgetSize[]);
+  const chosen = layout?.sizes[id];
+  if (chosen && (declared as string[]).includes(chosen)) return chosen as WidgetSize;
+  return declared[0];
+}
+
+const DEFAULT_SIZE_LABEL: Record<WidgetSize, string> = { half: "Compact", full: "Full width" };
+
+/** How a size reads in the picker, in the widget's own words if it named one. */
+export function sizeLabel(id: string, size: WidgetSize): string {
+  return WIDGET_BY_ID[id]?.sizeLabels?.[size] ?? DEFAULT_SIZE_LABEL[size];
 }
 
 /**
@@ -116,12 +169,29 @@ export function isShown(layout: DashboardLayout | null, id: string): boolean {
 /** The hidden set as it must be STORED, which is not the same as the set the
  *  member has switched off: a widget that ships off and has never been touched
  *  belongs in it too, or turning one of its neighbours off would resolve it back
- *  on through `isShown`'s registry branch. */
-export function layoutFrom(order: string[], shown: (id: string) => boolean): DashboardLayout {
+ *  on through `isShown`'s registry branch.
+ *
+ *  `size` is asked for every widget and stored only where it differs from that
+ *  widget's own default, the same "default is a no-op" rule `hidden` follows
+ *  for a widget that ships off untouched: a member who never opens the size
+ *  picker writes nothing new, so a widget that later grows a different default
+ *  size carries every member who never chose one along with it. */
+export function layoutFrom(
+  order: string[],
+  shown: (id: string) => boolean,
+  size: (id: string) => WidgetSize,
+): DashboardLayout {
+  const sizes: Record<string, string> = {};
+  for (const id of order) {
+    if (!(id in WIDGET_BY_ID)) continue;
+    const chosen = size(id);
+    if (chosen !== WIDGET_BY_ID[id].sizes[0]) sizes[id] = chosen;
+  }
   return {
     v: LAYOUT_VERSION,
     order: order.filter((id) => id in WIDGET_BY_ID),
     hidden: order.filter((id) => id in WIDGET_BY_ID && !shown(id)),
+    sizes,
   };
 }
 
