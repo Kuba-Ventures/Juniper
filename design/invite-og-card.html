@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Partner invite preview card, 1200x630 (#172)</title>
+<!--
+  THE SOURCE OF artifacts/juniper/public/invite-og.png, and the reason it is a
+  file in design/ rather than a description in a commit message: the asset has to
+  be reproducible, and an image nobody can regenerate is an image nobody can
+  correct.
+
+  Re-render it with (one line, from the repo root):
+
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1200,630 --screenshot=artifacts/juniper/public/invite-og.png \
+      design/invite-og-card.html
+
+  Then compress it. 1200x630 is the size every unfurler asks for (og:image's
+  recommended 1.91:1); the marketing card next to it is 1536x1024 and 2.7MB,
+  which is the wrong shape and forty times the weight.
+
+  Deliberately NO web font. The rest of the marketing site sets Fraunces, and
+  fetching it here would make the asset depend on a network at render time and
+  on Google's CDN at review time. The system stack is what the app itself uses
+  (--jnpr-ff), and it is what was rendered in the treatment that was chosen.
+
+  Deliberately NO name on it either. This card is the same for every invite, so
+  it can be a static file with no per-request work; the inviter's name is carried
+  by the og:title beside it, which is the bold line a reader actually reads. That
+  split is the whole of treatment B in
+  design/partner-invite-preview-variants.html.
+-->
+<style>
+  html,body{margin:0;padding:0}
+  body{width:1200px;height:630px;overflow:hidden}
+  .card{width:1200px;height:630px;box-sizing:border-box;
+    background:linear-gradient(155deg,#1C4A31,#0F2A1B);color:#EAF3EC;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:74px 80px;display:flex;flex-direction:column;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:600;letter-spacing:-.01em}
+  .brand i{width:44px;height:44px;border-radius:12px;background:#EAF3EC;display:grid;place-items:center;
+    color:#0F2A1B;font-size:24px;font-style:normal;font-weight:700}
+  h1{font-size:62px;line-height:1.1;margin:0;font-weight:600;letter-spacing:-.02em;max-width:22ch}
+  .foot{font-size:24px;color:#B9D3BE;display:flex;align-items:center;gap:12px}
+  .foot i{width:8px;height:8px;border-radius:50%;background:#8FE0A8;display:block}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><i>J</i>Juniper</div>
+    <h1>You&rsquo;ve been invited to plan money together.</h1>
+    <div class="foot"><i></i>juniperplan.com</div>
+  </div>
+</body>
+</html>

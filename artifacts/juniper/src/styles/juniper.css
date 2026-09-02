@@ -2354,3 +2354,39 @@
    the page. */
 .jnpr .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- the page a partner invite opens (issue #172) ----------------- */
+
+/* Its own block rather than inline styles on the page, which is what it used to
+   carry, because this surface is now more than a heart and a sentence: it is the
+   first Juniper screen an invited person ever sees, and it has to hold up on a
+   phone opened from a text message. */
+.jnpr.jp-page{min-height:100dvh;display:grid;place-items:center;padding:20px}
+.jnpr .jp-card{max-width:430px;width:100%;text-align:center;padding:34px}
+@media(max-width:520px){.jnpr .jp-card{padding:26px 20px}}
+
+/* The inviter's initial beside an empty "you", which says what is being asked
+   before a word is read: two people, one of them not here yet. */
+.jnpr .jp-pair{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:16px}
+.jnpr .jp-av{width:44px;height:44px;border-radius:50%;background:var(--jnpr-accent);
+  color:var(--jnpr-on-accent);display:grid;place-items:center;font-weight:700;font-size:17px}
+.jnpr .jp-av.you{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);border:1px dashed var(--jnpr-line);
+  font-size:12px;font-weight:650}
+.jnpr .jp-plus{color:var(--jnpr-ink-3);font-size:15px}
+
+.jnpr .jp-card h2{font-size:21px;margin:0;letter-spacing:-.01em}
+.jnpr .jp-card h2 em{font-style:normal;color:var(--jnpr-accent)}
+.jnpr .jp-sub{color:var(--jnpr-ink-3);font-size:13.5px;margin:9px 0 20px;line-height:1.6}
+.jnpr .jp-btns{display:grid;gap:10px}
+.jnpr .jp-btns .btn{justify-content:center;text-decoration:none}
+
+/* The three facts, left-aligned inside a centred card on purpose: they are read
+   rather than scanned, and centred list text is harder to read than it looks. */
+.jnpr .jp-what{margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--jnpr-line-2);text-align:left;
+  list-style:none}
+.jnpr .jp-what li{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.6;margin-bottom:6px;
+  padding-left:20px;position:relative}
+.jnpr .jp-what li:before{content:"";position:absolute;left:4px;top:7px;width:6px;height:6px;
+  border-radius:50%;background:var(--jnpr-accent)}
+.jnpr .jp-priv{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin:10px 0 0;
+  padding-left:20px;text-align:left}

@@ -1,0 +1,363 @@
+<!doctype html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What a partner invite looks like when it arrives, three treatments (#172)</title>
+<!-- The real stylesheet, linked and NOT copied, so a treatment cannot drift from
+     what the app ships. Everything proposed here is prefixed `pi-` (partner
+     invite), checked against juniper.css for collisions before a line of it was
+     written. Anything unprefixed (.card, .btn, .jnpr) already ships. -->
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+html,body{margin:0;padding:0}
+.pv-wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.pv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.pv-title{font-size:15px;font-weight:650;color:var(--jnpr-ink)}
+.pv-sub{font-size:12px;color:var(--jnpr-ink-3);margin-top:3px;max-width:82ch;line-height:1.6}
+.pv-toggle{border:1px solid var(--jnpr-line);background:var(--jnpr-surface);color:var(--jnpr-ink);
+  font:inherit;font-size:12px;font-weight:650;padding:7px 13px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+.pv-flag{border:1px solid var(--jnpr-warn);background:var(--jnpr-warn-soft);color:var(--jnpr-ink);
+  border-radius:var(--jnpr-r-sm);padding:11px 14px;font-size:12px;line-height:1.65;margin:16px 0 26px}
+.pv-flag b{color:var(--jnpr-warn)}
+.pv-sec{margin-bottom:46px;padding-left:14px;border-left:2px dashed var(--jnpr-line)}
+.pv-lab{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--jnpr-ink-3)}
+.pv-num{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;
+  background:var(--jnpr-accent-soft);color:var(--jnpr-accent);font-size:10.5px;letter-spacing:0}
+.pv-note{font-size:12px;color:var(--jnpr-ink-3);line-height:1.65;margin:6px 0 16px;max-width:92ch}
+.pv-note b{color:var(--jnpr-ink-2)}
+.pv-wrap code{font-size:11.5px;background:var(--jnpr-surface-3);padding:1px 4px;border-radius:4px}
+.pv-cols{display:grid;grid-template-columns:320px 1fr;gap:26px;align-items:start}
+@media(max-width:900px){.pv-cols{grid-template-columns:1fr}}
+.pv-cap{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin:0 0 8px}
+.pv-cost{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.6;margin-top:12px;
+  border-top:1px solid var(--jnpr-line-2);padding-top:10px;max-width:70ch}
+.pv-cost b{color:var(--jnpr-ink-2)}
+
+/* ── the message bubble, so a treatment is judged where it is actually seen ──
+   Not the app's chrome and deliberately not themed with it: this is somebody
+   else's screen, and a preview card that only reads well inside Juniper's own
+   surfaces is not a preview card. Sized from the screenshot on the issue. */
+.pi-phone{background:#0B0B0D;border-radius:22px;padding:16px 14px 18px;width:100%;max-width:320px}
+.pi-when{text-align:center;color:#8A8A8F;font-size:11px;margin-bottom:10px}
+.pi-bubble{background:#1C1C1E;border-radius:17px;overflow:hidden}
+.pi-bubble img{display:block;width:100%}
+.pi-meta{background:#2C2C2E;padding:9px 11px}
+.pi-meta .t{color:#F2F2F7;font-size:12.5px;font-weight:600;line-height:1.35}
+.pi-meta .d{color:#8A8A8F;font-size:11px;margin-top:2px}
+.pi-sent{text-align:right;color:#8A8A8F;font-size:10.5px;margin-top:6px}
+
+/* ── the preview card itself, drawn at 1200x630 and scaled ────────────────
+   Authored as HTML rather than described, because two of the three treatments
+   need it rendered per invite anyway (@vercel/og takes HTML), so this markup is
+   the asset in A and the template in B and C. */
+.pi-og{width:1200px;height:630px;transform-origin:top left;position:relative;overflow:hidden;
+  font-family:var(--jnpr-ff)}
+.pi-og-wrap{overflow:hidden;border-radius:12px;border:1px solid var(--jnpr-line)}
+.pi-scale-s{width:284px;height:149px}
+.pi-scale-s .pi-og{transform:scale(.2367)}
+.pi-scale-m{width:600px;height:315px}
+.pi-scale-m .pi-og{transform:scale(.5)}
+@media(max-width:900px){.pi-scale-m{width:320px;height:168px}.pi-scale-m .pi-og{transform:scale(.2667)}}
+
+/* Treatment A and B share one card: pine ground, the mark, and a sentence that
+   can only be read as an invitation. No illustration at all, which is the
+   point of it. */
+.pi-card{position:absolute;inset:0;background:linear-gradient(155deg,#1C4A31,#0F2A1B);
+  color:#EAF3EC;padding:74px 80px;display:flex;flex-direction:column;justify-content:space-between}
+.pi-card .brand{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:600;letter-spacing:-.01em}
+.pi-card .brand i{width:44px;height:44px;border-radius:12px;background:#EAF3EC;display:grid;place-items:center;
+  color:#0F2A1B;font-size:24px;font-style:normal;font-weight:700}
+.pi-card h1{font-size:62px;line-height:1.1;margin:0;font-weight:600;letter-spacing:-.02em;max-width:22ch}
+.pi-card h1 em{font-style:normal;color:#8FE0A8}
+.pi-card .foot{font-size:24px;color:#B9D3BE;display:flex;align-items:center;gap:12px}
+.pi-card .foot i{width:8px;height:8px;border-radius:50%;background:#8FE0A8;display:block}
+
+/* Treatment C: the existing watercolour, cropped OFF the house and onto the two
+   people, with a band carrying the invitation over it. Same art the marketing
+   site already uses, so nothing new has to be drawn or licensed. */
+.pi-art{position:absolute;inset:0;background-image:url("../artifacts/juniper/public/opengraph.png");
+  /* Cropped hard onto the two people: at anything looser the house is the
+     subject again, which is the thing this issue is about. Found by moving it
+     against the real art rather than by picking numbers. */
+  background-size:300%;background-position:71% 80%}
+.pi-art-scrim{position:absolute;left:0;right:0;bottom:0;height:64%;
+  background:linear-gradient(to bottom,rgba(12,26,16,0),rgba(12,26,16,.86) 52%,rgba(12,26,16,.96))}
+.pi-art-body{position:absolute;left:0;right:0;bottom:0;padding:0 80px 70px;color:#EAF3EC}
+.pi-art-body .brand{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:600;margin-bottom:18px}
+.pi-art-body .brand i{width:36px;height:36px;border-radius:10px;background:#EAF3EC;display:grid;place-items:center;
+  color:#0F2A1B;font-size:20px;font-style:normal;font-weight:700}
+.pi-art-body h1{font-size:56px;line-height:1.12;margin:0;font-weight:600;letter-spacing:-.02em;max-width:20ch}
+.pi-art-body h1 em{font-style:normal;color:#8FE0A8}
+
+/* ── the landing page the link opens ─────────────────────────────────────── */
+.pi-land{max-width:430px}
+.pi-land .who{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:16px}
+.pi-land .who .av{width:44px;height:44px;border-radius:50%;background:var(--jnpr-accent);
+  color:var(--jnpr-on-accent);display:grid;place-items:center;font-weight:700;font-size:17px}
+.pi-land .who .plus{color:var(--jnpr-ink-3);font-size:15px}
+.pi-land .who .av.you{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);border:1px dashed var(--jnpr-line)}
+.pi-land h2{font-size:21px;margin:0;letter-spacing:-.01em}
+.pi-land h2 em{font-style:normal;color:var(--jnpr-accent)}
+.pi-land .sub{color:var(--jnpr-ink-3);font-size:13.5px;margin:9px 0 20px;line-height:1.6}
+.pi-land .btns{display:grid;gap:10px}
+.pi-land .btn{justify-content:center;text-decoration:none}
+.pi-what{margin-top:20px;padding-top:16px;border-top:1px solid var(--jnpr-line-2);text-align:left}
+.pi-what li{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.6;margin-bottom:6px;list-style:none;
+  padding-left:20px;position:relative}
+.pi-what li:before{content:"";position:absolute;left:4px;top:7px;width:6px;height:6px;border-radius:50%;
+  background:var(--jnpr-accent)}
+.pi-what .priv{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin:10px 0 0;padding-left:20px}
+</style>
+</head>
+<body class="jnpr">
+<div class="pv-wrap">
+
+<div class="pv-head">
+  <div>
+    <div class="pv-title">What a partner invite looks like when it arrives, three treatments (issue #172)</div>
+    <div class="pv-sub">
+      Today the link previews as the marketing card: a watercolour house and "Juniper: build your
+      financial future, together". Nothing in it says somebody invited you, and the house is about
+      buying a home rather than about the person who sent it. Each treatment below is shown where it
+      is actually read, in the message, then as the card at size, then as the page the link opens.
+    </div>
+  </div>
+  <button class="pv-toggle" id="t">Light / dark</button>
+</div>
+
+<div class="pv-flag">
+  <b>One constraint decides how far any of this can go, so it is stated before the treatments.</b>
+  A link preview is built by a crawler (Apple's, WhatsApp's, Slack's) that fetches the URL and reads the
+  HTML. <b>It does not run JavaScript.</b> Juniper is a Vite SPA behind one static
+  <code>index.html</code>, and every route including <code>/invite/partner/:token</code> is served that
+  same file with the marketing tags in it, so no amount of React can change what the recipient sees in
+  the bubble. Anything invite-specific in a preview needs the invite route to be served its own HTML:
+  a second static entry for a fixed card (A), or an edge function for a card that knows who sent it
+  (B and C).<br>
+  <b>And a second thing, which is a decision rather than a constraint.</b> Naming the inviter in a
+  preview puts their first name in front of whoever holds the link, which includes the crawler and, in
+  a group chat, everybody in it. That is the point of an invitation, and it is still worth choosing on
+  purpose rather than arriving at.
+</div>
+
+<!-- ══ A ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">A</span> An invitation, not a house</div>
+  <div class="pv-note">
+    <b>One card, the same for every invite.</b> The illustration goes entirely: pine ground, the mark,
+    and a sentence that cannot be read as anything but an invitation. It never names anybody, so it
+    needs no lookup, no edge function and no per-request work: a second HTML entry point
+    (<code>invite.html</code>) with its own tags, and a rewrite from <code>/invite/partner/*</code> to
+    it. The trade is that "someone" is doing the work a name would do.
+  </div>
+  <div class="pv-cols">
+    <div>
+      <p class="pv-cap">In the message</p>
+      <div class="pi-phone">
+        <div class="pi-when">Today 5:04 PM</div>
+        <div class="pi-bubble">
+          <div class="pi-og-wrap pi-scale-s">
+            <div class="pi-og"><div class="pi-card">
+              <div class="brand"><i>J</i>Juniper</div>
+              <h1>You've been invited to plan money together.</h1>
+              <div class="foot"><i></i>juniperplan.com</div>
+            </div></div>
+          </div>
+          <div class="pi-meta">
+            <div class="t">You've been invited to Juniper</div>
+            <div class="d">juniperplan.com</div>
+          </div>
+        </div>
+        <div class="pi-sent">Delivered Quietly</div>
+      </div>
+      <div class="pv-cost">
+        <b>Cost:</b> one new static image and one HTML entry. No endpoint, no database read, nothing
+        personal ever leaves the server. <b>Weakness:</b> it cannot say who invited them, which is the
+        one fact that would settle it.
+      </div>
+    </div>
+    <div>
+      <p class="pv-cap">The card at size</p>
+      <div class="pi-og-wrap pi-scale-m">
+        <div class="pi-og"><div class="pi-card">
+          <div class="brand"><i>J</i>Juniper</div>
+          <h1>You've been invited to plan money together.</h1>
+          <div class="foot"><i></i>juniperplan.com</div>
+        </div></div>
+      </div>
+
+      <p class="pv-cap" style="margin-top:22px">The page it opens</p>
+      <div class="card pi-land" style="text-align:center;padding:34px">
+        <div class="who">
+          <span class="av">?</span><span class="plus">+</span><span class="av you">You</span>
+        </div>
+        <h2>You've been invited to Juniper</h2>
+        <p class="sub">Somebody has asked you to plan your money together. Create an account and you
+          will land in the shared space with them.</p>
+        <div class="btns">
+          <a class="btn" href="#">Create an account</a>
+          <a class="btn ghost" href="#">I already have an account</a>
+        </div>
+        <ul class="pi-what">
+          <li>A space you both see, with the goals you are saving toward</li>
+          <li>Nothing of yours is shared until you choose it, account by account</li>
+          <li>Your transactions are never shared, whatever you turn on</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ B ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">B</span> The name does the work</div>
+  <div class="pv-note">
+    <b>Same card, and the headline says who.</b> "Finley invited you to Juniper" is the bold line in
+    the bubble, which is the first thing read and the only one that answers "why am I being sent
+    this". The image stays static, so nothing is generated per request; the invite route is served by
+    an edge function that resolves the token to the inviter's first name and returns the built
+    <code>index.html</code> with three tags swapped. A token that is spent or unknown falls back to
+    A's wording rather than to a blank.
+  </div>
+  <div class="pv-cols">
+    <div>
+      <p class="pv-cap">In the message</p>
+      <div class="pi-phone">
+        <div class="pi-when">Today 5:04 PM</div>
+        <div class="pi-bubble">
+          <div class="pi-og-wrap pi-scale-s">
+            <div class="pi-og"><div class="pi-card">
+              <div class="brand"><i>J</i>Juniper</div>
+              <h1>You've been invited to plan money together.</h1>
+              <div class="foot"><i></i>juniperplan.com</div>
+            </div></div>
+          </div>
+          <div class="pi-meta">
+            <div class="t">Finley invited you to plan money together on Juniper</div>
+            <div class="d">juniperplan.com</div>
+          </div>
+        </div>
+        <div class="pi-sent">Delivered Quietly</div>
+      </div>
+      <div class="pv-cost">
+        <b>Cost:</b> A's image, plus one unauthenticated edge function doing a token lookup and a
+        string replace, plus a fetch of the built HTML per invite open. <b>Weakness:</b> the name is
+        the smallest text in the bubble, and a preview that is scrolled past shows the picture first.
+      </div>
+    </div>
+    <div>
+      <p class="pv-cap">The card at size (unchanged from A)</p>
+      <div class="pi-og-wrap pi-scale-m">
+        <div class="pi-og"><div class="pi-card">
+          <div class="brand"><i>J</i>Juniper</div>
+          <h1>You've been invited to plan money together.</h1>
+          <div class="foot"><i></i>juniperplan.com</div>
+        </div></div>
+      </div>
+
+      <p class="pv-cap" style="margin-top:22px">The page it opens</p>
+      <div class="card pi-land" style="text-align:center;padding:34px">
+        <div class="who">
+          <span class="av">F</span><span class="plus">+</span><span class="av you">You</span>
+        </div>
+        <h2><em>Finley</em> invited you to Juniper</h2>
+        <p class="sub">They have asked you to plan your money together. Create an account and you will
+          land in the shared space with them.</p>
+        <div class="btns">
+          <a class="btn" href="#">Join Finley on Juniper</a>
+          <a class="btn ghost" href="#">I already have an account</a>
+        </div>
+        <ul class="pi-what">
+          <li>A space you both see, with the goals you are saving toward</li>
+          <li>Nothing of yours is shared until you choose it, account by account</li>
+          <li>Your transactions are never shared, whatever you turn on</li>
+        </ul>
+        <p class="priv">Finley cannot see anything of yours by accepting.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ C ═══════════════════════════════════════════════════════════════════ -->
+<div class="pv-sec">
+  <div class="pv-lab"><span class="pv-num">C</span> The name in the picture</div>
+  <div class="pv-note">
+    <b>The card is drawn per invite, and the name is in the art.</b> The illustration is the one the
+    marketing site already uses, cropped off the house and onto the two people, so nothing new has to
+    be drawn or licensed, with a band carrying the invitation. Rendered by <code>@vercel/og</code>
+    from the same markup this preview is built from, cached per token. It is the most obviously
+    personal of the three and the only one where the picture itself says what happened.
+  </div>
+  <div class="pv-cols">
+    <div>
+      <p class="pv-cap">In the message</p>
+      <div class="pi-phone">
+        <div class="pi-when">Today 5:04 PM</div>
+        <div class="pi-bubble">
+          <div class="pi-og-wrap pi-scale-s">
+            <div class="pi-og">
+              <div class="pi-art"></div><div class="pi-art-scrim"></div>
+              <div class="pi-art-body">
+                <div class="brand"><i>J</i>Juniper</div>
+                <h1><em>Finley</em> invited you to plan money together</h1>
+              </div>
+            </div>
+          </div>
+          <div class="pi-meta">
+            <div class="t">Finley invited you to plan money together on Juniper</div>
+            <div class="d">juniperplan.com</div>
+          </div>
+        </div>
+        <div class="pi-sent">Delivered Quietly</div>
+      </div>
+      <div class="pv-cost">
+        <b>Cost:</b> B's endpoint, plus an image rendered per invite and a font loaded into it, plus
+        the crop of the existing art. <b>Weakness:</b> the inviter's first name is now baked into an
+        image that any chat client and any crawler will cache, which is harder to take back than a
+        tag.
+      </div>
+    </div>
+    <div>
+      <p class="pv-cap">The card at size</p>
+      <div class="pi-og-wrap pi-scale-m">
+        <div class="pi-og">
+          <div class="pi-art"></div><div class="pi-art-scrim"></div>
+          <div class="pi-art-body">
+            <div class="brand"><i>J</i>Juniper</div>
+            <h1><em>Finley</em> invited you to plan money together</h1>
+          </div>
+        </div>
+      </div>
+
+      <p class="pv-cap" style="margin-top:22px">The page it opens</p>
+      <div class="card pi-land" style="text-align:center;padding:34px">
+        <div class="who">
+          <span class="av">F</span><span class="plus">+</span><span class="av you">You</span>
+        </div>
+        <h2><em>Finley</em> invited you to plan money together</h2>
+        <p class="sub">Accept and you will land in a shared space with them. You decide what of yours
+          they can see, one account at a time.</p>
+        <div class="btns">
+          <a class="btn" href="#">Join Finley on Juniper</a>
+          <a class="btn ghost" href="#">I already have an account</a>
+        </div>
+        <ul class="pi-what">
+          <li>A space you both see, with the goals you are saving toward</li>
+          <li>Nothing of yours is shared until you choose it, account by account</li>
+          <li>Your transactions are never shared, whatever you turn on</li>
+        </ul>
+        <p class="priv">Finley cannot see anything of yours by accepting.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+document.getElementById('t').onclick = () => document.documentElement.classList.toggle('dark');
+</script>
+</body>
+</html>

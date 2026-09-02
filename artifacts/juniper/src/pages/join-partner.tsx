@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useSession } from "@/lib/use-session";
-import { acceptInvite } from "@/lib/partner";
+import { acceptInvite, fetchInviteInfo } from "@/lib/partner";
 import "@/styles/juniper.css";
 
 // Landing for /invite/partner/:token, the invited partner accepts here, which
@@ -12,11 +12,43 @@ import "@/styles/juniper.css";
 // resolve: with one, accept straight away; without one, hand off to sign-up or
 // sign-in carrying ?partner=<token>, which those pages accept on arrival. The
 // param is deliberately not ?invite=, which the older plan-invite flow owns.
+//
+// ── WHAT #172 CHANGED HERE ─────────────────────────────────────────────────
+//
+// This page used to say "You've been invited to Juniper" over a heart, with no
+// idea who had invited them and nothing about what accepting would do. Somebody
+// arriving from a text message therefore had to take on trust both that the
+// invitation was real and that accepting it would not hand a stranger their
+// bank balances.
+//
+// It now NAMES the person, from /api/partner/invite (the token resolves to their
+// first name and nothing else), pairs their initial with an empty "you", and
+// states the three facts that decide whether a reasonable person accepts: what
+// the shared space is, that nothing is shared until they choose it account by
+// account, and that transactions are never shared at all. Those three are not
+// marketing copy, they are the behaviour migration 0020 and the share sheet
+// actually implement.
+//
+// The name is a NICETY, not a dependency: `inviter` is null for a spent token,
+// for a member with no name on their profile, and for a failed request, and the
+// page reads correctly in all three cases. An invitation that cannot be signed
+// is still an invitation.
 export default function JoinPartner({ token }: { token: string }) {
   const [, setLocation] = useLocation();
   const session = useSession();
   const [state, setState] = useState<"joining" | "signed-out" | "error">("joining");
   const [error, setError] = useState<string | null>(null);
+  const [inviter, setInviter] = useState<string | null>(null);
+
+  // Asked for immediately and in parallel with the session, because the whole
+  // point is that the first thing on screen says who invited them.
+  useEffect(() => {
+    let alive = true;
+    void fetchInviteInfo(token).then((info) => {
+      if (alive) setInviter(info.inviter);
+    });
+    return () => { alive = false; };
+  }, [token]);
 
   useEffect(() => {
     if (session === undefined) return;
@@ -32,37 +64,63 @@ export default function JoinPartner({ token }: { token: string }) {
   }, [session, token, setLocation]);
 
   const q = `?partner=${encodeURIComponent(token)}`;
+  const who = inviter || "Someone";
+  const initial = inviter ? inviter.charAt(0).toUpperCase() : "?";
 
   return (
-    <div className="jnpr" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 20 }}>
-      <div className="card" style={{ maxWidth: 420, width: "100%", textAlign: "center", padding: 40 }}>
+    <div className="jnpr jp-page">
+      <div className="card jp-card">
         {state === "joining" ? (
           <>
-            <div className="ce-mark" style={{ margin: "0 auto 16px" }}>♡</div>
-            <h2 style={{ fontSize: 20 }}>Joining…</h2>
-            <p style={{ color: "var(--jnpr-ink-3)", fontSize: 13.5, marginTop: 8 }}>Connecting you to the shared space.</p>
+            <div className="jp-pair">
+              <span className="jp-av">{initial}</span>
+              <span className="jp-plus">+</span>
+              <span className="jp-av you">You</span>
+            </div>
+            <h2>Joining{inviter ? <> <em>{inviter}</em></> : null}…</h2>
+            <p className="jp-sub">Connecting you to the shared space.</p>
           </>
         ) : state === "signed-out" ? (
           <>
-            <div className="ce-mark" style={{ margin: "0 auto 16px" }}>♡</div>
-            <h2 style={{ fontSize: 20 }}>You've been invited to Juniper</h2>
-            <p style={{ color: "var(--jnpr-ink-3)", fontSize: 13.5, margin: "8px 0 20px" }}>
-              Create an account or sign in, and you'll land in the shared space together.
-            </p>
-            <div style={{ display: "grid", gap: 10 }}>
-              <Link href={`/auth/sign-up${q}`} className="btn" style={{ justifyContent: "center", textDecoration: "none" }}>
-                Create an account
-              </Link>
-              <Link href={`/auth/sign-in${q}`} className="btn ghost" style={{ justifyContent: "center", textDecoration: "none" }}>
-                Sign in
-              </Link>
+            <div className="jp-pair">
+              <span className="jp-av">{initial}</span>
+              <span className="jp-plus">+</span>
+              <span className="jp-av you">You</span>
             </div>
+            <h2>
+              {inviter ? <><em>{inviter}</em> invited you to Juniper</> : <>You have been invited to Juniper</>}
+            </h2>
+            <p className="jp-sub">
+              {inviter ? `${inviter} has` : "Somebody has"} asked you to plan your money together.
+              Create an account and you will land in the shared space with them.
+            </p>
+            <div className="jp-btns">
+              <Link href={`/auth/sign-up${q}`} className="btn">
+                {inviter ? `Join ${inviter} on Juniper` : "Create an account"}
+              </Link>
+              <Link href={`/auth/sign-in${q}`} className="btn ghost">I already have an account</Link>
+            </div>
+            {/* The three facts that decide whether a reasonable person accepts,
+                and each one is a behaviour rather than a promise: the shared
+                space (0012), private until chosen per account (0020 and the
+                share sheet), and transactions never shared at all, which is why
+                the three-way scope chip was cut to two in #195. */}
+            <ul className="jp-what">
+              <li>A space you both see, with the goals you are saving toward</li>
+              <li>Nothing of yours is shared until you choose it, account by account</li>
+              <li>Your transactions are never shared, whatever you turn on</li>
+            </ul>
+            <p className="jp-priv">
+              {inviter ? `${inviter} cannot` : "They cannot"} see anything of yours by accepting.
+            </p>
           </>
         ) : (
           <>
-            <h2 style={{ fontSize: 20 }}>Couldn't join</h2>
-            <p style={{ color: "var(--jnpr-ink-3)", fontSize: 13.5, margin: "8px 0 18px" }}>{error}</p>
-            <button className="btn" onClick={() => setLocation("/app")}>Go to Juniper</button>
+            <h2>Couldn't join</h2>
+            <p className="jp-sub">{error}</p>
+            <div className="jp-btns">
+              <button className="btn" onClick={() => setLocation("/app")}>Go to Juniper</button>
+            </div>
           </>
         )}
       </div>

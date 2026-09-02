@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { acceptInvite } from "@/lib/invites";
+import { fetchInviteInfo } from "@/lib/partner";
 import "@/styles/juniper.css";
 
 const REQUIRED_INVITE_CODE = (import.meta.env.VITE_SIGNUP_INVITE_CODE ?? "") as string;
@@ -24,11 +25,27 @@ export default function SignUp() {
   // inline below. ?partner= is a partnership invite, handed back to
   // /invite/partner/:token once there is a session, so that page stays the one
   // place that accepts a partnership and reports why one was refused.
+  // Who invited them, when they arrived on a partnership link (#172). The thread
+  // has to survive the step it is most likely to break at: "Join Finley on
+  // Juniper" landing on a page that says nothing about Finley is the moment
+  // somebody wonders whether they are in the right place. Nicety, never a
+  // dependency: null renders the page exactly as it was.
+  const [inviter, setInviter] = useState<string | null>(null);
+
   const { planInviteToken, partnershipToken } = useMemo(() => {
     if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null };
     const q = new URLSearchParams(window.location.search);
     return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner") };
   }, []);
+
+  useEffect(() => {
+    if (!partnershipToken) return;
+    let alive = true;
+    void fetchInviteInfo(partnershipToken).then((info) => {
+      if (alive) setInviter(info.inviter);
+    });
+    return () => { alive = false; };
+  }, [partnershipToken]);
 
   // Someone arriving on an invite of either kind was vouched for by the member
   // who invited them, so the private-preview code is waived for them.
@@ -115,7 +132,13 @@ export default function SignUp() {
         <div className="auth-brand">
           <img src="/logo.png" alt="Juniper" />
           <h1>Create your account</h1>
-          <p className="auth-sub">Start building your financial picture.</p>
+          <p className="auth-sub">
+            {partnershipToken
+              ? inviter
+                ? <>You are joining <b>{inviter}</b> on Juniper.</>
+                : <>You are joining someone on Juniper.</>
+              : <>Start building your financial picture.</>}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
