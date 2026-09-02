@@ -12,7 +12,7 @@ import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
 } from "@/lib/plans";
 import {
-  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, SCORE_DASH,
+  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH,
 } from "@/components/juniper/primitives";
 import {
   WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
@@ -201,7 +201,9 @@ function windowStart(labels: string[], months: number): number {
   return 0;
 }
 
-function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"]; cashflow: FinanceData["cashflow"] }) {
+function NetWorthCard({ netWorth, cashflow, size }: { netWorth: FinanceData["netWorth"]; cashflow: FinanceData["cashflow"]; size: string }) {
+  // Hooks run unconditionally regardless of `size`, per the rules of hooks:
+  // the branch on which JSX to return happens after them, at the bottom.
   const [range, setRange] = useState<RangeId>("All");
   const { labels, series } = netWorth;
   const estimated = netWorth.estimated ?? [];
@@ -231,6 +233,29 @@ function NetWorthCard({ netWorth, cashflow }: { netWorth: FinanceData["netWorth"
   const base = Math.abs(win[0] ?? 0);
   const changePct = changeAbs && base ? Math.round((changeAbs / base) * 1000) / 10 : 0;
   const noRanges = !RANGES.some(([r]) => enabled(r));
+
+  // Compact: the number, the month-over-month change (the same figure the
+  // greeting band's "up $X this month" reads), and a plain sparkline over the
+  // whole series, no range pills and no cashflow footer. For a member who
+  // wants net worth on the page without it being the tallest card.
+  if (size === "compact") {
+    return (
+      <div className="card">
+        <div className="eyebrow">Net worth</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 6 }}>
+          <span className="big-num tnum">{money(netWorth.value)}</span>
+          {netWorth.changeAbs !== 0 && (
+            <span className={`delta ${netWorth.changeAbs > 0 ? "up" : "down"}`} style={{ marginBottom: 5 }}>
+              <TrendArrow down={netWorth.changeAbs < 0} />{Math.abs(netWorth.changePct)}%
+            </span>
+          )}
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <PlanSpark data={series} k="--jnpr-accent" height={32} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card pad-lg">
@@ -781,7 +806,7 @@ export default function Overview({
   // before it draws one (rule 3).
   const nodes: Record<string, ReactNode> = {
     score: <ScoreWidget score={score} pending={scorePending} size={sizes.score} />,
-    networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} />,
+    networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} size={sizes.networth} />,
     plans: <YourPlansCard goals={goals} goalsReady={goalsReady} />,
     spend: (
       <div className="card">
