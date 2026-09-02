@@ -37,6 +37,10 @@ Everything below is the evidence for that, and the design rules that follow.
 > everyone. And items linked before that change may need a relink to consent to
 > it, the same way Investments did in #144.
 >
+> **Both of those consequences were wrong, and acting on the first one broke
+> linking for every member for a day. See the correction below before touching
+> `additional_consented_products`.**
+>
 > Until then `api/plaid/recurring-sync.ts` recognises the refusal, stops after
 > the first wave of calls, logs one warning rather than one error per
 > institution, and answers 200 with `available: false`. It deliberately writes
@@ -44,10 +48,14 @@ Everything below is the evidence for that, and the design rules that follow.
 > streams through the stale-stream delete would wipe the member's cached list on
 > the strength of a permissions error.
 
-> **Granted 2026-08-31.** Plaid approved the `recurring_transactions` add on, so
-> the "not before" above is satisfied and `additional_consented_products` now
-> reads `["investments", "recurring_transactions"]`. Nothing else in the code
-> changed, and deliberately so: `recurring-sync.ts` decides availability from
+> **Granted 2026-08-31, and the consent change that followed it was a mistake.**
+> Plaid approved the `recurring_transactions` add on. `additional_consented_products`
+> was then set to `["investments", "recurring_transactions"]` (#221), and **Plaid
+> rejected every `/link/token/create` for the next day** with 400
+> `recurring_transactions is not a valid product for this field`. No member could
+> connect a bank. #234 removed it; the field reads `["investments"]` and must stay
+> that way. **Read the correction at the end of this section before changing it.**
+> Nothing else in the code changed, and deliberately so: `recurring-sync.ts` decides availability from
 > what Plaid answers at runtime, so an entitled client simply stops taking the
 > refusal path, and the panel it feeds has always rendered whatever streams the
 > cache holds. Three things are therefore true and unverified until somebody
@@ -68,6 +76,42 @@ Everything below is the evidence for that, and the design rules that follow.
 >    Sandbox secret, so if that environment refuses the product then
 >    `/link/token/create` fails on every preview deploy while production is
 >    fine. Check a preview link before assuming the change is safe everywhere.
+
+> **Corrected 2026-09-02, and this is the paragraph to read.** All three checks
+> above were answered, and the first one failed.
+>
+> **`recurring_transactions` is not a value `additional_consented_products`
+> accepts, entitled or not.** That field takes the same enum as `products`, and
+> `recurring_transactions` is not in it: it is an **add on to `transactions`**,
+> entitled on the Plaid ACCOUNT and read through `/transactions/recurring/get`.
+> There is no link-time consent value for it, and none is needed, because
+> consenting to `transactions` is the whole requirement and `plaidProducts()`
+> already requests it.
+>
+> So the "not before" rule above predicted the right failure for the wrong
+> reason. It guarded against naming an UNENTITLED product; the entitlement had in
+> fact been granted, and the field refused the value anyway. Between #221 on
+> 2026-08-31 and #234 on 2026-09-01, `/link/token/create` returned 400 for every
+> caller and **linking was broken for every member for about a day**. What hid it
+> for that long was client copy, not the API: `createLinkToken()` collapsed every
+> failure to null and the caller rendered "Account linking isn't enabled yet",
+> which is only true for a 503, so a hard rejection read as a feature flag.
+> #234 fixed both halves.
+>
+> The second consequence was wrong too: **the seven existing items did not need
+> relinking.** A sync on 2026-08-31 at 14:34:29 returned 200 with no refusal
+> warning and the member's card populated, so an item linked long before the add
+> on was granted serves recurring detection with no consent change at all. That
+> is the same conclusion the first point forces, from the other direction.
+>
+> Linking has been proven recovered rather than assumed: a Chase item was linked
+> at **2026-09-01 15:07 UTC, 32 minutes after #234 merged**, which is a real link
+> token from a signed-in session through the corrected list. All seven items
+> carry a null `last_error_code`.
+>
+> **If you are here to add a product to a consent list:** the only values that
+> field takes are Plaid products. An add on is entitled in the Plaid dashboard
+> and needs nothing at link time.
 
 The response splits `inflow_streams` and `outflow_streams`. Per stream:
 
