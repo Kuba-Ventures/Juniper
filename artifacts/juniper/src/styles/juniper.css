@@ -1281,11 +1281,14 @@
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed
    out, as though the category were disabled or uncertain rather than simply
-   secondary to the merchant. Full ink at 12px and semibold, with the group's
-   colour kept as the left edge, so the tag is legible on its own and still
-   colour-codes at a glance. */
+   secondary to the merchant. Full ink at 12px and semibold.
+   NO GROUP COLOUR ON THE TAG (#260). It used to carry the colour as a border,
+   meant for the left edge but set on all four sides by an inline style, so a
+   column of tags read as a column of highlighter. The emoji names the category
+   and the merchant tile beside it already carries the group's colour, so the
+   tag itself stays quiet. */
 .jnpr .ctag{display:inline-block;font-size:12px;font-weight:600;color:var(--jnpr-ink);
-  background:var(--jnpr-surface-3);border:1px solid transparent;border-left-width:3px;
+  background:var(--jnpr-surface-3);border:1px solid transparent;
   border-radius:6px;padding:3px 9px;white-space:nowrap}
 /* The tag as a control (re-categorize). It keeps the tag's own look, gaining
    only a hover cue, because it is the same object: making it obviously a button
@@ -1293,8 +1296,7 @@
    The cell is the positioning context for the picker. */
 .jnpr .ctag-btn{font:inherit;font-size:12px;font-weight:600;cursor:pointer;
   transition:border-color .15s,background .15s}
-.jnpr .ctag-btn:hover:not(:disabled){background:var(--jnpr-surface-2);border-top-color:var(--jnpr-line);
-  border-right-color:var(--jnpr-line);border-bottom-color:var(--jnpr-line)}
+.jnpr .ctag-btn:hover:not(:disabled){background:var(--jnpr-surface-2);border-color:var(--jnpr-line)}
 .jnpr .ctag-btn:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
 .jnpr .ctag-btn:disabled{cursor:default;opacity:.7}
 .jnpr .ctag-dot{display:inline-block;width:4px;height:4px;border-radius:50%;
@@ -1434,6 +1436,65 @@
 .jnpr .td-a.inc,.jnpr .inc{color:var(--jnpr-good)}
 .jnpr .tx-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding-top:13px;font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .tx-foot-note{display:block;margin-top:3px}
+
+/* Sort, group and select (#260). */
+/* The sort menu, beside the search. One control for the four orders and the
+   group switch, so the header row stays labels and the table gains no chrome
+   until it is asked for. Reuses the account menu's popover. */
+.jnpr .tx-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.jnpr .tx-sort-wrap{position:relative}
+.jnpr .tx-sort{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--jnpr-line);background:var(--jnpr-surface);
+  color:var(--jnpr-ink);font:inherit;font-size:12.5px;font-weight:600;padding:8px 11px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.jnpr .tx-sort:hover{border-color:var(--jnpr-ink-3)}
+.jnpr .tx-sort span{color:var(--jnpr-ink-3);font-weight:500}
+.jnpr .tx-sort svg{width:12px;height:12px;color:var(--jnpr-ink-3)}
+.jnpr .tx-sort-menu{right:0;top:40px;min-width:220px}
+.jnpr .tx-sort-menu .pop-i{gap:8px}
+.jnpr .tx-sort-menu .pop-i b{font-weight:600}
+/* The selection gutter. The checkbox is there on every row and drawn only when
+   it could matter: on hover, on focus, while anything is selected, and always
+   on a device with no hover, where a control that appears on hover is a control
+   that does not exist. */
+.jnpr .tx-table .td-gut{width:22px;padding:0 6px 0 0}
+.jnpr .td-gut input{display:block;width:14px;height:14px;margin:0;accent-color:var(--jnpr-accent);cursor:pointer;
+  opacity:0;transition:opacity .12s}
+.jnpr .tx-table tr:hover .td-gut input,.jnpr .tx-table tr.sel .td-gut input,.jnpr .tx-table.has-sel .td-gut input,
+.jnpr .td-gut input:focus-visible{opacity:1}
+@media (hover:none){.jnpr .td-gut input{opacity:1}}
+.jnpr .tx-table tr.sel td{background:var(--jnpr-accent-soft)}
+.jnpr .tx-table tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--jnpr-accent)}
+/* "+2 more": the same merchant is loaded elsewhere, and one press selects all
+   of them. Beside the name, shown on hover like the gutter. */
+.jnpr .td-more{border:0;background:transparent;color:var(--jnpr-accent);font:inherit;font-size:10.5px;font-weight:650;
+  padding:0 5px;margin-left:6px;border-radius:5px;cursor:pointer;opacity:0;transition:opacity .12s;white-space:nowrap}
+.jnpr .tx-table tr:hover .td-more,.jnpr .td-more:focus-visible{opacity:1}
+.jnpr .td-more:hover{text-decoration:underline}
+@media (hover:none){.jnpr .td-more{opacity:1}}
+/* A group header, when the table is grouped by category. The total on the
+   right is the rollup's figure for the whole range, so it answers the same
+   question the donut does even when only the first page is loaded. */
+.jnpr .tx-table .tx-grp td{background:var(--jnpr-surface-2);border-top:1px solid var(--jnpr-line);border-bottom:1px solid var(--jnpr-line);
+  padding:8px 10px 8px 0;font-size:12.5px}
+.jnpr .tx-grp .grp-n{color:var(--jnpr-ink-3);font-weight:500;margin-left:8px;font-size:11.5px;white-space:nowrap}
+.jnpr .tx-grp .grp-t{font-weight:700;color:var(--jnpr-ink)}
+/* The selection bar. Fixed to the foot of the viewport and portalled to <body>
+   like the picker, so it stays in reach however far down a long table the
+   member has scrolled. */
+.jnpr .tx-selbar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:44;display:flex;align-items:center;
+  gap:12px;padding:10px 12px 10px 16px;border-radius:14px;background:var(--jnpr-accent);color:var(--jnpr-on-accent);
+  font-size:13px;font-weight:650;box-shadow:var(--jnpr-shadow-lg);flex-wrap:wrap;max-width:min(92vw,600px)}
+.jnpr .tx-selbar .btn{background:var(--jnpr-surface);color:var(--jnpr-accent-deep);padding:7px 12px;font-size:12.5px}
+.jnpr .tx-selbar .btn:disabled{opacity:.7;cursor:default}
+.jnpr .tx-selbar-x{border:0;background:transparent;color:var(--jnpr-on-accent);opacity:.8;font:inherit;font-size:12.5px;
+  cursor:pointer;text-decoration:underline;padding:0}
+.jnpr .tx-selbar-x:hover{opacity:1}
+.jnpr .tx-selbar .cat-rule,.jnpr .tx-selbar .cat-err{flex-basis:100%;margin:0;color:var(--jnpr-on-accent)}
+.jnpr .tx-selbar .cat-err{opacity:.95}
+.jnpr .tx-selbar .cat-rule-go{background:var(--jnpr-surface);color:var(--jnpr-accent-deep)}
+.jnpr .tx-selbar .cat-rule-go:hover:not(:disabled){background:var(--jnpr-surface-2)}
+.jnpr .tx-selbar .cat-rule-no{color:var(--jnpr-on-accent);opacity:.85}
+.jnpr .tx-selbar .cat-rule.done{color:var(--jnpr-on-accent);opacity:.95}
 
 /* Summary panel (the toggle's other half) */
 .jnpr .sumbox .sum-r{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;
