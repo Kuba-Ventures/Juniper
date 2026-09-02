@@ -1104,6 +1104,14 @@
 .jnpr .conn-tile .ct-bal{display:block;margin-top:auto;font-size:19px;font-weight:650;
   letter-spacing:-.02em;color:var(--jnpr-ink)}
 .jnpr .conn-tile .ct-bal.neg{color:var(--jnpr-bad)}
+/* A figure that came to nothing, greyed and nothing else (#270). Colour only, and
+   deliberately not a smaller size: a gallery is scanned down the figures, so the
+   zeros should sit back while still sharing a baseline with the institutions that
+   hold something. Shrinking them took them off that line and read as debris at the
+   foot of the tile. The class comes from the component, since CSS cannot see a
+   value; a tile with nothing to state renders no figure at all, which stays a
+   different thing from a zero. */
+.jnpr .conn-tile .ct-bal.zero{color:var(--jnpr-ink-3)}
 @media (prefers-reduced-motion:reduce){
   .jnpr .conn-tile{transition:none}
   .jnpr .conn-tile:hover{transform:none}
