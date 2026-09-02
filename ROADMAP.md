@@ -79,6 +79,30 @@ Shell is done; remaining screens and states:
 - **3d — Budgets** [x] `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions.
 - **3e — Net worth history** [x] `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line.
 - **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home, Spending, and the Accounts/Connections surface all read live data.** Sync trigger: `syncFinances()` (`src/lib/plaid.ts`) fires `POST /api/plaid/transactions-sync` + `POST /api/plaid/networth-snapshot` automatically on link, and on the manual **"Refresh data now"** button in Connections.
+- **3g** [x] **A reconstruction can be redone when its inputs change** *(2026-09-02)*. `networth-backfill`
+  writes with `resolution=ignore-duplicates`, which was doing two jobs at once: never overwrite a day
+  Juniper OBSERVED with a day it guessed (always right), and never re-derive a day it already guessed
+  (right by default, because a reconstruction walks back from TODAY's balances and therefore moves as
+  the market moves, so rewriting it on every sync would make a member's May net worth wobble daily).
+  The second rule is wrong in exactly one case: when the INPUTS change. Charles Schwab, about 73% of
+  the member's net worth, was linked before #144 sent `additional_consented_products`, so its invested
+  balance was carried back flat; it was relinked on 2026-08-29 and the history could not be redone,
+  because the endpoint fires on every sync and is a no-op by design. `POST ?rebuild=1` now replaces
+  the days it reconstructed itself and only those. The decision is `replaceableDays` in
+  `api/_networth-walk.ts`, kept pure because it drives a DELETE on the one table in the app that
+  cannot be recomputed (`net_worth_snapshots` is keyed by (user, day), so a lost observation is lost
+  for good), and `scripts/src/check-networth-rebuild.ts` asserts over 4096 combinations that a
+  recorded day can never be deletable and that a day the walk did not produce is never touched. The
+  delete sends `estimated=eq.true` as well as the day list, so the database refuses an observation
+  even if the list were ever wrong. Triggered by **Settings, Developer, "Rebuild net-worth history"**,
+  which reports what it cleared and what it left alone rather than saying "Done"; `syncFinances()`
+  deliberately does not pass the flag
+- [ ] **(ops)** **Press it once for the real member**, whose 66 reconstructed days (27 May to 31
+  August) still carry Schwab flat. Expect "66 reconstructed days replaced, 5 recorded days left
+  alone" and investments adjusted on one connection. Worth reading the net-worth chart before and
+  after: even rebuilt, the invested portion counts money added and not how the market moved, because
+  Plaid reports today's prices and not past ones, so the shape should change and will not be exact - Finley
+
 > **Deduplicated 2026-08-28.** This list appeared twice, once as above and once
 > with 3b to 3e unchecked and described as unbuilt, which made the most finished
 > part of the repo read as half-built. The stale copy is deleted; the state above

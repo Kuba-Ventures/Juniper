@@ -40,7 +40,7 @@ import { readEnv } from "../_env";
 import { plaidConfigured, plaidFetch } from "../_plaid";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "../_manual-accounts";
-import { walkBackward } from "../_networth-walk";
+import { replaceableDays, walkBackward } from "../_networth-walk";
 
 export const config = { runtime: "edge" };
 
@@ -227,6 +227,31 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
   const uid = payload.sub;
 
+  // ── REBUILD, and why it is a flag rather than the default ────────────────
+  //
+  // Without it this endpoint behaves exactly as it always has: it reconstructs
+  // the days before the member's first recorded snapshot and writes with
+  // `ignore-duplicates`, so a repeat run rewrites nothing. That is what
+  // `syncFinances()` calls on every sync, and it must stay that way, because a
+  // reconstruction is derived from TODAY's balances and therefore moves as the
+  // market moves: rewriting history on every sync would make a member's May net
+  // worth wobble daily, and a chart whose past changes shape is not one anybody
+  // can read.
+  //
+  // With it, the run may REPLACE days it previously reconstructed, and only
+  // those. It exists because the inputs can change: an item relinked to consent
+  // to a product it could not serve before can now answer for a stretch of
+  // history that was carried back flat. That is exactly what happened to
+  // Charles Schwab, about 73% of one member's net worth, relinked on 2026-08-29
+  // with no way to redo the history it had already written.
+  //
+  // A recorded day is never touched, whatever the flag says. That decision is
+  // `replaceableDays` in _networth-walk.ts, kept pure and checked exhaustively
+  // by scripts/src/check-networth-rebuild.ts, because it drives a DELETE on the
+  // one table in this app that cannot be recomputed: `net_worth_snapshots` is
+  // keyed by (user, day), so a real observation deleted by mistake is gone.
+  const rebuild = new URL(req.url).searchParams.get("rebuild") === "1";
+
   const itemsRes = await adminRest(`plaid_items?user_id=eq.${uid}&select=item_id,access_token,accounts`);
   if (!itemsRes.ok) {
     const detail = await itemsRes.text().catch(() => "");
@@ -331,9 +356,62 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!out.length) return json({ linked: true, written: 0, reason: "no earlier days to reconstruct" });
 
+  // On a rebuild, clear the days this run is about to rewrite, and ONLY the ones
+  // it reconstructed itself. Two filters rather than one: the day list already
+  // contains nothing but estimated days, and `estimated=eq.true` is sent as well
+  // so the database refuses to delete an observation even if the list were ever
+  // wrong. Belt and braces on a delete is not redundancy, it is the only kind of
+  // caution that survives a future edit to the code above it.
+  let deleted = 0;
+  let kept = 0;
+  if (rebuild) {
+    const existingRes = await adminRest(
+      `net_worth_snapshots?user_id=eq.${uid}&select=as_of,estimated&order=as_of.asc&limit=1000`,
+    );
+    if (!existingRes.ok) {
+      const detail = await existingRes.text().catch(() => "");
+      console.error(`[plaid] networth-backfill could not read existing days (${existingRes.status}): ${detail}`);
+      return json({ error: "Failed to read existing days" }, 500);
+    }
+    const existing = (await existingRes.json().catch(() => [])) as { as_of: string; estimated: boolean }[];
+    const plan = replaceableDays(out, existing);
+    kept = plan.protected.length;
+    if (plan.deletable.length) {
+      // Quoted per value, which is the form the other five `in.(...)` call
+      // sites in this API use against this database (api/finances.ts,
+      // api/transactions.ts, api/subscriptions.ts, api/partner.ts twice). A
+      // date cannot contain a comma or a quote, so this is convention rather
+      // than necessity, and convention is what a reader checks a DELETE
+      // against.
+      const days = plan.deletable.map((d) => `"${d.replace(/"/g, '""')}"`).join(",");
+      const del = await adminRest(
+        `net_worth_snapshots?user_id=eq.${uid}&estimated=eq.true&as_of=in.(${days})`,
+        { method: "DELETE", headers: { Prefer: "return=representation" } },
+      );
+      if (!del.ok) {
+        const detail = await del.text().catch(() => "");
+        console.error(`[plaid] networth-backfill rebuild delete failed (${del.status}): ${detail}`);
+        return json({ error: "Failed to clear reconstructed days", detail }, 500);
+      }
+      deleted = ((await del.json().catch(() => [])) as unknown[]).length;
+      // Loud, because the two numbers disagreeing means the filter and the plan
+      // disagree, and this is the one place in the app where that costs data.
+      if (deleted !== plan.deletable.length) {
+        console.warn(
+          `[plaid] networth-backfill rebuild deleted ${deleted} of ${plan.deletable.length} planned days`,
+        );
+      }
+    }
+    console.log(
+      `[plaid] networth-backfill rebuild for ${uid}: ${deleted} reconstructed days cleared, ${kept} recorded days untouched`,
+    );
+  }
+
   // ignore-duplicates, not merge: a day Juniper actually observed must never be
-  // overwritten by a reconstruction of that day, and re-running this endpoint
-  // must be a no-op rather than a rewrite.
+  // overwritten by a reconstruction of that day, and a run WITHOUT `rebuild=1`
+  // must be a no-op rather than a rewrite. A rebuild gets its rewrite by having
+  // cleared its own earlier reconstructions above, which is what keeps this
+  // write rule honest for both paths.
   const up = await adminRest("net_worth_snapshots?on_conflict=user_id,as_of", {
     method: "POST",
     headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
@@ -358,5 +436,11 @@ export default async function handler(req: Request): Promise<Response> {
     // a caller can tell "no investments" from "investments we could not read".
     investments_adjusted: investmentsAdjusted,
     investments_unavailable: investmentsUnavailable,
+    // What a rebuild actually did, because a run that silently rewrites a
+    // member's history is not one anybody can check afterwards. Both are 0 on
+    // the ordinary path, where nothing is cleared by construction.
+    rebuild,
+    cleared: deleted,
+    recorded_kept: kept,
   });
 }
