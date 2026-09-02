@@ -97,11 +97,19 @@ Shell is done; remaining screens and states:
   even if the list were ever wrong. Triggered by **Settings, Developer, "Rebuild net-worth history"**,
   which reports what it cleared and what it left alone rather than saying "Done"; `syncFinances()`
   deliberately does not pass the flag
-- [ ] **(ops)** **Press it once for the real member**, whose 66 reconstructed days (27 May to 31
-  August) still carry Schwab flat. Expect "66 reconstructed days replaced, 5 recorded days left
-  alone" and investments adjusted on one connection. Worth reading the net-worth chart before and
-  after: even rebuilt, the invested portion counts money added and not how the market moved, because
-  Plaid reports today's prices and not past ones, so the shape should change and will not be exact - Finley
+- [x] **(ops)** **Pressed for the real member on 2026-09-02**, and it did what it should: **92
+  reconstructed days replaced, 6 recorded days left alone, investments adjusted for contributions on
+  1 connection**, so Schwab answered. The 92 is 5 days in May, 30 in June, 31 in July and 26 in
+  August; the 6 is the five recorded August days plus 1 September. *(An earlier draft of this line
+  predicted 66 and 5, which was simply an addition error, and the counts the run reported are the
+  ones that match the table.)* **The safety property held in production**, which is the part worth
+  recording: every recorded day survived, and the daily job has since added 2 September, so
+  `net_worth_snapshots` now holds 92 reconstructions and 8 observations. And the trend is no longer
+  flat: the reconstructed months carry spreads of about $10,900 in June and $10,600 in July against a
+  series that runs from roughly $81,600 in late May to $100,200 now, where before the rebuild about
+  73% of net worth was held constant across all of it. Still not exact, and it cannot be: the
+  invested portion counts money added and not how the market moved, because Plaid reports today's
+  prices and not past ones
 
 > **Deduplicated 2026-08-28.** This list appeared twice, once as above and once
 > with 3b to 3e unchecked and described as unbuilt, which made the most finished
