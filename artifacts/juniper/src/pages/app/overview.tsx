@@ -278,12 +278,168 @@ function AccountGroup({ title, arr, brands }: { title: string; arr: Account[]; b
   );
 }
 
-/** Grouped in first-seen order (by category, or by day), never re-sorted, so
- *  the group order tracks the rows' own order rather than alphabetizing them
- *  out from under a member scanning by recency. */
-function groupPreserveOrder(items: Txn[], keyOf: (t: Txn) => string): { key: string; rows: Txn[] }[] {
+type AccountKind = "Cash" | "Investments" | "Debts";
+interface AccountRow { key: number; a: Account; kind: AccountKind }
+
+function flattenAccounts(accounts: FinanceData["accounts"]): AccountRow[] {
+  let key = 0;
+  return [
+    ...accounts.cash.map((a) => ({ key: key++, a, kind: "Cash" as const })),
+    ...accounts.invest.map((a) => ({ key: key++, a, kind: "Investments" as const })),
+    ...accounts.debt.map((a) => ({ key: key++, a, kind: "Debts" as const })),
+  ];
+}
+
+function AccountCompactRow({ row, brands }: { row: AccountRow; brands: InstitutionBrandMap | null }) {
+  return (
+    <div className="acc-crow">
+      <AccountMark account={row.a} brands={brands} />
+      <span className="nm">{row.a.n}</span>
+      <span className="amt">{money(row.a.v)}</span>
+    </div>
+  );
+}
+
+function AccountTile({ row, brands }: { row: AccountRow; brands: InstitutionBrandMap | null }) {
+  return (
+    <div className="acc-tile">
+      <AccountMark account={row.a} brands={brands} />
+      <span className="nm">{row.a.n}</span>
+      <span className="mt">{row.a.i}</span>
+      <span className="amt" style={{ color: row.a.v < 0 ? "var(--jnpr-bad)" : undefined }}>{money(row.a.v)}</span>
+    </div>
+  );
+}
+
+const ACCOUNTS_EMPTY = (
+  <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>
+    No accounts yet. <Link href="/app/connections" className="link">Connect one</Link> to see balances here.
+  </div>
+);
+
+/** Accounts at six sizes (issue #259). List is unchanged; the other five are
+ *  genuinely different readings of the same rows, never the same layout
+ *  scaled, following the lesson #279's rejected first pass on Budgets set. */
+function AccountsCard({ accounts, brands, size }: { accounts: FinanceData["accounts"]; brands: InstitutionBrandMap | null; size: string }) {
+  const empty = accounts.cash.length + accounts.invest.length + accounts.debt.length === 0;
+
+  if (size === "compact") {
+    const rows = flattenAccounts(accounts);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {empty ? ACCOUNTS_EMPTY : (
+          <div className="acc-compact">{rows.map((r) => <AccountCompactRow row={r} brands={brands} key={r.key} />)}</div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "tiles") {
+    const rows = flattenAccounts(accounts);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {empty ? ACCOUNTS_EMPTY : (
+          <div className="acc-tiles">{rows.map((r) => <AccountTile row={r} brands={brands} key={r.key} />)}</div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "net") {
+    const cashTotal = accounts.cash.reduce((s, a) => s + a.v, 0);
+    const investTotal = accounts.invest.reduce((s, a) => s + a.v, 0);
+    const debtTotal = accounts.debt.reduce((s, a) => s + a.v, 0);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {empty ? ACCOUNTS_EMPTY : (
+          <div className="acc-net">
+            <div><div className="l">Cash</div><div className="v">{money(cashTotal)}</div></div>
+            <div><div className="l">Investments</div><div className="v">{money(investTotal)}</div></div>
+            <div><div className="l">Debts</div><div className={debtTotal < 0 ? "v debt" : "v"}>{money(debtTotal)}</div></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "institution") {
+    const groups = groupPreserveOrder(flattenAccounts(accounts), (r) => r.a.i);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {empty ? ACCOUNTS_EMPTY : (
+          <div>
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="acc-inst-h"><AccountMark account={g.rows[0].a} brands={brands} />{g.key}</div>
+                {g.rows.map((r) => (
+                  <div className="row" key={r.key}>
+                    <AccountMark account={r.a} brands={brands} />
+                    <div><div className="nm">{r.a.n}</div><div className="mt">{r.kind}</div></div>
+                    <div className="amt">{money(r.a.v)} {r.a.apr && <span className="apr-chip">{r.a.apr}</span>}</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "table") {
+    const rows = flattenAccounts(accounts);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+        {empty ? ACCOUNTS_EMPTY : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="acc-table">
+              <thead><tr><th>Account</th><th>Institution</th><th>Type</th><th style={{ textAlign: "right" }}>Balance</th></tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.key}>
+                    <td><div className="acc-tcell"><AccountMark account={r.a} brands={brands} />{r.a.n}</div></td>
+                    <td>{r.a.i}</td>
+                    <td>{r.kind}</td>
+                    <td className="amt" style={{ color: r.a.v < 0 ? "var(--jnpr-bad)" : undefined }}>
+                      {money(r.a.v)}{r.a.apr && <span className="apr-chip" style={{ marginLeft: 6 }}>{r.a.apr}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
+      {empty ? ACCOUNTS_EMPTY : (
+        <div className="rows">
+          {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} brands={brands} />}
+          {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} brands={brands} />}
+          {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} brands={brands} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Grouped in first-seen order (by category, by day, or by institution),
+ *  never re-sorted, so the group order tracks the rows' own order rather
+ *  than alphabetizing them out from under a member scanning by recency.
+ *  Generic because both Recent transactions and Accounts group rows this
+ *  same way (issue #259). */
+function groupPreserveOrder<T>(items: T[], keyOf: (t: T) => string): { key: string; rows: T[] }[] {
   const order: string[] = [];
-  const map = new Map<string, Txn[]>();
+  const map = new Map<string, T[]>();
   for (const t of items) {
     const k = keyOf(t);
     if (!map.has(k)) { map.set(k, []); order.push(k); }
@@ -1215,22 +1371,7 @@ export default function Overview({
       </div>
     ),
     txns: <TransactionsPanel items={transactions} size={sizes.txns} />,
-    accounts: (
-      <div className="card">
-        <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
-        {accounts.cash.length + accounts.invest.length + accounts.debt.length === 0 ? (
-          <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>
-            No accounts yet. <Link href="/app/connections" className="link">Connect one</Link> to see balances here.
-          </div>
-        ) : (
-          <div className="rows">
-            {accounts.cash.length > 0 && <AccountGroup title="Cash" arr={accounts.cash} brands={brands} />}
-            {accounts.invest.length > 0 && <AccountGroup title="Investments" arr={accounts.invest} brands={brands} />}
-            {accounts.debt.length > 0 && <AccountGroup title="Debts" arr={accounts.debt} brands={brands} />}
-          </div>
-        )}
-      </div>
-    ),
+    accounts: <AccountsCard accounts={accounts} brands={brands} size={sizes.accounts} />,
     cards: cardsData.loading
       ? <LoadingSlot title="Cards and rewards" />
       : <CardsWidget data={cardsData} />,
