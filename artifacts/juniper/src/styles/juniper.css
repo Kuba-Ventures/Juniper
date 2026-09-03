@@ -176,6 +176,57 @@
 .jnpr .bud-empty p{margin:0;font-size:12.5px;line-height:1.6;color:var(--jnpr-ink-2);max-width:44ch}
 .jnpr .bud-empty p b{color:var(--jnpr-head);font-weight:650}
 
+/* Budgets, five more sizes (issue #259). Every one reads the same rows the
+   Bars view does; only the shape drawn from them differs. */
+.jnpr .bud-rings{display:flex;flex-wrap:wrap;gap:18px}
+.jnpr .bud-ring{display:flex;flex-direction:column;align-items:center;gap:6px;width:78px;text-align:center}
+.jnpr .bud-ring .rv{font-size:13px;font-weight:750}
+.jnpr .bud-ring .rn{font-size:11px;color:var(--jnpr-ink-3);line-height:1.3}
+
+.jnpr .bud-attn{display:flex;flex-direction:column;gap:2px}
+.jnpr .bud-attn-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .bud-attn-row:first-child{border-top:0}
+.jnpr .dot2{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.jnpr .dot2.over{background:var(--jnpr-warn)}
+.jnpr .dot2.ok{background:var(--jnpr-accent)}
+.jnpr .bud-attn-row .ln{flex:1;font-weight:600;font-size:13px;color:var(--jnpr-ink)}
+.jnpr .bud-attn-row .st{font-size:12.5px;font-weight:650}
+.jnpr .bud-attn-row .st.over{color:var(--jnpr-warn)}
+.jnpr .bud-attn-row .st.ok{color:var(--jnpr-ink-3);font-weight:550}
+
+.jnpr .bud-heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.jnpr .bud-heat-tile{border-radius:10px;padding:12px 8px;text-align:center}
+.jnpr .bud-heat-tile .cat-em{width:auto;margin:0;font-size:18px;display:block;margin-bottom:4px}
+.jnpr .bud-heat-tile .tn{font-size:11px;font-weight:650;line-height:1.3}
+.jnpr .bud-heat-tile .tp{font-size:12.5px;font-weight:750;margin-top:4px}
+.jnpr .bud-heat-tile.h-over{background:var(--jnpr-warn);color:#fff}
+.jnpr .bud-heat-tile.h-over .tn{color:rgba(255,255,255,.85)}
+.jnpr .bud-heat-tile.h-hi{background:var(--jnpr-accent);color:#fff}
+.jnpr .bud-heat-tile.h-hi .tn{color:rgba(255,255,255,.8)}
+.jnpr .bud-heat-tile.h-mid{background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep)}
+.jnpr .bud-heat-tile.h-mid .tn{color:var(--jnpr-ink-2)}
+.jnpr .bud-heat-tile.h-lo{background:var(--jnpr-surface-3);color:var(--jnpr-ink-2)}
+.jnpr .bud-heat-tile.h-lo .tn{color:var(--jnpr-ink-3)}
+
+.jnpr .bud-gauge-wrap{display:flex;align-items:center;gap:20px}
+.jnpr .gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.jnpr .gauge-center .gv{font-size:22px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .gauge-center .gl{font-size:10px;color:var(--jnpr-ink-3);font-weight:650;text-transform:uppercase;letter-spacing:.05em}
+.jnpr .gauge-note{font-size:12.5px;color:var(--jnpr-ink-3);line-height:1.5}
+.jnpr .gauge-note b{color:var(--jnpr-warn);font-weight:650}
+
+.jnpr .bud-spot{border:1px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:var(--jnpr-r-sm);padding:12px;margin-bottom:12px}
+.jnpr .bud-spot.over{border-color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}
+.jnpr .spot-top{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:650;margin-bottom:8px}
+.jnpr .spot-flag{margin-left:auto;color:var(--jnpr-warn);font-weight:700}
+.jnpr .spot-flag.ok{color:var(--jnpr-ink-3);font-weight:600}
+.jnpr .bar.lg{height:10px}
+.jnpr .spot-sub{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:6px}
+.jnpr .bud-mini{display:flex;flex-direction:column;gap:1px}
+.jnpr .mini-row{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--jnpr-line-2);font-size:12.5px;color:var(--jnpr-ink-2)}
+.jnpr .mini-row:first-child{border-top:0}
+.jnpr .mini-row .mv{margin-left:auto;font-weight:650;color:var(--jnpr-ink-3)}
+
 /* Budgets panel, the third tab of the Transactions side rail. Rows are denser
    than the legend's because each can carry a bar and a caption under it. */
 .jnpr .bp{display:flex;flex-direction:column}
