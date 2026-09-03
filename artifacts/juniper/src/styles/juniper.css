@@ -68,7 +68,7 @@
   border-radius:50%;background:var(--jnpr-bad);border:1.5px solid var(--jnpr-surface)}
 /* The bell's dropdown, issue #266. Facts derived live from data the app already
    computes elsewhere (src/lib/notifications.ts); no unread/read state is stored. */
-.jnpr .pop.notif-pop{width:300px;padding:6px}
+.jnpr .pop.notif-pop{right:0;width:300px;max-width:calc(100vw - 24px);padding:6px}
 .jnpr .notif-empty{padding:22px 14px 16px;text-align:center}
 .jnpr .notif-empty svg{width:26px;height:26px;stroke:var(--jnpr-ink-3);margin-bottom:10px}
 .jnpr .notif-empty p{margin:0 0 4px;font-size:12.5px;color:var(--jnpr-ink-2);font-weight:600}
