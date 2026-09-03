@@ -187,12 +187,12 @@
 /* The Credit page's card holder beside its card list (issue #264 follow-up,
    treatment B of three in previews/credit-holder-list-layout-options.html).
    320px fits `.cr-holder`'s fixed 262px plus `.card.pad-lg`'s 22px padding on
-   each side, with a few px to spare. align-items:start rather than the grid
-   default (stretch), because the holder is reliably shorter than a card list
-   of more than a couple of rows and stretching it would leave its own content
-   floating in a taller box rather than the box simply ending where its
-   content does. */
-.jnpr .credit-row{grid-template-columns:320px 1fr;align-items:start}
+   each side, with a few px to spare. Grid's default align-items:stretch (left
+   implicit rather than restated) is what the member asked for after seeing it
+   run short: the two `.card` boxes match height regardless of which one has
+   more to say, with the holder's card border simply carrying blank space
+   below its content rather than ending early. */
+.jnpr .credit-row{grid-template-columns:320px 1fr}
 @media(max-width:860px){.jnpr .credit-row{grid-template-columns:1fr}}
 
 .jnpr .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
