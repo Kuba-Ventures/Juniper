@@ -78,28 +78,168 @@ function BudgetsEmpty({ top }: { top?: SpendCat }) {
   );
 }
 
-function Budgets({ items, spending }: { items: Budget[]; spending: SpendCat[] }) {
+// Every Budgets size below reads this shape rather than the raw `Budget` row,
+// so a percentage or an overage is computed once. `pct` is capped at 100 for
+// anything that fills a bar or a ring (a gauge cannot honestly draw past
+// full); `pctRaw` is not, because "120%" is real information a capped fill
+// would hide.
+interface BudgetRow {
+  key: number;
+  c: string;
+  e?: string;
+  s: number;
+  l: number;
+  pct: number;
+  pctRaw: number;
+  over: boolean;
+  overBy: number;
+}
+
+function toBudgetRows(items: Budget[]): BudgetRow[] {
+  return items.map((b, i) => {
+    const pctRaw = b.l > 0 ? Math.round((b.s / b.l) * 100) : 0;
+    return {
+      key: i, c: b.c, e: b.e, s: b.s, l: b.l,
+      pct: Math.min(100, Math.max(0, pctRaw)),
+      pctRaw,
+      over: b.s > b.l,
+      overBy: b.s > b.l ? b.s - b.l : 0,
+    };
+  });
+}
+
+function BudgetBarRow({ row }: { row: BudgetRow }) {
+  return (
+    <div className={row.over ? "bud over" : "bud ok"}>
+      <div className="t">
+        <span><span className="cat-em" aria-hidden>{row.e}</span>{row.c}</span>
+        <span className="r"><b className="tnum">{money(row.s)}</b> of {money(row.l)}{row.over && <> · <span className="flag">{money(row.overBy)} over</span></>}</span>
+      </div>
+      <div className="bar"><i style={{ width: `${row.pct}%` }} /></div>
+    </div>
+  );
+}
+
+/** One radial gauge per category, the same visual language the Score's Ring
+ *  and the spending donut already use elsewhere on this page (issue #259). */
+function BudgetRing({ row }: { row: BudgetRow }) {
+  const d = 56, strokeW = 6, r = (d - strokeW) / 2, c = 2 * Math.PI * r;
+  const off = c * (1 - row.pct / 100);
+  const color = row.over ? "var(--jnpr-warn)" : "var(--jnpr-accent)";
+  return (
+    <div className="bud-ring">
+      <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
+        <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={strokeW} />
+        <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke={color} strokeWidth={strokeW} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${d / 2} ${d / 2})`} />
+      </svg>
+      <span className="rv" style={{ color }}>{row.pctRaw}%</span>
+      <span className="rn"><span className="cat-em" aria-hidden>{row.e}</span>{row.c}</span>
+    </div>
+  );
+}
+
+/** No bar and no ring, a status dot and one line. Sorted worst first by the
+ *  caller so the category needing a look is always the top row, never
+ *  wherever it happens to sit by name or creation order. */
+function BudgetAttentionRow({ row }: { row: BudgetRow }) {
+  return (
+    <div className="bud-attn-row">
+      <span className={row.over ? "dot2 over" : "dot2 ok"} />
+      <span className="ln"><span className="cat-em" aria-hidden>{row.e}</span>{row.c}</span>
+      <span className={row.over ? "st over" : "st ok"}>{row.over ? `${money(row.overBy)} over` : `${row.pctRaw}% used`}</span>
+    </div>
+  );
+}
+
+const heatBand = (row: BudgetRow) => (row.over ? "h-over" : row.pctRaw >= 66 ? "h-hi" : row.pctRaw >= 33 ? "h-mid" : "h-lo");
+
+function BudgetHeatTile({ row }: { row: BudgetRow }) {
+  return (
+    <div className={`bud-heat-tile ${heatBand(row)}`}>
+      <span className="cat-em" aria-hidden>{row.e}</span>
+      <div className="tn">{row.c}</div>
+      <div className="tp">{row.pctRaw}%</div>
+    </div>
+  );
+}
+
+function Budgets({ items, spending, size }: { items: Budget[]; spending: SpendCat[]; size: string }) {
   if (items.length === 0) {
     const top = spending.reduce<SpendCat | undefined>((best, s) => (!best || s.v > best.v ? s : best), undefined);
     return <BudgetsEmpty top={top} />;
   }
-  return (
-    <div>
-      {items.map((b, i) => {
-        const pct = Math.min(100, Math.round((b.s / b.l) * 100));
-        const over = b.s > b.l;
-        return (
-          <div className={`bud ${over ? "over" : "ok"}`} key={i}>
-            <div className="t">
-              <span><span className="cat-em" aria-hidden>{b.e}</span>{b.c}</span>
-              <span className="r"><b className="tnum">{money(b.s)}</b> of {money(b.l)}{over && <> · <span className="flag">{money(b.s - b.l)} over</span></>}</span>
-            </div>
-            <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+  const rows = toBudgetRows(items);
+
+  if (size === "rings") {
+    return <div className="bud-rings">{rows.map((r) => <BudgetRing row={r} key={r.key} />)}</div>;
+  }
+  if (size === "attention") {
+    const sorted = [...rows].sort((a, b) => b.overBy - a.overBy || b.pctRaw - a.pctRaw);
+    return <div className="bud-attn">{sorted.map((r) => <BudgetAttentionRow row={r} key={r.key} />)}</div>;
+  }
+  if (size === "heatmap") {
+    return <div className="bud-heat">{rows.map((r) => <BudgetHeatTile row={r} key={r.key} />)}</div>;
+  }
+  if (size === "gauge") {
+    // One ring for the whole month, not one per category: everything
+    // budgeted, summed, against everything spent against a budget.
+    const totalS = rows.reduce((a, r) => a + r.s, 0);
+    const totalL = rows.reduce((a, r) => a + r.l, 0);
+    const pct = totalL > 0 ? Math.round((totalS / totalL) * 100) : 0;
+    const overRows = [...rows].filter((r) => r.over).sort((a, b) => b.overBy - a.overBy);
+    const d = 104, strokeW = 10, r = (d - strokeW) / 2, c = 2 * Math.PI * r;
+    const off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+    return (
+      <div className="bud-gauge-wrap">
+        <div style={{ position: "relative", width: d, height: d, flex: "0 0 auto" }}>
+          <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
+            <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={strokeW} />
+            <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke={overRows.length ? "var(--jnpr-warn)" : "var(--jnpr-accent)"} strokeWidth={strokeW} strokeLinecap="round"
+              strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${d / 2} ${d / 2})`} />
+          </svg>
+          <div className="gauge-center"><span className="gv">{pct}%</span><span className="gl">of budget</span></div>
+        </div>
+        <div className="gauge-note">
+          {money(totalS)} of {money(totalL)} budgeted across {rows.length} {rows.length === 1 ? "category" : "categories"}.
+          {overRows.length > 0 && (
+            <><br /><b>{overRows.length} {overRows.length === 1 ? "category" : "categories"} over</b>: {overRows[0].c}, by {money(overRows[0].overBy)}.</>
+          )}
+        </div>
+      </div>
+    );
+  }
+  if (size === "spotlight") {
+    // The worst offender gets the hero treatment; when nothing is over, the
+    // spotlight falls to whichever category is closest to its limit instead,
+    // so the card always leads with the one line worth a second look.
+    const [hero, ...rest] = [...rows].sort((a, b) => b.overBy - a.overBy || b.pctRaw - a.pctRaw);
+    return (
+      <div>
+        <div className={hero.over ? "bud-spot over" : "bud-spot"}>
+          <div className="spot-top">
+            <span className="cat-em" aria-hidden>{hero.e}</span><span>{hero.c}</span>
+            <span className={hero.over ? "spot-flag" : "spot-flag ok"}>
+              {hero.over ? `${money(hero.overBy)} over` : `${hero.pctRaw}% used`}
+            </span>
           </div>
-        );
-      })}
-    </div>
-  );
+          <div className="bar lg"><i style={{ width: `${hero.pct}%`, background: hero.over ? "var(--jnpr-warn)" : "var(--jnpr-accent)" }} /></div>
+          <div className="spot-sub">{money(hero.s)} of {money(hero.l)}</div>
+        </div>
+        {rest.length > 0 && (
+          <div className="bud-mini">
+            {rest.map((r) => (
+              <div className="mini-row" key={r.key}>
+                <span className="cat-em" aria-hidden>{r.e}</span>{r.c}
+                <span className="mv">{r.pctRaw}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return <div>{rows.map((r) => <BudgetBarRow row={r} key={r.key} />)}</div>;
 }
 
 // The mark belongs to the INSTITUTION, not the account. This used to key off
@@ -920,7 +1060,7 @@ export default function Overview({
     budgets: (
       <div className="card">
         <div className="card-head"><h3>Budgets</h3></div>
-        <Budgets items={budgets} spending={spending} />
+        <Budgets items={budgets} spending={spending} size={sizes.budgets} />
       </div>
     ),
     txns: <TransactionsPanel items={transactions} />,
