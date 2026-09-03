@@ -1374,7 +1374,7 @@ export default function Overview({
     accounts: <AccountsCard accounts={accounts} brands={brands} size={sizes.accounts} />,
     cards: cardsData.loading
       ? <LoadingSlot title="Cards and rewards" />
-      : <CardsWidget data={cardsData} />,
+      : <CardsWidget data={cardsData} size={sizes.cards} />,
     recurring: recurringData.loading
       ? <LoadingSlot title="Recurring charges" />
       : <RecurringWidget data={recurringData} />,

@@ -17,7 +17,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { fetchCardRewards, money0, type CardRewards } from "@/lib/cards";
-import { linkedCards, manualCards, utilizationSummary, type CreditCardRow } from "@/lib/credit-cards";
+import { limitFor, linkedCards, manualCards, utilizationSummary, type CreditCardRow } from "@/lib/credit-cards";
 import { fetchSubscriptions, type SubPayload } from "@/lib/subscriptions";
 import { money2 } from "@/lib/txn-format";
 import type { PlaidItem } from "@/lib/plaid";
@@ -74,9 +74,139 @@ export function useCardsWidget(active: boolean, items: PlaidItem[] | null): Card
   return { loading: !settled, empty: settled && cards.length === 0, rewards, cards };
 }
 
-export function CardsWidget({ data }: { data: CardsWidgetData }) {
+/**
+ * A small version of the Credit page's own card holder (rewards-guide.tsx):
+ * the back-most and front-most cards only, in their real brand colors, so a
+ * card reads the same color here as it does there. Only ever asked for two
+ * cards; a member with one sees a single face at full brightness rather than
+ * a dimmed "back" card with nothing behind it.
+ */
+function CardHolderMini({ cards }: { cards: CreditCardRow[] }) {
+  const shown = cards.slice(0, 2);
+  const palette = ["--jnpr-c3", "--jnpr-c5", "--jnpr-c1", "--jnpr-c4"];
+  return (
+    <div className="cw-holder">
+      {shown.map((c, i) => (
+        <div
+          key={c.key}
+          className={i === shown.length - 1 ? "cw-face b" : "cw-face a"}
+          style={{ background: `var(${palette[i % palette.length]})` }}
+        >
+          <span className="brand">{c.institution.toUpperCase()}</span>
+          <span className="fname">{c.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function CardsWidget({ data, size }: { data: CardsWidgetData; size: string }) {
   const { rewards, cards } = data;
   const sum = utilizationSummary(cards);
+
+  if (size === "holder") {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Cards and rewards</h3>
+          <Link href="/app/credit" className="link">Credit →</Link>
+        </div>
+        {cards.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            No cards linked yet.
+          </div>
+        ) : (
+          <>
+            <CardHolderMini cards={cards} />
+            <div className="cw-holder-cover">
+              <div className="cw-cover-n">{cards.length} {cards.length === 1 ? "card" : "cards"}</div>
+              <div className="cw-cover-u">
+                {sum
+                  ? `${sum.used}% utilized · ${money0(sum.balance, sum.currency)} of ${money0(sum.limit, sum.currency)}`
+                  : "No limit reported yet"}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "figures" || size === "bars") {
+    const rated = cards
+      .map((c) => ({ card: c, ...limitFor(c) }))
+      .filter((r): r is typeof r & { limit: number } => r.limit != null);
+    const maxLimit = Math.max(1, ...rated.map((r) => r.limit));
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Cards and rewards</h3>
+          <Link href="/app/credit" className="link">Credit →</Link>
+        </div>
+        {rated.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            None of your {cards.length === 1 ? "cards reports" : "cards report"} a credit limit yet.
+          </div>
+        ) : size === "figures" ? (
+          <div className="cw-lb-list">
+            {rated.map((r) => (
+              <div className="cw-lb-row" key={r.card.key}>
+                <span className="nm">{r.card.name}</span>
+                <span className="v"><b>{money0(r.card.balance, r.card.currency)}</b> of {money0(r.limit, r.card.currency)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="cw-dbar">
+            {rated.map((r) => (
+              <div className="cw-dbar-row" key={r.card.key}>
+                <div className="top">
+                  <span className="nm">{r.card.name}</span>
+                  <span className="v">{money0(r.card.balance, r.card.currency)} / {money0(r.limit, r.card.currency)}</span>
+                </div>
+                <div className="cw-dbar-track" style={{ width: `${(r.limit / maxLimit) * 100}%` }}>
+                  <div className="cw-dbar-fill" style={{ width: `${Math.min(100, (r.card.balance / r.limit) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "guide") {
+    // Same guide the Credit page's rewards list is built from, shortened to
+    // the member's top categories. api/_rewards.ts orders it by their own
+    // spend, so the order here is the order there.
+    const rows = (rewards?.guide ?? []).filter((g) => g.best != null).slice(0, 4);
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Cards and rewards</h3>
+          <Link href="/app/credit" className="link">Credit →</Link>
+        </div>
+        {rows.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            Identify your cards on the Credit page to see a rewards guide here.
+          </div>
+        ) : (
+          <div className="cw-guide">
+            {rows.map((g) => (
+              <div className="cw-g-row" key={g.categoryId}>
+                <span className="cat">{g.categoryLabel}</span>
+                <span className="card">
+                  <b>{g.best!.productName}</b> · <span className="rate">{g.best!.display}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Stat, the shipped default: unchanged.
   // The strongest single instruction the rewards engine produces: the category
   // the member spends most in, and which of their own cards pays best there.
   // Read from the guide the Credit page draws rather than recomputed, so the two
