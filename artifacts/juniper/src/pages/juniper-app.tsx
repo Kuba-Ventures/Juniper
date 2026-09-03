@@ -178,6 +178,7 @@ export default function JuniperApp() {
                 email={email}
                 holderStyle={profile?.holderStyle ?? null}
                 onHolderStyle={(s) => saveProfile({ ...(profile ?? {}), holderStyle: s })}
+                onNameChange={(n) => saveProfile({ ...(profile ?? {}) }, n)}
               />
             )}
           </Route>

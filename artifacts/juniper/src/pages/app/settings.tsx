@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabase";
 import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay } from "@/lib/profile";
 import { PageHeader } from "@/components/juniper/app-frame";
@@ -57,7 +58,7 @@ function restartOnboarding(email: string) {
 // and makes a URL like /app/settings/appearance a real destination something
 // else (the Credit page's holder, say) could link to later.
 export function Settings({
-  tab, name, email, holderStyle = null, onHolderStyle,
+  tab, name, email, holderStyle = null, onHolderStyle, onNameChange,
 }: {
   tab?: string;
   name: string;
@@ -67,6 +68,9 @@ export function Settings({
   /** Persists a new choice. Absent means the picker is not shown, which keeps
       this page usable from anywhere that has no profile to write to. */
   onHolderStyle?: (s: HolderStyle) => void;
+  /** Persists a new display name through the same profile path holder_style
+      takes. Absent means Name renders read-only, same reasoning as above. */
+  onNameChange?: (name: string) => void;
 }) {
   const [, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
@@ -74,6 +78,16 @@ export function Settings({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refreshed, setRefreshed] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(name);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(email);
+  const [busyEmail, setBusyEmail] = useState(false);
+  // Set once and kept until the next edit attempt, so "check your inbox" stays
+  // on screen after Save closes the field back to a read-only row: the change
+  // is not real yet (Supabase holds it pending confirmation), and the row
+  // still showing the OLD email is exactly the moment that note matters most.
+  const [emailNote, setEmailNote] = useState<{ text: string; kind: "good" | "bad" } | null>(null);
   const { sync, syncing, refresh } = useFinances();
   const isDeveloper = import.meta.env.DEV || !!sync?.isDeveloper;
   // The rebuild reports what it did rather than saying "Done", because it is the
@@ -154,6 +168,37 @@ export function Settings({
     // resetForTesting navigates away; no need to unset busy.
   };
 
+  const saveName = () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) return;
+    onNameChange?.(trimmed);
+    setEditingName(false);
+  };
+
+  // Email is Supabase Auth's identity, not a `user_profiles` column, so this
+  // goes through `supabase.auth.updateUser` directly rather than the profile
+  // save path Name and the holder use. By default Supabase does not apply the
+  // change until the member clicks the confirmation link it sends, so `email`
+  // (read from the session) does not update here: it updates itself, later,
+  // through `useSession()`'s own `onAuthStateChange` listener once confirmed.
+  const saveEmail = async () => {
+    const trimmed = emailDraft.trim();
+    if (!trimmed || trimmed === email) { setEditingEmail(false); return; }
+    setBusyEmail(true);
+    setEmailNote(null);
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    setBusyEmail(false);
+    if (error) {
+      setEmailNote({ text: error.message, kind: "bad" });
+      return;
+    }
+    setEmailNote({
+      text: `Check ${trimmed} for a confirmation link. Your email won't change until you confirm it.`,
+      kind: "good",
+    });
+    setEditingEmail(false);
+  };
+
   return (
     <div className="frame">
       <PageHeader title="Settings" />
@@ -175,10 +220,80 @@ export function Settings({
 
         <div className="card settings-panel">
           {activeTab === "account" && (
-            <div className="facts">
-              <div className="fr"><span className="k">Name</span><span className="v">{name || "-"}</span></div>
-              <div className="fr"><span className="k">Email</span><span className="v">{email || "-"}</span></div>
-            </div>
+            <>
+              <div className={`setting-row${editingName ? " stacked" : ""}`}>
+                <div className="st-body">
+                  <div className="st-title">Name</div>
+                  {!editingName && <div className="st-desc">{name || "-"}</div>}
+                </div>
+                <div className="st-control">
+                  {!onNameChange ? null : !editingName ? (
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      onClick={() => { setNameDraft(name); setEditingName(true); }}
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <div className="field" style={{ margin: 0 }}>
+                      <input
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && saveName()}
+                        maxLength={80}
+                        autoFocus
+                      />
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="btn sm" type="button" disabled={!nameDraft.trim()} onClick={saveName}>
+                          Save
+                        </button>
+                        <button className="btn ghost sm" type="button" onClick={() => setEditingName(false)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={`setting-row${editingEmail ? " stacked" : ""}`}>
+                <div className="st-body">
+                  <div className="st-title">Email</div>
+                  {!editingEmail && <div className="st-desc">{email || "-"}</div>}
+                  {emailNote && <div className={`st-note ${emailNote.kind}`}>{emailNote.text}</div>}
+                </div>
+                <div className="st-control">
+                  {!editingEmail ? (
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      onClick={() => { setEmailDraft(email); setEditingEmail(true); setEmailNote(null); }}
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <div className="field" style={{ margin: 0 }}>
+                      <input
+                        type="email"
+                        value={emailDraft}
+                        onChange={(e) => setEmailDraft(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && saveEmail()}
+                        autoFocus
+                      />
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="btn sm" type="button" disabled={busyEmail || !emailDraft.trim()} onClick={saveEmail}>
+                          {busyEmail ? "Sending…" : "Save"}
+                        </button>
+                        <button className="btn ghost sm" type="button" disabled={busyEmail} onClick={() => setEditingEmail(false)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           {activeTab === "appearance" && (
