@@ -1386,10 +1386,14 @@ export default function Overview({
   const onBoardPointerMove = (e: React.PointerEvent) => {
     const id = dragRef.current;
     if (!id || !board.current) return;
-    const over = widgetUnder(board.current, id, e.clientX, e.clientY);
-    if (!over) return;
-    const next = withMoved(orderRef.current, id, over);
-    if (next === orderRef.current) return;
+    const rect = board.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const others = orderRef.current.filter((wid) => wid !== id && !hiddenRef.current.has(wid));
+    const i = bestDropIndex(others, id, (wid) => sizes[wid], (wid) => heights[wid] ?? 180, dashColWidth, dashCols, x, y);
+    const newShown = [...others.slice(0, i), id, ...others.slice(i)];
+    const next = withShownReordered(orderRef.current, hiddenRef.current, newShown);
+    if (next.length === orderRef.current.length && next.every((v, idx) => v === orderRef.current[idx])) return;
     orderRef.current = next;
     setOrder(next);
   };
@@ -1696,18 +1700,57 @@ export default function Overview({
   );
 }
 
-/** The widget the pointer is over, by nearest centre, ignoring the one being
- *  dragged. Nearest rather than hit-testing, so a drag into the gap between two
- *  cards still lands somewhere rather than doing nothing. */
-function widgetUnder(board: HTMLElement, dragged: string, x: number, y: number): string | null {
-  let best: string | null = null;
-  let bestD = Infinity;
-  for (const el of board.querySelectorAll<HTMLElement>("[data-widget]")) {
-    const id = el.dataset.widget;
-    if (!id || id === dragged) continue;
-    const r = el.getBoundingClientRect();
-    const d = (x - (r.left + r.width / 2)) ** 2 + (y - (r.top + r.height / 2)) ** 2;
-    if (d < bestD) { bestD = d; best = id; }
+/**
+ * Where a dragged widget should land among the other SHOWN widgets, for a
+ * pointer at board-relative (x, y). Tries every position it could slot into,
+ * packs each candidate with the same `packMasonry` the board renders with,
+ * and keeps whichever puts the widget's OWN packed position closest to the
+ * pointer.
+ *
+ * Issue #302: this replaces a hit test that asked "which card's CENTRE is
+ * nearest the pointer, swap the dragged widget in next to it." That reads a
+ * card's CURRENT position and ignores what dropping there would actually do,
+ * and `packMasonry` decides a card's column from the accumulated height of
+ * everything before it in the order, not from array parity, so swapping next
+ * to a card near the pointer could still repack the dragged widget into the
+ * wrong column once that swap reflowed every card after it. Dragging Net
+ * Worth toward the Juniper Score's slot never actually traded the two,
+ * because the old test moved the dragged widget relative to whatever card it
+ * found, rather than asking "where would MY card sit" for every candidate
+ * spot and picking the one nearest the pointer, which is what actually
+ * answers "put it here."
+ */
+function bestDropIndex(
+  others: string[],
+  id: string,
+  sizeOf: (widgetId: string) => string,
+  heightOf: (widgetId: string) => number,
+  colWidth: number,
+  cols: number,
+  x: number,
+  y: number,
+): number {
+  let bestIndex = others.length;
+  let bestDist = Infinity;
+  for (let i = 0; i <= others.length; i++) {
+    const candidate = [...others.slice(0, i), id, ...others.slice(i)];
+    const { pos } = packMasonry(withFullFlags(candidate, sizeOf), heightOf, colWidth, cols);
+    const p = pos[id];
+    if (!p) continue;
+    const cx = p.x + p.width / 2;
+    const cy = p.y + heightOf(id) / 2;
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < bestDist) { bestDist = d; bestIndex = i; }
   }
-  return best;
+  return bestIndex;
+}
+
+/** Replaces the SHOWN widgets in `fullOrder` with `newShown`, in that order,
+ *  leaving every hidden widget exactly where it sat. Both lists hold the same
+ *  shown ids, just reordered, so walking `fullOrder` and pulling the next
+ *  shown id off `newShown` at every shown slot reproduces it with the hidden
+ *  ones untouched. */
+function withShownReordered(fullOrder: string[], hidden: Set<string>, newShown: string[]): string[] {
+  const queue = [...newShown];
+  return fullOrder.map((wid) => (hidden.has(wid) ? wid : queue.shift()!));
 }
