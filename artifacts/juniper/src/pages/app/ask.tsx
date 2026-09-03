@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useThreads, streamTurn, titleFrom, generateReport, type Thread } from "@/lib/planner";
+import { useThreads, runTurn, titleFrom, generateReport, type Thread } from "@/lib/planner";
 import { PlanReportView } from "@/components/juniper/plan-report";
+import { Rich } from "@/components/juniper/ask-rich";
 
 // Global starter prompts (the standalone surface). Plan-scoped chats arrive
 // pre-seeded with a question from the Plans page, so they skip this screen.
@@ -18,21 +19,6 @@ const PlusIcon = () => (
 const TrashIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M4 7h16M9 7V5h6v2m-8 0l1 13h8l1-13" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
-
-// Very light **bold** + paragraph rendering, enough for planner replies.
-function Rich({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(/\n\n+/).map((para, i) => (
-        <p key={i} style={{ margin: i ? "10px 0 0" : 0 }}>
-          {para.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
-            p.startsWith("**") && p.endsWith("**") ? <strong key={j}>{p.slice(2, -2)}</strong> : <span key={j}>{p}</span>,
-          )}
-        </p>
-      ))}
-    </>
-  );
-}
 
 export default function Ask() {
   const { threads, create, remove, update } = useThreads();
@@ -104,17 +90,11 @@ export default function Ask() {
   async function send(text: string, thread?: Thread) {
     const t = thread ?? active;
     if (!text.trim() || streaming || !t) return;
-    const isFirst = t.messages.length === 0;
-    const nextMsgs = [...t.messages, { role: "user" as const, content: text }];
-    update(t.id, (x) => ({ ...x, messages: nextMsgs, title: isFirst ? titleFrom(text) : x.title, updatedAt: Date.now() }));
     setInput("");
     setStreaming(true);
     setStreamText("");
     try {
-      const full = await streamTurn(nextMsgs, t.planContext, setStreamText);
-      update(t.id, (x) => ({ ...x, messages: [...nextMsgs, { role: "assistant", content: full }], updatedAt: Date.now() }));
-    } catch {
-      update(t.id, (x) => ({ ...x, messages: [...nextMsgs, { role: "assistant", content: "Sorry, something went wrong. Please try again." }], updatedAt: Date.now() }));
+      await runTurn(t, text, update, setStreamText);
     } finally {
       setStreaming(false);
       setStreamText("");
