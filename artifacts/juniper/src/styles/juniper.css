@@ -2728,3 +2728,45 @@
   border-radius:50%;background:var(--jnpr-accent)}
 .jnpr .jp-priv{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.55;margin:10px 0 0;
   padding-left:20px;text-align:left}
+
+/* ── Overview: Cards and rewards widget sizes (issue #259) ───────────────────
+   Stat is the shipped default, unchanged. The other four are redrawn from the
+   real Credit-page surfaces this widget already links to, per the user's
+   rejection of an earlier, more abstract set of options: the card holder
+   (rewards-guide.tsx's stack, scaled down, real brand colors), the limits and
+   balances in two forms, and the per-category rewards guide. Design record:
+   previews/cards-shapes-options.html. */
+
+.jnpr .cw-holder{position:relative;height:192px;margin-top:6px}
+.jnpr .cw-face{position:absolute;left:0;right:26px;height:98px;border-radius:12px;padding:12px 14px;
+  color:#fff;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--jnpr-shadow-lg)}
+.jnpr .cw-face.a{top:0;right:16px;z-index:1;filter:brightness(.8)}
+.jnpr .cw-face.b{top:28px;right:0;z-index:2}
+.jnpr .cw-face .brand{font-size:10.5px;font-weight:700;letter-spacing:.08em;opacity:.85}
+.jnpr .cw-face .fname{font-size:13.5px;font-weight:650}
+.jnpr .cw-holder-cover{position:absolute;left:0;right:0;bottom:0;background:var(--jnpr-surface);
+  border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:10px 13px;box-shadow:var(--jnpr-shadow)}
+.jnpr .cw-cover-n{font-size:13px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .cw-cover-u{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+
+.jnpr .cw-lb-list{display:flex;flex-direction:column;gap:1px}
+.jnpr .cw-lb-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .cw-lb-row:first-child{border-top:0}
+.jnpr .cw-lb-row .nm{font-weight:600;font-size:13px}
+.jnpr .cw-lb-row .v{font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .cw-lb-row .v b{color:var(--jnpr-ink-2);font-weight:650}
+
+.jnpr .cw-dbar{display:flex;flex-direction:column;gap:13px;margin-top:2px}
+.jnpr .cw-dbar-row .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}
+.jnpr .cw-dbar-row .top .nm{font-weight:600;color:var(--jnpr-ink)}
+.jnpr .cw-dbar-row .top .v{color:var(--jnpr-ink-3)}
+.jnpr .cw-dbar-track{height:16px;border-radius:5px;background:var(--jnpr-surface-3);overflow:hidden;position:relative}
+.jnpr .cw-dbar-fill{height:100%;background:var(--jnpr-accent);border-radius:5px 0 0 5px}
+
+.jnpr .cw-guide{display:flex;flex-direction:column;gap:1px}
+.jnpr .cw-g-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .cw-g-row:first-child{border-top:0}
+.jnpr .cw-g-row .cat{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-ink-3);width:110px;flex:0 0 auto}
+.jnpr .cw-g-row .card{font-size:12.5px;color:var(--jnpr-ink-2);text-align:right}
+.jnpr .cw-g-row .card b{color:var(--jnpr-ink);font-weight:650}
+.jnpr .cw-g-row .rate{color:var(--jnpr-accent);font-weight:700}

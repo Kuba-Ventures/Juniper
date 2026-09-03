@@ -130,7 +130,16 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "table", label: "Table", full: true },
     ],
   },
-  { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", sizes: DEFAULT_SIZES, defaultOff: true },
+  {
+    id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", defaultOff: true,
+    sizes: [
+      { id: "stat", label: "Stat" },
+      { id: "holder", label: "Card holder" },
+      { id: "figures", label: "Limits & balances" },
+      { id: "bars", label: "Limits & balances (bars)" },
+      { id: "guide", label: "Rewards guide" },
+    ],
+  },
   { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES, defaultOff: true },
 ];
 
