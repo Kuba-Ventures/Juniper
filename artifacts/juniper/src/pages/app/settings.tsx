@@ -1,12 +1,16 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay } from "@/lib/profile";
-import { ModalBackdrop } from "@/components/juniper/modal-portal";
+import { PageHeader } from "@/components/juniper/app-frame";
 import { useTheme } from "@/lib/theme";
 import { HOLDER_STYLES, HOLDER_LABEL, holderClass, type HolderStyle } from "@/lib/holder-style";
 import { useFinances } from "@/lib/finances";
 import { timeAgo } from "@/lib/auto-sync";
 import { rebuildNetworthHistory, syncFinances } from "@/lib/plaid";
+
+type SettingsTab = "account" | "appearance" | "developer";
+const TAB_LABEL: Record<SettingsTab, string> = { account: "Account", appearance: "Appearance", developer: "Developer" };
 
 // Wipe this account back to a brand-new state, server profile + plans and all
 // local caches (profile, onboarded flag, welcome tip), then hard-reload into
@@ -45,18 +49,26 @@ function restartOnboarding(email: string) {
   window.location.assign("/app");
 }
 
-export function SettingsModal({
-  name, email, onClose, holderStyle = null, onHolderStyle,
+// Issue #245: this used to be a modal, and `.modal .fr` (a two-column
+// label -> value row) was being asked to hold three different row shapes at
+// once, a genuine label/value pair (Name, Email), a control with its own
+// description (Dark mode, Card holder), and a heading/paragraph/button action
+// row (Developer). Routing it gives every shape the width it actually needs,
+// and makes a URL like /app/settings/appearance a real destination something
+// else (the Credit page's holder, say) could link to later.
+export function Settings({
+  tab, name, email, holderStyle = null, onHolderStyle,
 }: {
+  tab?: string;
   name: string;
   email: string;
-  onClose: () => void;
   /** The member's chosen holder (migration 0048), or null for the default. */
   holderStyle?: HolderStyle | null;
   /** Persists a new choice. Absent means the picker is not shown, which keeps
-      this modal usable from anywhere that has no profile to write to. */
+      this page usable from anywhere that has no profile to write to. */
   onHolderStyle?: (s: HolderStyle) => void;
 }) {
+  const [, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const [confirming, setConfirming] = useState(false);
@@ -75,6 +87,13 @@ export function SettingsModal({
   // while a background sync it had not started was running.
   const [busyRefresh, setBusyRefresh] = useState(false);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
+
+  // A stale link (or a bookmark from before Developer was granted) falls back
+  // to Account rather than rendering a tab with nothing behind it.
+  const requested: SettingsTab = tab === "appearance" ? "appearance" : tab === "developer" ? "developer" : "account";
+  const activeTab: SettingsTab = requested === "developer" && !isDeveloper ? "account" : requested;
+  const tabs: SettingsTab[] = isDeveloper ? ["account", "appearance", "developer"] : ["account", "appearance"];
+  const goTab = (t: SettingsTab) => setLocation(t === "account" ? "/app/settings" : `/app/settings/${t}`);
 
   const doRefresh = async () => {
     // syncFinances directly, NOT runBackgroundSync, and both differences matter
@@ -136,113 +155,122 @@ export function SettingsModal({
   };
 
   return (
-    <ModalBackdrop onClose={onClose}>
-      <h3>Settings</h3>
-
-        <div className="facts" style={{ marginBottom: 20 }}>
-          <div className="fr"><span className="k">Name</span><span className="v">{name || "-"}</span></div>
-          <div className="fr"><span className="k">Email</span><span className="v">{email || "-"}</span></div>
+    <div className="frame">
+      <PageHeader title="Settings" />
+      <div className="settings-shell">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {tabs.map((t) => (
+            <button key={t} type="button" className={activeTab === t ? "on" : undefined} onClick={() => goTab(t)}>
+              {TAB_LABEL[t]}
+            </button>
+          ))}
+        </nav>
+        <div className="pills settings-mobile-tabs" role="tablist" aria-label="Settings sections">
+          {tabs.map((t) => (
+            <button key={t} type="button" className={activeTab === t ? "on" : undefined} onClick={() => goTab(t)}>
+              {TAB_LABEL[t]}
+            </button>
+          ))}
         </div>
 
-        <div className="pop-lbl" style={{ padding: "0 0 6px" }}>Appearance</div>
-        <div
-          className="fr"
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}
-        >
-          <div>
-            <div className="k" style={{ fontWeight: 650, color: "var(--jnpr-ink)" }}>Dark mode</div>
-            <div className="v" style={{ color: "var(--jnpr-ink-3)", fontSize: 12.5 }}>{isDark ? "On" : "Off"}</div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isDark}
-            aria-label="Toggle dark mode"
-            onClick={toggleTheme}
-            style={{
-              flex: "0 0 auto",
-              width: 46,
-              height: 27,
-              borderRadius: 999,
-              border: "1px solid var(--jnpr-line)",
-              background: isDark ? "var(--jnpr-accent)" : "var(--jnpr-surface-3)",
-              position: "relative",
-              cursor: "pointer",
-              padding: 0,
-              transition: "background .15s",
-            }}
-          >
-            <span
-              style={{
-                position: "absolute",
-                top: 2,
-                left: isDark ? 21 : 2,
-                width: 21,
-                height: 21,
-                borderRadius: "50%",
-                background: "var(--jnpr-surface)",
-                boxShadow: "0 1px 3px rgba(0,0,0,.35)",
-                transition: "left .15s",
-              }}
-            />
-          </button>
-        </div>
-
-        {/* THE CARD HOLDER. Appearance is where it belongs, beside the theme,
-            because both are "how the app looks to me" and neither is about money.
-            Unlike the theme it is stored per MEMBER rather than per device
-            (migration 0048): a theme is a property of the screen you are looking
-            at, and a holder is a thing you picked, so a holder that changed when
-            you opened your laptop would be a bug.
-            Six materials, and the labels are what somebody would say out loud.
-            Deliberately not split by who the member is: that would make somebody
-            sort themselves into a bucket before they could find a look they like,
-            and the bucket does not predict the answer. */}
-        {onHolderStyle && (
-          <div className="fr" style={{ marginBottom: 20 }}>
-            <div className="k" style={{ fontWeight: 650, color: "var(--jnpr-ink)" }}>Card holder</div>
-            <div className="v" style={{ color: "var(--jnpr-ink-3)", fontSize: 12.5 }}>
-              How your cards are drawn on the Credit page.
+        <div className="card settings-panel">
+          {activeTab === "account" && (
+            <div className="facts">
+              <div className="fr"><span className="k">Name</span><span className="v">{name || "-"}</span></div>
+              <div className="fr"><span className="k">Email</span><span className="v">{email || "-"}</span></div>
             </div>
-            <div className="hold-pick">
-              {HOLDER_STYLES.map((s) => (
+          )}
+
+          {activeTab === "appearance" && (
+            <>
+              <div className="setting-row">
+                <div className="st-body">
+                  <div className="st-title">Dark mode</div>
+                  <div className="st-desc">{isDark ? "On" : "Off"}</div>
+                </div>
                 <button
-                  key={s}
                   type="button"
-                  className="hold-opt"
-                  aria-pressed={holderStyle === s}
-                  aria-label={HOLDER_LABEL[s]}
-                  onClick={() => onHolderStyle(s)}
+                  role="switch"
+                  aria-checked={isDark}
+                  aria-label="Toggle dark mode"
+                  onClick={toggleTheme}
+                  className="st-control"
+                  style={{
+                    width: 46, height: 27, borderRadius: 999, border: "1px solid var(--jnpr-line)",
+                    background: isDark ? "var(--jnpr-accent)" : "var(--jnpr-surface-3)", position: "relative",
+                    cursor: "pointer", padding: 0, transition: "background .15s",
+                  }}
                 >
-                  {/* The swatch IS the holder, same classes, so a material can
-                      never look one way here and another on the Credit page.
-                      Three stand-in cards rather than real art: the choice is
-                      about the holder, and borrowing an issuer's artwork to
-                      advertise a leather finish is not a comparison of holders. */}
-                  <span className={`hold-swatch ${holderClass(s)}`} aria-hidden="true">
-                    <span className="sw-card" style={{ top: 5 }} />
-                    <span className="cr-holder-band" style={{ top: 20 }} />
-                    <span className="sw-card" style={{ top: 27 }} />
-                    <span className="cr-holder-band" style={{ top: 42 }} />
-                    <span className="sw-card" style={{ top: 49, bottom: 0, height: "auto" }} />
-                  </span>
-                  <span className="lbl">{HOLDER_LABEL[s]}</span>
+                  <span
+                    style={{
+                      position: "absolute", top: 2, left: isDark ? 21 : 2, width: 21, height: 21, borderRadius: "50%",
+                      background: "var(--jnpr-surface)", boxShadow: "0 1px 3px rgba(0,0,0,.35)", transition: "left .15s",
+                    }}
+                  />
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* Developer tools. These used to be one "Testing" block shown to
-           everyone, including the reset that wipes an account. A member has no
-           use for any of it, and a destructive control sitting in everyone's
-           settings is an accident waiting to be reported as a bug. Gated on a
-           local dev build or the DEVELOPER_EMAILS allowlist; the endpoints
-           behind them are unchanged and still scoped to the caller. */}
-        {isDeveloper && (
-          <>
-            <div className="pop-lbl" style={{ padding: "0 0 6px" }}>Developer</div>
-            {!confirming ? (
+              {/* THE CARD HOLDER. Appearance is where it belongs, beside the
+                  theme, because both are "how the app looks to me" and neither
+                  is about money. Unlike the theme it is stored per MEMBER
+                  rather than per device (migration 0048): a theme is a
+                  property of the screen you are looking at, and a holder is a
+                  thing you picked, so a holder that changed when you opened
+                  your laptop would be a bug.
+                  Six materials, and the labels are what somebody would say out
+                  loud. This section now gets the page's full width rather than
+                  a corner of a `.fr` row, which is what let the swatches grow
+                  and stopped the labels wrapping (issue #245). */}
+              {onHolderStyle && (
+                <div className="setting-row stacked">
+                  <div className="st-body">
+                    <div className="st-title">Card holder</div>
+                    <div className="st-desc">How your cards are drawn on the Credit page.</div>
+                  </div>
+                  <div className="st-control">
+                    <div className="hold-pick">
+                      {HOLDER_STYLES.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          className="hold-opt"
+                          aria-pressed={holderStyle === s}
+                          aria-label={HOLDER_LABEL[s]}
+                          onClick={() => onHolderStyle(s)}
+                        >
+                          {/* The swatch IS the holder, same classes, so a
+                              material can never look one way here and another
+                              on the Credit page. Three stand-in cards rather
+                              than real art: the choice is about the holder,
+                              and borrowing an issuer's artwork to advertise a
+                              leather finish is not a comparison of holders. */}
+                          <span className={`hold-swatch ${holderClass(s)}`} aria-hidden="true">
+                            <span className="sw-card" style={{ top: 5 }} />
+                            <span className="cr-holder-band" style={{ top: 20 }} />
+                            <span className="sw-card" style={{ top: 27 }} />
+                            <span className="cr-holder-band" style={{ top: 42 }} />
+                            <span className="sw-card" style={{ top: 49, bottom: 0, height: "auto" }} />
+                          </span>
+                          <span className="lbl">{HOLDER_LABEL[s]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Developer tools live on their own tab now rather than sharing a
+             scroll with Appearance. A destructive Reset used to need its own
+             disclosure to keep it from reading as more prominent than the
+             refresh/rebuild rows beside it; separating the whole tab does that
+             job instead, since Reset is never in the same view as Appearance
+             at all. Gated on a local dev build or the DEVELOPER_EMAILS
+             allowlist; the endpoints behind it are unchanged and still scoped
+             to the caller. */}
+          {activeTab === "developer" && isDeveloper && (
+            !confirming ? (
               <div className="dev-tools">
                 <div className="dev-row">
                   <div className="dev-t">
@@ -296,25 +324,23 @@ export function SettingsModal({
                 </div>
               </div>
             ) : (
-              <div className="form-error" style={{ marginBottom: 14 }}>
-                This wipes your profile, plans, and onboarding for <b>{email}</b>. This can't be undone.
-              </div>
-            )}
-          </>
-        )}
-
-        {confirming ? (
-          <div className="modal-actions">
-            <button className="btn" onClick={doReset} disabled={busy} style={{ background: "var(--jnpr-bad)" }}>
-              {busy ? "Resetting…" : "Yes, reset everything"}
-            </button>
-            <button className="btn ghost" onClick={() => setConfirming(false)} disabled={busy}>Cancel</button>
-          </div>
-        ) : (
-          <div className="modal-actions">
-            <button className="btn ghost" onClick={onClose}>Close</button>
-          </div>
-        )}
-    </ModalBackdrop>
+              <>
+                <div className="form-error">
+                  This wipes your profile, plans, and onboarding for <b>{email}</b>. This can't be undone.
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn" onClick={doReset} disabled={busy} style={{ background: "var(--jnpr-bad)", flex: 1, justifyContent: "center" }}>
+                    {busy ? "Resetting…" : "Yes, reset everything"}
+                  </button>
+                  <button className="btn ghost" onClick={() => setConfirming(false)} disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

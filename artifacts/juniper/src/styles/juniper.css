@@ -665,9 +665,49 @@
 .jnpr .sub-row .nm{font-weight:650;font-size:14px;color:var(--jnpr-ink)}
 .jnpr .sub-row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .jnpr .sub-row .btn{flex:0 0 auto}
-.jnpr .modal .facts{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:9px}
-.jnpr .modal .fr{display:flex;justify-content:space-between;font-size:13px}.jnpr .modal .fr .k{color:var(--jnpr-ink-3)}.jnpr .modal .fr .v{font-weight:650;color:var(--jnpr-ink)}
-.jnpr .modal .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
+/* Was `.modal .facts`/`.fr`/`.fine`: de-scoped from `.modal` once Settings (the
+   only caller) stopped being one, issue #245. Still exactly a label -> value
+   pair, and only that; a control with its own description is `.setting-row`
+   below, never this. */
+.jnpr .facts{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:9px}
+.jnpr .fr{display:flex;justify-content:space-between;font-size:13px}.jnpr .fr .k{color:var(--jnpr-ink-3)}.jnpr .fr .v{font-weight:650;color:var(--jnpr-ink)}
+.jnpr .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
+
+/* A setting with its own description and a control (Dark mode, Card holder)
+   is not a label -> value pair, so it gets its own row rather than `.fr`
+   doing double duty (issue #245: `.fr` was a flex row of THREE children,
+   label, description and a 3-across grid, all squeezed across one line).
+   `.stacked` drops the control to its own full-width line below the label,
+   for a control too wide to sit beside it, like the card-holder grid. */
+.jnpr .setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:13px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .setting-row:first-child{border-top:0}
+.jnpr .setting-row .st-body{min-width:0}
+.jnpr .setting-row .st-title{font-weight:650;color:var(--jnpr-ink);font-size:13.5px}
+.jnpr .setting-row .st-desc{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:2px}
+.jnpr .setting-row .st-control{flex:0 0 auto}
+.jnpr .setting-row.stacked{flex-direction:column;align-items:stretch}
+.jnpr .setting-row.stacked .st-control{width:100%;margin-top:10px}
+
+/* The routed Settings page (issue #245): a sidebar of sections on desktop,
+   a `.pills` segmented control in their place on mobile, and the active
+   section in a `.card` beside/under it. Not a modal, so this is the first
+   `/app/*` surface with its own sub-nav rather than one page per tab; the URL
+   itself (/app/settings/appearance) is what makes a section linkable from
+   elsewhere later, which a modal never could be. */
+.jnpr .settings-shell{display:grid;grid-template-columns:170px 1fr;gap:26px;align-items:start;max-width:720px}
+.jnpr .settings-nav{display:flex;flex-direction:column;gap:2px;position:sticky;top:90px}
+.jnpr .settings-nav button{text-align:left;background:none;border:0;font:inherit;font-size:13px;font-weight:600;
+  color:var(--jnpr-ink-2);padding:9px 12px;border-radius:9px;cursor:pointer}
+.jnpr .settings-nav button:hover{background:var(--jnpr-surface-3);color:var(--jnpr-ink)}
+.jnpr .settings-nav button.on{background:var(--jnpr-accent-soft);color:var(--jnpr-accent)}
+.jnpr .settings-mobile-tabs{display:none}
+@media(max-width:720px){
+  .jnpr .settings-shell{display:block}
+  .jnpr .settings-nav{display:none}
+  .jnpr .settings-mobile-tabs{display:flex;width:100%;margin-bottom:16px}
+  .jnpr .settings-mobile-tabs button{flex:1;text-align:center}
+}
 .jnpr .form-col{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
 .jnpr .form-col label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;color:var(--jnpr-ink-2)}
 .jnpr .form-col input,.jnpr .form-col select,.jnpr .form-col textarea{font:inherit;font-size:13.5px;font-weight:450;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px;outline:none;width:100%}
@@ -2406,7 +2446,11 @@
   background:linear-gradient(120deg,rgba(255,255,255,.30),rgba(255,255,255,.10))}
 .jnpr .hold-swatch .cr-holder-band{height:4px}
 .jnpr .hold-swatch .cr-holder-band::after{height:6px}
-.jnpr .hold-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.jnpr .hold-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:10px}
+/* Narrower still: two across rather than three, so a swatch stays big enough
+   to judge a material by instead of shrinking to fit a third column
+   (issue #245). */
+@media(max-width:480px){.jnpr .hold-pick{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Fills its grid cell, without which the button shrinks to its content and the
    percentage-width swatch inside it collapses to a sliver. */
 .jnpr .hold-opt{display:block;width:100%;background:none;border:0;padding:0;cursor:pointer;
