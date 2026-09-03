@@ -697,7 +697,13 @@ function CardHolderSection({
   if (!confirmed.length) return null;
   const handCount = (data.manual ?? []).length;
   return (
-    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+    // No marginBottom here: this only ever renders inside `.credit-row`
+    // (the page returns this section OR nothing, and the row only exists when
+    // this has something to draw), where the row's own bottom margin and
+    // align-items:stretch already do the job. A margin here would eat into
+    // the stretch and put this card's border a few pixels short of its
+    // sibling's, exactly the mismatch the row was just asked to fix.
+    <div className="card pad-lg">
       <div className="eyebrow">Your cards</div>
       {/* "N of M identified" used to describe the whole stack. It cannot any
           more: a hand-entered card can never be identified, so counting it in M
