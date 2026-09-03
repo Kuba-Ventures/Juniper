@@ -66,20 +66,36 @@
 .jnpr .icon-btn:hover{background:var(--jnpr-surface-3)}.jnpr .icon-btn svg{width:17px;height:17px}
 .jnpr .icon-btn.has-alert::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;
   border-radius:50%;background:var(--jnpr-bad);border:1.5px solid var(--jnpr-surface)}
-/* The bell's dropdown, issue #266. Facts derived live from data the app already
-   computes elsewhere (src/lib/notifications.ts); no unread/read state is stored. */
+/* The bell's dropdown, issue #266. Facts derived live from data the app
+   already computes elsewhere (src/lib/notifications.ts); the read/cleared
+   history behind them is real storage now, api/notifications.ts. */
 .jnpr .pop.notif-pop{right:0;width:300px;max-width:calc(100vw - 24px);padding:6px}
 .jnpr .notif-empty{padding:22px 14px 16px;text-align:center}
 .jnpr .notif-empty svg{width:26px;height:26px;stroke:var(--jnpr-ink-3);margin-bottom:10px}
 .jnpr .notif-empty p{margin:0 0 4px;font-size:12.5px;color:var(--jnpr-ink-2);font-weight:600}
 .jnpr .notif-empty small{display:block;font-size:11px;color:var(--jnpr-ink-3);line-height:1.5}
-.jnpr .notif-item{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:9px 10px;
-  border-radius:8px;text-decoration:none;color:inherit}
+/* Capped rather than left to grow with a member's whole history; the list
+   scrolls inside the popup instead of pushing the popup off the app bar. */
+.jnpr .notif-scroll{max-height:70vh;overflow-y:auto}
+.jnpr .notif-sec{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);padding:10px 10px 4px}
+.jnpr .notif-sec:first-child{padding-top:6px}
+.jnpr .notif-item{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:9px 8px 9px 10px;
+  border-radius:8px;text-decoration:none;color:inherit;position:relative}
 .jnpr .notif-item:hover{background:var(--jnpr-surface-3)}
 .jnpr .notif-item .notif-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex:none;background:var(--jnpr-bad)}
 .jnpr .notif-item.notif-drift .notif-dot{background:var(--jnpr-warn)}
+.jnpr .notif-item.read .notif-dot{background:var(--jnpr-ink-3);opacity:.6}
+.jnpr .notif-item.read{opacity:.62}
+.jnpr .notif-item.read .notif-text b{font-weight:500}
+.jnpr .notif-item .notif-text{min-width:0;flex:1}
 .jnpr .notif-item .notif-text b{display:block;font-size:12.5px;color:var(--jnpr-ink);font-weight:600;line-height:1.35}
 .jnpr .notif-item .notif-text small{display:block;font-size:11px;color:var(--jnpr-ink-3);margin-top:2px}
+.jnpr .notif-item .when{flex:none;font-size:10px;color:var(--jnpr-ink-3);padding-top:1px;white-space:nowrap}
+.jnpr .notif-item .notif-x{flex:none;width:20px;height:20px;border-radius:6px;border:0;background:none;
+  color:var(--jnpr-ink-3);display:grid;place-items:center;cursor:pointer;margin:-2px -2px -2px 0}
+.jnpr .notif-item .notif-x:hover{background:var(--jnpr-surface);color:var(--jnpr-ink)}
+.jnpr .notif-item .notif-x svg{width:11px;height:11px}
 .jnpr .plaid-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--jnpr-ink-3);
   background:var(--jnpr-surface);border:1px solid var(--jnpr-line);padding:6px 11px;border-radius:20px}
 .jnpr .plaid-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--jnpr-good)}
