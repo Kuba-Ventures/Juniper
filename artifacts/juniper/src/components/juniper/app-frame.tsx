@@ -7,6 +7,7 @@ import type { HolderStyle } from "@/lib/holder-style";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
+import { useNotifications } from "@/lib/notifications";
 
 type NavItem = { path: string; label: string; count?: number };
 
@@ -68,7 +69,7 @@ export function AppBar({
 }) {
   const [loc, setLocation] = useLocation();
   const { data: finances, source } = useFinances();
-  const [open, setOpen] = useState<null | "account">(null);
+  const [open, setOpen] = useState<null | "account" | "notifications">(null);
   const [settings, setSettings] = useState(false);
   const { workspace, holds } = useWorkspace();
   const shared = workspace === "shared";
@@ -78,6 +79,7 @@ export function AppBar({
   const linkedCount = source === "live"
     ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
     : 0;
+  const { items: notifications } = useNotifications();
 
   const signOut = async () => {
     setOpen(null);
@@ -110,12 +112,43 @@ export function AppBar({
 
           <div className="appbar-acct">
             {linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
-            <button className="icon-btn" aria-label="Notifications">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M10.5 21a1.5 1.5 0 003 0" strokeLinecap="round" />
-              </svg>
-            </button>
+            <div className="acct-wrap">
+              <button
+                className={`icon-btn${notifications.length > 0 ? " has-alert" : ""}`}
+                aria-label={notifications.length > 0 ? `Notifications, ${notifications.length} to review` : "Notifications"}
+                onClick={() => setOpen(open === "notifications" ? null : "notifications")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                  <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10.5 21a1.5 1.5 0 003 0" strokeLinecap="round" />
+                </svg>
+              </button>
+              {open === "notifications" && (
+                <>
+                  <div className="pop-scrim" onClick={() => setOpen(null)} />
+                  <div className="pop notif-pop">
+                    <div className="pop-head"><b>Notifications</b></div>
+                    {notifications.length === 0 ? (
+                      <div className="notif-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+                          <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M10.5 21a1.5 1.5 0 003 0" strokeLinecap="round" />
+                        </svg>
+                        <p>Nothing to review</p>
+                        <small>A connection that needs reconnecting, a budget going over, or a charge that came in higher than expected will show up here.</small>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <Link key={n.id} href={n.href} className={`notif-item notif-${n.kind}`} onClick={() => setOpen(null)}>
+                          <span className="notif-dot" />
+                          <span className="notif-text"><b>{n.title}</b><small>{n.detail}</small></span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             <div className="acct-wrap">
               <button className="avatar" aria-label="Account" onClick={() => setOpen(open === "account" ? null : "account")}>{initial}</button>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Notification bell — three treatments (#266)</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css" />
+<style>
+  body{margin:0}
+  .jnpr{padding:32px 24px 80px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--jnpr-ink-3);font-size:13px;margin:0 0 32px}
+  .variant{margin-bottom:56px}
+  .vhead{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .vhead .letter{width:24px;height:24px;border-radius:7px;background:var(--jnpr-accent);color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .vhead h2{font-size:15px;margin:0}
+  .rationale{color:var(--jnpr-ink-2);font-size:12.5px;margin:0 0 16px;max-width:560px}
+  .stage{border:1px solid var(--jnpr-line);border-radius:14px;overflow:visible;background:var(--jnpr-surface-2)}
+  .mock-bar{border-radius:14px 14px 0 0}
+  /* Minimal appbar-top mock, matching app-frame.tsx's top row */
+  .mock-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;
+    background:var(--jnpr-surface);border-bottom:1px solid var(--jnpr-line)}
+  .mock-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--jnpr-ink)}
+  .mock-brand .dot-logo{width:22px;height:22px;border-radius:7px;background:var(--jnpr-accent)}
+  .mock-acct{display:flex;align-items:center;gap:12px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);
+    display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;border:0}
+  .canvas{padding:22px 18px;min-height:64px;position:relative;border-radius:0 0 14px 14px}
+  /* B: dropdown panel, forced open for the preview */
+  .bell-pop{position:absolute;top:56px;right:18px;z-index:5;background:var(--jnpr-surface);
+    border:1px solid var(--jnpr-line);border-radius:12px;box-shadow:var(--jnpr-shadow-lg);
+    padding:6px;width:280px}
+  .bell-pop .pop-head{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px 9px;border-bottom:1px solid var(--jnpr-line-2);margin-bottom:0}
+  .bell-pop .pop-head b{font-size:12.5px;color:var(--jnpr-ink)}
+  .bell-empty{padding:20px 14px 16px;text-align:center}
+  .bell-empty svg{width:26px;height:26px;stroke:var(--jnpr-ink-3);margin-bottom:10px}
+  .bell-empty p{margin:0 0 4px;font-size:12.5px;color:var(--jnpr-ink-2);font-weight:600}
+  .bell-empty small{display:block;font-size:11px;color:var(--jnpr-ink-3);line-height:1.5}
+  /* C: coming-soon pill instead of an icon button */
+  .soon-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--jnpr-ink-3);
+    padding:6px 11px 6px 9px;border-radius:999px;border:1px solid var(--jnpr-line);background:var(--jnpr-surface);
+    cursor:default}
+  .soon-pill svg{width:13px;height:13px;stroke:var(--jnpr-ink-3)}
+  footer{text-align:center;color:var(--jnpr-ink-3);font-size:11.5px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="jnpr">
+<div class="wrap">
+  <h1>The notifications bell — three treatments</h1>
+  <p class="sub">Issue #266, step 1 of 3: the bell in the app bar has no handler. Deciding what it does <em>now</em>, before any notification logic exists.</p>
+
+  <div class="variant">
+    <div class="vhead"><span class="letter">A</span><h2>Remove it</h2></div>
+    <p class="rationale">Simplest fix. A control that does nothing is worse than an absent one, and nothing is built yet to put behind it.</p>
+    <div class="stage">
+      <div class="mock-bar">
+        <div class="mock-brand"><span class="dot-logo"></span>Juniper</div>
+        <div class="mock-acct">
+          <span class="plaid-pill"><span class="dot"></span>13 linked</span>
+          <button class="avatar">F</button>
+        </div>
+      </div>
+      <div class="canvas"></div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><span class="letter">B</span><h2>Keep it, open an honest empty state</h2></div>
+    <p class="rationale">Keeps the affordance where members expect it and previews what's coming, at the cost of one more thing on the bar that still does nothing when notifications aren't there.</p>
+    <div class="stage">
+      <div class="mock-bar">
+        <div class="mock-brand"><span class="dot-logo"></span>Juniper</div>
+        <div class="mock-acct">
+          <span class="plaid-pill"><span class="dot"></span>13 linked</span>
+          <button class="icon-btn" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="avatar">F</button>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="bell-pop">
+          <div class="pop-head"><b>Notifications</b></div>
+          <div class="bell-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+              <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/>
+            </svg>
+            <p>Nothing yet</p>
+            <small>When a connection needs reconnecting, a budget goes over, or a charge comes in higher than usual, it'll show up here.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vhead"><span class="letter">C</span><h2>Replace it with a plain "Coming soon" pill</h2></div>
+    <p class="rationale">Names the gap without pretending to be a live control. No click target, so nothing to disappoint; costs a slightly busier bar.</p>
+    <div class="stage">
+      <div class="mock-bar">
+        <div class="mock-brand"><span class="dot-logo"></span>Juniper</div>
+        <div class="mock-acct">
+          <span class="plaid-pill"><span class="dot"></span>13 linked</span>
+          <span class="soon-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/>
+            </svg>
+            Notifications soon
+          </span>
+          <button class="avatar">F</button>
+        </div>
+      </div>
+      <div class="canvas"></div>
+    </div>
+  </div>
+
+  <footer>design/notification-bell-variants.html — throwaway design record for issue #266, styled with the real juniper.css</footer>
+</div>
+</div>
+</body>
+</html>
