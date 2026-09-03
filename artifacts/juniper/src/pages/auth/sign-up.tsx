@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
 import { acceptInvite } from "@/lib/invites";
 import { fetchInviteInfo } from "@/lib/partner";
+import { fetchHouseholdInviteInfo } from "@/lib/household";
 import "@/styles/juniper.css";
 
 const REQUIRED_INVITE_CODE = (import.meta.env.VITE_SIGNUP_INVITE_CODE ?? "") as string;
@@ -31,11 +32,14 @@ export default function SignUp() {
   // somebody wonders whether they are in the right place. Nicety, never a
   // dependency: null renders the page exactly as it was.
   const [inviter, setInviter] = useState<string | null>(null);
+  // Same nicety for a household invite (issue #258): the household's name, so
+  // "Join The Barretts on Juniper" lands on a page that says The Barretts.
+  const [householdName, setHouseholdName] = useState<string | null>(null);
 
-  const { planInviteToken, partnershipToken } = useMemo(() => {
-    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null };
+  const { planInviteToken, partnershipToken, householdToken } = useMemo(() => {
+    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null, householdToken: null };
     const q = new URLSearchParams(window.location.search);
-    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner") };
+    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner"), householdToken: q.get("household") };
   }, []);
 
   useEffect(() => {
@@ -47,14 +51,25 @@ export default function SignUp() {
     return () => { alive = false; };
   }, [partnershipToken]);
 
-  // Someone arriving on an invite of either kind was vouched for by the member
+  useEffect(() => {
+    if (!householdToken) return;
+    let alive = true;
+    void fetchHouseholdInviteInfo(householdToken).then((info) => {
+      if (alive) setHouseholdName(info.household);
+    });
+    return () => { alive = false; };
+  }, [householdToken]);
+
+  // Someone arriving on an invite of any kind was vouched for by the member
   // who invited them, so the private-preview code is waived for them.
-  const needsSignupCode = !!REQUIRED_INVITE_CODE && !planInviteToken && !partnershipToken;
+  const needsSignupCode = !!REQUIRED_INVITE_CODE && !planInviteToken && !partnershipToken && !householdToken;
 
   useEffect(() => {
     if (!session) return;
     if (partnershipToken) {
       setLocation(`/invite/partner/${encodeURIComponent(partnershipToken)}`);
+    } else if (householdToken) {
+      setLocation(`/invite/household/${encodeURIComponent(householdToken)}`);
     } else if (planInviteToken) {
       void acceptInvite(planInviteToken).then((result) => {
         if (result?.ok) setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
@@ -63,7 +78,7 @@ export default function SignUp() {
     } else {
       setLocation("/app");
     }
-  }, [session, planInviteToken, partnershipToken, setLocation]);
+  }, [session, planInviteToken, partnershipToken, householdToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,9 +104,11 @@ export default function SignUp() {
       typeof window !== "undefined"
         ? partnershipToken
           ? `${window.location.origin}/invite/partner/${encodeURIComponent(partnershipToken)}`
-          : planInviteToken
-            ? `${window.location.origin}/invite/${encodeURIComponent(planInviteToken)}`
-            : `${window.location.origin}/app`
+          : householdToken
+            ? `${window.location.origin}/invite/household/${encodeURIComponent(householdToken)}`
+            : planInviteToken
+              ? `${window.location.origin}/invite/${encodeURIComponent(planInviteToken)}`
+              : `${window.location.origin}/app`
         : undefined;
 
     const { data, error } = await supabase.auth.signUp({
@@ -115,7 +132,7 @@ export default function SignUp() {
     }
 
     setInfo(
-      planInviteToken || partnershipToken
+      planInviteToken || partnershipToken || householdToken
         ? "Check your email to confirm your account. Your invite will accept automatically."
         : "Check your email to confirm your account, then sign in.",
     );
@@ -137,7 +154,11 @@ export default function SignUp() {
               ? inviter
                 ? <>You are joining <b>{inviter}</b> on Juniper.</>
                 : <>You are joining someone on Juniper.</>
-              : <>Start building your financial picture.</>}
+              : householdToken
+                ? householdName
+                  ? <>You are joining <b>{householdName}</b> on Juniper.</>
+                  : <>You are joining a household on Juniper.</>
+                : <>Start building your financial picture.</>}
           </p>
         </div>
 

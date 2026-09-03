@@ -14,6 +14,7 @@ import Reset from "@/pages/auth/reset";
 import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
 import JoinPartner from "@/pages/join-partner";
+import JoinHousehold from "@/pages/join-household";
 import { RequireAuth } from "@/components/auth/require-auth";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,12 @@ function Router() {
           switcher's Invite mints these links again. */}
       <Route path="/invite/partner/:token">
         {(params) => <JoinPartner token={params.token} />}
+      </Route>
+      {/* Household invites (issue #258), the N-member counterpart of the
+          partner invite above. Distinct route and page: a household is not a
+          partnership. */}
+      <Route path="/invite/household/:token">
+        {(params) => <JoinHousehold token={params.token} />}
       </Route>
       <Route path="/invite/:token">
         {(params) => <InviteLanding token={params.token} />}
