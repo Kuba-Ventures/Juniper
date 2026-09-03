@@ -8,6 +8,7 @@ import { useFinances, type FinanceData } from "@/lib/finances";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from "@/lib/plaid";
 import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
+import { fmtDay } from "@/lib/txn-format";
 import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
 } from "@/lib/plans";
@@ -277,8 +278,158 @@ function AccountGroup({ title, arr, brands }: { title: string; arr: Account[]; b
   );
 }
 
-function TransactionsPanel({ items }: { items: Txn[] }) {
+/** Grouped in first-seen order (by category, or by day), never re-sorted, so
+ *  the group order tracks the rows' own order rather than alphabetizing them
+ *  out from under a member scanning by recency. */
+function groupPreserveOrder(items: Txn[], keyOf: (t: Txn) => string): { key: string; rows: Txn[] }[] {
+  const order: string[] = [];
+  const map = new Map<string, Txn[]>();
+  for (const t of items) {
+    const k = keyOf(t);
+    if (!map.has(k)) { map.set(k, []); order.push(k); }
+    map.get(k)!.push(t);
+  }
+  return order.map((k) => ({ key: k, rows: map.get(k) ?? [] }));
+}
+
+const sumV = (rows: Txn[]) => rows.reduce((a, t) => a + t.v, 0);
+
+function TxnCompactRow({ t }: { t: Txn }) {
+  return (
+    <div className="txw-crow">
+      <MerchantMark logo={t.logo ?? null} merchant={t.m} name={t.m} k={t.k} />
+      <span className="nm">{t.m}</span>
+      <span className={t.inc ? "amt inc" : "amt"}>{money2(t.v)}</span>
+    </div>
+  );
+}
+
+/** "Where it went" at six sizes (issue #259), redone as genuinely different
+ *  readings of the same rows after the first pass on Budgets was rightly
+ *  rejected for being one list at different widths. List is unchanged. */
+function TransactionsPanel({ items, size }: { items: Txn[]; size: string }) {
   const [q, setQ] = useState("");
+
+  if (size === "compact") {
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Transactions</h3></div>
+        <div className="txw-compact">
+          {items.map((t, i) => <TxnCompactRow t={t} key={i} />)}
+          {!items.length && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>No recent transactions.</div>}
+        </div>
+      </div>
+    );
+  }
+
+  if (size === "grouped") {
+    const groups = groupPreserveOrder(items, (t) => t.c);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Transactions</h3></div>
+        <div>
+          {groups.map((g) => {
+            const total = sumV(g.rows);
+            return (
+              <div key={g.key}>
+                <div className="txw-group-h">
+                  <span>{g.key}</span>
+                  <span style={{ color: total > 0 ? "var(--jnpr-good)" : undefined }}>{money2(total)}</span>
+                </div>
+                {g.rows.map((t, i) => (
+                  <div className="row" key={i}>
+                    <MerchantMark logo={t.logo ?? null} merchant={t.m} name={t.m} k={t.k} />
+                    <div><div className="nm">{t.m}</div><div className="mt">{t.d}</div></div>
+                    <div className={t.inc ? "amt inc" : "amt"}>{money2(t.v)}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          {!items.length && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>No recent transactions.</div>}
+        </div>
+      </div>
+    );
+  }
+
+  if (size === "timeline") {
+    // "Today" and "Yesterday" read off `t.d`, which arrives already formatted
+    // ("Sep 2") rather than as an ISO date, so today's and yesterday's own
+    // dates are formatted the same way (fmtDay) and compared as strings.
+    const todayLabel = fmtDay(new Date().toISOString().slice(0, 10));
+    const yestLabel = fmtDay(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+    const dayLabel = (d: string) => (d === todayLabel ? "Today" : d === yestLabel ? "Yesterday" : d);
+    const groups = groupPreserveOrder(items, (t) => t.d);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Transactions</h3></div>
+        <div>
+          {groups.map((g) => (
+            <div key={g.key}>
+              <div className="txw-day-h">{dayLabel(g.key)}</div>
+              {g.rows.map((t, i) => (
+                <div className="row" key={i}>
+                  <MerchantMark logo={t.logo ?? null} merchant={t.m} name={t.m} k={t.k} />
+                  <div><div className="nm">{t.m}</div><div className="mt">{t.c}</div></div>
+                  <div className={t.inc ? "amt inc" : "amt"}>{money2(t.v)}</div>
+                </div>
+              ))}
+            </div>
+          ))}
+          {!items.length && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>No recent transactions.</div>}
+        </div>
+      </div>
+    );
+  }
+
+  if (size === "summary") {
+    // Biggest EXPENSE, not biggest movement: a payroll deposit dwarfing every
+    // purchase would make "biggest" always name the same income row, which is
+    // not the question this size answers.
+    const spent = items.filter((t) => !t.inc);
+    const top = spent.reduce<Txn | undefined>((best, t) => (!best || Math.abs(t.v) > Math.abs(best.v) ? t : best), undefined);
+    return (
+      <div className="card txw-summary">
+        <div className="eyebrow">Transactions</div>
+        <div className="top"><span className="big-num tnum">{items.length}</span><span className="n">this month</span></div>
+        {/* top.v is already negative for a spend row (never abs'd), so the
+            minus money2 prints is the real sign, not a manufactured one. */}
+        {top && <div className="top-merchant">Biggest: <b>{top.m}</b>, {money2(top.v)}</div>}
+      </div>
+    );
+  }
+
+  if (size === "table") {
+    const rows = items.filter((t) => (t.m + " " + t.c).toLowerCase().includes(q.toLowerCase()));
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Transactions</h3>
+          <span className="search" style={{ maxWidth: 220 }}>
+            <SearchIcon />
+            <input placeholder="Search recent" value={q} onChange={(e) => setQ(e.target.value)} />
+          </span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table className="txw-table">
+            <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th style={{ textAlign: "right" }}>Amount</th></tr></thead>
+            <tbody>
+              {rows.map((t, i) => (
+                <tr key={i}>
+                  <td>{t.d}</td>
+                  <td><div className="txw-tcell"><MerchantMark logo={t.logo ?? null} merchant={t.m} name={t.m} k={t.k} />{t.m}</div></td>
+                  <td>{t.c}</td>
+                  <td className={t.inc ? "amt inc" : "amt"}>{money2(t.v)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!rows.length && <div style={{ padding: "16px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>No matching transactions.</div>}
+        </div>
+      </div>
+    );
+  }
+
   const rows = items.filter((t) => (t.m + " " + t.c).toLowerCase().includes(q.toLowerCase()));
   return (
     // `fill-rows`: the list grows to the card's height rather than a fixed one,
@@ -1063,7 +1214,7 @@ export default function Overview({
         <Budgets items={budgets} spending={spending} size={sizes.budgets} />
       </div>
     ),
-    txns: <TransactionsPanel items={transactions} />,
+    txns: <TransactionsPanel items={transactions} size={sizes.txns} />,
     accounts: (
       <div className="card">
         <div className="card-head"><h3>Accounts</h3><Link href="/app/connections" className="link">Manage</Link></div>
