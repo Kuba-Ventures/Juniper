@@ -161,8 +161,10 @@ export function NetWorthChart({
 
 /* ---------- spending donut + legend with hover ---------- */
 // A group the member created has no palette token, only a generated hue, so a
-// wedge is painted from whichever the row carries.
-const paintOf = (d: { k: SeriesKey; hue?: number | null }) =>
+// wedge is painted from whichever the row carries. Exported: the Overview's
+// "Where it went" List size (issue #259) paints its bars the same way, so a
+// category can't read one colour in the donut and another in the list.
+export const paintOf = (d: { k: SeriesKey; hue?: number | null }) =>
   d.hue == null ? cssVar(d.k) : `hsl(${d.hue} var(--jnpr-gen-s) var(--jnpr-gen-l))`;
 
 // The wedges take `k`, the colour, because that is what an arc can be filled

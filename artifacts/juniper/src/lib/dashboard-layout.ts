@@ -89,7 +89,14 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "grid", label: "Grid", full: true },
     ],
   },
-  { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
+  {
+    id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions",
+    sizes: [
+      { id: "donut", label: "Donut" },
+      { id: "list", label: "List" },
+      { id: "compact", label: "Compact" },
+    ],
+  },
   { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
   { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
   { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections", sizes: DEFAULT_SIZES },

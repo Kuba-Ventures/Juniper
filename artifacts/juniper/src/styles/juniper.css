@@ -278,6 +278,19 @@
 .jnpr .donut-center .dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3)}
 .jnpr .donut-center .dv{font-size:24px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
 
+/* Where it went, List size (issue #259): a ranked bar per category, biggest
+   first, reusing the plain .bar progress track every other card already has. */
+.jnpr .spend-list{display:flex;flex-direction:column;gap:11px}
+.jnpr .spend-list .sl-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}
+.jnpr .spend-list .sl-top .ln{font-weight:600;color:var(--jnpr-ink)}
+.jnpr .spend-list .sl-top .lv{font-weight:650;color:var(--jnpr-ink-2)}
+
+/* Where it went, Compact size (issue #259): the total and the single biggest
+   category, nothing else. */
+.jnpr .spend-compact .top{display:flex;align-items:baseline;gap:6px;margin-top:6px}
+.jnpr .spend-compact .lead{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:8px}
+.jnpr .spend-compact .lead b{color:var(--jnpr-ink-2);font-weight:650}
+
 /* ---------- plans page (big cards) ---------- */
 .jnpr .plan-grid{grid-template-columns:1fr 1fr}
 @media(max-width:760px){.jnpr .plan-grid{grid-template-columns:1fr}}
