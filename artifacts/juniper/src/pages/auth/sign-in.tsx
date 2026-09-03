@@ -15,20 +15,23 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Two separate invite systems land here. ?invite= is a plan invite, accepted
-  // inline below. ?partner= is a partnership invite, handed back to
-  // /invite/partner/:token once there is a session, so that page stays the one
-  // place that accepts a partnership and reports why one was refused.
-  const { planInviteToken, partnershipToken } = useMemo(() => {
-    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null };
+  // Three separate invite systems land here. ?invite= is a plan invite,
+  // accepted inline below. ?partner= is a partnership invite, and ?household=
+  // is a household invite (issue #258); both are handed back to their own
+  // /invite/*/:token route once there is a session, so that page stays the
+  // one place that accepts and reports why one was refused.
+  const { planInviteToken, partnershipToken, householdToken } = useMemo(() => {
+    if (typeof window === "undefined") return { planInviteToken: null, partnershipToken: null, householdToken: null };
     const q = new URLSearchParams(window.location.search);
-    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner") };
+    return { planInviteToken: q.get("invite"), partnershipToken: q.get("partner"), householdToken: q.get("household") };
   }, []);
 
   useEffect(() => {
     if (!session) return;
     if (partnershipToken) {
       setLocation(`/invite/partner/${encodeURIComponent(partnershipToken)}`);
+    } else if (householdToken) {
+      setLocation(`/invite/household/${encodeURIComponent(householdToken)}`);
     } else if (planInviteToken) {
       void acceptInvite(planInviteToken).then((result) => {
         if (result?.ok) setLocation(`/app/plans?open=${encodeURIComponent(result.domain)}`);
@@ -37,7 +40,7 @@ export default function SignIn() {
     } else {
       setLocation("/app");
     }
-  }, [session, planInviteToken, partnershipToken, setLocation]);
+  }, [session, planInviteToken, partnershipToken, householdToken, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

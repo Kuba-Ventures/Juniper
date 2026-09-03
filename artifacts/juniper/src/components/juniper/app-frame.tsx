@@ -2,8 +2,10 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
+import { HouseholdSwitcher } from "@/components/juniper/household-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
+import { resetHouseholdCache } from "@/lib/household";
 import { useNotifications, agoLabel, type NotificationRecord } from "@/lib/notifications";
 
 // One row in the bell's dropdown, New or Earlier. A separate component
@@ -111,6 +113,7 @@ export function AppBar({
     // change. Without clearing it the next member signing in to the same tab
     // would see the previous one's partner until the first fetch returned.
     resetPartnerCache();
+    resetHouseholdCache();
     setLocation("/");
   };
 
@@ -131,6 +134,7 @@ export function AppBar({
               changes the meaning of every number below it belongs. */}
           <div className="appbar-ws">
             <WorkspaceSwitcher initial={initial} />
+            <HouseholdSwitcher />
           </div>
 
           {/* The "N linked" pill used to live here. It counted accounts, not

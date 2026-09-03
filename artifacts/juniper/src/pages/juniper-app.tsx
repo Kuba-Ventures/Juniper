@@ -21,6 +21,7 @@ import { SharedGoals } from "@/pages/app/shared/goals";
 import { SharedAccounts } from "@/pages/app/shared/accounts";
 import { SharedBills } from "@/pages/app/shared/bills";
 import { SharedActivity } from "@/pages/app/shared/activity";
+import { HouseholdView } from "@/pages/app/household";
 import "@/styles/juniper.css";
 
 // Two surfaces are deliberately absent from this Switch (Stage 4c). Only the
@@ -193,6 +194,10 @@ export default function JuniperApp() {
           <Route path="/app/shared/accounts" component={SharedAccounts} />
           <Route path="/app/shared/bills" component={SharedBills} />
           <Route path="/app/shared/activity" component={SharedActivity} />
+          {/* Households (issue #258): a distinct, N-member model from the
+              partner workspace above, reached via HouseholdSwitcher in the
+              app bar rather than from the personal nav array. */}
+          <Route path="/app/household" component={HouseholdView} />
           <Route>
             <div className="frame">
               <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 40 }}>Page not found.</div>
