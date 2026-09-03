@@ -665,12 +665,6 @@
 .jnpr .sub-row .nm{font-weight:650;font-size:14px;color:var(--jnpr-ink)}
 .jnpr .sub-row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .jnpr .sub-row .btn{flex:0 0 auto}
-/* Was `.modal .facts`/`.fr`/`.fine`: de-scoped from `.modal` once Settings (the
-   only caller) stopped being one, issue #245. Still exactly a label -> value
-   pair, and only that; a control with its own description is `.setting-row`
-   below, never this. */
-.jnpr .facts{background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:9px}
-.jnpr .fr{display:flex;justify-content:space-between;font-size:13px}.jnpr .fr .k{color:var(--jnpr-ink-3)}.jnpr .fr .v{font-weight:650;color:var(--jnpr-ink)}
 .jnpr .fine{font-size:11px;color:var(--jnpr-ink-3);margin-top:13px;text-align:center;line-height:1.4}
 
 /* A setting with its own description and a control (Dark mode, Card holder)
@@ -688,6 +682,12 @@
 .jnpr .setting-row .st-control{flex:0 0 auto}
 .jnpr .setting-row.stacked{flex-direction:column;align-items:stretch}
 .jnpr .setting-row.stacked .st-control{width:100%;margin-top:10px}
+/* A note beside the value rather than inside the description: it can outlive
+   the edit (Email's "check your inbox" stays after Save closes the field back
+   to a read-only row, since the change is not real until confirmed). */
+.jnpr .setting-row .st-note{font-size:12px;margin-top:4px}
+.jnpr .setting-row .st-note.good{color:var(--jnpr-good)}
+.jnpr .setting-row .st-note.bad{color:var(--jnpr-bad)}
 
 /* The routed Settings page (issue #245): a sidebar of sections on desktop,
    a `.pills` segmented control in their place on mobile, and the active
