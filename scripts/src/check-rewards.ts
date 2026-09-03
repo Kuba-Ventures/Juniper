@@ -569,10 +569,11 @@ ok("a one-time benefit stays ticked forever", () => {
 const benefit = (
   id: string, product_id: string, group: string,
   value_amount: number | null = null, period: R.BenefitPeriod | null = null,
-  extra: { expires_on?: string | null; auto_merchant?: string | null } = {},
+  extra: { expires_on?: string | null; auto_merchant?: string | null; auto_mode?: "tick" | "suggest" } = {},
 ): R.Benefit => ({
   id, product_id, group, name: id, detail: null, value_amount, period,
   expires_on: extra.expires_on ?? null, auto_merchant: extra.auto_merchant ?? null,
+  auto_mode: extra.auto_mode ?? "tick",
 });
 
 ok("only benefits from cards the member confirmed are counted", () => {
@@ -788,6 +789,68 @@ ok("a card the member does not hold that product on matches nothing", () => {
     today: AUG,
   });
   strictEqual(m.length, 0, "the benefit belongs to a product this member was never confirmed on");
+});
+
+// ── 13. Suggest, don't tick (migration 0053) ────────────────────────────────
+ok("a benefit's own auto_mode rides along on the match, tick by default", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("uber-card-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m[0].mode, "tick", "no auto_mode set on the benefit means the column's own DEFAULT, 'tick'");
+});
+ok("a 'suggest' benefit still matches, but says so", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("csp")],
+    benefits: [benefit("csp-travel-credit", "csp", "Travel", 50, "year",
+      { auto_merchant: "chase travel", auto_mode: "suggest" })],
+    txns: [txn("csp-acct", "CHASE TRAVEL", 340, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 1);
+  strictEqual(m[0].mode, "suggest");
+  strictEqual(m[0].evidence, "CHASE TRAVEL · Aug 14 · $340.00");
+});
+ok("trackBenefits carries a suggestion onto the unticked row's suggestedEvidence", () => {
+  const s = R.trackBenefits({
+    cards: [held("csp")], products: productMap([cash("csp", 1)]),
+    benefits: [benefit("csp-travel-credit", "csp", "Travel", 50, "year", { auto_merchant: "chase travel", auto_mode: "suggest" })],
+    uses: [], suggestions: new Map([["csp-travel-credit|2026", "CHASE TRAVEL · Aug 14 · $340.00"]]),
+    today: AUG,
+  });
+  strictEqual(s.groups[0].benefits[0].suggestedEvidence, "CHASE TRAVEL · Aug 14 · $340.00");
+  strictEqual(s.groups[0].benefits[0].used, false, "a suggestion is not a tick");
+});
+ok("a suggestion never shows once the benefit is actually used, even if the map still has it", () => {
+  const s = R.trackBenefits({
+    cards: [held("csp")], products: productMap([cash("csp", 1)]),
+    benefits: [benefit("csp-travel-credit", "csp", "Travel", 50, "year", { auto_merchant: "chase travel", auto_mode: "suggest" })],
+    uses: [{ benefit_id: "csp-travel-credit", period_key: "2026", used_at: "2026-08-15T00:00:00Z" }],
+    suggestions: new Map([["csp-travel-credit|2026", "CHASE TRAVEL · Aug 14 · $340.00"]]),
+    today: AUG,
+  });
+  strictEqual(s.groups[0].benefits[0].used, true);
+  strictEqual(s.groups[0].benefits[0].suggestedEvidence, null,
+    "used is the answer now, not what might have suggested it");
+});
+ok("no suggestions map at all is the same as no suggestion, not a crash", () => {
+  const s = R.trackBenefits({
+    cards: [held("csp")], products: productMap([cash("csp", 1)]),
+    benefits: [benefit("csp-travel-credit", "csp", "Travel", 50, "year", { auto_merchant: "chase travel", auto_mode: "suggest" })],
+    uses: [], today: AUG,
+  });
+  strictEqual(s.groups[0].benefits[0].suggestedEvidence, null);
+});
+ok("a suggestions map with no entry for this benefit is the same as none", () => {
+  const s = R.trackBenefits({
+    cards: [held("csp")], products: productMap([cash("csp", 1)]),
+    benefits: [benefit("csp-travel-credit", "csp", "Travel", 50, "year", { auto_merchant: "chase travel", auto_mode: "suggest" })],
+    uses: [], suggestions: new Map([["some-other-benefit|2026", "irrelevant"]]),
+    today: AUG,
+  });
+  strictEqual(s.groups[0].benefits[0].suggestedEvidence, null);
 });
 
 console.log(`${n} rewards cases passed`);

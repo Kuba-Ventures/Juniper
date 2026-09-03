@@ -142,13 +142,21 @@ export interface Benefit {
       in 2027. */
   expires_on: string | null;
   /** Lowercase merchant substring, or null (migration 0052). Set on a benefit
-      only when the credit names ONE unambiguous merchant a charge can prove --
+      only when a charge to this merchant is real evidence worth surfacing --
       "Uber Cash" and nothing that says "eligible partners" or "participating
       restaurants" -- which is nearly no row in the catalog. See `matchAutoBenefits`
-      and the migration's own header for which two qualify today and why no others
-      do. NULL, the default, means the member ticks it by hand, same as every
-      benefit before this column existed. */
+      and 0052's own header for which two qualify for `auto_mode = 'tick'` today
+      and why no others do. NULL, the default, means the member ticks it by hand,
+      same as every benefit before this column existed. */
   auto_merchant: string | null;
+  /** What a match against `auto_merchant` means (migration 0053). 'tick': the
+      charge IS the credit, restated (Uber Cash), so `matchAutoBenefits`'s caller
+      writes the row itself. 'suggest': the charge is real evidence but not proof
+      (a Chase Travel charge might not be the hotel stay the $50 credit covers),
+      so the match is surfaced as `TrackedBenefit.suggestedEvidence` for the
+      member to confirm, and nothing is written until they do. Meaningless while
+      `auto_merchant` is null. */
+  auto_mode: "tick" | "suggest";
 }
 
 /** A linked Plaid credit account, and the product the member confirmed it is. */
@@ -758,6 +766,12 @@ export interface TrackedBenefit extends Benefit {
       used, so the evidence for it has to be on screen next to it, not just in a
       database row the member cannot see. */
   evidence: string | null;
+  /** A `mode: 'suggest'` match against `auto_merchant`, same evidence string
+      shape as `evidence` above, but nothing has been written: the member has to
+      tap "Yes, used it" before this benefit's `used` becomes true. Only ever set
+      while `used` is false -- once ticked, a benefit shows what it IS (evidence
+      if auto, "ticked off <date>" if member), not what it might have been. */
+  suggestedEvidence: string | null;
 }
 
 export interface BenefitGroup {
@@ -801,6 +815,11 @@ export function trackBenefits(args: {
         rather than being required. */
     source?: "member" | "auto"; evidence?: string | null;
   }[];
+  /** `benefit_id|period_key` -> the evidence string for a 'suggest'-mode match
+      (migration 0053), computed by the caller from `matchAutoBenefits` the same
+      way `uses` already is. Optional so every existing caller (and every test in
+      check-rewards.ts) keeps working unchanged. */
+  suggestions?: Map<string, string>;
   today: Date;
 }): BenefitSummary {
   const held = new Set(heldProducts(args.cards, args.products).map((p) => p.id));
@@ -821,14 +840,18 @@ export function trackBenefits(args: {
     if (b.expires_on && b.expires_on < todayIso) continue;
     const periodKey = benefitPeriodKey(b.period, args.today);
     const use = useByKey.get(`${b.id}|${periodKey}`);
+    const used = !!use;
     tracked.push({
       ...b,
       productName: args.products.get(b.product_id)?.name ?? b.product_id,
       periodKey,
-      used: !!use,
+      used,
       usedAt: use?.used_at ?? null,
       source: use?.source === "auto" ? "auto" : "member",
       evidence: use?.source === "auto" ? use?.evidence ?? null : null,
+      // Only while unticked: once used, the row shows what happened, not what
+      // might have.
+      suggestedEvidence: used ? null : args.suggestions?.get(`${b.id}|${periodKey}`) ?? null,
     });
   }
 
@@ -896,8 +919,15 @@ export interface MerchantTxn {
 export interface BenefitMatch {
   benefit_id: string;
   period_key: string;
-  /** The evidence string to store verbatim in card_benefit_uses.evidence. */
+  /** The evidence string, verbatim: stored in card_benefit_uses.evidence when
+      `mode` is 'tick', or surfaced as `TrackedBenefit.suggestedEvidence` when
+      `mode` is 'suggest'. Same string, different fate -- the caller decides
+      which, based on this field, never on its own judgment about the benefit. */
   evidence: string;
+  /** Copied straight from the benefit's own `auto_mode` (migration 0053), so a
+      caller can split one call's results into "write these" and "suggest
+      these" without a second catalog lookup. */
+  mode: "tick" | "suggest";
 }
 
 /** The first day of the period a benefit's `periodKey` names, as an ISO date, so
@@ -988,6 +1018,7 @@ export function matchAutoBenefits(args: {
       benefit_id: b.id,
       period_key: benefitPeriodKey(b.period, args.today),
       evidence: formatEvidence(hits[0]),
+      mode: b.auto_mode,
     });
   }
   return out;
