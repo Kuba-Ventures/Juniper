@@ -219,6 +219,29 @@
 .jnpr .status.ok{color:var(--jnpr-good);background:var(--jnpr-good-soft)}.jnpr .status.new{color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
 .jnpr .status.setup{color:var(--jnpr-warn);background:var(--jnpr-warn-soft)}.jnpr .status.done{color:var(--jnpr-good);background:var(--jnpr-good-soft)}
 
+/* Compact (issue #259): one line per plan, no amount, no status chip. */
+.jnpr .plan-compact{display:flex;flex-direction:column;gap:2px}
+.jnpr .plan-crow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--jnpr-line-2);text-decoration:none;color:inherit}
+.jnpr .plan-crow:first-child{border-top:0}
+.jnpr .plan-crow .track{width:24px;height:24px;border-radius:7px;font-size:11px}
+.jnpr .plan-crow .pt{flex:1;font-weight:600;font-size:13px;color:var(--jnpr-ink)}
+.jnpr .plan-crow .pct{font-size:12.5px;font-weight:700;color:var(--jnpr-ink-2)}
+.jnpr .plan-crow.waiting .pct{opacity:.5}
+
+/* Gallery and Grid (issue #259): the same tile, laid out as a grid rather than
+   a stack. `auto-fill`/`minmax` is what makes one class serve both a half
+   column (2 tiles) and the full row (5+), so the size picker only has to
+   change which span the board gives it, not the tile itself. */
+.jnpr .plan-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.jnpr .plan-tile{border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);
+  padding:14px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;
+  transition:border-color .15s}
+.jnpr .plan-tile:hover{border-color:var(--jnpr-accent)}
+.jnpr .plan-tile .track{width:34px;height:34px;border-radius:9px;font-size:15px}
+.jnpr .plan-tile .pt{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}
+.jnpr .plan-tile .pct{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .plan-tile.waiting .bar{opacity:.35}
+
 /* ---------- score strip ---------- */
 .jnpr .score-strip{display:flex;align-items:center;gap:15px;padding:14px 18px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);background:var(--jnpr-surface);box-shadow:var(--jnpr-shadow)}
 .jnpr .mini-ring{position:relative;flex:0 0 auto}
