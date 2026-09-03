@@ -185,7 +185,7 @@ Shell is done; remaining screens and states:
 ## Stage 8 — Launch to 20 active users **(build + growth)**
 
 - [ ] Analytics on all new surfaces ♻️ *(GA4 `engaged_session` + Sheets pipeline exist)*
-- [ ] Notifications — score change, budget over, bill due
+- [~] **Notifications — score change, budget over, bill due.** #294 (issue #266) wired the bell to three real facts derived LIVE from data the app already fetches, with no new table and no read/unread state: a Plaid connection needing reconnecting, a budget over its limit, and a subscription that charged more than expected (`artifacts/juniper/src/lib/notifications.ts`). **Score change and bill due are not covered**, and neither is the storage layer this line implies, a table, a read flag, dismiss/expiry rules, which issue #266 itself names as the harder, separate piece and which this PR deliberately did not build. See PROJECT.md, Where we are right now, for the full account, including that no real member data has yet been seen rendering in the bell
 - [ ] QA pass + performance + accessibility
 - [ ] Private beta → **20 active users** goal
 - [ ] Iterate on activation / retention from usage data
