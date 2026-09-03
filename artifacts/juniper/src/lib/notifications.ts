@@ -102,16 +102,23 @@ function liveFacts(
     }));
   const drift: Fact[] = (subs ?? [])
     .filter((s) => s.health === "amount_changed")
-    .map((s) => ({
-      kind: "drift",
-      dedupeKey: `drift:${s.id}:${s.lastDate ?? s.last ?? "unknown"}`,
-      title: `${s.name} charged more than expected`,
-      detail:
-        s.expected != null && s.last != null
-          ? `Expected ${money(s.expected)}, charged ${money(s.last)}`
+    .map((s) => {
+      // health === "amount_changed" fires on a 5%/$1 deviation in EITHER
+      // direction (api/subscriptions.ts's AMOUNT_TOLERANCE/AMOUNT_FLOOR), not
+      // only an increase, so the title has to say which one actually happened
+      // rather than assume the more common case.
+      const known = s.expected != null && s.last != null;
+      const lower = known && s.last! < s.expected!;
+      return {
+        kind: "drift" as const,
+        dedupeKey: `drift:${s.id}:${s.lastDate ?? s.last ?? "unknown"}`,
+        title: `${s.name} charged ${lower ? "less" : "more"} than expected`,
+        detail: known
+          ? `Expected ${money(s.expected!)}, charged ${money(s.last!)}`
           : "The amount changed from what you confirmed",
-      href: "/app/transactions",
-    }));
+        href: "/app/transactions",
+      };
+    });
   return [...reconnect, ...budget, ...drift];
 }
 
