@@ -560,6 +560,56 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
     };
   }, []);
 
+  // Computed once, ahead of the return, because both the two-column row and
+  // its single-column fallback below need the SAME two pieces of JSX rather
+  // than two independent copies of the identify handler and the card map.
+  //
+  // `hasHolder` mirrors `CardHolderSection`'s OWN internal "any confirmed
+  // cards?" check, and has to be computed here rather than inferred from
+  // `holderSection` itself: a React element is a plain object describing
+  // what to render, truthy the moment it is constructed regardless of what
+  // the component decides to return once React actually calls it, so
+  // `holderSection && ...` could never tell "renders nothing" apart from
+  // "renders the section."
+  const hasHolder = !!rewards.data && rewards.data.cards.some((c) => c.product);
+  const holderSection = rewards.data && (
+    <CardHolderSection
+      data={rewards.data}
+      brands={brands}
+      onIdentify={() => setIdentifyRequest((n) => n + 1)}
+      holderStyle={holderStyle}
+    />
+  );
+  const creditCardsList = withLimits == null ? (
+    <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
+  ) : withLimits.length === 0 ? (
+    <CardsEmpty />
+  ) : (
+    <div className="card pad-lg">
+      <div className="card-head">
+        <h3>Credit cards</h3>
+        <span style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>
+          {withLimits.length} {withLimits.length === 1 ? "card" : "cards"}
+        </span>
+      </div>
+      <OverallUtilization cards={withLimits} />
+      {withLimits.map((c) => (
+        <CardRow
+          card={c}
+          brands={brands}
+          // A hand-entered card has no product and cannot be identified, so
+          // there is nothing to name and nothing to undo. Both are held to
+          // null explicitly rather than left to the map missing the key,
+          // because that would be the right answer by accident.
+          identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
+          onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
+          onLimitChanged={() => void afterLimitChange()}
+          key={c.key}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="frame">
       <PageHeader
@@ -585,50 +635,23 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         />
       )}
 
-      {/* 2. The card holder stack: the cards themselves, which is the thing on
-          this page a member recognizes at a glance. Split out of the rewards
-          hero (see card-wallet.tsx and rewards-guide.tsx's own headers) so it can
-          sit here, ahead of the card list, rather than sharing a row with the
-          rewards numbers further down the page. */}
-      {rewards.data && (
-        <CardHolderSection
-          data={rewards.data}
-          brands={brands}
-          onIdentify={() => setIdentifyRequest((n) => n + 1)}
-          holderStyle={holderStyle}
-        />
-      )}
-
-      {/* 3. The card list: utilization, balance, limit, per card, with the
-          provenance badges ("You set this" / "You added this") intact. */}
-      {withLimits == null ? (
-        <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
-      ) : withLimits.length === 0 ? (
-        <CardsEmpty />
-      ) : (
-        <div className="card pad-lg">
-          <div className="card-head">
-            <h3>Credit cards</h3>
-            <span style={{ fontSize: 11.5, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>
-              {withLimits.length} {withLimits.length === 1 ? "card" : "cards"}
-            </span>
-          </div>
-          <OverallUtilization cards={withLimits} />
-          {withLimits.map((c) => (
-            <CardRow
-              card={c}
-              brands={brands}
-              // A hand-entered card has no product and cannot be identified, so
-              // there is nothing to name and nothing to undo. Both are held to
-              // null explicitly rather than left to the map missing the key,
-              // because that would be the right answer by accident.
-              identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
-              onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
-              onLimitChanged={() => void afterLimitChange()}
-              key={c.key}
-            />
-          ))}
+      {/* 2 and 3, side by side (issue #264 follow-up: treatment B of three
+          rendered in previews/credit-holder-list-layout-options.html). Each
+          keeps its own card border and shadow exactly as it did stacked; only
+          the row wrapping them is new. Grid rather than a fixed two-up flex
+          because `.credit-row` collapses to one column under 860px the same
+          way `.hero` and `.two` already do, so a narrow viewport still gets
+          the holder above the list rather than a squeezed sidebar. */}
+      {hasHolder ? (
+        <div className="grid credit-row" style={{ marginBottom: 16 }}>
+          {holderSection}
+          {creditCardsList}
         </div>
+      ) : (
+        <>
+          {holderSection}
+          {creditCardsList}
+        </>
       )}
 
       {/* 4. Benefits, credits, and what is being left on the table, as charts
