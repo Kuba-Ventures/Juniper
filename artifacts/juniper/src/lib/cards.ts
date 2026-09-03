@@ -250,6 +250,14 @@ export interface TrackedBenefit {
   periodKey: string;
   used: boolean;
   usedAt: string | null;
+  /** How `used` came to be true (migration 0052). 'member': somebody tapped the
+      checkbox. 'auto': Juniper matched a charge, and `evidence` says which one.
+      Meaningless while `used` is false. */
+  source: "member" | "auto";
+  /** The matched charge, e.g. "Uber · Mar 14 · $10.00", or null. Set only when
+      `source` is 'auto' -- the receipt an automatic tick has to carry, so the
+      checkmark is never the only thing standing behind it. */
+  evidence: string | null;
 }
 
 export interface BenefitSummary {

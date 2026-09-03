@@ -26,11 +26,22 @@
 // somebody a $120 credit, so the tracker is framed as the member's own checklist
 // and the page names the period it is using.
 //
-// JUNIPER DOES NOT DETECT USE. It would be tempting to tick a $50 hotel credit
-// automatically off a matching charge, and it would be wrong: the charge proves a
-// hotel was paid for, not that the issuer applied the credit, and those come
-// weeks apart. A checklist the member keeps is honest. An automatic tick that is
-// sometimes wrong is worse than no tick at all, because they would stop checking.
+// JUNIPER DOES NOT DETECT USE -- STILL TRUE FOR NEARLY EVERY ROW HERE, AND
+// NARROWED RATHER THAN REVERSED BY MIGRATION 0052. It is still tempting, and
+// still wrong, to tick a $50 hotel credit automatically off a matching charge:
+// the charge proves a hotel was paid for, not that the issuer applied the
+// credit, and those come weeks apart. That reasoning is intact and this file
+// still ticks nothing itself; every row this endpoint writes has
+// `source = 'member'`. What changed (issue #264) is that TWO benefits in the
+// whole catalog fail the test above for a different reason than every other
+// row: Amex's Uber Cash is not "a charge that MIGHT mean the credit applied", it
+// IS the credit, restated. api/card-rewards.ts writes those two rows itself,
+// tagged `source = 'auto'`, with the matched charge kept on the row as
+// `evidence` so the tick is never the only thing claiming a credit was used; see
+// api/_rewards.ts's matchAutoBenefits and migration 0052's own header. Undoing
+// one of those here (below) has to do one thing a member-tick undo never did:
+// leave a tombstone in card_benefit_dismissals, or the same charge would
+// silently re-tick the box on the member's next load.
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
@@ -102,7 +113,11 @@ async function tick(uid: string, body: Record<string, unknown>): Promise<Respons
     {
       method: "POST",
       headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
-      body: JSON.stringify({ user_id: uid, benefit_id: benefitId, period_key: periodKey }),
+      // source is explicit rather than left to the column default, so this line
+      // reads as true regardless of what the default is set to later: a tap on
+      // this endpoint is always a member's own tick. ignore-duplicates means an
+      // existing row, auto-sourced or not, is left exactly as it was.
+      body: JSON.stringify({ user_id: uid, benefit_id: benefitId, period_key: periodKey, source: "member" }),
     },
   );
   if (!r.ok) {
@@ -123,6 +138,21 @@ async function untick(uid: string, url: URL): Promise<Response> {
   // not used this yet after all", a statement about now; deleting the history
   // would also erase last year's answer, which the member never asked to change.
   const periodKey = benefitPeriodKey(benefit.period, new Date());
+
+  // Read the row's own source before deleting it (migration 0052). This is the
+  // one fact that decides what happens next: undoing a MEMBER tick is the plain
+  // delete this endpoint has always done, but undoing an AUTO one has to leave a
+  // tombstone behind, or api/card-rewards.ts would see the same charge on the
+  // member's next load and silently re-tick the exact box they just unticked.
+  // Absent (deploy ahead of 0052) reads as 'member', which just means the
+  // tombstone step is skipped -- the safe default, since a plain delete is
+  // everything this endpoint could do before this migration existed.
+  const existing = await adminRest(
+    `card_benefit_uses?user_id=eq.${uid}&benefit_id=eq.${enc(benefitId)}&period_key=eq.${enc(periodKey)}&select=source`,
+  );
+  const existingRows = existing.ok ? ((await existing.json().catch(() => [])) as { source?: string }[]) : [];
+  const wasAuto = existingRows[0]?.source === "auto";
+
   const r = await adminRest(
     `card_benefit_uses?user_id=eq.${uid}&benefit_id=eq.${enc(benefitId)}&period_key=eq.${enc(periodKey)}`,
     { method: "DELETE", headers: { Prefer: "return=minimal" } },
@@ -131,6 +161,21 @@ async function untick(uid: string, url: URL): Promise<Response> {
     console.error(`[benefits] untick failed (${r.status})`);
     return json({ error: "Could not undo that" }, 500);
   }
+
+  if (wasAuto) {
+    const d = await adminRest("card_benefit_dismissals?on_conflict=user_id,benefit_id,period_key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({ user_id: uid, benefit_id: benefitId, period_key: periodKey }),
+    });
+    // Logged, not failed: the tick itself already succeeded (the row is gone),
+    // and refusing the whole request over the tombstone would tell the member
+    // their undo failed when the part they can see actually worked. The cost of
+    // losing the race is that the same charge could resurface the tick on their
+    // next load, which is recoverable the same way, by unticking it again.
+    if (!d.ok) console.error(`[benefits] dismissal write failed for ${benefitId}/${periodKey} (${d.status})`);
+  }
+
   return json({ ok: true, benefit_id: benefitId, period_key: periodKey, used: false });
 }
 
