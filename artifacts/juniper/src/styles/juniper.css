@@ -1038,25 +1038,6 @@
 .jnpr .ask-tool-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
 .jnpr .ask-tool-err{font-size:11.5px;color:var(--jnpr-bad);font-weight:600}
 
-/* Ask Juniper, openable from anywhere (issue #263). A `.pop` like the bell's,
-   just wider and tall enough to hold a real exchange; everything inside it
-   (`.ask-composer`, `.ask-thread`, `.ask-bubble`, `.ask-list`/`.ask-item`) is
-   the same class the full page and its rail already use, so a reply or a
-   past chat cannot render differently in one than the other. */
-.jnpr .pop.ask-pop{right:0;width:380px;max-width:calc(100vw - 24px);height:480px;padding:0;
-  display:flex;flex-direction:column;overflow:hidden}
-.jnpr .ask-pop-hd{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--jnpr-line-2);flex:none}
-.jnpr .ask-pop-hd b{font-size:13px;color:var(--jnpr-ink);flex:1;min-width:0}
-.jnpr .ask-pop-chip{font-size:10.5px;font-weight:600;color:var(--jnpr-accent);background:var(--jnpr-accent-soft);
-  padding:4px 9px;border-radius:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
-.jnpr .ask-pop-new,.jnpr .ask-pop-x{width:24px;height:24px;border-radius:7px;border:1px solid var(--jnpr-line);
-  background:var(--jnpr-surface-2);color:var(--jnpr-ink-3);display:grid;place-items:center;cursor:pointer;flex:none;font-size:13px;line-height:1}
-.jnpr .ask-pop-new:hover,.jnpr .ask-pop-x:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
-.jnpr .ask-pop-body{flex:1;overflow-y:auto;padding:14px}
-.jnpr .ask-pop-body .ask-composer{padding:0;border-top:0;margin-bottom:6px}
-.jnpr .ask-pop-thread{padding:16px}
-.jnpr .ask-pop-all{display:block;text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--jnpr-line-2)}
-
 /* Plan report (printable to PDF) */
 .jnpr .rp-overlay{position:fixed;inset:0;z-index:120;background:rgba(15,20,15,.55);backdrop-filter:blur(3px);display:flex;flex-direction:column}
 .jnpr .rp-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:var(--jnpr-surface);border-bottom:1px solid var(--jnpr-line)}
