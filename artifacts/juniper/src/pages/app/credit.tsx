@@ -13,7 +13,7 @@ import {
 import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
 import { CardWallet } from "@/components/juniper/card-wallet";
-import { RewardsGuide, RewardsSummaryCharts } from "@/components/juniper/rewards-guide";
+import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
 import type { HolderStyle } from "@/lib/holder-style";
@@ -654,22 +654,25 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         </>
       )}
 
-      {/* 4. Benefits, credits, and what is being left on the table, as charts
-          rather than as a list of rows (RewardsSummaryCharts), with the rewards
-          guide -- the instruction for which card to reach for -- ahead of them,
-          since a recommendation to move a category reads as arbitrary until you
-          have seen where it comes from, and the checklist and the switch ideas
-          are what a member acts on once they have. */}
+      {/* 4. The rewards guide -- the instruction for which card to reach for --
+          ahead of the benefits tracker, since a recommendation to move a
+          category reads as arbitrary until you have seen where it comes from,
+          and the checklist and the switch ideas are what a member acts on
+          once they have. Benefits, credits, and what is being left on the
+          table used to be a third card of its own (RewardsSummaryCharts)
+          between these two; it is now the tracker's own head band (three live
+          options in previews/benefits-merge-options.html, option A chosen). */}
       {rewards.data && (
         <>
           <RewardsGuide data={rewards.data} />
-          <RewardsSummaryCharts data={rewards.data} />
           {rewards.data.benefits && (
             <BenefitsTracker
               summary={rewards.data.benefits}
               catalog={rewards.data.catalog}
               cardCount={rewards.data.cards.filter((c) => c.product).length}
               periods={rewards.data.provenance.periods}
+              totalGain={rewards.data.switches.reduce((a, s) => a + s.gain, 0)}
+              currency={rewards.data.cards.filter((c) => c.product)[0]?.currency ?? null}
               onChanged={() => void rewards.refresh()}
             />
           )}

@@ -65,6 +65,17 @@ import { CardFace } from "@/components/juniper/card-rewards-bits";
 // figure and no evidence to show, so they render as a single compact line; a row
 // that carries a suggestion or an auto-tick's evidence keeps the fuller,
 // multi-line treatment, because that is the one case with something to read.
+//
+// ── THE HEAD BAND USED TO BE A SEPARATE CARD ────────────────────────────────
+//
+// "Benefits and what you're leaving on the table" (RewardsSummaryCharts, in
+// rewards-guide.tsx) sat directly above this one, and the two read as plain
+// and repetitive: "0 of 12" up there, "12 benefits from your 3 cards" a few
+// pixels below it, the same number said twice in two card borders. Its
+// progress bar and dollar stats are now this component's own head band.
+// Three live options in previews/benefits-merge-options.html, option A
+// chosen: the bar and the stats sit side by side under one shared title,
+// ahead of the checklist rather than announcing it from a separate card.
 
 // Icons per perk family, kept for the suggestion banner's icon only now that
 // benefits no longer group by this field on screen.
@@ -246,7 +257,7 @@ function CardBenefitGroup({
 }
 
 export function BenefitsTracker({
-  summary, catalog, cardCount, periods, onChanged,
+  summary, catalog, cardCount, periods, totalGain, currency, onChanged,
 }: {
   summary: BenefitSummary;
   /** For the real card photo on each group's header. Only `product_id`,
@@ -256,6 +267,12 @@ export function BenefitsTracker({
   /** The buckets ticks are recorded against right now, computed server-side, so
       the copy names the real period rather than describing one. */
   periods: { month: string; quarter: string; year: string };
+  /** Sum of `data.switches[].gain`, the same "left on the table" figure the
+      standalone summary card used to show above this one. Passed in rather
+      than recomputed here, since switch ideas are a different data source
+      than the benefit checklist this component otherwise owns. */
+  totalGain: number;
+  currency: string | null;
   onChanged: () => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -275,7 +292,7 @@ export function BenefitsTracker({
     [catalog],
   );
 
-  if (!summary.total) return null;
+  if (!summary.total && !(totalGain > 0)) return null;
 
   const toggle = async (b: TrackedBenefit, used: boolean) => {
     setBusyId(b.id);
@@ -333,14 +350,45 @@ export function BenefitsTracker({
     .map(([productId, { productName, benefits }]) => ({ productId, productName, benefits }))
     .sort((a, b) => b.benefits.length - a.benefits.length || a.productName.localeCompare(b.productName));
 
+  const usedPct = summary.total > 0 ? Math.round((usedCount / summary.total) * 100) : 0;
+
   return (
     <div className="card pad-lg" style={{ marginBottom: 14 }}>
       <div className="card-head">
-        <h3>Benefits tracker</h3>
+        <h3>Benefits</h3>
         <span className="cr-rg-head">
           {summary.total} {summary.total === 1 ? "benefit" : "benefits"} from your {cardCount}{" "}
           {cardCount === 1 ? "card" : "cards"}
         </span>
+      </div>
+      <div className="cr-bt-band">
+        {summary.total > 0 && (
+          <div className="cr-bt-barcol">
+            <div className="cr-rc-bar-k">Ticked off this period</div>
+            <div className="bar"><i style={{ width: `${usedPct}%`, background: "var(--jnpr-accent)" }} /></div>
+            <div className="cr-rc-bar-v tnum">{usedCount} of {summary.total}</div>
+          </div>
+        )}
+        <div className="cr-hero-stats">
+          {summary.unusedValue > 0 && (
+            <div className="cr-hero-st">
+              <div className="k">Unused credits</div>
+              <div className="v tnum">
+                {money0(summary.unusedValue, currency)}
+                {summary.valuePartial && <span className="cr-hero-plus" title="Some benefits have no dollar figure, so this total is partial.">+</span>}
+              </div>
+            </div>
+          )}
+          {totalGain > 0 && (
+            <div className="cr-hero-st">
+              <div className="k">Left on the table</div>
+              <div className="v tnum">
+                {money0(totalGain, currency)}
+                <span className="cr-hero-per">/yr</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <div className="cr-rg-intro">
         Your own checklist. Juniper cannot see whether an issuer applied a credit, so tick these off

@@ -161,61 +161,9 @@ export function RewardsGuide({ data }: { data: CardRewards }) {
   );
 }
 
-/**
- * Benefits and what is being left on the table, as a small set of charts rather
- * than the flat count-and-two-dollar-figures tile row this used to be. Issue
- * #264 asks for this section, section 4 on the page, to read as charts; the
- * checklist underneath it (`BenefitsTracker`) stays a list, because a checklist
- * is the one shape a yes/no per-benefit answer can honestly take, but the
- * AGGREGATE of it, how much of what is available has actually been used, is
- * exactly the kind of number a proportion bar states better than a sentence.
- *
- * `benefits.total`/`unusedValue` and `switches` are the same figures the wallet
- * cover and the old rewards hero used to show; this is where they live now that
- * the wallet is its own section higher up the page.
- */
-export function RewardsSummaryCharts({ data }: { data: CardRewards }) {
-  const confirmed = data.cards.filter((c) => c.product);
-  if (!confirmed.length) return null;
-  const benefits = data.benefits;
-  const currency = confirmed[0].currency;
-  const totalGain = data.switches.reduce((a, s) => a + s.gain, 0);
-  if (!benefits?.total && !(totalGain > 0)) return null;
-
-  const usedPct = benefits && benefits.total > 0
-    ? Math.round((benefits.usedCount / benefits.total) * 100)
-    : null;
-
-  return (
-    <div className="card pad-lg" style={{ marginBottom: 14 }}>
-      <div className="card-head"><h3>Benefits and what you're leaving on the table</h3></div>
-      {benefits && benefits.total > 0 && (
-        <div className="cr-rc-bar-row">
-          <div className="cr-rc-bar-k">Benefits ticked off this period</div>
-          <div className="bar"><i style={{ width: `${usedPct}%`, background: "var(--jnpr-accent)" }} /></div>
-          <div className="cr-rc-bar-v tnum">{benefits.usedCount} of {benefits.total}</div>
-        </div>
-      )}
-      <div className="cr-hero-stats">
-        {benefits && benefits.unusedValue > 0 && (
-          <div className="cr-hero-st">
-            <div className="k">Unused credits</div>
-            <div className="v tnum">
-              {money0(benefits.unusedValue, currency)}
-              {benefits.valuePartial && <span className="cr-hero-plus" title="Some benefits have no dollar figure, so this total is partial.">+</span>}
-            </div>
-          </div>
-        )}
-        {totalGain > 0 && (
-          <div className="cr-hero-st">
-            <div className="k">Left on the table</div>
-            <div className="v tnum">
-              {money0(totalGain, currency)}
-              <span className="cr-hero-per">/yr</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+// The benefits-and-switches summary that used to render here as its own card
+// (RewardsSummaryCharts) is now BenefitsTracker's own head band in
+// benefits-tracker.tsx -- the two cards read as plain and repetitive stacked
+// back to back, and stating "X of 12" here and "12 benefits from 3 cards" a
+// few pixels below it was the same number said twice. Three live options in
+// previews/benefits-merge-options.html, option A chosen.
