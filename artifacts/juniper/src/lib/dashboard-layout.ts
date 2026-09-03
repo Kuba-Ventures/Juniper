@@ -72,7 +72,14 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "full", label: "Full breakdown", full: true },
     ],
   },
-  { id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page", sizes: DEFAULT_SIZES },
+  {
+    id: "networth", title: "Net worth and cashflow", home: "/app", homeLabel: "this page",
+    sizes: [
+      { id: "chart", label: "Chart" },
+      { id: "compact", label: "Compact" },
+      { id: "full", label: "Full width", full: true },
+    ],
+  },
   { id: "plans", title: "Your plans", home: "/app/plans", homeLabel: "Plans", sizes: DEFAULT_SIZES },
   { id: "spend", title: "Where it went", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
   { id: "budgets", title: "Budgets", home: "/app/transactions?panel=budgets", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
