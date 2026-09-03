@@ -2596,17 +2596,27 @@
 .jnpr .dash-arr.on{background:#EAF3EC;color:var(--jnpr-accent-deep);border-color:#EAF3EC}
 .jnpr .dash-hint{font-size:12.5px;color:var(--jnpr-ink-2);line-height:1.6;margin:0 2px 14px;max-width:78ch}
 
-/* ONE flow, not the two grids this page used to have. The 1.5fr/1fr hero and the
-   two equal rows below it could not survive free ordering, because the pairing
-   is a property of the pair and the member moves one card at a time. Every
-   widget is a half; `full` spans the row; a half left alone on the last row is
-   given `full` by the layout pass in overview.tsx rather than by a selector,
-   since only the render knows which one that is. */
-.jnpr .dash-board{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+/* ONE flow, not the two grids this page used to have, and not a strict grid
+   any more either. The 1.5fr/1fr hero and the two equal rows below it could
+   not survive free ordering, because the pairing is a property of the pair
+   and the member moves one card at a time, so this became a plain 2-column
+   CSS grid. That traded the hero for a new cost: a grid gives every row ONE
+   height, the tallest thing in it, so a short card beside a tall one sat at
+   the top of a tall row with real dead space below it, uncovered by any
+   element and impossible to drag anything into.
+   `packMasonry` in overview.tsx replaces the grid with two columns EACH
+   packed to its own content, independent of the other one's height, so every
+   card here is positioned in JS (`transform: translate(x, y)`, `width`) and
+   this file only supplies the container and the motion. `.dash-w.full` is
+   kept as a class for anything that wants to key off it (nothing in CSS does
+   any more; the packer reads the same flag straight from overview.tsx). */
+.jnpr .dash-board{position:relative}
 .jnpr .dash-board > *{min-width:0}
-.jnpr .dash-w{position:relative}
-.jnpr .dash-w.full{grid-column:1/-1}
-@media(max-width:860px){.jnpr .dash-board{grid-template-columns:1fr}.jnpr .dash-w.full{grid-column:auto}}
+.jnpr .dash-w{position:absolute;top:0;left:0;transition:transform .18s ease}
+/* A card mid-drag has to track the pointer with no lag, and every OTHER card
+   reordering under it would otherwise animate toward a position that is about
+   to move again before the transition finishes. */
+.jnpr .dash-board.dragging-active .dash-w{transition:none}
 /* A grid item with z-index:auto paints in DOM order regardless of its own
    descendants' z-index, so an open size-menu (z-index:4, scoped to its own
    card) was getting painted OVER by whichever widget sits later in the grid,
@@ -2619,11 +2629,18 @@
 /* Arranging is a mode, and it looks like one: a dashed edge on every card, a
    tilt small enough to read as "these are loose" rather than as an animation,
    and no way to click through to anything underneath. `touch-action:none` is
-   what stops a drag on a phone scrolling the page instead of moving the card. */
-.jnpr .dash-board.editing .dash-w{animation:dash-jig 2.4s ease-in-out infinite;touch-action:none;cursor:grab}
-.jnpr .dash-board.editing .dash-w:nth-child(2n){animation-delay:-1.2s}
+   what stops a drag on a phone scrolling the page instead of moving the card.
+   The jiggle is on the CARD, not on `.dash-w`: `.dash-w`'s own `transform` is
+   its packed position (`translate(x, y)`, set inline from overview.tsx), and
+   a CSS animation on the same property on the same element would replace that
+   translate for the animation's duration, snapping every card to the page's
+   top-left corner the moment Arrange turned on. */
+.jnpr .dash-board.editing .dash-w{touch-action:none;cursor:grab}
+.jnpr .dash-board.editing .dash-w:nth-child(2n) > .card,
+.jnpr .dash-board.editing .dash-w:nth-child(2n) > .score-strip{animation-delay:-1.2s}
 .jnpr .dash-board.editing .dash-w > .card,
-.jnpr .dash-board.editing .dash-w > .score-strip{outline:1.5px dashed var(--jnpr-accent);outline-offset:3px}
+.jnpr .dash-board.editing .dash-w > .score-strip{
+  animation:dash-jig 2.4s ease-in-out infinite;outline:1.5px dashed var(--jnpr-accent);outline-offset:3px}
 /* The card's own contents are furniture while arranging: a link, a search box or
    a range pill inside a card being dragged is a control nobody meant to press,
    and a focusable one inside it is a keyboard trap in a mode with its own
@@ -2633,9 +2650,14 @@
 .jnpr .dash-board.editing .dash-grip,
 .jnpr .dash-board.editing .dash-x,
 .jnpr .dash-board.editing .dash-size-c{pointer-events:auto}
-.jnpr .dash-w.dragging{opacity:.45;animation:none}
+.jnpr .dash-w.dragging{opacity:.45}
+.jnpr .dash-w.dragging > .card,
+.jnpr .dash-w.dragging > .score-strip{animation:none}
 @keyframes dash-jig{0%,100%{transform:rotate(-.22deg)}50%{transform:rotate(.22deg)}}
-@media(prefers-reduced-motion:reduce){.jnpr .dash-board.editing .dash-w{animation:none}}
+@media(prefers-reduced-motion:reduce){
+  .jnpr .dash-board.editing .dash-w > .card,
+  .jnpr .dash-board.editing .dash-w > .score-strip{animation:none}
+}
 
 .jnpr .dash-grip,.jnpr .dash-x{position:absolute;z-index:3;display:grid;place-items:center;
   width:26px;height:26px;border-radius:50%;border:1px solid var(--jnpr-line);

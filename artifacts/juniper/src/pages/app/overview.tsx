@@ -954,28 +954,77 @@ function LoadingSlot({ title }: { title: string }) {
   );
 }
 
+const DASH_GAP = 16;
+const DASH_BREAKPOINT = 860;
+/** Below this the packer falls back to one column, the same width the old
+ *  grid switched to a single `1fr` track at. */
+
 /**
- * Which widgets sit on which row, and whether the last one stretches.
+ * A widget spans the full row when its OWN size says so (issue #259: a
+ * member's choice, not a fixed registry flag). Half-width otherwise, packed
+ * below in `packMasonry`.
  *
  * The page used to have two different grids, a 1.5fr/1fr hero and two equal
- * rows. Neither survives free ordering: the pairing is a property of the pair
- * and the member moves one card at a time. So every widget is a half, a widget
- * SIZED full (issue #259: a member's own choice, not a fixed registry flag)
- * spans the row, and a half left ALONE on the final row stretches rather than
- * sitting beside a hole. Net worth losing its wider column is the price of
- * free ordering and is paid here.
+ * rows, and then a plain 2-column grid once free ordering made the hero
+ * pairing impossible to keep. The plain grid traded that pairing for a new
+ * cost: a strict grid gives every row ONE height, the tallest thing in it, so
+ * a short card beside a tall one sits at the top of a tall row with real dead
+ * space below it, uncovered by any element, and a half left alone on the
+ * final row had to be force-stretched to avoid sitting beside a hole.
+ * `packMasonry` replaces the grid with two independently packed columns, so
+ * neither problem exists any more: nothing forces a card to sit beside a
+ * hole, because nothing ever leaves one.
  */
-function withSpans(ids: string[], sizeOf: (id: string) => string): { id: string; full: boolean }[] {
-  const out: { id: string; full: boolean }[] = [];
-  let col = 0;
-  for (const id of ids) {
-    const full = sizeIsFull(id, sizeOf(id));
-    out.push({ id, full });
-    col = full ? 0 : col === 0 ? 1 : 0;
+function withFullFlags(ids: string[], sizeOf: (id: string) => string): { id: string; full: boolean }[] {
+  return ids.map((id) => ({ id, full: sizeIsFull(id, sizeOf(id)) }));
+}
+
+/**
+ * True masonry: each column packs its own cards tight, independent of the
+ * other column's height. Walks the member's own order and drops each
+ * half-width card into whichever column is CURRENTLY shorter, using real
+ * measured heights (`heightOf`), so the result always matches the order the
+ * member dragged into rather than a browser's own balancing guess. A
+ * full-width card spans both columns at whichever is currently taller, and
+ * resets both to the same height below it, the same way a full row did in
+ * the old grid.
+ *
+ * Unmeasured heights (a card that has not painted yet) fall back to a
+ * placeholder rather than 0, so the first pack is a reasonable layout instead
+ * of every card collapsing to the same point; the real height replaces it,
+ * and the board repacks, within the same paint in practice.
+ */
+function packMasonry(
+  laidOut: { id: string; full: boolean }[],
+  heightOf: (id: string) => number,
+  colWidth: number,
+  cols: number,
+): { pos: Record<string, { x: number; y: number; width: number }>; height: number } {
+  const pos: Record<string, { x: number; y: number; width: number }> = {};
+  if (cols <= 1) {
+    let y = 0;
+    for (const { id } of laidOut) {
+      pos[id] = { x: 0, y, width: colWidth };
+      y += heightOf(id) + DASH_GAP;
+    }
+    return { pos, height: Math.max(0, y - DASH_GAP) };
   }
-  const last = out[out.length - 1];
-  if (last && !last.full && col === 1) last.full = true;
-  return out;
+  const colH = [0, 0];
+  for (const { id, full } of laidOut) {
+    const h = heightOf(id);
+    if (full) {
+      const y = Math.max(colH[0], colH[1]);
+      pos[id] = { x: 0, y, width: colWidth * 2 + DASH_GAP };
+      const bottom = y + h + DASH_GAP;
+      colH[0] = bottom;
+      colH[1] = bottom;
+      continue;
+    }
+    const col = colH[0] <= colH[1] ? 0 : 1;
+    pos[id] = { x: col === 0 ? 0 : colWidth + DASH_GAP, y: colH[col], width: colWidth };
+    colH[col] += h + DASH_GAP;
+  }
+  return { pos, height: Math.max(0, Math.max(colH[0], colH[1]) - DASH_GAP) };
 }
 
 /** The Score at half width is either the strip (default) or a bigger centered
@@ -1351,6 +1400,74 @@ export default function Overview({
     persist(orderRef.current, hiddenRef.current, sizesRef.current);
   };
 
+  // The board's own width, so the packer below knows how many columns fit and
+  // how wide one is; tracked rather than read once, because the board can
+  // resize without the window doing so (a sidebar, a font swap, a browser
+  // zoom change).
+  const [boardWidth, setBoardWidth] = useState(0);
+  useEffect(() => {
+    if (!board.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w != null) setBoardWidth(Math.round(w));
+    });
+    ro.observe(board.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Every card's real rendered height, which is what `packMasonry` packs
+  // against. One shared observer rather than one per card: the number of
+  // cards on screen is small and bounded, and a shared one means taking a
+  // widget off the board (into the shelf) can't leak an observer nobody is
+  // disconnecting. `cardRefs` caches one callback per id so React does not
+  // tear down and recreate the observation on every render, only when a
+  // card actually mounts or unmounts.
+  const [heights, setHeights] = useState<Record<string, number>>({});
+  const heightsRef = useRef(heights);
+  heightsRef.current = heights;
+  const observedEls = useRef(new Map<string, HTMLElement>());
+  const cardRefs = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
+
+  // Built synchronously during render, not inside an effect: a ref callback
+  // fires as part of the same commit that mounts the card, before any effect
+  // runs, so an observer created in a `useEffect` would still be null the one
+  // time a freshly-mounted card's ref callback could have started watching
+  // it, and would never observe anything. Guarded so it is built exactly
+  // once per instance of the page.
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  if (!resizeObserverRef.current) {
+    resizeObserverRef.current = new ResizeObserver((entries) => {
+      let changed = false;
+      const next = { ...heightsRef.current };
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.widget;
+        if (!id) continue;
+        const h = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
+        if (next[id] !== h) { next[id] = h; changed = true; }
+      }
+      if (changed) setHeights(next);
+    });
+  }
+  useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+
+  const cardRef = (id: string): ((el: HTMLDivElement | null) => void) => {
+    let fn = cardRefs.current.get(id);
+    if (!fn) {
+      fn = (el) => {
+        const prev = observedEls.current.get(id);
+        if (prev && prev !== el) resizeObserverRef.current?.unobserve(prev);
+        if (el) {
+          observedEls.current.set(id, el);
+          resizeObserverRef.current?.observe(el);
+        } else {
+          observedEls.current.delete(id);
+        }
+      };
+      cardRefs.current.set(id, fn);
+    }
+    return fn;
+  };
+
   const cardsOn = !hidden.has("cards");
   const recurringOn = !hidden.has("recurring");
   const cardsData = useCardsWidget(cardsOn, items);
@@ -1397,8 +1514,20 @@ export default function Overview({
   const shownIds = order.filter((id) => !hidden.has(id));
   // Rule 3 again, at the point it bites: an empty widget is skipped on the live
   // page and drawn as a placeholder while arranging.
-  const laidOut = withSpans(shownIds.filter((id) => editing || !emptyWhy[id]), (id) => sizes[id]);
+  const laidOut = withFullFlags(shownIds.filter((id) => editing || !emptyWhy[id]), (id) => sizes[id]);
   const offIds = order.filter((id) => hidden.has(id));
+
+  // Two columns down to `DASH_BREAKPOINT`, matching the width the old grid
+  // switched its own single track at, one below it. `boardWidth` is 0 for the
+  // first render (the ref is not attached until after it), so this packs
+  // hidden until it has a real width to pack against.
+  const dashCols = boardWidth > 0 && boardWidth < DASH_BREAKPOINT ? 1 : 2;
+  const dashColWidth = dashCols === 1 ? boardWidth : Math.max(0, (boardWidth - DASH_GAP) / 2);
+  // Not memoized: the whole pack is a handful of widgets and a few additions
+  // and comparisons, nowhere near expensive enough to be worth the risk of a
+  // dependency list going stale the next time something upstream of `laidOut`
+  // changes what it filters on.
+  const { pos: dashPos, height: dashHeight } = packMasonry(laidOut, (id) => heights[id] ?? 180, dashColWidth, dashCols);
 
   return (
     <div className="frame">
@@ -1445,7 +1574,7 @@ export default function Overview({
       )}
 
       <div
-        className={editing ? "dash-board editing" : "dash-board"}
+        className={`${editing ? "dash-board editing" : "dash-board"}${dragId ? " dragging-active" : ""}`}
         ref={board}
         onPointerMove={onBoardPointerMove}
         onPointerUp={endDrag}
@@ -1454,15 +1583,24 @@ export default function Overview({
         // context menu, the tab losing focus). Without this the board would stay
         // in a drag nobody is performing.
         onLostPointerCapture={endDrag}
+        // Absolutely-positioned children (packed by `packMasonry` below) do
+        // not contribute to their parent's height, so the board states its
+        // own; hidden until the first real width comes back from the board's
+        // own resize observer, so a 0-width pack never flashes every card
+        // collapsed into the same top-left corner.
+        style={{ position: "relative", height: boardWidth > 0 ? dashHeight : undefined, visibility: boardWidth > 0 ? "visible" : "hidden" }}
       >
         {laidOut.map(({ id, full }) => {
           const meta = WIDGET_BY_ID[id];
           const why = emptyWhy[id];
+          const p = dashPos[id];
           return (
             <div
               key={id}
               data-widget={id}
+              ref={cardRef(id)}
               className={`dash-w${full ? " full" : ""}${dragId === id ? " dragging" : ""}${sizeMenuOpen === id ? " menu-open" : ""}`}
+              style={p ? { transform: `translate(${p.x}px, ${p.y}px)`, width: p.width } : undefined}
               onPointerDown={(e) => onCardPointerDown(e, id)}
             >
               {editing && (
