@@ -667,6 +667,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
           {rewards.data.benefits && (
             <BenefitsTracker
               summary={rewards.data.benefits}
+              catalog={rewards.data.catalog}
               cardCount={rewards.data.cards.filter((c) => c.product).length}
               periods={rewards.data.provenance.periods}
               onChanged={() => void rewards.refresh()}

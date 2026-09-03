@@ -2552,17 +2552,36 @@
 .jnpr .cr-sw-total{font-size:11.5px;color:var(--jnpr-good);font-weight:700}
 
 /* The benefits tracker */
-.jnpr .cr-bt-grp{border-top:1px solid var(--jnpr-line-2);padding:10px 0}
-.jnpr .cr-bt-gh{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:650;
-  color:var(--jnpr-ink);width:100%;background:none;border:0;font-family:inherit;padding:4px 0;
-  cursor:pointer;text-align:left}
-.jnpr .cr-bt-gi{font-size:14px;flex:0 0 auto}
-.jnpr .cr-bt-gh .n{margin-left:auto;font-size:11.5px;font-weight:650;color:var(--jnpr-ink-3);
-  font-variant-numeric:tabular-nums}
-.jnpr .cr-bt-caret{color:var(--jnpr-ink-3);font-size:14px;flex:0 0 auto;transition:transform .15s;
-  line-height:1}
-.jnpr .cr-bt-caret.open{transform:rotate(90deg)}
-.jnpr .cr-bt-b{display:flex;align-items:flex-start;gap:11px;padding:10px 0 10px 24px;
+/* Grouped by card rather than by benefit type (previews/benefits-tracker-by-card-options.html,
+   option H): a real photo leads each card's group, and its benefits split into
+   two columns on whether they are ticked THIS period. */
+.jnpr .cr-bt-cardgrp{border-top:1px solid var(--jnpr-line-2);padding:16px 0}
+.jnpr .cr-bt-cardgrp:first-child{border-top:0}
+.jnpr .cr-bt-cardh{display:flex;align-items:center;gap:12px}
+.jnpr .cr-bt-cardname{font-size:13.5px;font-weight:700;color:var(--jnpr-ink)}
+.jnpr .cr-bt-cardsub{font-size:11px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .cr-bt-cols{display:flex;gap:16px;margin-top:8px}
+.jnpr .cr-bt-col{flex:1;min-width:0}
+.jnpr .cr-bt-colh{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--jnpr-ink-3);
+  font-weight:700;margin:0 0 4px}
+.jnpr .cr-bt-empty-col{font-size:11px;color:var(--jnpr-ink-3);padding:6px 0}
+@media(max-width:560px){
+  .jnpr .cr-bt-cols{flex-direction:column;gap:2px}
+}
+
+/* A compact row: one line, no detail text -- most benefits have neither a
+   dollar figure nor any evidence to show, so this is what most rows are. */
+.jnpr .cr-bt-crow{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px;
+  border-top:1px solid var(--jnpr-line-2);cursor:pointer}
+.jnpr .cr-bt-crow:first-child{border-top:0}
+.jnpr .cr-bt-crow .cr-bt-tick{margin:0}
+.jnpr .cr-bt-crow .nm{flex:1;min-width:0;color:var(--jnpr-ink-2);font-weight:600}
+.jnpr .cr-bt-crow.done .nm{color:var(--jnpr-ink-3);text-decoration:line-through}
+.jnpr .cr-bt-crow .val{color:var(--jnpr-ink-3);font-size:10.5px;font-weight:650;flex:0 0 auto;text-align:right}
+
+/* The fuller, multi-line row: only for a benefit carrying a suggestion or an
+   auto-tick's evidence (see `isFeatured` in the component). */
+.jnpr .cr-bt-b{display:flex;align-items:flex-start;gap:11px;padding:9px 0;
   font-size:12.5px;cursor:pointer}
 .jnpr .cr-bt-b + .cr-bt-b{border-top:1px solid var(--jnpr-line-2)}
 .jnpr .cr-bt-tick{appearance:none;width:16px;height:16px;border-radius:5px;
@@ -2591,13 +2610,25 @@
    goes missing between an evidence line and the row after it. */
 .jnpr .cr-bt-auto{margin-right:5px;font-size:11px}
 .jnpr .cr-bt-evidence{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-  margin:0 0 10px 24px;padding:6px 9px;font-size:11px;color:var(--jnpr-ink-3);
+  margin:0 0 8px;padding:6px 9px;font-size:11px;color:var(--jnpr-ink-3);
   background:var(--jnpr-surface-3);border-radius:7px}
 .jnpr .cr-bt-evidence code{font-size:10.5px;background:none;color:var(--jnpr-ink-2)}
 .jnpr .cr-bt-undo{margin-left:auto;font:inherit;font-size:11px;font-weight:650;color:var(--jnpr-ink-3);
   text-decoration:underline;background:none;border:0;padding:0;cursor:pointer}
 .jnpr .cr-bt-undo:disabled{opacity:.5;cursor:default}
 .jnpr .cr-bt-evidence + .cr-bt-b{border-top:1px solid var(--jnpr-line-2)}
+
+/* A suggested match (migration 0053): real evidence, never a tick on its own --
+   see FeaturedBenefitRow's own comment on why this differs from an auto-tick. */
+.jnpr .cr-bt-suggest{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;
+  padding:9px 11px;font-size:11.5px;color:var(--jnpr-ink-2);line-height:1.5;
+  background:var(--jnpr-accent-soft);border:1px solid var(--jnpr-accent);border-radius:9px}
+.jnpr .cr-bt-suggest b{color:var(--jnpr-ink)}
+.jnpr .cr-bt-sug-btn{font:inherit;font-size:11px;font-weight:700;padding:5px 11px;border-radius:7px;
+  cursor:pointer;border:1px solid var(--jnpr-accent);background:var(--jnpr-accent);color:#fff;margin-left:auto}
+.jnpr .cr-bt-sug-btn.ghost{background:none;color:var(--jnpr-ink-3);border-color:var(--jnpr-line);margin-left:0}
+.jnpr .cr-bt-sug-btn:disabled{opacity:.5;cursor:default}
+.jnpr .cr-bt-suggest + .cr-bt-b{border-top:1px solid var(--jnpr-line-2)}
 
 /* "Which card is this?" the prompt and the picker */
 .jnpr .cr-cc{display:flex;align-items:center;gap:14px;flex-wrap:wrap;

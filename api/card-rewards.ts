@@ -264,9 +264,9 @@ export default async function handler(req: Request): Promise<Response> {
       "earn rates"),
     rowsWithOptional<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
            value_amount: number | null; period: BenefitPeriod | null;
-           expires_on?: string | null; auto_merchant?: string | null }>(
+           expires_on?: string | null; auto_merchant?: string | null; auto_mode?: string | null }>(
       "card_product_benefits?select=id,product_id,benefit_group,name,detail,value_amount,period",
-      ["expires_on", "auto_merchant"], "card benefits"),
+      ["expires_on", "auto_merchant", "auto_mode"], "card benefits"),
     rows<TxnRow>(
       `transactions?user_id=eq.${uid}&date=gte.${since}&select=account_id,amount,date,category,category_id,merchant_name&limit=2000`,
       "transactions"),
@@ -444,10 +444,16 @@ export default async function handler(req: Request): Promise<Response> {
     // the benefit is kept. Defaulting the other way would hide every benefit on a
     // deploy that ran ahead of 0043.
     expires_on: (b as { expires_on?: string | null }).expires_on ?? null,
-    // Same convention, same reason, for the column 0052 adds: absent (deploy
-    // ahead of the migration) and NULL (not this benefit's decision to make) both
-    // mean "not auto-completable", which is the safe default either way.
+    // Same convention, same reason, for the columns 0052 and 0053 add: absent
+    // (deploy ahead of the migration) and NULL (not this benefit's decision to
+    // make) both mean "not auto-completable", which is the safe default either
+    // way. `auto_mode` absent defaults to 'tick', matching the column's own
+    // DEFAULT, so a deploy that runs ahead of 0053 but has an `auto_merchant`
+    // value already set (impossible today, since only 0053 sets one on
+    // csp-travel-credit, but kept honest for whatever the next 'suggest' row is)
+    // does not silently start suggesting instead of ticking.
     auto_merchant: b.auto_merchant ?? null,
+    auto_mode: b.auto_mode === "suggest" ? "suggest" : "tick",
     id: b.id, product_id: b.product_id, group: b.benefit_group, name: b.name,
     detail: b.detail, period: b.period,
     value_amount: b.value_amount == null ? null : Number(b.value_amount),
@@ -567,7 +573,8 @@ export default async function handler(req: Request): Promise<Response> {
   });
   const switches = switchIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
   const upgrades = upgradeIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
-  // ── Auto-matching, and writing what it finds (issue #264) ────────────────
+  // ── Auto-matching, and writing what it finds (issue #264; migration 0053
+  //    extends this with a suggest-only mode, see its own header) ───────────
   //
   // A GET that writes is unusual, and it is deliberate here rather than an
   // oversight: this is the one request that already holds all three inputs a
@@ -577,14 +584,17 @@ export default async function handler(req: Request): Promise<Response> {
   // is safe to repeat: `on_conflict=ignore-duplicates` makes a second GET in the
   // same period a no-op, the same idempotence the tick endpoint itself relies on.
   //
-  // A match is skipped, not written, when either is already true: a row already
-  // exists for this benefit and period (whoever ticked it first, member or an
-  // earlier auto-match, keeps the tick -- this function never overwrites one),
-  // or the member dismissed this exact benefit-and-period before (migration
-  // 0052's card_benefit_dismissals). Both checks run before any INSERT is built.
+  // A match is skipped, not written or suggested, when either is already true:
+  // a row already exists for this benefit and period (whoever ticked it first,
+  // member or an earlier auto-match, keeps the tick -- this function never
+  // overwrites one), or the member dismissed this exact benefit-and-period
+  // before (migration 0052's card_benefit_dismissals, reused unchanged by
+  // 0053 for a dismissed SUGGESTION too -- same tombstone, same "do not raise
+  // this again this period" meaning). Both checks run before any INSERT is
+  // built and before anything is handed to the client as a suggestion.
   const usedKeys = new Set(uses.map((u) => `${u.benefit_id}|${u.period_key}`));
   const dismissedKeys = new Set(dismissals.map((d) => `${d.benefit_id}|${d.period_key}`));
-  const matches = matchAutoBenefits({
+  const allMatches = matchAutoBenefits({
     cards: memberCards, benefits,
     txns: txns.map((t) => ({ account_id: t.account_id, merchant_name: t.merchant_name, amount: t.amount, date: t.date })),
     today: new Date(),
@@ -592,9 +602,16 @@ export default async function handler(req: Request): Promise<Response> {
     const key = `${m.benefit_id}|${m.period_key}`;
     return !usedKeys.has(key) && !dismissedKeys.has(key);
   });
+  // Split on `mode` (migration 0053): 'tick' rows get written here, exactly as
+  // before 0053 existed; 'suggest' rows are never written by this endpoint at
+  // all, only carried into `trackBenefits` below so the member sees the
+  // evidence and decides.
+  const tickMatches = allMatches.filter((m) => m.mode === "tick");
+  const suggestMatches = allMatches.filter((m) => m.mode === "suggest");
+  const suggestions = new Map(suggestMatches.map((m) => [`${m.benefit_id}|${m.period_key}`, m.evidence]));
 
-  if (matches.length) {
-    const results = await Promise.all(matches.map((m) =>
+  if (tickMatches.length) {
+    const results = await Promise.all(tickMatches.map((m) =>
       adminRest("card_benefit_uses?on_conflict=user_id,benefit_id,period_key", {
         method: "POST",
         headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
@@ -605,20 +622,20 @@ export default async function handler(req: Request): Promise<Response> {
       }),
     ));
     results.forEach((r, i) => {
-      if (!r.ok) console.error(`[cards] auto-match write failed for ${matches[i].benefit_id} (${r.status})`);
+      if (!r.ok) console.error(`[cards] auto-match write failed for ${tickMatches[i].benefit_id} (${r.status})`);
     });
     // Folded into `uses` in memory rather than re-read from the database: the
     // writes above either landed or they will land on the member's next load
     // (the match will simply be found again, since nothing here consumed the
     // charge it matched on), and a member looking at THIS response should see
     // the tick their own page load just produced.
-    for (const m of matches) {
+    for (const m of tickMatches) {
       uses.push({ benefit_id: m.benefit_id, period_key: m.period_key, used_at: new Date().toISOString(),
         source: "auto", evidence: m.evidence });
     }
   }
 
-  const tracked = trackBenefits({ cards: memberCards, products, benefits, uses, today: new Date() });
+  const tracked = trackBenefits({ cards: memberCards, products, benefits, uses, suggestions, today: new Date() });
 
   return json({
     linked: true,

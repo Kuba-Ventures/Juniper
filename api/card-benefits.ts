@@ -1,7 +1,12 @@
 // /api/card-benefits, the benefits checklist.
 //
-//   POST   { benefit_id }        -> tick it off for the current period
-//   DELETE ?benefit=<benefit_id> -> untick it
+//   POST   { benefit_id }                          -> tick it off for the current period
+//   DELETE ?benefit=<benefit_id>                   -> untick it
+//   DELETE ?benefit=<benefit_id>&dismiss=suggestion -> "not this" on a suggested
+//                                                      match (migration 0053);
+//                                                      nothing was ticked, so
+//                                                      only the dismissal tombstone
+//                                                      is written
 //
 // Reads live on /api/card-rewards, which returns the ticks resolved against the
 // current period alongside the benefits themselves. This file only writes.
@@ -127,6 +132,35 @@ async function tick(uid: string, body: Record<string, unknown>): Promise<Respons
   return json({ ok: true, benefit_id: benefitId, period_key: periodKey, used: true });
 }
 
+/**
+ * "Not this" on a suggested match (migration 0053): the member is told Juniper
+ * saw a charge that might mean this benefit was used, and says no. There is no
+ * `card_benefit_uses` row to delete -- a suggestion never wrote one -- so this
+ * writes only the tombstone, the same `card_benefit_dismissals` row an undone
+ * AUTO tick writes in `untick` below. One table, one meaning either way: do not
+ * raise this benefit-and-period again. Without it, api/card-rewards.ts would
+ * see the same charge on the member's next load and suggest it right back.
+ */
+async function dismissSuggestion(uid: string, url: URL): Promise<Response> {
+  const benefitId = norm(url.searchParams.get("benefit"));
+  if (!benefitId || benefitId.length > MAX_ID) return json({ error: "A benefit is required" }, 400);
+
+  const benefit = await resolveBenefit(uid, benefitId);
+  if (!benefit) return json({ error: "That benefit is not on one of your cards" }, 400);
+
+  const periodKey = benefitPeriodKey(benefit.period, new Date());
+  const d = await adminRest("card_benefit_dismissals?on_conflict=user_id,benefit_id,period_key", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify({ user_id: uid, benefit_id: benefitId, period_key: periodKey }),
+  });
+  if (!d.ok) {
+    console.error(`[benefits] suggestion dismissal failed (${d.status})`);
+    return json({ error: "Could not dismiss that" }, 500);
+  }
+  return json({ ok: true, benefit_id: benefitId, period_key: periodKey });
+}
+
 async function untick(uid: string, url: URL): Promise<Response> {
   const benefitId = norm(url.searchParams.get("benefit"));
   if (!benefitId || benefitId.length > MAX_ID) return json({ error: "A benefit is required" }, 400);
@@ -192,6 +226,11 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === "POST") {
     return tick(uid, (await req.json().catch(() => ({}))) as Record<string, unknown>);
   }
-  if (req.method === "DELETE") return untick(uid, new URL(req.url));
+  if (req.method === "DELETE") {
+    const url = new URL(req.url);
+    return url.searchParams.get("dismiss") === "suggestion"
+      ? dismissSuggestion(uid, url)
+      : untick(uid, url);
+  }
   return json({ error: "Method not allowed" }, 405);
 }

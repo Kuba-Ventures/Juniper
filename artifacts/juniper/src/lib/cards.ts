@@ -258,6 +258,10 @@ export interface TrackedBenefit {
       `source` is 'auto' -- the receipt an automatic tick has to carry, so the
       checkmark is never the only thing standing behind it. */
   evidence: string | null;
+  /** A suggested match (migration 0053), same string shape as `evidence` but
+      nothing has been written: the member taps "Yes, used it" to confirm, or
+      "Not this" to dismiss. Only ever set while `used` is false. */
+  suggestedEvidence: string | null;
 }
 
 export interface BenefitSummary {
@@ -413,6 +417,24 @@ export async function setBenefitUsed(benefitId: string, used: boolean): Promise<
     const r = used
       ? await authedFetch("/api/card-benefits", { method: "POST", body: JSON.stringify({ benefit_id: benefitId }) })
       : await authedFetch(`/api/card-benefits?benefit=${encodeURIComponent(benefitId)}`, { method: "DELETE" });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * "Not this" on a suggested match (migration 0053). Nothing was ticked, so
+ * there is nothing to untick; this only tells the server to stop suggesting
+ * this exact benefit-and-period again, the same tombstone an undone auto-tick
+ * writes in `setBenefitUsed(id, false)`.
+ */
+export async function dismissBenefitSuggestion(benefitId: string): Promise<boolean> {
+  try {
+    const r = await authedFetch(
+      `/api/card-benefits?benefit=${encodeURIComponent(benefitId)}&dismiss=suggestion`,
+      { method: "DELETE" },
+    );
     return r.ok;
   } catch {
     return false;
