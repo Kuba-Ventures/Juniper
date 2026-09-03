@@ -569,7 +569,11 @@ ok("a one-time benefit stays ticked forever", () => {
 const benefit = (
   id: string, product_id: string, group: string,
   value_amount: number | null = null, period: R.BenefitPeriod | null = null,
-): R.Benefit => ({ id, product_id, group, name: id, detail: null, value_amount, period });
+  extra: { expires_on?: string | null; auto_merchant?: string | null } = {},
+): R.Benefit => ({
+  id, product_id, group, name: id, detail: null, value_amount, period,
+  expires_on: extra.expires_on ?? null, auto_merchant: extra.auto_merchant ?? null,
+});
 
 ok("only benefits from cards the member confirmed are counted", () => {
   const s = R.trackBenefits({
@@ -699,6 +703,91 @@ ok("every seeded earn row resolves to the category it claims", () => {
     const kind = C.BUILTIN_TAXONOMY.classify(id, null).k;
     strictEqual(kind, "spend", `${id} is ${kind}, not spend`);
   }
+});
+
+// ── 12. Auto-matching a benefit to a charge (issue #264) ────────────────────
+const txn = (account_id: string | null, merchant_name: string | null, amount: number, date: string): R.MerchantTxn =>
+  ({ account_id, merchant_name, amount, date });
+
+ok("a matching charge inside the period ticks the benefit, with evidence", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("uber-card-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 1);
+  strictEqual(m[0].benefit_id, "uber-cash");
+  strictEqual(m[0].period_key, "2026-08");
+  strictEqual(m[0].evidence, "UBER *TRIP · Aug 14 · $10.00");
+});
+ok("no auto_merchant means never matched, whatever the charges say", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month")],
+    txns: [txn("uber-card-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 0);
+});
+ok("a charge from last month does not satisfy this month's period", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("uber-card-acct", "UBER *TRIP", 10, "2026-07-30")],
+    today: AUG,
+  });
+  strictEqual(m.length, 0, "the period boundary must exclude a charge from before it started");
+});
+ok("a charge on a different account never matches someone else's card", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("some-other-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 0);
+});
+ok("an expired benefit is not matched, same rule trackBenefits applies", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month",
+      { auto_merchant: "uber", expires_on: "2026-01-01" })],
+    txns: [txn("uber-card-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 0);
+});
+ok("merchant matching is case-insensitive", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("uber-card-acct", "Uber Eats", 22, "2026-08-05")],
+    today: AUG,
+  });
+  strictEqual(m.length, 1, "Uber Eats still names Uber");
+});
+ok("the most recent matching charge is the one quoted as evidence", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("uber-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [
+      txn("uber-card-acct", "UBER *TRIP", 8, "2026-08-02"),
+      txn("uber-card-acct", "UBER *EATS", 15, "2026-08-20"),
+    ],
+    today: AUG,
+  });
+  strictEqual(m.length, 1);
+  strictEqual(m[0].evidence, "UBER *EATS · Aug 20 · $15.00");
+});
+ok("a card the member does not hold that product on matches nothing", () => {
+  const m = R.matchAutoBenefits({
+    cards: [held("some-other-card")],
+    benefits: [benefit("uber-cash", "uber-card", "Travel", 10, "month", { auto_merchant: "uber" })],
+    txns: [txn("some-other-card-acct", "UBER *TRIP", 10, "2026-08-14")],
+    today: AUG,
+  });
+  strictEqual(m.length, 0, "the benefit belongs to a product this member was never confirmed on");
 });
 
 console.log(`${n} rewards cases passed`);

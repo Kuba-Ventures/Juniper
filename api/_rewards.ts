@@ -141,6 +141,14 @@ export interface Benefit {
       ending would still be asking somebody in 2028 to use a credit that stopped
       in 2027. */
   expires_on: string | null;
+  /** Lowercase merchant substring, or null (migration 0052). Set on a benefit
+      only when the credit names ONE unambiguous merchant a charge can prove --
+      "Uber Cash" and nothing that says "eligible partners" or "participating
+      restaurants" -- which is nearly no row in the catalog. See `matchAutoBenefits`
+      and the migration's own header for which two qualify today and why no others
+      do. NULL, the default, means the member ticks it by hand, same as every
+      benefit before this column existed. */
+  auto_merchant: string | null;
 }
 
 /** A linked Plaid credit account, and the product the member confirmed it is. */
@@ -738,6 +746,18 @@ export interface TrackedBenefit extends Benefit {
   periodKey: string;
   used: boolean;
   usedAt: string | null;
+  /** How `used` came to be true. 'member' (the default, and the only value for
+      every benefit without `auto_merchant`) means somebody tapped the checkbox.
+      'auto' means `matchAutoBenefits` found a charge and the caller wrote the row
+      itself. Meaningless while `used` is false, which is when a benefit has never
+      been ticked by either path. */
+  source: "member" | "auto";
+  /** The matched charge, as a snapshot string ("Uber · Mar 14 · $10.00"),
+      or null. Set only when `source` is 'auto': the whole point of showing it is
+      that an automatic tick must never be the only thing claiming a credit was
+      used, so the evidence for it has to be on screen next to it, not just in a
+      database row the member cannot see. */
+  evidence: string | null;
 }
 
 export interface BenefitGroup {
@@ -774,7 +794,13 @@ export function trackBenefits(args: {
   cards: MemberCard[];
   products: Map<string, CardProduct>;
   benefits: Benefit[];
-  uses: { benefit_id: string; period_key: string; used_at: string }[];
+  uses: {
+    benefit_id: string; period_key: string; used_at: string;
+    /** Absent on a use built before migration 0052 (and on every use of a
+        member-ticked benefit since), which is why this defaults to 'member'
+        rather than being required. */
+    source?: "member" | "auto"; evidence?: string | null;
+  }[];
   today: Date;
 }): BenefitSummary {
   const held = new Set(heldProducts(args.cards, args.products).map((p) => p.id));
@@ -801,6 +827,8 @@ export function trackBenefits(args: {
       periodKey,
       used: !!use,
       usedAt: use?.used_at ?? null,
+      source: use?.source === "auto" ? "auto" : "member",
+      evidence: use?.source === "auto" ? use?.evidence ?? null : null,
     });
   }
 
@@ -840,6 +868,129 @@ export function trackBenefits(args: {
     valuePartial,
     groups,
   };
+}
+
+// ── Auto-matching a benefit to a charge (issue #264) ────────────────────────
+//
+// A narrow exception to "Juniper does not detect use", the header comment on
+// card_benefit_uses since 0031 and still correct for almost everything the
+// tracker shows: a matching charge usually proves a purchase happened, not that
+// the issuer applied the credit for it, and those arrive weeks apart. The
+// exception is a benefit like Amex's Uber Cash, where the "credit" and the
+// "charge that earns it" are the same fact stated twice -- there is no gap for
+// the issuer to fail to close. `auto_merchant` on the catalog row is the editorial
+// decision that a given benefit clears that bar (see migration 0052); this
+// function is the arithmetic once that decision has been made.
+
+/** The one shape this needs out of a transaction: enough to say a charge to a
+    named merchant happened, on a date, for an amount. Deliberately not the full
+    transactions row -- account_id, merchant_name, amount and date is the whole
+    match. */
+export interface MerchantTxn {
+  account_id: string | null;
+  merchant_name: string | null;
+  amount: number;
+  date: string;
+}
+
+export interface BenefitMatch {
+  benefit_id: string;
+  period_key: string;
+  /** The evidence string to store verbatim in card_benefit_uses.evidence. */
+  evidence: string;
+}
+
+/** The first day of the period a benefit's `periodKey` names, as an ISO date, so
+    a match can be scoped to THIS period and not last month's or last year's use
+    of the same merchant. `once` and a null period have no period to start from,
+    so every charge Juniper has ever read counts -- which is fine, because nothing
+    in the catalog pairs `auto_merchant` with anything but 'month' or 'year'
+    today, and a stray 'once' row would rather over-match than never match. */
+function periodStart(period: BenefitPeriod | null, today: Date): string {
+  const y = today.getUTCFullYear();
+  if (period === "year") return `${y}-01-01`;
+  if (period === "quarter") {
+    const q = Math.floor(today.getUTCMonth() / 3);
+    return `${y}-${String(q * 3 + 1).padStart(2, "0")}-01`;
+  }
+  if (period === "month") return `${y}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  return "0001-01-01";
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Uber · Mar 14 · $10.00". Parsed as UTC date parts rather than through the
+    Date constructor for the same reason benefits-tracker.tsx's own `endsOn`
+    is: a bare YYYY-MM-DD read through `new Date()` and printed in local time
+    lands a day early for anybody west of Greenwich. */
+function formatEvidence(t: MerchantTxn): string {
+  const [, m, d] = t.date.split("-").map(Number);
+  const when = MONTHS[m - 1] ? `${MONTHS[m - 1]} ${d}` : t.date;
+  const merchant = (t.merchant_name ?? "").trim() || "a charge";
+  return `${merchant} · ${when} · $${Math.abs(t.amount).toFixed(2)}`;
+}
+
+/**
+ * Which auto-completable benefits have a matching charge THIS period, from the
+ * transactions Juniper can actually see.
+ *
+ * Pure and I/O-free, same as everything else in this file: the caller reads the
+ * rows, this decides what they mean, scripts/src/check-rewards.ts proves it with
+ * no database.
+ *
+ * `txns` is expected to be whatever window the caller already fetched for the
+ * earning guide (90 days today, see WINDOW_DAYS in _finance-snapshot.ts), NOT a
+ * window sized to the benefit's own period. That is a real, stated limitation
+ * rather than a silent one: a YEARLY benefit (both seeded Uber Cash rows are
+ * 'year', see 0044) can only be matched against the trailing 90 days of the
+ * member's history, so a January charge will not surface a match in October even
+ * though it is genuinely inside the same calendar year. The alternative, fetching
+ * a second, wider window just for this, doubles the read for two benefits in the
+ * whole catalog; this degrades toward UNDER-matching, which is the safe
+ * direction, exactly like the cents-per-point floor above.
+ *
+ * Only the MOST RECENT matching charge is returned per benefit: one is enough to
+ * prove use, and the most recent is the one a member would recognize.
+ */
+export function matchAutoBenefits(args: {
+  cards: MemberCard[];
+  benefits: Benefit[];
+  txns: MerchantTxn[];
+  today: Date;
+}): BenefitMatch[] {
+  const accountsByProduct = new Map<string, string[]>();
+  for (const c of args.cards) {
+    if (!c.product_id) continue;
+    const list = accountsByProduct.get(c.product_id);
+    if (list) list.push(c.plaid_account_id);
+    else accountsByProduct.set(c.product_id, [c.plaid_account_id]);
+  }
+
+  const todayIso = args.today.toISOString().slice(0, 10);
+  const out: BenefitMatch[] = [];
+  for (const b of args.benefits) {
+    const needle = b.auto_merchant;
+    if (!needle) continue;
+    // Same rule trackBenefits applies: an expired benefit is not there to match.
+    if (b.expires_on && b.expires_on < todayIso) continue;
+    const accountIds = accountsByProduct.get(b.product_id);
+    if (!accountIds?.length) continue;
+
+    const start = periodStart(b.period, args.today);
+    const hits = args.txns
+      .filter((t) => t.account_id && accountIds.includes(t.account_id))
+      .filter((t) => t.date >= start && t.date <= todayIso)
+      .filter((t) => (t.merchant_name ?? "").toLowerCase().includes(needle))
+      .sort((x, y) => y.date.localeCompare(x.date));
+    if (!hits.length) continue;
+
+    out.push({
+      benefit_id: b.id,
+      period_key: benefitPeriodKey(b.period, args.today),
+      evidence: formatEvidence(hits[0]),
+    });
+  }
+  return out;
 }
 
 /**

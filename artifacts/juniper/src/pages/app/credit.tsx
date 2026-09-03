@@ -4,13 +4,16 @@ import { CreditCard as CardIcon } from "lucide-react";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
-import { forgetCard, setCardLimit, useCardRewards, type LinkedCard as RewardsCard } from "@/lib/cards";
+import {
+  forgetCard, setCardLimit, useCardRewards, type CardRewards, type LinkedCard as RewardsCard,
+} from "@/lib/cards";
 import {
   limitFor, linkedCards, manualCards, utilizationSummary, type CreditCardRow as LinkedCard,
 } from "@/lib/credit-cards";
 import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
-import { RewardsGuide } from "@/components/juniper/rewards-guide";
+import { CardWallet } from "@/components/juniper/card-wallet";
+import { RewardsGuide, RewardsSummaryCharts } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
 import type { HolderStyle } from "@/lib/holder-style";
@@ -564,11 +567,15 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         sub="Every credit card you have linked, what you owe on it, and how much of the limit you are using."
       />
 
+      {/* 1. Credit score. Not tracked yet, and the panel says so honestly; stays
+          first because it is what the page is named after. Issue #264 orders the
+          rest of the page below it: the holder, then the card list, then benefits
+          and credits. */}
       <ScorePending />
 
-      {/* Above the cards, because it is the one thing on this page with something
-          for the member to DO, and because every section below it is gated on the
-          answer. */}
+      {/* Above the holder, because it is the one thing on this page with something
+          for the member to DO, and because the holder and everything below it is
+          gated on the answer. */}
       {rewards.data && (
         <CardIdentifyPrompt
           cards={rewards.data.unidentified}
@@ -578,6 +585,22 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         />
       )}
 
+      {/* 2. The card holder stack: the cards themselves, which is the thing on
+          this page a member recognizes at a glance. Split out of the rewards
+          hero (see card-wallet.tsx and rewards-guide.tsx's own headers) so it can
+          sit here, ahead of the card list, rather than sharing a row with the
+          rewards numbers further down the page. */}
+      {rewards.data && (
+        <CardHolderSection
+          data={rewards.data}
+          brands={brands}
+          onIdentify={() => setIdentifyRequest((n) => n + 1)}
+          holderStyle={holderStyle}
+        />
+      )}
+
+      {/* 3. The card list: utilization, balance, limit, per card, with the
+          provenance badges ("You set this" / "You added this") intact. */}
       {withLimits == null ? (
         <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 32 }}>Loading…</div>
       ) : withLimits.length === 0 ? (
@@ -608,19 +631,16 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         </div>
       )}
 
-      {/* Order is deliberate: the guide is the reference somebody reads, the
-          tracker is the thing they act on repeatedly, and the switch ideas are
-          the money. The guide goes first anyway, because a recommendation to move
-          a category reads as arbitrary until you have seen the rate table it came
-          from, and this surface can least afford to look like it is guessing. */}
+      {/* 4. Benefits, credits, and what is being left on the table, as charts
+          rather than as a list of rows (RewardsSummaryCharts), with the rewards
+          guide -- the instruction for which card to reach for -- ahead of them,
+          since a recommendation to move a category reads as arbitrary until you
+          have seen where it comes from, and the checklist and the switch ideas
+          are what a member acts on once they have. */}
       {rewards.data && (
         <>
-          <RewardsGuide
-            data={rewards.data}
-            logoFor={rewardsLogo(brands)}
-            onIdentify={() => setIdentifyRequest((n) => n + 1)}
-            holderStyle={holderStyle}
-          />
+          <RewardsGuide data={rewards.data} />
+          <RewardsSummaryCharts data={rewards.data} />
           {rewards.data.benefits && (
             <BenefitsTracker
               summary={rewards.data.benefits}
@@ -632,6 +652,49 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
           <CardSwitches data={rewards.data} />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The card holder, on its own (issue #264, position 2 on the page). Owns the
+ * "N of M identified" subtitle that used to sit beside the wallet inside the
+ * old rewards hero, since that count is about the CARDS rather than about
+ * rewards math, and belongs with the thing it counts.
+ */
+function CardHolderSection({
+  data, brands, onIdentify, holderStyle,
+}: {
+  data: CardRewards;
+  brands: InstitutionBrandMap | null;
+  onIdentify: () => void;
+  holderStyle: HolderStyle | null;
+}) {
+  const confirmed = data.cards.filter((c) => c.product);
+  if (!confirmed.length) return null;
+  const handCount = (data.manual ?? []).length;
+  return (
+    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+      <div className="eyebrow">Your cards</div>
+      {/* "N of M identified" used to describe the whole stack. It cannot any
+          more: a hand-entered card can never be identified, so counting it in M
+          would leave a total that never completes, and leaving it out
+          contradicts the pocket beside it. The count is therefore about LINKED
+          cards, said so, with the hand-entered ones named separately. */}
+      <div className="cr-hero-sub" style={{ marginBottom: 12 }}>
+        {confirmed.length} of {data.cards.length}{" "}
+        {data.cards.length === 1 ? "linked card" : "linked cards"} identified
+        {data.unidentified.length > 0 && <>, {data.unidentified.length} still to go</>}
+        {handCount > 0 && <> · {handCount} added by hand</>}
+      </div>
+      <CardWallet
+        cards={confirmed}
+        unidentified={data.unidentified}
+        manual={data.manual ?? []}
+        logoFor={rewardsLogo(brands)}
+        onIdentify={onIdentify}
+        holderStyle={holderStyle}
+      />
     </div>
   );
 }

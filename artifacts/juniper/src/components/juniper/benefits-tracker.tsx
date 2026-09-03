@@ -2,18 +2,21 @@ import { useState } from "react";
 import { money0, periodWord, setBenefitUsed, readableDate,
          type BenefitSummary, type TrackedBenefit } from "@/lib/cards";
 
-// The benefits tracker. Treatment A of three
-// (design/card-rewards-variants.html), issue #168.
+// The benefits tracker. Originally treatment A of three
+// (design/card-rewards-variants.html), issue #168; the evidence-linked row below
+// is treatment C of three redesigns rendered for issue #264
+// (previews/credit-guide-benefits-options.html).
 //
 // ── IT IS THE MEMBER'S CHECKLIST, NOT A STATEMENT ABOUT THE ISSUER ─────────
 //
-// Two things Juniper cannot know, both of which shape this component:
+// Two things Juniper cannot know for MOST benefits here, and this is still the
+// rule for nearly every row:
 //
 //   1. WHETHER A CREDIT WAS ACTUALLY APPLIED. A matching charge proves a hotel
 //      was paid for, not that the issuer credited it back, and those arrive weeks
-//      apart. So nothing is ticked automatically. An automatic tick that is
-//      sometimes wrong is worse than no tick at all, because the member would
-//      stop trusting the list and stop checking.
+//      apart. So nothing here is ticked automatically by default. An automatic
+//      tick that is sometimes wrong is worse than no tick at all, because the
+//      member would stop trusting the list and stop checking.
 //   2. WHEN THE ISSUER'S OWN PERIOD RESETS. A good share of real card credits
 //      reset on the CARDMEMBER year, the anniversary of the account opening.
 //      Plaid's `transactions` product does not return an account's open date, so
@@ -25,6 +28,20 @@ import { money0, periodWord, setBenefitUsed, readableDate,
 // access and primary rental coverage are real and worth remembering; they just
 // cannot be summed, so the total says it is partial rather than assigning them a
 // guess.
+//
+// ── THE NARROW EXCEPTION (issue #264), AND WHY THE EVIDENCE IS ON SCREEN ────
+//
+// Two benefits in the whole catalog (Amex Platinum and Amex Gold's Uber Cash)
+// are not "a charge that MIGHT mean the credit applied" -- they ARE the credit,
+// restated: the merchant is Uber and only Uber. api/card-rewards.ts ticks those
+// itself when it finds a matching charge (`benefit.source === "auto"`), and rule
+// 1 above is respected rather than broken by never letting that tick stand
+// alone: `benefit.evidence` carries the matched charge as a plain string, and it
+// is rendered directly under the row, not hidden behind a tooltip or a details
+// toggle, because the whole point of an automatic tick is that the member can
+// see exactly what Juniper saw. The checkbox is still a real checkbox, still
+// wired to the same `onToggle` a manual row uses, so "not this one" is one tap
+// away and behaves exactly like unticking anything else on this list.
 
 // Icons per perk family. A small fixed table rather than per-benefit art: the
 // groups come from the catalog and there are five of them, so a lookup that
@@ -55,7 +72,12 @@ function BenefitRow({
 }) {
   const period = periodWord(benefit.period);
   const used = readableDate(benefit.usedAt ? benefit.usedAt.slice(0, 10) : null);
+  // An automatic tick with its own evidence line below states the date and
+  // amount there, so repeating "ticked off <date>" on this line would be the
+  // same fact twice in two different formats.
+  const auto = benefit.used && benefit.source === "auto";
   return (
+    <>
     <label className={benefit.used ? "cr-bt-b done" : "cr-bt-b"}>
       <input
         className="cr-bt-tick"
@@ -65,11 +87,18 @@ function BenefitRow({
         onChange={(e) => onToggle(e.target.checked)}
       />
       <span className="cr-bt-body">
-        <span className="cr-bt-bn">{benefit.name}</span>
+        <span className="cr-bt-bn">
+          {/* Not decoration: the one visual difference between a tick the member
+              made and one Juniper made for them, at the point they'd actually
+              look, the name itself. See the evidence line below for the receipt
+              that backs it up. */}
+          {auto && <span className="cr-bt-auto" title="Juniper matched a charge to this benefit" aria-hidden="true">⚡</span>}
+          {benefit.name}
+        </span>
         <span className="cr-bt-bd">
           {benefit.productName}
           {benefit.detail && <> &middot; {benefit.detail}</>}
-          {benefit.used && used && <> &middot; ticked off {used}</>}
+          {benefit.used && used && !auto && <> &middot; ticked off {used}</>}
           {/* Said out loud rather than letting the benefit disappear on the day it
               lapses. Anything already expired is filtered out server-side, so a
               date here is always still ahead -- and a credit that is ending is
@@ -84,6 +113,20 @@ function BenefitRow({
         {period && <span className="cr-bt-per">{period}</span>}
       </span>
     </label>
+    {/* Outside the label, deliberately: a button nested inside a label sits next
+        to a form control that toggles on any click landing in the label, and
+        keeping the evidence line as a sibling rather than a label descendant
+        means "not this one?" can never accidentally double-fire the checkbox
+        it already controls through `onToggle`. */}
+    {auto && benefit.evidence && (
+      <div className="cr-bt-evidence">
+        <span aria-hidden="true">🧾</span> matched: <code>{benefit.evidence}</code>
+        <button type="button" className="cr-bt-undo" disabled={busy} onClick={() => onToggle(false)}>
+          not this one?
+        </button>
+      </div>
+    )}
+    </>
   );
 }
 

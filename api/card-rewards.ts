@@ -35,8 +35,8 @@ import { creditPosition } from "./_credit-balance";
 import { fetchManualCreditAccounts } from "./_manual-accounts";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import {
-  anyUnverified, benefitPeriodKey, earningGuide, oldestAsOf, rankCandidates,
-  shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
+  anyUnverified, benefitPeriodKey, earningGuide, matchAutoBenefits, oldestAsOf,
+  rankCandidates, shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
   type AccountCategorySpend, type Benefit, type BenefitPeriod, type CapPeriod,
   type CardProduct, type EarnRow, type EarnUnit, type MemberCard,
 } from "./_rewards";
@@ -78,8 +78,18 @@ interface MemberCardRow {
       existing, since a row can now exist only to hold a limit. */
   product_answered: boolean;
 }
-interface TxnRow { account_id: string | null; amount: number; date: string; category: string | null; category_id: string | null }
-interface UseRow { benefit_id: string; period_key: string; used_at: string }
+interface TxnRow {
+  account_id: string | null; amount: number; date: string;
+  category: string | null; category_id: string | null;
+  /** Only ever read for auto-matching a benefit (issue #264); the spend and
+      guide arithmetic below never touches it. */
+  merchant_name: string | null;
+}
+interface UseRow {
+  benefit_id: string; period_key: string; used_at: string;
+  /** Optional column: see `rowsWithOptional` below and migration 0052. */
+  source?: "member" | "auto"; evidence?: string | null;
+}
 
 /**
  * Like `rows`, but for a select carrying a column that may not exist yet.
@@ -244,7 +254,8 @@ export default async function handler(req: Request): Promise<Response> {
   const uid = payload.sub;
 
   const since = isoDaysAgo(WINDOW_DAYS);
-  const [items, confirmations, productRows, earnRows, benefitRows, txns, uses, manualRows] = await Promise.all([
+  const [items, confirmations, productRows, earnRows, benefitRows, txns, uses, dismissals, manualRows] =
+    await Promise.all([
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
     readConfirmations(uid),
     readCatalog(),
@@ -252,13 +263,18 @@ export default async function handler(req: Request): Promise<Response> {
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
       "earn rates"),
     rowsWithOptional<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
-           value_amount: number | null; period: BenefitPeriod | null; expires_on?: string | null }>(
+           value_amount: number | null; period: BenefitPeriod | null;
+           expires_on?: string | null; auto_merchant?: string | null }>(
       "card_product_benefits?select=id,product_id,benefit_group,name,detail,value_amount,period",
-      ["expires_on"], "card benefits"),
+      ["expires_on", "auto_merchant"], "card benefits"),
     rows<TxnRow>(
-      `transactions?user_id=eq.${uid}&date=gte.${since}&select=account_id,amount,date,category,category_id&limit=2000`,
+      `transactions?user_id=eq.${uid}&date=gte.${since}&select=account_id,amount,date,category,category_id,merchant_name&limit=2000`,
       "transactions"),
-    rows<UseRow>(`card_benefit_uses?user_id=eq.${uid}&select=benefit_id,period_key,used_at`, "benefit ticks"),
+    rowsWithOptional<UseRow>(
+      `card_benefit_uses?user_id=eq.${uid}&select=benefit_id,period_key,used_at`,
+      ["source", "evidence"], "benefit ticks"),
+    rows<{ benefit_id: string; period_key: string }>(
+      `card_benefit_dismissals?user_id=eq.${uid}&select=benefit_id,period_key`, "benefit dismissals"),
     fetchManualCreditAccounts(uid),
   ]);
 
@@ -428,6 +444,10 @@ export default async function handler(req: Request): Promise<Response> {
     // the benefit is kept. Defaulting the other way would hide every benefit on a
     // deploy that ran ahead of 0043.
     expires_on: (b as { expires_on?: string | null }).expires_on ?? null,
+    // Same convention, same reason, for the column 0052 adds: absent (deploy
+    // ahead of the migration) and NULL (not this benefit's decision to make) both
+    // mean "not auto-completable", which is the safe default either way.
+    auto_merchant: b.auto_merchant ?? null,
     id: b.id, product_id: b.product_id, group: b.benefit_group, name: b.name,
     detail: b.detail, period: b.period,
     value_amount: b.value_amount == null ? null : Number(b.value_amount),
@@ -547,6 +567,57 @@ export default async function handler(req: Request): Promise<Response> {
   });
   const switches = switchIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
   const upgrades = upgradeIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
+  // ── Auto-matching, and writing what it finds (issue #264) ────────────────
+  //
+  // A GET that writes is unusual, and it is deliberate here rather than an
+  // oversight: this is the one request that already holds all three inputs a
+  // match needs (which cards the member confirmed, the benefits catalog with
+  // `auto_merchant`, and this member's own transactions), so building a second
+  // endpoint to do the same join would mean fetching all three again. The write
+  // is safe to repeat: `on_conflict=ignore-duplicates` makes a second GET in the
+  // same period a no-op, the same idempotence the tick endpoint itself relies on.
+  //
+  // A match is skipped, not written, when either is already true: a row already
+  // exists for this benefit and period (whoever ticked it first, member or an
+  // earlier auto-match, keeps the tick -- this function never overwrites one),
+  // or the member dismissed this exact benefit-and-period before (migration
+  // 0052's card_benefit_dismissals). Both checks run before any INSERT is built.
+  const usedKeys = new Set(uses.map((u) => `${u.benefit_id}|${u.period_key}`));
+  const dismissedKeys = new Set(dismissals.map((d) => `${d.benefit_id}|${d.period_key}`));
+  const matches = matchAutoBenefits({
+    cards: memberCards, benefits,
+    txns: txns.map((t) => ({ account_id: t.account_id, merchant_name: t.merchant_name, amount: t.amount, date: t.date })),
+    today: new Date(),
+  }).filter((m) => {
+    const key = `${m.benefit_id}|${m.period_key}`;
+    return !usedKeys.has(key) && !dismissedKeys.has(key);
+  });
+
+  if (matches.length) {
+    const results = await Promise.all(matches.map((m) =>
+      adminRest("card_benefit_uses?on_conflict=user_id,benefit_id,period_key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+        body: JSON.stringify({
+          user_id: uid, benefit_id: m.benefit_id, period_key: m.period_key,
+          source: "auto", evidence: m.evidence,
+        }),
+      }),
+    ));
+    results.forEach((r, i) => {
+      if (!r.ok) console.error(`[cards] auto-match write failed for ${matches[i].benefit_id} (${r.status})`);
+    });
+    // Folded into `uses` in memory rather than re-read from the database: the
+    // writes above either landed or they will land on the member's next load
+    // (the match will simply be found again, since nothing here consumed the
+    // charge it matched on), and a member looking at THIS response should see
+    // the tick their own page load just produced.
+    for (const m of matches) {
+      uses.push({ benefit_id: m.benefit_id, period_key: m.period_key, used_at: new Date().toISOString(),
+        source: "auto", evidence: m.evidence });
+    }
+  }
+
   const tracked = trackBenefits({ cards: memberCards, products, benefits, uses, today: new Date() });
 
   return json({
