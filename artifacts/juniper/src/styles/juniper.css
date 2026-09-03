@@ -184,6 +184,17 @@
 .jnpr .hero{grid-template-columns:1.5fr 1fr}.jnpr .two{grid-template-columns:1fr 1fr}
 @media(max-width:860px){.jnpr .hero,.jnpr .two{grid-template-columns:1fr}}
 
+/* The Credit page's card holder beside its card list (issue #264 follow-up,
+   treatment B of three in previews/credit-holder-list-layout-options.html).
+   320px fits `.cr-holder`'s fixed 262px plus `.card.pad-lg`'s 22px padding on
+   each side, with a few px to spare. align-items:start rather than the grid
+   default (stretch), because the holder is reliably shorter than a card list
+   of more than a couple of rows and stretching it would leave its own content
+   floating in a taller box rather than the box simply ending where its
+   content does. */
+.jnpr .credit-row{grid-template-columns:320px 1fr;align-items:start}
+@media(max-width:860px){.jnpr .credit-row{grid-template-columns:1fr}}
+
 .jnpr .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
   background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:inline-flex;align-items:center;gap:7px;font-family:inherit}
 .jnpr .btn:hover{filter:brightness(1.08)}.jnpr .btn svg{width:14px;height:14px}
