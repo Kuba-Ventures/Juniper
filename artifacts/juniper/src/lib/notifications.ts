@@ -1,21 +1,63 @@
-// The notifications bell (issue #266): three facts the app already computes
-// server-side and had nowhere to surface. No new table, no stored read state —
-// each item is derived live from data already fetched for other pages, which
-// is deliberately the smaller of the two moves the issue lays out. Read state
-// and a proper notifications table are the harder follow-up it names, not this.
-import { useEffect, useMemo, useState } from "react";
+// The notifications bell (issue #266). Two things happen here:
+//
+// 1. WHICH FACTS ARE TRUE RIGHT NOW is still computed live, unchanged from
+//    the first pass: a connection that needs reconnecting (sync.needsRelink),
+//    a budget over its limit this month (data.budgets), a subscription charge
+//    that drifted from what the member confirmed (fetchSubscriptions()'s
+//    health check). This module is the one place that decides what counts,
+//    and api/notifications.ts deliberately never re-derives it, so there is
+//    exactly one definition rather than two free to disagree.
+// 2. THE HISTORY BEHIND THEM now has real storage. Every computed fact
+//    carries a `dedupeKey` naming its own instance (which connection failure,
+//    which month's budget, which charge), sent to /api/notifications on every
+//    load; the server reconciles it into rows with a status
+//    (active/resolved/cleared) and a read flag. See that file's header for
+//    why a cleared row stays cleared instead of being deleted.
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useFinances } from "@/lib/finances";
 import { fetchSubscriptions } from "@/lib/subscriptions";
 import { money } from "@/lib/mock-data";
+import { getAccessToken } from "@/lib/supabase";
 
 export type NotificationKind = "reconnect" | "budget" | "drift";
 
-export interface NotificationItem {
+interface Fact {
+  kind: NotificationKind;
+  dedupeKey: string;
+  title: string;
+  detail: string;
+  href: string;
+}
+
+// The server's own shape (api/notifications.ts's `list`/`reconcile`).
+export interface NotificationRecord {
   id: string;
   kind: NotificationKind;
   title: string;
   detail: string;
   href: string;
+  status: "active" | "resolved" | "cleared";
+  created_at: string;
+  resolved_at: string | null;
+  read_at: string | null;
+}
+
+// Short relative-time labels for the bell's rows ("2h", "3w", "4mo"), distinct
+// from `sinceLabel` below, which is prose for a reconnect fact's own detail line.
+export function agoLabel(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "now";
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}w`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo`;
+  return `${Math.floor(day / 365)}y`;
 }
 
 function sinceLabel(iso: string): string {
@@ -25,60 +67,125 @@ function sinceLabel(iso: string): string {
   return `${days} days ago`;
 }
 
-export function useNotifications(): { items: NotificationItem[]; loading: boolean } {
+async function authed(path: string, init?: RequestInit): Promise<Response | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  return fetch(path, {
+    ...init,
+    headers: { ...(init?.headers ?? {}), "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  });
+}
+
+// The live facts, unchanged in substance from the first pass, now each
+// carrying the key that names their own instance (see the module header).
+function liveFacts(
+  sync: { needsRelink: { institution: string; since: string | null }[] } | undefined,
+  budgets: { c: string; s: number; l: number }[],
+  subs: { id: string; name: string; health: string | null; expected: number | null; last: number | null; lastDate: string | null }[] | null,
+): Fact[] {
+  const period = new Date().toISOString().slice(0, 7); // budgets are always the current month
+  const reconnect: Fact[] = (sync?.needsRelink ?? []).map((r) => ({
+    kind: "reconnect",
+    dedupeKey: `reconnect:${r.institution}:${r.since ?? "unknown"}`,
+    title: `${r.institution} needs reconnecting`,
+    detail: r.since ? `Balances stopped updating ${sinceLabel(r.since)}` : "Balances have stopped updating",
+    href: "/app/connections",
+  }));
+  const budget: Fact[] = budgets
+    .filter((b) => b.l > 0 && b.s > b.l)
+    .map((b) => ({
+      kind: "budget",
+      dedupeKey: `budget:${b.c}:${period}`,
+      title: `${b.c} is over budget`,
+      detail: `${money(b.s)} of ${money(b.l)} this month`,
+      href: "/app/transactions?panel=budgets",
+    }));
+  const drift: Fact[] = (subs ?? [])
+    .filter((s) => s.health === "amount_changed")
+    .map((s) => ({
+      kind: "drift",
+      dedupeKey: `drift:${s.id}:${s.lastDate ?? s.last ?? "unknown"}`,
+      title: `${s.name} charged more than expected`,
+      detail:
+        s.expected != null && s.last != null
+          ? `Expected ${money(s.expected)}, charged ${money(s.last)}`
+          : "The amount changed from what you confirmed",
+      href: "/app/transactions",
+    }));
+  return [...reconnect, ...budget, ...drift];
+}
+
+export function useNotifications(): {
+  loading: boolean;
+  /** Active and unread: what a member opening the bell needs to act on. */
+  active: NotificationRecord[];
+  /** Read-but-active, and resolved: everything else still worth keeping around. */
+  earlier: NotificationRecord[];
+  markRead: (id: string) => void;
+  clear: (id: string) => void;
+} {
   const { data, sync, source } = useFinances();
-  // Subscriptions isn't part of the /api/finances payload AppBar already reads
-  // (see src/lib/subscriptions.ts), so the drift check costs its own fetch.
-  const [drift, setDrift] = useState<NotificationItem[] | null>(null);
+  const [subs, setSubs] = useState<Awaited<ReturnType<typeof fetchSubscriptions>>>(null);
+  // Separate from `subs` itself: fetchSubscriptions() resolves to null on a
+  // genuine failure too, so "loaded, no data" has to be distinguishable from
+  // "still loading" or a failed subscriptions fetch would block reconnect and
+  // budget facts, which do not depend on it, from ever reconciling.
+  const [subsLoaded, setSubsLoaded] = useState(false);
+  const [records, setRecords] = useState<NotificationRecord[] | null>(null);
 
   useEffect(() => {
     if (source !== "live") {
-      setDrift([]);
+      setSubsLoaded(true);
       return;
     }
     let cancelled = false;
     fetchSubscriptions().then((payload) => {
-      if (cancelled || !payload) return;
-      setDrift(
-        payload.items
-          .filter((s) => s.health === "amount_changed")
-          .map((s) => ({
-            id: `drift-${s.id}`,
-            kind: "drift" as const,
-            title: `${s.name} charged more than expected`,
-            detail:
-              s.expected != null && s.last != null
-                ? `Expected ${money(s.expected)}, charged ${money(s.last)}`
-                : "The amount changed from what you confirmed",
-            href: "/app/transactions",
-          })),
-      );
+      if (cancelled) return;
+      setSubs(payload);
+      setSubsLoaded(true);
     });
     return () => {
       cancelled = true;
     };
   }, [source]);
 
-  return useMemo(() => {
-    const reconnect: NotificationItem[] = (sync?.needsRelink ?? []).map((r, i) => ({
-      id: `reconnect-${r.institution}-${i}`,
-      kind: "reconnect",
-      title: `${r.institution} needs reconnecting`,
-      detail: r.since ? `Balances stopped updating ${sinceLabel(r.since)}` : "Balances have stopped updating",
-      href: "/app/connections",
-    }));
-    const budget: NotificationItem[] = (data.budgets ?? [])
-      .filter((b) => b.l > 0 && b.s > b.l)
-      .map((b) => ({
-        id: `budget-${b.c}`,
-        kind: "budget",
-        title: `${b.c} is over budget`,
-        detail: `${money(b.s)} of ${money(b.l)} this month`,
-        href: "/app/transactions?panel=budgets",
-      }));
-    return {
-      items: [...reconnect, ...budget, ...(drift ?? [])],
-      loading: source === "live" && drift === null,
+  const factsKey = useMemo(() => {
+    if (source !== "live") return null;
+    return JSON.stringify(liveFacts(sync, data.budgets ?? [], subs?.items ?? null));
+  }, [source, sync, data.budgets, subs]);
+
+  useEffect(() => {
+    if (!factsKey || !subsLoaded) return;
+    let cancelled = false;
+    authed("/api/notifications", { method: "POST", body: JSON.stringify({ active: JSON.parse(factsKey) }) })
+      .then((res) => (res?.ok ? res.json() : null))
+      .then((payload) => {
+        if (!cancelled && payload) setRecords((payload as { items: NotificationRecord[] }).items);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
     };
-  }, [sync, data.budgets, drift, source]);
+  }, [factsKey, subsLoaded]);
+
+  const markRead = useCallback((id: string) => {
+    setRecords((prev) => (prev ? prev.map((r) => (r.id === id ? { ...r, read_at: new Date().toISOString() } : r)) : prev));
+    void authed("/api/notifications", { method: "PATCH", body: JSON.stringify({ id }) });
+  }, []);
+
+  const clear = useCallback((id: string) => {
+    setRecords((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
+    void authed(`/api/notifications?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  }, []);
+
+  return useMemo(() => {
+    const items = records ?? [];
+    return {
+      loading: source === "live" && records === null,
+      active: items.filter((r) => r.status === "active" && !r.read_at),
+      earlier: items.filter((r) => r.status !== "active" || !!r.read_at),
+      markRead,
+      clear,
+    };
+  }, [records, source, markRead, clear]);
 }
