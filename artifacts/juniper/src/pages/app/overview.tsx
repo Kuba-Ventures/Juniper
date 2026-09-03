@@ -1462,7 +1462,7 @@ export default function Overview({
             <div
               key={id}
               data-widget={id}
-              className={`dash-w${full ? " full" : ""}${dragId === id ? " dragging" : ""}`}
+              className={`dash-w${full ? " full" : ""}${dragId === id ? " dragging" : ""}${sizeMenuOpen === id ? " menu-open" : ""}`}
               onPointerDown={(e) => onCardPointerDown(e, id)}
             >
               {editing && (
