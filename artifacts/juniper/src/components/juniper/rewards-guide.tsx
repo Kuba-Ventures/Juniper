@@ -15,8 +15,8 @@ import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/jun
 // ── WHAT THIS TAKES FROM CREDIT KARMA AND WHAT IT CHANGES ──────────────────
 //
 // Takes: a per-category list naming which of YOUR cards wins, with the fine
-// print and a chip for a tie. That shape is genuinely good and the screenshots
-// on #168 are why.
+// print alongside it. That shape is genuinely good and the screenshots on #168
+// are why.
 //
 // Changes three things.
 //
@@ -31,6 +31,15 @@ import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/jun
 //   3. A CROSS-CURRENCY COMPARISON IS LABELLED AS AN ASSUMPTION. Credit Karma
 //      shows "3x points" and never compares it against a cash-back card, so it
 //      never owes this. Juniper picks a winner across currencies, so it does.
+//
+// A row shows the WINNER ONLY now, with a real card photo, and the rate as its
+// own hero-weight number beside the $/month figure it already had. The "tied
+// with" / "also considered" chips are gone: Finley asked not to see 2nd and 3rd
+// place, and for the rate to read louder than the plain accent-colored text it
+// used to be (previews/rewards-guide-photo-options.html, then
+// rewards-guide-rate-emphasis-options.html, option E). `entry.tied` and
+// `entry.others` are still computed server-side and simply unused here, so
+// nothing about api/_rewards.ts or the guide's ranking changed.
 
 // The category icon comes from the member's own taxonomy on the server side in
 // principle, but the guide rows arrive as ids and labels only, so the icon is
@@ -49,59 +58,51 @@ const CATEGORY_ICON: Record<string, string> = {
 };
 const iconFor = (categoryId: string) => CATEGORY_ICON[categoryId] ?? "📦";
 
+// `best.display` is always "<multiplier><%|x> <currency word>" (api/_rewards.ts
+// `displayRate`), exactly one space between the rate token and its unit, so the
+// hero-column treatment below can split on the first space rather than
+// reformatting the number itself.
+function splitRate(display: string): [string, string] {
+  const i = display.indexOf(" ");
+  return i === -1 ? [display, ""] : [display.slice(0, i), display.slice(i + 1)];
+}
+
 function GuideRow({
-  entry, centsFor, shortFor, artFor,
+  entry, centsFor, artFor,
 }: {
   entry: GuideEntry;
   centsFor: (productId: string) => number | null;
-  /** The short name, for the chips. The winner's line keeps the FULL name: it is
-      a sentence naming the member's card and should name it properly, where a
-      chip has room for about twenty characters. */
-  shortFor: (productId: string) => string;
   artFor: (productId: string) => string | null;
 }) {
   const { best } = entry;
   if (!best) return null;
+  const [rateNum, rateLabel] = splitRate(best.display);
   return (
     <div className="cr-rg-row">
-      <div className="cr-rg-ico" aria-hidden="true">{iconFor(entry.categoryId)}</div>
-      <div className="cr-rg-body">
-        {/* Category as the small label, card and rate as the answer -- the
-            instruction reads "Best Dining: Sapphire Preferred, 3x" rather than a
-            rate-table row with the card name tucked underneath it. Redesigned for
-            issue #264 (treatment A of three, previews/credit-guide-benefits-options.html). */}
-        <div className="cr-rg-best">Best {entry.categoryLabel}</div>
-        <div className="cr-rg-winner">
-          {best.productName}
-          <span className="cr-rg-rate">{best.display}</span>
-          {best.assumesPointValue && <AssumesPointValue cents={centsFor(best.productId)} />}
+      <div className="cr-rg-id">
+        <div className="cr-rg-ico" aria-hidden="true">{iconFor(entry.categoryId)}</div>
+        <CardFace size="sm" brandColor={best.brandColor} artUrl={artFor(best.productId)} />
+        <div className="cr-rg-idbody">
+          {/* Category as the small label, card name as the answer underneath it --
+              the redesign for issue #264. The rate used to live on this line too;
+              it now has its own hero-weight column (see below), so this line is
+              just the instruction: which card. */}
+          <div className="cr-rg-best">Best {entry.categoryLabel}</div>
+          <div className="cr-rg-winner">
+            {best.productName}
+            {best.assumesPointValue && <AssumesPointValue cents={centsFor(best.productId)} />}
+          </div>
+          {(best.note || best.cap) && (
+            <div className="cr-rg-fine">
+              {best.cap && <>Earns that {best.cap}. </>}
+              {best.note}
+            </div>
+          )}
         </div>
-        {(best.note || best.cap) && (
-          <div className="cr-rg-fine">
-            {best.cap && <>Earns that {best.cap}. </>}
-            {best.note}
-          </div>
-        )}
-        {(entry.tied.length > 0 || entry.others.length > 0) && (
-          <div className="cr-rg-chips">
-            {/* A TIE IS A DIFFERENT INSTRUCTION from a winner: it means it does
-                not matter which card they reach for. Worth its own emphasis, and
-                the reason api/_rewards.ts ties on exact equality only, so a
-                0.05% gap stays a winner. */}
-            {entry.tied.map((t) => (
-              <span className="cr-rg-chip tie" key={t.productId}>
-                <CardFace size="sm" brandColor={t.brandColor} artUrl={artFor(t.productId)} />
-                Tied with {shortFor(t.productId) || t.productName}
-              </span>
-            ))}
-            {entry.others.map((o) => (
-              <span className="cr-rg-chip" key={o.productId}>
-                <CardFace size="sm" brandColor={o.brandColor} artUrl={artFor(o.productId)} />
-                {shortFor(o.productId) || o.productName}, {o.display}
-              </span>
-            ))}
-          </div>
-        )}
+      </div>
+      <div className="cr-rg-rate-col">
+        <div className="cr-rg-rate-num tnum">{rateNum}</div>
+        <div className="cr-rg-rate-lab">{rateLabel}</div>
       </div>
       <div className="cr-rg-spend">
         <b>{money0(entry.monthlySpend)}</b>
@@ -118,7 +119,6 @@ export function RewardsGuide({ data }: { data: CardRewards }) {
   const cents = pointValueMap(data);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
   const faces = faceInfoMap(data);
-  const shortFor = (productId: string) => faces.get(productId)?.shortName ?? "";
   const artFor = (productId: string) => faces.get(productId)?.artUrl ?? null;
 
   return (
@@ -146,7 +146,7 @@ export function RewardsGuide({ data }: { data: CardRewards }) {
             that matters most to you is first.
           </div>
           {data.guide.map((e) => (
-            <GuideRow entry={e} centsFor={centsFor} shortFor={shortFor} artFor={artFor}
+            <GuideRow entry={e} centsFor={centsFor} artFor={artFor}
               key={e.categoryId} />
           ))}
         </>
