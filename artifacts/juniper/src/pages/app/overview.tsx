@@ -322,7 +322,70 @@ function NetWorthCard({ netWorth, cashflow, size }: { netWorth: FinanceData["net
 // page uses so the two surfaces cannot disagree about what exists. Example plans
 // live only on the Plans page: they are illustration, so they must never appear
 // here, where everything on the screen is the member's own money.
-function YourPlansCard({ goals, goalsReady }: { goals: string[]; goalsReady: boolean }) {
+// One plan or waiting goal, reduced to the fields every shape below draws from,
+// so List/Compact/Tiles read one list rather than each re-deriving it from the
+// two source arrays (real plans, unplanned goals) with their own field names.
+interface PlanRow {
+  key: string;
+  title: string;
+  color: string;
+  icon: string;
+  current: number;
+  target: number;
+  prog: number;
+  /** A signup goal with no plan behind it yet, not a plan the member started.
+   *  Every shape below dims its progress element for one, the same "hasn't
+   *  really begun" cue the original list-only `.waiting` class carried. */
+  waiting: boolean;
+}
+
+function PlanListRow({ row }: { row: PlanRow }) {
+  return (
+    <Link href="/app/plans" className={row.waiting ? "plan-row waiting" : "plan-row"}>
+      <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
+      <div className="pr-body">
+        <div className="pr-top">
+          <span className="pt">{row.title}</span>
+          {row.target > 0 ? <span className="amt tnum">{moneyK(row.current)} <small>/ {moneyK(row.target)}</small></span> : null}
+        </div>
+        <div className="bar"><i style={{ width: `${row.prog}%`, background: cssVar(row.color) }} /></div>
+        <div className="pr-bot">
+          <span>{row.target > 0 ? `${row.prog}% funded` : "No target set yet"}</span>
+          <span className={`status ${row.target > 0 ? "ok" : "setup"}`}>{row.target > 0 ? "On track" : "Setup"}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Compact: a name and a percent, nothing else. For a member with several plans
+// who wants to scan all of them without the progress bar's vertical cost.
+function PlanCompactRow({ row }: { row: PlanRow }) {
+  return (
+    <Link href="/app/plans" className={row.waiting ? "plan-crow waiting" : "plan-crow"}>
+      <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
+      <span className="pt">{row.title}</span>
+      <span className="pct tnum">{row.target > 0 ? `${row.prog}%` : "—"}</span>
+    </Link>
+  );
+}
+
+// Tiles: the same card, laid out as a grid rather than a stack. Shared by
+// Gallery (half width) and Grid (full width, issue #259) because the two
+// differ only in how many columns the board gives them room for, which
+// `auto-fill`/`minmax` already answers without a second component.
+function PlanTile({ row }: { row: PlanRow }) {
+  return (
+    <Link href="/app/plans" className={row.waiting ? "plan-tile waiting" : "plan-tile"}>
+      <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
+      <span className="pt">{row.title}</span>
+      <div className="bar"><i style={{ width: `${row.prog}%`, background: cssVar(row.color) }} /></div>
+      <span className="pct">{row.target > 0 ? `${row.prog}% funded` : "No target set yet"}</span>
+    </Link>
+  );
+}
+
+function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsReady: boolean; size: string }) {
   const { plans, loading } = useMemberPlans();
   const active = plans.filter((p) => p.status !== "completed");
   // Goals picked at signup that no plan covers yet. They are listed under the
@@ -331,49 +394,37 @@ function YourPlansCard({ goals, goalsReady }: { goals: string[]; goalsReady: boo
   // "No plans yet" to somebody who had just told onboarding three of them.
   const waiting = useMemo(() => unplannedGoals(goals, plans), [goals, plans]);
   const hasAnything = active.length > 0 || waiting.length > 0;
+  const rows: PlanRow[] = [
+    ...active.map((p) => {
+      const { current, target } = planNumbers(p);
+      return {
+        key: p.domain,
+        title: planTitle(p),
+        color: planColor(p),
+        icon: SHAPE_ICON[planShape(p)],
+        current,
+        target,
+        prog: target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0,
+        waiting: false,
+      };
+    }),
+    ...waiting.map((g) => ({
+      key: g.goal, title: g.goal, color: g.color, icon: "target", current: 0, target: 0, prog: 0, waiting: true,
+    })),
+  ];
   return (
     <div className="card">
       <div className="card-head"><h3>Your plans</h3><Link href="/app/plans" className="link">+ New</Link></div>
       {loading ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>Loading your plans…</div>
       ) : hasAnything ? (
-        <div className="plans-col">
-          {active.map((p) => {
-            const shape = planShape(p);
-            const color = planColor(p);
-            const { current, target } = planNumbers(p);
-            const prog = target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0;
-            return (
-              <Link href="/app/plans" className="plan-row" key={p.domain}>
-                <div className="track" style={{ background: cssVar(color) }}><PlanIcon name={SHAPE_ICON[shape]} /></div>
-                <div className="pr-body">
-                  <div className="pr-top">
-                    <span className="pt">{planTitle(p)}</span>
-                    {target > 0 ? <span className="amt tnum">{moneyK(current)} <small>/ {moneyK(target)}</small></span> : null}
-                  </div>
-                  <div className="bar"><i style={{ width: `${prog}%`, background: cssVar(color) }} /></div>
-                  <div className="pr-bot">
-                    <span>{target > 0 ? `${prog}% funded` : "No target set yet"}</span>
-                    <span className={`status ${target > 0 ? "ok" : "setup"}`}>{target > 0 ? "On track" : "Setup"}</span>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-          {waiting.map((g) => (
-            <Link href="/app/plans" className="plan-row waiting" key={g.goal}>
-              <div className="track" style={{ background: cssVar(g.color) }}><PlanIcon name="target" /></div>
-              <div className="pr-body">
-                <div className="pr-top"><span className="pt">{g.goal}</span></div>
-                <div className="bar"><i style={{ width: "0%", background: cssVar(g.color) }} /></div>
-                <div className="pr-bot">
-                  <span>No target yet</span>
-                  <span className="status setup">Set a target</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        size === "compact" ? (
+          <div className="plan-compact">{rows.map((r) => <PlanCompactRow row={r} key={r.key} />)}</div>
+        ) : size === "gallery" || size === "grid" ? (
+          <div className="plan-tiles">{rows.map((r) => <PlanTile row={r} key={r.key} />)}</div>
+        ) : (
+          <div className="plans-col">{rows.map((r) => <PlanListRow row={r} key={r.key} />)}</div>
+        )
       ) : goalsReady ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
           No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
@@ -807,7 +858,7 @@ export default function Overview({
   const nodes: Record<string, ReactNode> = {
     score: <ScoreWidget score={score} pending={scorePending} size={sizes.score} />,
     networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} size={sizes.networth} />,
-    plans: <YourPlansCard goals={goals} goalsReady={goalsReady} />,
+    plans: <YourPlansCard goals={goals} goalsReady={goalsReady} size={sizes.plans} />,
     spend: (
       <div className="card">
         {/* No month picker. /api/finances rolls up the CURRENT month and
