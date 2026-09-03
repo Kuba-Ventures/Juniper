@@ -159,6 +159,40 @@
 .jnpr .jnpr-tip .tv{font-weight:750;font-size:13px}
 .jnpr .row .nm{font-weight:600;font-size:13.5px}.jnpr .row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
 .jnpr .row .amt{margin-left:auto;font-weight:650;font-size:13.5px;text-align:right}.jnpr .row .amt.inc{color:var(--jnpr-good)}
+
+/* Recent transactions, five more sizes (issue #259). Every one reads the same
+   rows the List view does; only the grouping or the shape drawn from them
+   differs. Prefixed txw- (not tx-) because pages/app/transactions.tsx already
+   owns the tx- prefix for its own table, sort menu and selection bar. */
+.jnpr .txw-compact{display:flex;flex-direction:column;gap:1px}
+.jnpr .txw-crow{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--jnpr-line-2);font-size:13px}
+.jnpr .txw-crow:first-child{border-top:0}
+.jnpr .txw-crow .tile,.jnpr .txw-crow .blogo{width:24px;height:24px;border-radius:7px;font-size:11px}
+.jnpr .txw-crow .nm{flex:1;font-weight:600}
+.jnpr .txw-crow .amt{font-weight:650}
+.jnpr .txw-crow .amt.inc{color:var(--jnpr-good)}
+
+.jnpr .txw-group-h{display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--jnpr-ink-3);padding:12px 2px 6px}
+.jnpr .txw-group-h:first-child{padding-top:0}
+
+.jnpr .txw-day-h{font-size:11.5px;font-weight:700;color:var(--jnpr-ink-2);padding:12px 2px 4px}
+.jnpr .txw-day-h:first-child{padding-top:0}
+
+.jnpr .txw-summary .top{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.jnpr .txw-summary .top .n{color:var(--jnpr-ink-3);font-size:13px;font-weight:600}
+.jnpr .txw-summary .top-merchant{font-size:12.5px;color:var(--jnpr-ink-3);margin-top:8px}
+.jnpr .txw-summary .top-merchant b{color:var(--jnpr-ink-2);font-weight:650}
+
+.jnpr .txw-table{width:100%;border-collapse:collapse;font-size:13px}
+.jnpr .txw-table th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);padding:0 8px 8px;border-bottom:1px solid var(--jnpr-line-2);white-space:nowrap}
+.jnpr .txw-table td{padding:9px 8px;border-bottom:1px solid var(--jnpr-line-2);vertical-align:middle;white-space:nowrap}
+.jnpr .txw-table tr:last-child td{border-bottom:0}
+.jnpr .txw-table td.amt{text-align:right;font-weight:650}
+.jnpr .txw-table td.amt.inc{color:var(--jnpr-good)}
+.jnpr .txw-tcell{display:flex;align-items:center;gap:8px}
+.jnpr .txw-tcell .tile,.jnpr .txw-tcell .blogo{width:26px;height:26px;border-radius:7px;font-size:11px}
 .jnpr .apr-chip{font-size:10.5px;font-weight:700;color:var(--jnpr-bad);background:var(--jnpr-bad-soft);padding:2px 6px;border-radius:6px}
 .jnpr .subhead{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3);margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--jnpr-line-2)}
 .jnpr .subhead:first-child{border-top:0;padding-top:0;margin-top:0}

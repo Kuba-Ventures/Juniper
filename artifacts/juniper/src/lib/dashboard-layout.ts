@@ -108,7 +108,17 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "spotlight", label: "Spotlight" },
     ],
   },
-  { id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES },
+  {
+    id: "txns", title: "Recent transactions", home: "/app/transactions", homeLabel: "Transactions",
+    sizes: [
+      { id: "list", label: "List" },
+      { id: "compact", label: "Compact" },
+      { id: "grouped", label: "Grouped by category" },
+      { id: "timeline", label: "Timeline" },
+      { id: "summary", label: "Summary" },
+      { id: "table", label: "Table", full: true },
+    ],
+  },
   { id: "accounts", title: "Accounts", home: "/app/connections", homeLabel: "Connections", sizes: DEFAULT_SIZES },
   { id: "cards", title: "Cards and rewards", home: "/app/credit", homeLabel: "Credit", sizes: DEFAULT_SIZES, defaultOff: true },
   { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES, defaultOff: true },
