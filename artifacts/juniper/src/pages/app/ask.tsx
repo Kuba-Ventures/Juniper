@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useThreads, runTurn, pageContextFor, titleFrom, generateReport, type Thread } from "@/lib/planner";
+import { useThreads, runTurn, pageContextFor, isPageContext, PAGE_CONTEXTS, titleFrom, generateReport, type Thread } from "@/lib/planner";
 import { PlanReportView } from "@/components/juniper/plan-report";
 
 // Global starter prompts (the standalone surface). Plan-scoped chats arrive
@@ -176,9 +176,33 @@ export default function Ask() {
           ) : (
             <>
               <div className="ask-tools">
-                {active.planTitle
-                  ? <span className="ask-scope inline">Grounded in <b>{active.planTitle}</b></span>
-                  : <span />}
+                {!active.planTitle ? (
+                  <span />
+                ) : isPageContext(active.planContext) ? (
+                  // Page-grounded (the app-bar icon, issue #263), so it's
+                  // switchable: "Credit" alone read as a category nobody
+                  // picked until it was explained that it just names
+                  // whichever page the icon was pressed from.
+                  <span className="ask-scope inline">
+                    On the{" "}
+                    <select
+                      className="ask-scope-select"
+                      value={active.planTitle}
+                      onChange={(e) => {
+                        const next = PAGE_CONTEXTS.find((p) => p.label === e.target.value);
+                        if (!next) return;
+                        update(active.id, (x) => ({ ...x, planTitle: next.label, planContext: next.context, updatedAt: Date.now() }));
+                      }}
+                    >
+                      {PAGE_CONTEXTS.map((p) => <option key={p.label} value={p.label}>{p.label}</option>)}
+                    </select>{" "}
+                    page
+                  </span>
+                ) : (
+                  // A real plan from the Plans page: fixed, not one of the
+                  // switchable page options above.
+                  <span className="ask-scope inline">Grounded in your <b>{active.planTitle}</b> plan</span>
+                )}
                 {active.messages.some((m) => m.role === "assistant") && !streaming && (
                   <span className="ask-tool-actions">
                     {reportErr && <span className="ask-tool-err">Couldn't build the plan. Try again.</span>}

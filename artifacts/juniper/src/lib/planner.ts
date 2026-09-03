@@ -292,22 +292,47 @@ export async function generateReport(messages: Msg[], planContext?: string): Pro
   return { ...data, generatedAt: Date.now() };
 }
 
-// Route -> what to tell the model, and what to print on the app-bar panel's
-// chip, when a NEW thread is started from wherever the member currently is
-// (issue #263, option C). planContext is the same free-text field a plan's
-// "Ask about this" already sends; nothing server-side changed to support
-// this, only what the client puts in the field.
+// The declarative list a route maps to, and what a member can switch a
+// page-grounded thread TO from the dropdown in ask.tsx's tools bar (issue
+// #263 follow-up: "Grounded in Credit" read as a category nobody chose until
+// it was explained that it names whatever page the icon was pressed from,
+// so it needed both tighter copy and a way to change it after the fact).
+// Ordered longest route first so a sub-route (/app/credit) is matched before
+// the bare /app that is also its prefix; Overview's own /app entry only ever
+// matches by exact equality since nothing is shorter than it to out-rank.
+export interface PageContext { route: string; label: string; context: string }
+export const PAGE_CONTEXTS: PageContext[] = [
+  { route: "/app/credit", label: "Credit", context: "Page in focus: Credit — the member's linked cards, utilization, and rewards guide." },
+  { route: "/app/transactions", label: "Transactions", context: "Page in focus: Transactions — spending by category, budgets, and recurring charges." },
+  { route: "/app/plans", label: "Plans", context: "Page in focus: Plans — the member's savings, purchase, and payoff goals." },
+  { route: "/app/score", label: "Score", context: "Page in focus: Score — the Juniper Score breakdown and levers to improve it." },
+  { route: "/app/connections", label: "Connections", context: "Page in focus: Connections — linked banks, cards, and manual accounts." },
+  { route: "/app/shared", label: "Together", context: "Page in focus: the shared workspace with a partner." },
+  { route: "/app", label: "Overview", context: "Page in focus: Overview — net worth, spending, budgets, and the member's plans at a glance." },
+];
+
+// Every context string above shares this prefix, which is the one thing that
+// tells the tools bar a thread's grounding is a PAGE (switchable via the
+// dropdown) rather than a real PLAN from the Plans page (its own fixed
+// context, never offered as one of these options).
+const PAGE_CONTEXT_PREFIX = "Page in focus:";
+export function isPageContext(context: string | undefined): boolean {
+  return !!context?.startsWith(PAGE_CONTEXT_PREFIX);
+}
+
+// Route -> what to tell the model and what to show as this thread's grounding,
+// when a NEW thread is started from wherever the member currently is (issue
+// #263, option C). planContext is the same free-text field a plan's "Ask
+// about this" already sends; nothing server-side changed to support this,
+// only what the client puts in the field.
 export function pageContextFor(loc: string): { label: string; context: string | undefined } {
-  const at = (prefix: string) => loc === prefix || loc.startsWith(`${prefix}/`) || loc.startsWith(`${prefix}?`);
-  if (at("/app/credit")) return { label: "Credit", context: "Page in focus: Credit — the member's linked cards, utilization, and rewards guide." };
-  if (at("/app/transactions")) return { label: "Transactions", context: "Page in focus: Transactions — spending by category, budgets, and recurring charges." };
-  if (at("/app/plans")) return { label: "Plans", context: "Page in focus: Plans — the member's savings, purchase, and payoff goals." };
-  if (at("/app/score")) return { label: "Score", context: "Page in focus: Score — the Juniper Score breakdown and levers to improve it." };
-  if (at("/app/connections")) return { label: "Connections", context: "Page in focus: Connections — linked banks, cards, and manual accounts." };
-  if (at("/app/shared")) return { label: "Together", context: "Page in focus: the shared workspace with a partner." };
-  if (at("/app/ask")) return { label: "Ask Juniper", context: undefined };
-  if (loc === "/app" || loc === "/app/") return { label: "Overview", context: "Page in focus: Overview — net worth, spending, budgets, and the member's plans at a glance." };
-  return { label: "this page", context: undefined };
+  if (loc === "/app/ask" || loc.startsWith("/app/ask/") || loc.startsWith("/app/ask?")) {
+    return { label: "Ask Juniper", context: undefined };
+  }
+  const hit = [...PAGE_CONTEXTS]
+    .sort((a, b) => b.route.length - a.route.length)
+    .find((p) => loc === p.route || loc.startsWith(`${p.route}/`) || loc.startsWith(`${p.route}?`));
+  return hit ? { label: hit.label, context: hit.context } : { label: "this page", context: undefined };
 }
 
 // Runs one turn against an EXISTING thread: appends the member's message,
