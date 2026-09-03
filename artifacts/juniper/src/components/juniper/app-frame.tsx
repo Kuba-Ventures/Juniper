@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { useFinances } from "@/lib/finances";
 import { SettingsModal } from "@/components/juniper/settings-modal";
 import type { HolderStyle } from "@/lib/holder-style";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
@@ -103,17 +102,11 @@ export function AppBar({
   onHolderStyle?: (s: HolderStyle) => void;
 }) {
   const [loc, setLocation] = useLocation();
-  const { data: finances, source } = useFinances();
   const [open, setOpen] = useState<null | "account" | "notifications">(null);
   const [settings, setSettings] = useState(false);
   const { workspace, holds } = useWorkspace();
   const shared = workspace === "shared";
   const initial = (name || "You").trim().charAt(0).toUpperCase();
-  // Only show a "linked" count when the member actually linked + synced Plaid;
-  // a manual-only dashboard has no linked institutions.
-  const linkedCount = source === "live"
-    ? finances.accounts.cash.length + finances.accounts.invest.length + finances.accounts.debt.length
-    : 0;
   const { active: newNotifs, earlier: earlierNotifs, markRead, clear } = useNotifications();
   const notifCount = newNotifs.length;
 
@@ -146,8 +139,14 @@ export function AppBar({
             <WorkspaceSwitcher initial={initial} />
           </div>
 
+          {/* The "N linked" pill used to live here. It counted accounts, not
+              institutions, was hidden below 720px, and did nothing when
+              pressed: an ambient fact with no page behind it. It moved to
+              Connections (LinkedSummary in pages/connections.tsx), the one
+              place the number is both provable and actionable, leaving this
+              bar to the two controls that actually act: the bell and the
+              account menu. */}
           <div className="appbar-acct">
-            {linkedCount > 0 && <span className="plaid-pill"><span className="dot" />{linkedCount} linked</span>}
             <div className="acct-wrap">
               <button
                 className={`icon-btn${notifCount > 0 ? " has-alert" : ""}`}

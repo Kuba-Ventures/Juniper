@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>"14 linked", real logos, deduped by institution</title>
+<link rel="stylesheet" href="../artifacts/juniper/src/styles/juniper.css">
+<style>
+  body{margin:0;background:#EEF2EE;font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#232B21}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 18px 60px}
+  .lede{max-width:820px;margin:0 0 14px;font-size:13px;color:#4A5A4C}
+  .toggle{display:inline-flex;gap:8px;align-items:center;margin-bottom:22px;font-size:12.5px;color:#4A5A4C}
+  .toggle button{font:inherit;padding:5px 12px;border-radius:8px;border:1px solid #CBD8CB;background:#fff;cursor:pointer}
+  .toggle button.on{background:#1C4A31;color:#fff;border-color:#1C4A31}
+  .opt{background:#fff;border:1px solid #D9E2D9;border-radius:14px;padding:14px 16px 20px;margin-bottom:22px}
+  .opt h2{margin:0 0 3px;font-size:15.5px;color:#1C4A31}
+  .opt .why{margin:0 0 2px;font-size:12.5px;color:#4A5A4C;max-width:74ch}
+  .opt .cost{margin:0 0 12px;font-size:11px;color:#6B7A6D;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .frame{border:1px solid #CBD8CB;border-radius:12px;overflow:hidden}
+  .frame .jnpr{min-height:0}
+  .loaderr{padding:14px;font-size:12px;color:#B4523B}
+
+  .mockbar{background:var(--jnpr-ground)}
+  .mockbar .appbar{position:static}
+  .mockbar .appbar-in{padding:10px 18px 11px}
+  .mockbar .brand img.logo{width:22px;height:22px}
+  .mockbar .nav{display:none}
+  .mockpage{padding:16px;background:var(--jnpr-bg,var(--jnpr-ground))}
+  .mockpage .page-head{margin:0}
+  .mockpage .page-head h1{font-size:19px}
+  .mockpage .page-head .sub{max-width:60ch;font-size:12.5px}
+  .cap{font-size:11.5px;color:#6B7A6D;margin:10px 0 0;font-style:italic}
+
+  /* shared institution-mark tile: same 30px rounded square as Connections' own
+     list, just filled with the bank's real logo instead of a monogram */
+  .inst-mark{width:30px;height:30px;border-radius:9px;background:#fff;display:grid;place-items:center;overflow:hidden;
+    box-shadow:0 0 0 2px var(--jnpr-pine)}
+  .inst-mark img{width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box}
+  .inst-mark.mono{background:#E3C9C9;color:#232B21;font-weight:700;font-size:12px}
+
+  /* G: overlapping cluster, real logos, one tile per institution (not per account) */
+  .g-cluster{display:flex;align-items:center}
+  .g-cluster .inst-mark{margin-left:-9px}
+  .g-cluster .inst-mark:first-child{margin-left:0}
+  .g-wrap{display:flex;align-items:center;gap:9px}
+  .g-wrap small{font-size:11px;color:#B9D3BE}
+
+  /* H: a row, not overlapping, each with an account-count badge */
+  .h-row{display:flex;align-items:center;gap:10px}
+  .h-item{position:relative}
+  .h-item .badge{position:absolute;bottom:-5px;right:-5px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;
+    background:var(--jnpr-good);color:#0C120D;font-size:9.5px;font-weight:800;display:grid;place-items:center;
+    border:1.5px solid var(--jnpr-pine)}
+
+  /* I: compact strip + explicit institution/account count in words */
+  .i-strip{display:flex;align-items:center;gap:-2px}
+  .i-strip .inst-mark{width:26px;height:26px;border-radius:7px;margin-left:-8px;box-shadow:0 0 0 2px var(--jnpr-pine)}
+  .i-strip .inst-mark:first-child{margin-left:0}
+  .i-wrap{display:flex;align-items:center;gap:10px}
+  .i-wrap .counts{display:flex;flex-direction:column;line-height:1.2}
+  .i-wrap .counts b{font-size:12.5px;color:#FBFDFB}
+  .i-wrap .counts span{font-size:10.5px;color:#B9D3BE}
+</style></head><body><div class="wrap">
+
+<p class="lede">Same cluster idea as option E, now with the real bundled brand marks (<code>lib/mock-logos.ts</code>, fetched live below so nothing here can drift from what's actually shipped) instead of colored initials, and grouped by INSTITUTION rather than account: the real linked set is Carter Bank &amp; Trust (1 account), Marcus by Goldman Sachs (6), Charles Schwab (2), Chase (2), Capital One (1) and PayPal (2), 14 accounts across 6 institutions. Marcus's six accounts draw its logo once. Carter has no bundled art (a small regional bank Plaid has no logo for), so it falls back to a monogram tile, the same chain <code>resolveInstitutionMark</code> uses everywhere else in the app.</p>
+
+<div class="toggle">
+  Theme:
+  <button id="btn-light" class="on" onclick="setTheme(false)">Light</button>
+  <button id="btn-dark" onclick="setTheme(true)">Dark</button>
+</div>
+
+<div id="app"><p class="loaderr">Loading real brand marks from lib/mock-logos.ts…</p></div>
+
+<script>
+const INSTITUTIONS = [
+  { key: "carter", name: "Carter Bank & Trust", accounts: 1, mono: "C" },
+  { key: "marcus", name: "Marcus by Goldman Sachs", accounts: 6 },
+  { key: "schwab", name: "Charles Schwab", accounts: 2 },
+  { key: "chase", name: "Chase", accounts: 2 },
+  { key: "capitalone", name: "Capital One", accounts: 1 },
+  { key: "paypal", name: "PayPal", accounts: 2 },
+];
+const totalAccounts = INSTITUTIONS.reduce((s, i) => s + i.accounts, 0);
+
+function markHtml(inst, sizeCls) {
+  if (inst.logo) return `<span class="inst-mark ${sizeCls||''}" title="${inst.name}"><img src="${inst.logo}" alt="${inst.name}"></span>`;
+  return `<span class="inst-mark mono ${sizeCls||''}" title="${inst.name}">${inst.mono}</span>`;
+}
+
+function bar() {
+  return `<div class="mockbar"><div class="appbar"><div class="appbar-in"><div class="appbar-top with-ws">
+    <a class="brand" href="#" onclick="return false"><img class="logo" src="../artifacts/juniper/public/logo.png" alt="Juniper">Juniper</a>
+    <div class="appbar-ws"></div>
+    <div class="appbar-acct">
+      <div class="acct-wrap"><button class="icon-btn" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 21a1.5 1.5 0 003 0" stroke-linecap="round"/></svg>
+      </button></div>
+      <div class="acct-wrap"><button class="avatar" aria-label="Account">F</button></div>
+    </div>
+  </div></div></div></div>`;
+}
+
+function render() {
+  document.getElementById('app').innerHTML = `
+
+<!-- G -->
+<div class="opt">
+  <h2>G. Overlapping logo cluster, one tile per institution</h2>
+  <p class="why">Same overlap as option E, real marks instead of initials. Because it's grouped by institution rather than account, there are only six tiles to show, not fourteen: no overflow badge needed at all.</p>
+  <p class="cost">Small logos in a tight overlap read as texture more than identity below ~24px; Carter's monogram sits oddly among five real marks</p>
+  <div class="frame"><div class="jnpr">
+    ${bar()}
+    <div class="mockpage"><div class="page-head">
+      <div><h1>Connections</h1><p class="sub">Link your banks, cards, and investment accounts through Plaid.</p></div>
+      <div class="page-actions">
+        <div class="g-wrap">
+          <div class="g-cluster">${INSTITUTIONS.map(i => markHtml(i)).join('')}</div>
+          <small>${totalAccounts} linked</small>
+        </div>
+        <span class="fresh">Updated 4 minutes ago</span>
+        <button class="btn">Add account</button>
+      </div>
+    </div></div>
+  </div></div>
+  <p class="cap">Hover any tile for the institution name (title attribute here; a real build would use a proper tooltip).</p>
+</div>
+
+<!-- H -->
+<div class="opt">
+  <h2>H. A row of real marks, each badged with its own account count</h2>
+  <p class="why">No overlap: six marks sit in a plain row, and only the institutions with more than one account carry a small count badge (Marcus shows 6, Schwab and Chase show 2, PayPal shows 2). One glance answers "which banks" and "how many of each" at once.</p>
+  <p class="cost">Six full-size marks plus badges is the widest of the three, and won't fit next to Freshness + Add account below ~1024px</p>
+  <div class="frame"><div class="jnpr">
+    ${bar()}
+    <div class="mockpage"><div class="page-head">
+      <div><h1>Connections</h1><p class="sub">Link your banks, cards, and investment accounts through Plaid.</p></div>
+      <div class="page-actions">
+        <div class="h-row">
+          ${INSTITUTIONS.map(i => `<span class="h-item">${markHtml(i)}${i.accounts > 1 ? `<span class="badge">${i.accounts}</span>` : ''}</span>`).join('')}
+        </div>
+        <span class="fresh">Updated 4 minutes ago</span>
+        <button class="btn">Add account</button>
+      </div>
+    </div></div>
+  </div></div>
+  <p class="cap">The badge is the deduplication made visible, rather than implied by a single combined count.</p>
+</div>
+
+<!-- I -->
+<div class="opt">
+  <h2>I. A compact strip, with institutions and accounts both said in words</h2>
+  <p class="why">A tighter overlap than G (smaller tiles, meant as a glance rather than something to individually inspect) paired with the two real numbers spelled out: institutions and accounts are different facts, and PROJECT.md already warns not to conflate them. This says both instead of picking one.</p>
+  <p class="cost">The most text of the three; reads more like a data label than a piece of chrome</p>
+  <div class="frame"><div class="jnpr">
+    ${bar()}
+    <div class="mockpage"><div class="page-head">
+      <div><h1>Connections</h1><p class="sub">Link your banks, cards, and investment accounts through Plaid.</p></div>
+      <div class="page-actions">
+        <div class="i-wrap">
+          <div class="i-strip">${INSTITUTIONS.map(i => markHtml(i)).join('')}</div>
+          <div class="counts"><b>6 institutions</b><span>${totalAccounts} accounts</span></div>
+        </div>
+        <span class="fresh">Updated 4 minutes ago</span>
+        <button class="btn">Add account</button>
+      </div>
+    </div></div>
+  </div></div>
+  <p class="cap">Resolves the ambiguity the codebase itself calls out (app-frame.tsx's own comment: don't quote linkedCount as an institution count) by just saying both.</p>
+</div>
+  `;
+}
+
+fetch('../artifacts/juniper/src/lib/mock-logos.ts')
+  .then(r => r.text())
+  .then(src => {
+    for (const inst of INSTITUTIONS) {
+      const m = new RegExp(inst.key + "\\s*:\\s*'([^']+)'").exec(src);
+      if (m) inst.logo = m[1];
+    }
+    render();
+  })
+  .catch(err => {
+    document.getElementById('app').innerHTML = `<p class="loaderr">Could not fetch mock-logos.ts (${err}). Serve this file over http://, not file://.</p>`;
+  });
+
+function setTheme(dark){
+  document.documentElement.classList.toggle('dark', dark);
+  document.getElementById('btn-light').classList.toggle('on', !dark);
+  document.getElementById('btn-dark').classList.toggle('on', dark);
+}
+</script>
+</div>
+</body></html>
