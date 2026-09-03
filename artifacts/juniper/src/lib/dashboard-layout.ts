@@ -140,7 +140,16 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "guide", label: "Rewards guide" },
     ],
   },
-  { id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", sizes: DEFAULT_SIZES, defaultOff: true },
+  {
+    id: "recurring", title: "Recurring charges", home: "/app/transactions", homeLabel: "Transactions", defaultOff: true,
+    sizes: [
+      { id: "stat", label: "Stat" },
+      { id: "list", label: "List" },
+      { id: "upcoming", label: "Upcoming" },
+      { id: "attention", label: "Needs a look" },
+      { id: "wall", label: "Merchant wall" },
+    ],
+  },
 ];
 
 export const WIDGET_BY_ID: Record<string, WidgetMeta> =

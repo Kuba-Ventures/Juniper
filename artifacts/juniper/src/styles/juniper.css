@@ -2770,3 +2770,33 @@
 .jnpr .cw-g-row .card{font-size:12.5px;color:var(--jnpr-ink-2);text-align:right}
 .jnpr .cw-g-row .card b{color:var(--jnpr-ink);font-weight:650}
 .jnpr .cw-g-row .rate{color:var(--jnpr-accent);font-weight:700}
+
+/* ── Overview: Recurring charges widget sizes (issue #259) ───────────────────
+   Stat is the shipped default, unchanged. The other four draw the real
+   confirmed streams (SubItem/SubSummary, lib/subscriptions.ts), the same data
+   the full Subscriptions panel reads, through its own MerchantMark/BrandTile
+   (so a merchant mark is the same size and color here as it is there). Design
+   record: previews/recurring-shapes-options.html. */
+
+.jnpr .rw-list{display:flex;flex-direction:column;gap:1px}
+.jnpr .rw-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .rw-row:first-child{border-top:0}
+.jnpr .rw-row .nm{flex:1;min-width:0}
+.jnpr .rw-row .t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .rw-row .s{font-size:11.5px;color:var(--jnpr-ink-3)}
+.jnpr .rw-row .amt{font-size:13px;font-weight:650;color:var(--jnpr-ink);text-align:right;flex:0 0 auto}
+
+.jnpr .rw-grp-lab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--jnpr-ink-3);margin:12px 0 4px}
+.jnpr .rw-grp-lab:first-child{margin-top:0}
+.jnpr .rw-up-row{display:flex;align-items:center;gap:10px;padding:7px 2px}
+.jnpr .rw-up-date{width:38px;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:var(--jnpr-ink-2)}
+
+.jnpr .rw-att-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .rw-att-row:first-child{border-top:0}
+.jnpr .rw-flag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;flex:0 0 auto}
+.jnpr .rw-flag.changed{background:var(--jnpr-warn-soft);color:var(--jnpr-warn)}
+.jnpr .rw-flag.missed{background:var(--jnpr-bad-soft);color:var(--jnpr-bad)}
+.jnpr .rw-flag.new{background:var(--jnpr-accent-soft);color:var(--jnpr-accent)}
+
+.jnpr .rw-wall{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}

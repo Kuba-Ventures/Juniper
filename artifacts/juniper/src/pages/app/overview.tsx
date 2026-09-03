@@ -1377,7 +1377,7 @@ export default function Overview({
       : <CardsWidget data={cardsData} size={sizes.cards} />,
     recurring: recurringData.loading
       ? <LoadingSlot title="Recurring charges" />
-      : <RecurringWidget data={recurringData} />,
+      : <RecurringWidget data={recurringData} size={sizes.recurring} />,
   };
 
   // Why each widget has nothing to say, in the member's terms, because the
