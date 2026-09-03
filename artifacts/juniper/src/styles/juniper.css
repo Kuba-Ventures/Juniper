@@ -2487,28 +2487,36 @@
 .jnpr .cr-rg-intro{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;margin:-2px 0 8px;
   max-width:78ch}
 .jnpr .cr-rg-intro b{color:var(--jnpr-ink-2)}
-.jnpr .cr-rg-row{display:flex;align-items:flex-start;gap:13px;padding:14px 0;
+.jnpr .cr-rg-row{display:flex;align-items:center;gap:13px;padding:14px 0;
   border-top:1px solid var(--jnpr-line-2)}
 .jnpr .cr-rg-ico{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
   font-size:15px;background:var(--jnpr-surface-3);flex:0 0 auto}
-.jnpr .cr-rg-body{flex:1;min-width:0}
-/* "Best Dining" as a small label, "Sapphire Preferred 3x" as the answer
-   underneath it -- the redesign for issue #264. The category used to be the
-   headline with the card name tucked below it as a caption; this inverts that,
-   since the instruction ("which card") is the thing worth reading first, and
-   the category is context for it rather than the other way round. */
+/* The winner's identity: category icon, a real card photo, then the name. The
+   "also considered" chips that used to carry the only photos on the row are
+   gone, so the winner gets the photo instead
+   (previews/rewards-guide-photo-options.html, then
+   rewards-guide-rate-emphasis-options.html, option E). */
+.jnpr .cr-rg-id{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.jnpr .cr-rg-idbody{flex:1;min-width:0}
+/* "Best Dining" as a small label, "Sapphire Preferred" as the answer underneath
+   it -- the redesign for issue #264. The category used to be the headline with
+   the card name tucked below it as a caption; this inverts that, since the
+   instruction ("which card") is the thing worth reading first, and the
+   category is context for it rather than the other way round. */
 .jnpr .cr-rg-best{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--jnpr-ink-3);
   text-transform:uppercase}
 .jnpr .cr-rg-winner{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:3px;
   font-size:14.5px;font-weight:700;color:var(--jnpr-ink)}
-.jnpr .cr-rg-rate{font-size:13.5px;font-weight:750;color:var(--jnpr-accent);
-  font-variant-numeric:tabular-nums}
 .jnpr .cr-rg-fine{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:5px;line-height:1.55}
-.jnpr .cr-rg-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.jnpr .cr-rg-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;
-  border:1px solid var(--jnpr-line);border-radius:20px;padding:3px 10px 3px 5px;color:var(--jnpr-ink-2)}
-.jnpr .cr-rg-chip.tie{border-color:color-mix(in srgb,var(--jnpr-accent) 40%,var(--jnpr-line));
-  color:var(--jnpr-accent)}
+/* The rate as its own hero-weight column, the same visual size as the $/month
+   figure beside it, rather than a caption on the winner's name: the row now
+   reads left to right as which card, what it earns, what it costs you not to
+   use it. */
+.jnpr .cr-rg-rate-col{flex:0 0 auto;text-align:center;min-width:78px;padding:0 6px}
+.jnpr .cr-rg-rate-num{font-size:23px;font-weight:800;color:var(--jnpr-accent);line-height:1;
+  font-variant-numeric:tabular-nums}
+.jnpr .cr-rg-rate-lab{font-size:9.5px;color:var(--jnpr-ink-3);font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
 .jnpr .cr-rg-spend{font-size:11.5px;color:var(--jnpr-ink-3);font-variant-numeric:tabular-nums;
   text-align:right;flex:0 0 auto;padding-top:2px}
 .jnpr .cr-rg-spend b{display:block;font-size:13px;color:var(--jnpr-ink-2);font-weight:700}
@@ -2518,6 +2526,15 @@
 @media(max-width:640px){
   .jnpr .cr-rg-spend{display:none}
   .jnpr .cr-hero{gap:16px}
+  /* At this width the icon, a real card photo and the rate's own column no
+     longer fit beside a card name on one line -- unlike the old caption-sized
+     rate, the photo eats real width. The identity block takes the full row and
+     the rate drops to a second line under it, rather than squeezing the name
+     into the ~50px that was left. */
+  .jnpr .cr-rg-row{flex-wrap:wrap}
+  .jnpr .cr-rg-id{flex:1 1 100%}
+  .jnpr .cr-rg-rate-col{flex:0 0 auto;text-align:left;min-width:0;padding:0;
+    margin-left:54px}
 }
 
 /* Worth switching, and cards that would beat yours */
