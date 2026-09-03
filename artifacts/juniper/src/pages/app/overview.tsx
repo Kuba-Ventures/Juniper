@@ -12,7 +12,7 @@ import {
   useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
 } from "@/lib/plans";
 import {
-  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH,
+  BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH, paintOf,
 } from "@/components/juniper/primitives";
 import {
   WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
@@ -626,6 +626,63 @@ const ChevronDownIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={12} height={12}><path d="M6 9l6 6 6-6" /></svg>
 );
 
+/** "Where it went" at three sizes (issue #259). Donut is the shape everywhere
+ *  else on the page already reads (the Credit and Score pages both draw a
+ *  ring), List trades the shape for a ranking that stays legible past three or
+ *  four categories, and Compact is the number and the one line worth knowing
+ *  when there is no room for either. All three read the same `spending` rows
+ *  and paint categories with the same `paintOf`, so a colour cannot mean one
+ *  category in the donut and another in the list. */
+function SpendWidget({ spending, totalSpent, month, size }: { spending: SpendCat[]; totalSpent: number; month: string; size: string }) {
+  if (size === "list") {
+    const ranked = [...spending].sort((a, b) => b.v - a.v);
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{month}</span></div>
+        <div className="spend-list">
+          {ranked.map((d, i) => {
+            const pct = totalSpent > 0 ? Math.round((d.v / totalSpent) * 100) : 0;
+            return (
+              <div className="sl-row" key={i}>
+                <div className="sl-top">
+                  <span className="ln"><span className="cat-em" aria-hidden>{d.e}</span>{d.c}</span>
+                  <span className="lv tnum">{money(d.v)} · {pct}%</span>
+                </div>
+                <div className="bar"><i style={{ width: `${pct}%`, background: paintOf(d) }} /></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  if (size === "compact") {
+    const top = spending.reduce<SpendCat | undefined>((best, s) => (!best || s.v > best.v ? s : best), undefined);
+    const topPct = top && totalSpent > 0 ? Math.round((top.v / totalSpent) * 100) : 0;
+    return (
+      <div className="card spend-compact">
+        <div className="eyebrow">Where it went · {month}</div>
+        <div className="top"><span className="big-num tnum">{money(totalSpent)}</span></div>
+        {top && (
+          <div className="lead">
+            Biggest: <b><span className="cat-em" aria-hidden>{top.e}</span>{top.c}</b>, {money(top.v)} · {topPct}%
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="card">
+      {/* No month picker. /api/finances rolls up the CURRENT month and nothing
+         else, so the three pills that used to sit here (June, July, Aug, with
+         July lit whatever the date) were inert and mislabeled at once. The
+         month is stated instead. */}
+      <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{month}</span></div>
+      <SpendingDonut data={spending} />
+    </div>
+  );
+}
+
 export default function Overview({
   name,
   goals = [],
@@ -859,16 +916,7 @@ export default function Overview({
     score: <ScoreWidget score={score} pending={scorePending} size={sizes.score} />,
     networth: <NetWorthCard netWorth={netWorth} cashflow={cashflow} size={sizes.networth} />,
     plans: <YourPlansCard goals={goals} goalsReady={goalsReady} size={sizes.plans} />,
-    spend: (
-      <div className="card">
-        {/* No month picker. /api/finances rolls up the CURRENT month and
-           nothing else, so the three pills that used to sit here (June, July,
-           Aug, with July lit whatever the date) were inert and mislabeled at
-           once. The month is stated instead. */}
-        <div className="card-head"><h3>Where it went: {money(totalSpent)}</h3><span className="head-note">{cashflow.month}</span></div>
-        <SpendingDonut data={spending} />
-      </div>
-    ),
+    spend: <SpendWidget spending={spending} totalSpent={totalSpent} month={cashflow.month} size={sizes.spend} />,
     budgets: (
       <div className="card">
         <div className="card-head"><h3>Budgets</h3></div>
