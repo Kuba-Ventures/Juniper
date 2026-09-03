@@ -15,6 +15,7 @@ import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
 import Ask from "@/pages/app/ask";
 import { ConnectionsView } from "@/pages/connections";
+import { Settings } from "@/pages/app/settings";
 import { SharedOverview } from "@/pages/app/shared/overview";
 import { SharedGoals } from "@/pages/app/shared/goals";
 import { SharedAccounts } from "@/pages/app/shared/accounts";
@@ -119,16 +120,7 @@ export default function JuniperApp() {
     <FinancesProvider profile={profile}>
       <WorkspaceProvider>
       <div className="jnpr">
-        <AppBar
-          name={displayName}
-          email={email}
-          holderStyle={profile?.holderStyle ?? null}
-          // Saved through the profile hook, so the choice lands in localStorage
-          // and in `user_profiles` by the same path every other profile field
-          // takes. Spread over the CURRENT profile rather than a fresh object:
-          // saving a holder must not blank somebody's income.
-          onHolderStyle={(s) => saveProfile({ ...(profile ?? {}), holderStyle: s })}
-        />
+        <AppBar name={displayName} email={email} />
         <Switch>
           <Route path="/app">
             {() => (
@@ -173,6 +165,22 @@ export default function JuniperApp() {
             {() => <Credit holderStyle={profile?.holderStyle ?? null} />}
           </Route>
           <Route path="/app/connections" component={ConnectionsView} />
+          {/* Same reasoning as Credit above: the holder style is threaded from
+              here rather than re-read, and this is also where the profile's
+              write path (saveProfile) already lives. Routed rather than a
+              modal (issue #245) so /app/settings/appearance is a real,
+              deep-linkable destination, e.g. from the Credit page's holder. */}
+          <Route path="/app/settings/:tab?">
+            {(params) => (
+              <Settings
+                tab={params.tab}
+                name={displayName}
+                email={email}
+                holderStyle={profile?.holderStyle ?? null}
+                onHolderStyle={(s) => saveProfile({ ...(profile ?? {}), holderStyle: s })}
+              />
+            )}
+          </Route>
           {/* Stage 4d: two of the six shared surfaces are routed again, the two
               that can show the member's own real data or an honest empty state.
               Accounts, Bills, Activity and Sharing stay unrouted under the

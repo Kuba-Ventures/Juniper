@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { SettingsModal } from "@/components/juniper/settings-modal";
-import type { HolderStyle } from "@/lib/holder-style";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
@@ -91,19 +89,13 @@ function isActive(current: string, path: string) {
 }
 
 export function AppBar({
-  name, email, holderStyle = null, onHolderStyle,
+  name, email,
 }: {
   name: string;
   email?: string;
-  /** Passed straight through to the settings modal's Appearance section. The bar
-      does not use it; it is the only component mounted high enough to own the
-      modal and low enough to have the profile handed to it. */
-  holderStyle?: HolderStyle | null;
-  onHolderStyle?: (s: HolderStyle) => void;
 }) {
   const [loc, setLocation] = useLocation();
   const [open, setOpen] = useState<null | "account" | "notifications">(null);
-  const [settings, setSettings] = useState(false);
   const { workspace, holds } = useWorkspace();
   const shared = workspace === "shared";
   const initial = (name || "You").trim().charAt(0).toUpperCase();
@@ -212,7 +204,7 @@ export function AppBar({
                         Invite partner, Manage partner, and Disconnect partner
                         lived here too. All three only led to /app/shared, which
                         is unrouted, so they were an invitation into nothing. */}
-                    <button className="pop-i flat" onClick={() => { setOpen(null); setSettings(true); }}>Settings</button>
+                    <button className="pop-i flat" onClick={() => { setOpen(null); setLocation("/app/settings"); }}>Settings</button>
                     <div className="pop-sep" />
                     <button className="pop-i flat" onClick={signOut}>Sign out</button>
                   </div>
@@ -232,15 +224,6 @@ export function AppBar({
           ))}
         </nav>
       </div>
-      {settings && (
-        <SettingsModal
-          name={name}
-          email={email ?? ""}
-          onClose={() => setSettings(false)}
-          holderStyle={holderStyle}
-          onHolderStyle={onHolderStyle}
-        />
-      )}
     </div>
   );
 }
