@@ -141,6 +141,21 @@
 .jnpr .page-head .search,.jnpr .page-head .plaid-pill{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#DDEBDE}
 .jnpr .page-head .search input{color:#fff}.jnpr .page-head .search input::placeholder{color:#9FBBA4}
 
+/* Connections' "N institutions / M accounts" strip (LinkedSummary). One
+   overlapping mark per tile, at a fraction of the Connections grid's own
+   38px, and ringed in the page-head's own pine rather than the white/grey
+   line the grid uses, so the ring reads as separation from a neighbour tile
+   rather than a border against the (dark) page-head background. */
+.jnpr .linked-summary{display:flex;align-items:center;gap:9px}
+.jnpr .linked-marks{display:flex;align-items:center}
+.jnpr .linked-mark{margin-left:-8px;border-radius:8px;box-shadow:0 0 0 2px var(--jnpr-pine)}
+.jnpr .linked-mark:first-child{margin-left:0}
+.jnpr .linked-mark .ci-logo,.jnpr .linked-mark .ci-mono,.jnpr .linked-mark .ci-mark{width:26px;height:26px;border-radius:8px;border:0}
+.jnpr .linked-counts{display:flex;flex-direction:column;line-height:1.25}
+.jnpr .linked-counts b{font-size:12.5px;color:#FBFDFB}
+.jnpr .linked-counts span{font-size:10.5px;color:#B9D3BE}
+@media (max-width:640px){.jnpr .linked-summary{display:none}}
+
 /* ---------- cards & grid ---------- */
 .jnpr .grid{display:grid;gap:16px}
 /* Grid children default to min-width:auto and refuse to shrink below their

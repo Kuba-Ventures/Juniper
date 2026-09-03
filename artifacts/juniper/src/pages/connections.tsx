@@ -76,6 +76,43 @@ function InstitutionMark({
   return <span className="ci-mark">{glyph}</span>;
 }
 
+/* The compact institution strip in the page header. This is where the app
+   bar's old "N linked" pill moved to (see the comment left in app-frame.tsx):
+   it counted accounts and told a member nothing they could act on from
+   wherever they happened to be. Here the same figure sits beside the button
+   that actually adds or fixes a connection, and it is said honestly rather
+   than as one ambiguous number: institutions and accounts are different
+   facts (linkedCount's own old comment warned against conflating them), so
+   both are stated. One mark per TILE, not per account, is what keeps Marcus's
+   six accounts from drawing its logo six times: `tiles` is already one entry
+   per institution or manual account, never per account within it. */
+function LinkedSummary({ tiles, brands }: { tiles: Tile[]; brands: InstitutionBrandMap }) {
+  if (tiles.length === 0) return null;
+  const accounts = tiles.reduce((sum, t) => sum + tileCount(t), 0);
+  return (
+    <div
+      className="linked-summary"
+      title={`${tiles.length} institution${tiles.length === 1 ? "" : "s"}, ${accounts} account${accounts === 1 ? "" : "s"}`}
+    >
+      <div className="linked-marks">
+        {tiles.map((t) => (
+          <span className="linked-mark" key={t.key}>
+            <InstitutionMark
+              name={t.name}
+              brand={t.kind === "plaid" && t.item.institution_id ? brands[t.item.institution_id] : undefined}
+              glyph={t.kind === "plaid" ? <Building2 size={11} /> : <PencilLine size={10} />}
+            />
+          </span>
+        ))}
+      </div>
+      <div className="linked-counts">
+        <b>{tiles.length} institution{tiles.length === 1 ? "" : "s"}</b>
+        <span>{accounts} account{accounts === 1 ? "" : "s"}</span>
+      </div>
+    </div>
+  );
+}
+
 /* The freshness line that replaced the Refresh button for everyone who is not
    on a dev build. It states, it does not offer: there is nothing to press,
    because the app is already doing the thing the button used to do. Compact by
@@ -420,6 +457,7 @@ export function ConnectionsView() {
         sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically. Add anything Plaid can't reach by hand."
         actions={
           <>
+            <LinkedSummary tiles={tiles} brands={brands} />
             {items.length > 0 && <Freshness syncedAt={sync?.syncedAt ?? null} busy={syncing || autoSyncing} />}
             {canForce && items.length > 0 && (
               <button className="btn ghost" onClick={handleSync} disabled={syncing}>
