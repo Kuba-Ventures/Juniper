@@ -455,6 +455,7 @@ export function ConnectionsView() {
       <PageHeader
         title="Connections"
         sub="Link your banks, cards, and investment accounts through Plaid to keep your net worth, spending, and score up to date automatically. Add anything Plaid can't reach by hand."
+        actionsClassName="conn-actions"
         actions={
           <>
             <LinkedSummary tiles={tiles} brands={brands} />

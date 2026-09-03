@@ -156,6 +156,18 @@
 .jnpr .linked-counts span{font-size:10.5px;color:#B9D3BE}
 @media (max-width:640px){.jnpr .linked-summary{display:none}}
 
+/* Connections' actions row (institution summary, freshness, refresh, add) is
+   four items of very different shape, which on a wide screen wrapped onto its
+   own line below the title and then sat flush left with whatever gap each
+   pair of neighbours happened to leave, rather than reading as one balanced
+   group. flex-basis:100% forces the wrap unconditionally, at any width,
+   rather than leaving it to chance beside a short title; centering plus one
+   deliberate gap value (up from the shared page-actions' 9px, which read as
+   uneven only because it sat between visually mismatched neighbours, not
+   because it was actually inconsistent) is what makes the row read as
+   designed rather than left where the wrap happened to drop it. */
+.jnpr .page-head .page-actions.conn-actions{flex:1 1 100%;justify-content:center;gap:18px;row-gap:10px}
+
 /* ---------- cards & grid ---------- */
 .jnpr .grid{display:grid;gap:16px}
 /* Grid children default to min-width:auto and refuse to shrink below their

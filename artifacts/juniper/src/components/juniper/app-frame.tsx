@@ -245,15 +245,28 @@ export function AppBar({
   );
 }
 
-/* A pine page-header band with a title, optional subtitle, and right-side actions. */
-export function PageHeader({ title, sub, actions }: { title: string; sub?: string; actions?: ReactNode }) {
+/* A pine page-header band with a title, optional subtitle, and right-side actions.
+   `actionsClassName` is an escape hatch for a caller whose actions row is too
+   crowded to sit beside the title (Connections' institution summary, freshness
+   line and two buttons): it modifies rather than replaces `.page-actions`, so
+   every other caller's layout is untouched. */
+export function PageHeader({
+  title, sub, actions, actionsClassName,
+}: {
+  title: string;
+  sub?: string;
+  actions?: ReactNode;
+  actionsClassName?: string;
+}) {
   return (
     <div className="page-head">
       <div>
         <h1>{title}</h1>
         {sub && <p className="sub">{sub}</p>}
       </div>
-      {actions && <div className="page-actions">{actions}</div>}
+      {actions && (
+        <div className={actionsClassName ? `page-actions ${actionsClassName}` : "page-actions"}>{actions}</div>
+      )}
     </div>
   );
 }
