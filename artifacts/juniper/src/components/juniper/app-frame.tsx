@@ -1,121 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
 import { useNotifications, agoLabel, type NotificationRecord } from "@/lib/notifications";
-import { useThreads, runTurn, pageContextFor, titleFrom } from "@/lib/planner";
-import { Rich } from "@/components/juniper/ask-rich";
-
-const RECENT_THREADS = 4;
-
-// Ask Juniper, openable from anywhere (issue #263, option C): a member asking
-// about the page they're already looking at should not have to leave it.
-// Grounding is the same free-text `planContext` a plan's "Ask about this"
-// already sends (pageContextFor, src/lib/planner.ts) — no backend change, only
-// what the client puts in the field. History is the same `useThreads()` store
-// the full /app/ask page reads, server-synced since #263 (migration 0054), so
-// a thread started here shows up in the page's rail too, and vice versa.
-function AskPop({ loc, onClose }: { loc: string; onClose: () => void }) {
-  const { threads, create, update } = useThreads();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [streamText, setStreamText] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const active = threads.find((t) => t.id === activeId);
-  const { label, context } = pageContextFor(loc);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [active?.messages.length, streamText, streaming]);
-
-  async function submit(text: string) {
-    if (!text.trim() || streaming) return;
-    let t = active;
-    if (!t) {
-      t = create({ title: titleFrom(text), planContext: context, planTitle: context ? label : undefined });
-      setActiveId(t.id);
-    }
-    setInput("");
-    setStreaming(true);
-    setStreamText("");
-    try {
-      await runTurn(t, text, update, setStreamText);
-    } finally {
-      setStreaming(false);
-      setStreamText("");
-    }
-  }
-
-  return (
-    <>
-      <div className="pop-scrim" onClick={onClose} />
-      <div className="pop ask-pop">
-        <div className="ask-pop-hd">
-          <b>Ask Juniper</b>
-          {!active && context && <span className="ask-pop-chip">On {label}</span>}
-          {active?.planTitle && <span className="ask-pop-chip">{active.planTitle}</span>}
-          {active && (
-            <button className="ask-pop-new" aria-label="New chat" onClick={() => setActiveId(null)} type="button">+</button>
-          )}
-          <button className="ask-pop-x" aria-label="Close" onClick={onClose} type="button">✕</button>
-        </div>
-
-        {!active ? (
-          <div className="ask-pop-body">
-            <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); void submit(input); }}>
-              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Ask about ${label}…`} autoFocus />
-              <button className="btn sm" type="submit" disabled={!input.trim()}>Ask</button>
-            </form>
-            {threads.length > 0 && (
-              <>
-                <div className="pop-lbl">Recent</div>
-                <div className="ask-list">
-                  {threads.slice(0, RECENT_THREADS).map((t) => (
-                    <div key={t.id} className="ask-item" onClick={() => setActiveId(t.id)}>
-                      <div className="ask-item-main">
-                        <div className="ask-item-t">{t.title}</div>
-                        {t.planTitle && <div className="ask-item-p">◆ {t.planTitle}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            <Link href="/app/ask" className="link ask-pop-all" onClick={onClose}>See all conversations →</Link>
-          </div>
-        ) : (
-          <>
-            <div className="ask-thread ask-pop-thread" ref={scrollRef}>
-              {active.messages.map((m, i) => (
-                <div key={i} className={`ask-turn ${m.role}`}>
-                  {m.role === "assistant" && <div className="ask-who">Juniper</div>}
-                  <div className="ask-bubble"><Rich text={m.content} /></div>
-                </div>
-              ))}
-              {streaming && (
-                <div className="ask-turn assistant">
-                  <div className="ask-who">Juniper</div>
-                  <div className="ask-bubble">{streamText ? <Rich text={streamText} /> : <span className="ask-dots"><i /><i /><i /></span>}</div>
-                </div>
-              )}
-            </div>
-            <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); void submit(input); }}>
-              <input
-                value={input} onChange={(e) => setInput(e.target.value)}
-                placeholder={streaming ? "Juniper is thinking…" : "Reply to Juniper…"} disabled={streaming} autoFocus
-              />
-              <button className="btn sm" type="submit" disabled={streaming || !input.trim()}>Send</button>
-            </form>
-          </>
-        )}
-      </div>
-    </>
-  );
-}
 
 // One row in the bell's dropdown, New or Earlier. A separate component
 // (rather than inlined twice) because the two sections differ in exactly two
@@ -183,7 +72,9 @@ const PERSONAL_NAV: NavItem[] = [
   // lately" without a page load, which is a different job from the full history.
   { path: "/app/transactions", label: "Transactions" },
   { path: "/app/plans", label: "Plans" },
-  { path: "/app/ask", label: "Ask Juniper" },
+  // Ask Juniper left this list for the icon beside the bell (issue #263):
+  // always reachable, on every page, rather than only from a nav tab you
+  // have to first navigate away from whatever you were looking at.
   { path: "/app/credit", label: "Credit" },
   // Connections sits last, and it is in this list rather than in the account
   // menu because it is a surface about the member's money, not about their
@@ -206,7 +97,7 @@ export function AppBar({
   email?: string;
 }) {
   const [loc, setLocation] = useLocation();
-  const [open, setOpen] = useState<null | "account" | "notifications" | "ask">(null);
+  const [open, setOpen] = useState<null | "account" | "notifications">(null);
   const { workspace, holds } = useWorkspace();
   const shared = workspace === "shared";
   const initial = (name || "You").trim().charAt(0).toUpperCase();
@@ -300,18 +191,20 @@ export function AppBar({
               )}
             </div>
 
-            <div className="acct-wrap">
-              <button
-                className={`icon-btn${open === "ask" ? " lit" : ""}`}
-                aria-label="Ask Juniper"
-                onClick={() => setOpen(open === "ask" ? null : "ask")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                  <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
-                </svg>
-              </button>
-              {open === "ask" && <AskPop loc={loc} onClose={() => setOpen(null)} />}
-            </div>
+            {/* Ask Juniper (issue #263): always reachable from any page,
+               grounded in whichever one this was pressed from. A plain
+               navigation to the real page rather than a popover holding its
+               own small copy of the conversation UI, so there is one
+               experience for "ask something" and not two that can drift. */}
+            <Link
+              href={`/app/ask?from=${encodeURIComponent(loc)}`}
+              className={`icon-btn${loc.startsWith("/app/ask") ? " lit" : ""}`}
+              aria-label="Ask Juniper"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
+              </svg>
+            </Link>
 
             <div className="acct-wrap">
               <button className="avatar" aria-label="Account" onClick={() => setOpen(open === "account" ? null : "account")}>{initial}</button>

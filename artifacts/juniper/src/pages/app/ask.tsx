@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useThreads, runTurn, titleFrom, generateReport, type Thread } from "@/lib/planner";
+import { useThreads, runTurn, pageContextFor, titleFrom, generateReport, type Thread } from "@/lib/planner";
 import { PlanReportView } from "@/components/juniper/plan-report";
-import { Rich } from "@/components/juniper/ask-rich";
 
 // Global starter prompts (the standalone surface). Plan-scoped chats arrive
 // pre-seeded with a question from the Plans page, so they skip this screen.
@@ -19,6 +18,21 @@ const PlusIcon = () => (
 const TrashIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M4 7h16M9 7V5h6v2m-8 0l1 13h8l1-13" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
+
+// Very light **bold** + paragraph rendering, enough for planner replies.
+function Rich({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/\n\n+/).map((para, i) => (
+        <p key={i} style={{ margin: i ? "10px 0 0" : 0 }}>
+          {para.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
+            p.startsWith("**") && p.endsWith("**") ? <strong key={j}>{p.slice(2, -2)}</strong> : <span key={j}>{p}</span>,
+          )}
+        </p>
+      ))}
+    </>
+  );
+}
 
 export default function Ask() {
   const { threads, create, remove, update } = useThreads();
@@ -54,17 +68,22 @@ export default function Ask() {
     }
   }
 
-  // Deep links from a plan:
+  // Deep links, from a plan or from the app-bar icon (issue #263):
   //   ?thread=<id>        → open an existing chat
   //   ?q=…&plan=…         → new plan-scoped chat, auto-ask the question
   //   ?plan=…             → new, empty plan-scoped chat, ready to type
+  //   ?from=<route>       → new chat grounded in whatever page the icon was
+  //                         pressed from (pageContextFor); no useful context
+  //                         for that route means nothing to seed, so it just
+  //                         lands on the welcome screen instead
   useEffect(() => {
     if (seeded.current) return;
     const params = new URLSearchParams(search);
     const threadId = params.get("thread");
     const q = params.get("q");
     const plan = params.get("plan") || undefined;
-    if (!threadId && !q && !plan) return;
+    const from = params.get("from") || undefined;
+    if (!threadId && !q && !plan && !from) return;
     seeded.current = true;
 
     if (threadId) {
@@ -72,6 +91,16 @@ export default function Ask() {
       navigate("/app/ask", { replace: true });
       return;
     }
+
+    if (from) {
+      navigate("/app/ask", { replace: true });
+      const { label, context } = pageContextFor(from);
+      if (!context) return;
+      const t = create({ title: "New chat", planTitle: label, planContext: context });
+      setActiveId(t.id);
+      return;
+    }
+
     const t = create({
       title: q ? titleFrom(q) : "New chat",
       planTitle: plan,
@@ -148,7 +177,7 @@ export default function Ask() {
             <>
               <div className="ask-tools">
                 {active.planTitle
-                  ? <span className="ask-scope inline">Grounded in your <b>{active.planTitle}</b> plan</span>
+                  ? <span className="ask-scope inline">Grounded in <b>{active.planTitle}</b></span>
                   : <span />}
                 {active.messages.some((m) => m.role === "assistant") && !streaming && (
                   <span className="ask-tool-actions">
