@@ -16,7 +16,7 @@
 -- which is what makes "adding a member exposes nothing by itself" true with
 -- no special-casing.
 
--- ── households ───────────────────────────────────────────────────────────────
+-- -- households --
 CREATE TABLE IF NOT EXISTS public.households (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.households (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── household_members ────────────────────────────────────────────────────────
+-- -- household_members --
 -- One row per person who has ever been active. Leaving sets left_at rather
 -- than deleting the row, the same convention partnerships.ended_at uses.
 CREATE TABLE IF NOT EXISTS public.household_members (
@@ -43,7 +43,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS household_members_active_user_unique
 CREATE INDEX IF NOT EXISTS household_members_household_idx
   ON public.household_members (household_id) WHERE left_at IS NULL;
 
--- ── household_invites ────────────────────────────────────────────────────────
+-- -- household_invites --
 -- Separate from household_members, unlike partnerships (which overloads one
 -- row for both pending and active): a household can have several concurrent
 -- open invites at once (invite a parent and a teen in the same sitting).
@@ -66,7 +66,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS household_invites_token_unique
 CREATE INDEX IF NOT EXISTS household_invites_household_idx
   ON public.household_invites (household_id);
 
--- ── household_account_shares ─────────────────────────────────────────────────
+-- -- household_account_shares --
 -- Identical shape to account_shares (0013), keyed by household_id instead of
 -- partnership_id. Two states: shared or private. Never transactions, same as
 -- every other sharing surface in the app.
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS public.household_account_shares (
 CREATE INDEX IF NOT EXISTS household_account_shares_hid_idx
   ON public.household_account_shares (household_id);
 
--- ── Lock down: server-only, restrictive RLS (same posture as 0012/0013) ──────
+-- -- Lock down: server-only, restrictive RLS (same posture as 0012/0013) --
 DO $$
 DECLARE t TEXT;
 BEGIN
@@ -99,7 +99,7 @@ BEGIN
   END LOOP;
 END$$;
 
--- ── updated_at trigger (reuse public.touch_updated_at from 0008) ─────────────
+-- -- updated_at trigger (reuse public.touch_updated_at from 0008) --
 DROP TRIGGER IF EXISTS household_account_shares_touch ON public.household_account_shares;
 CREATE TRIGGER household_account_shares_touch BEFORE UPDATE ON public.household_account_shares
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
