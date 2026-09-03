@@ -2607,6 +2607,14 @@
 .jnpr .dash-w{position:relative}
 .jnpr .dash-w.full{grid-column:1/-1}
 @media(max-width:860px){.jnpr .dash-board{grid-template-columns:1fr}.jnpr .dash-w.full{grid-column:auto}}
+/* A grid item with z-index:auto paints in DOM order regardless of its own
+   descendants' z-index, so an open size-menu (z-index:4, scoped to its own
+   card) was getting painted OVER by whichever widget sits later in the grid,
+   any time that later card's top edge reached far enough up the column to
+   overlap it -- which shifts with viewport width, so it read as the menu
+   "randomly" disappearing on resize. Lifting the WRAPPER above its siblings,
+   not just the menu inside it, is what actually wins that comparison. */
+.jnpr .dash-w.menu-open{z-index:5}
 
 /* Arranging is a mode, and it looks like one: a dashed edge on every card, a
    tilt small enough to read as "these are loose" rather than as an animation,
