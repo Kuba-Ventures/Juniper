@@ -18,8 +18,11 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { fetchCardRewards, money0, type CardRewards } from "@/lib/cards";
 import { limitFor, linkedCards, manualCards, utilizationSummary, type CreditCardRow } from "@/lib/credit-cards";
-import { fetchSubscriptions, type SubPayload } from "@/lib/subscriptions";
-import { money2 } from "@/lib/txn-format";
+import { fetchSubscriptions, type SubItem, type SubPayload } from "@/lib/subscriptions";
+import { fmtDay, money2 } from "@/lib/txn-format";
+import { MerchantMark } from "@/components/juniper/merchant-mark";
+import { localBrandLogo } from "@/lib/institution-brand";
+import { colorOf, paint } from "@/lib/category-color";
 import type { PlaidItem } from "@/lib/plaid";
 
 // ── Cards and rewards ──────────────────────────────────────────────────────
@@ -302,11 +305,172 @@ export function useRecurringWidget(active: boolean): RecurringWidgetData {
   return { loading, empty: !loading && (payload?.items.length ?? 0) === 0, payload };
 }
 
-export function RecurringWidget({ data }: { data: RecurringWidgetData }) {
+/** The mark the Subscriptions panel already draws for this row, at its own
+ *  size and color, so a merchant reads the same in both places. */
+function SubMark({ i }: { i: SubItem }) {
+  return (
+    <MerchantMark
+      logo={i.logo ?? (i.institution ? localBrandLogo(i.institution) : null)}
+      merchant={i.merchant} name={i.name} k={colorOf(i.g)} paint={paint(i.g, i.hue)}
+    />
+  );
+}
+
+export function RecurringWidget({ data, size }: { data: RecurringWidgetData; size: string }) {
   const s = data.payload?.summary;
   const items = data.payload?.items ?? [];
   const pending = items.filter((i) => i.review === "unreviewed" && i.direction === "outflow");
+  const confirmedOut = items.filter((i) => i.review === "confirmed" && i.direction === "outflow");
 
+  if (size === "list") {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Recurring charges</h3>
+          <Link href="/app/transactions" className="link">Manage →</Link>
+        </div>
+        {confirmedOut.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            Nothing confirmed yet.
+          </div>
+        ) : (
+          <div className="rw-list">
+            {confirmedOut.map((i) => (
+              <div className="rw-row" key={i.id}>
+                <SubMark i={i} />
+                <div className="nm">
+                  <div className="t">{i.name}</div>
+                  <div className="s">{i.cadence}</div>
+                </div>
+                <div className="amt">
+                  {i.perMonth != null ? `${money2(i.perMonth)}/mo` : i.expected != null ? money2(i.expected) : "Varies"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "upcoming") {
+    const dated = confirmedOut
+      .filter((i) => i.nextDate != null)
+      .map((i) => ({ i, days: Math.round((Date.parse(i.nextDate!) - Date.now()) / 86400000) }))
+      .sort((a, b) => a.days - b.days);
+    const soon = dated.filter((d) => d.days <= 7);
+    const later = dated.filter((d) => d.days > 7);
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Recurring charges</h3>
+          <Link href="/app/transactions" className="link">Manage →</Link>
+        </div>
+        {dated.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            Nothing with a known next charge date yet.
+          </div>
+        ) : (
+          <>
+            {soon.length > 0 && (
+              <>
+                <div className="rw-grp-lab">This week</div>
+                {soon.map(({ i }) => (
+                  <div className="rw-up-row" key={i.id}>
+                    <div className="rw-up-date">{fmtDay(i.nextDate!)}</div>
+                    <SubMark i={i} />
+                    <div className="nm"><div className="t">{i.name}</div></div>
+                    <div className="amt">{i.expected != null ? money2(i.expected) : "Varies"}</div>
+                  </div>
+                ))}
+              </>
+            )}
+            {later.length > 0 && (
+              <>
+                <div className="rw-grp-lab">Later</div>
+                {later.slice(0, 3).map(({ i }) => (
+                  <div className="rw-up-row" key={i.id}>
+                    <div className="rw-up-date">{fmtDay(i.nextDate!)}</div>
+                    <SubMark i={i} />
+                    <div className="nm"><div className="t">{i.name}</div></div>
+                    <div className="amt">{i.expected != null ? money2(i.expected) : "Varies"}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (size === "attention") {
+    // Missed first (a stream the member expects that stopped showing up),
+    // then a changed amount, then new candidates still waiting on a decision.
+    // Same three states the full panel already separates by `health`/`review`.
+    const missed = confirmedOut.filter((i) => i.health === "missed").map((i) => ({ i, flag: "missed" as const }));
+    const changed = confirmedOut.filter((i) => i.health === "amount_changed").map((i) => ({ i, flag: "changed" as const }));
+    const fresh = pending.map((i) => ({ i, flag: "new" as const }));
+    const rows = [...missed, ...changed, ...fresh].slice(0, 4);
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Recurring charges</h3>
+          <Link href="/app/transactions" className="link">Manage →</Link>
+        </div>
+        {rows.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            Nothing needs a look right now.
+          </div>
+        ) : (
+          rows.map(({ i, flag }) => (
+            <div className="rw-att-row" key={i.id}>
+              <span className={`rw-flag ${flag}`}>{flag === "missed" ? "Missed" : flag === "changed" ? "Changed" : "New"}</span>
+              <div className="nm">
+                <div className="t">{i.name}</div>
+                <div className="s">
+                  {flag === "changed" && i.drift != null
+                    ? `was ${money2((i.expected ?? 0) - i.drift)}, now ${money2(i.expected ?? 0)}`
+                    : flag === "missed"
+                      ? "expected, not seen"
+                      : `${i.expected != null ? money2(i.expected) : "amount varies"}, looks recurring`}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  if (size === "wall") {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h3>Recurring charges</h3>
+          <Link href="/app/transactions" className="link">Manage →</Link>
+        </div>
+        {confirmedOut.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+            Nothing confirmed yet.
+          </div>
+        ) : (
+          <>
+            <div className="rw-wall">
+              {confirmedOut.map((i) => <SubMark i={i} key={i.id} />)}
+            </div>
+            {s && (
+              <div style={{ marginTop: 10, fontSize: 12, color: "var(--jnpr-ink-3)" }}>
+                <b style={{ color: "var(--jnpr-ink)" }}>{money2(s.monthly)}</b>/mo across {s.confirmed} confirmed
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Stat, the shipped default: unchanged.
   return (
     <div className="card">
       <div className="card-head">
