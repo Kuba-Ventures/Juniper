@@ -14,6 +14,7 @@ import {
   planColor,
   planTitle,
   planNumbers,
+  planIcon,
   suggestShape,
   domainFromName,
   uniqueDomain,
@@ -80,16 +81,44 @@ type Seed = { target: number; monthly: number };
 type ModalState =
   | null
   | { k: "new" }
-  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; fromGoal?: boolean; seed?: Seed }
+  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string; fromGoal?: boolean; seed?: Seed }
   | { k: "edit"; domain: string };
 
-const TEMPLATES: { label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey }[] = [
+// `icon` overrides the shape's default mark (SHAPE_ICON) for this template
+// and rides along onto the plan it creates (goal.icon in lib/plans.ts), so a
+// wedding keeps its own icon forever rather than reverting to `save`'s
+// generic target the moment it becomes a real row. Omitted where the shape's
+// own default already fits (a home, a payoff).
+const TEMPLATES: { label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string }[] = [
   { label: "Buy a home", shape: "buy", color: "--jnpr-c1", prefill: "cash" },
   { label: "Pay off debt", shape: "payoff", color: "--jnpr-c4", prefill: "debt" },
-  { label: "Emergency fund", shape: "save", color: "--jnpr-c3", prefill: "emergency" },
-  { label: "Baby and family", shape: "save", color: "--jnpr-c5", prefill: null },
+  { label: "Emergency fund", shape: "save", color: "--jnpr-c3", prefill: "emergency", icon: "shield" },
+  { label: "Baby and family", shape: "save", color: "--jnpr-c5", prefill: null, icon: "baby" },
   { label: "Invest for retirement", shape: "save", color: "--jnpr-c2", prefill: "invest" },
   { label: "Custom goal", shape: "save", color: "--jnpr-c6", prefill: null },
+  // Issue #262: the shapes/templates that were missing. Income is a real new
+  // PlanShape (see lib/plans.ts) because it needs its own math; the rest are
+  // save/buy goals wearing their own name and icon, deliberately not new
+  // shapes, since none of them needs math save/buy cannot already express.
+  { label: "Grow your income", shape: "income", color: "--jnpr-c7", prefill: null, icon: "income" },
+  { label: "Wedding", shape: "save", color: "--jnpr-c5", prefill: null, icon: "wedding" },
+  { label: "New car", shape: "buy", color: "--jnpr-c1", prefill: "cash", icon: "car" },
+  { label: "Education", shape: "save", color: "--jnpr-c2", prefill: null, icon: "education" },
+  { label: "Moving", shape: "save", color: "--jnpr-c6", prefill: null, icon: "moving" },
+  { label: "Sabbatical", shape: "save", color: "--jnpr-c3", prefill: null, icon: "sun" },
+];
+
+// How the "Start a new plan" picker groups the templates above: by what the
+// plan actually tracks, not by when it was added, so a member sees at a
+// glance that a wedding and an emergency fund work the same way and a raise
+// does not. Purely a picker-layout concern; a template's own `shape` is what
+// decides the plan's math either way.
+const TEMPLATE_GROUPS: { label: string; templates: string[] }[] = [
+  { label: "Saving up", templates: ["Emergency fund", "Baby and family", "Wedding", "Education", "Moving", "Sabbatical"] },
+  { label: "Buying", templates: ["Buy a home", "New car"] },
+  { label: "Paying off", templates: ["Pay off debt"] },
+  { label: "Growing income", templates: ["Grow your income"] },
+  { label: "Other", templates: ["Invest for retirement", "Custom goal"] },
 ];
 
 // Everything a shape changes about how a plan reads: its label in the picker,
@@ -101,6 +130,10 @@ const SHAPE_COPY: Record<PlanShape, {
   progressWord: string;
   currentLabel: string;
   targetLabel: string;
+  // Empty on a shape with no monthly-contribution concept (income): callers
+  // treat a falsy contribLabel as "do not render this field", which is what
+  // keeps a card from claiming a member is contributing $0 a month toward a
+  // raise nobody asked them to fund.
   contribVerb: string;
   contribLabel: string;
   readyPrefix: string;
@@ -141,9 +174,47 @@ const SHAPE_COPY: Record<PlanShape, {
     readyPrefix: "Debt-free",
     headline: (name, target) => (target > 0 ? `Clear ${money(target)} on ${name}` : `Pay off ${name}`),
   },
+  income: {
+    label: "Growing income",
+    hint: "Growing what you earn: a raise, a promotion, a new job, a side hustle.",
+    progressWord: "of the way to your target income",
+    currentLabel: "Current income ($/mo)",
+    targetLabel: "Target income ($/mo)",
+    // No monthly-contribution concept: there is nothing to set aside toward a
+    // raise, only a gap to close, so both are empty and the fields/rows that
+    // key off them stand down (DraftFields, PlanCard's contribution line).
+    contribVerb: "",
+    contribLabel: "",
+    readyPrefix: "Targeting",
+    headline: (name, target) => (target > 0 ? `Grow income to ${money(target)}/mo for ${name}` : `Grow income for ${name}`),
+  },
 };
 
-const SHAPES: PlanShape[] = ["save", "buy", "payoff"];
+const SHAPES: PlanShape[] = ["save", "buy", "payoff", "income"];
+
+// One group's header plus its templates, inside the shared `.tmpl-grid`
+// (the label spans the full grid row via `.tmpl-group-lbl`, same trick a
+// table-of-contents divider uses). A separate component only so the "new"
+// modal's JSX below reads as one line per group rather than a nested map.
+function SectionOfTemplates({ group, onPick }: {
+  group: { label: string; templates: string[] };
+  onPick: (t: (typeof TEMPLATES)[number]) => void;
+}) {
+  const items = group.templates
+    .map((label) => TEMPLATES.find((t) => t.label === label))
+    .filter((t): t is (typeof TEMPLATES)[number] => !!t);
+  if (!items.length) return null;
+  return (
+    <>
+      <div className="tmpl-group-lbl">{group.label}</div>
+      {items.map((t) => (
+        <button key={t.label} className="tmpl" onClick={() => onPick(t)}>
+          <span className="tmpl-ic" style={{ background: cssVar(t.color) }}><PlanIcon name={t.icon ?? SHAPE_ICON[t.shape]} /></span>{t.label}
+        </button>
+      ))}
+    </>
+  );
+}
 
 const parseNum = (s: string) => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
 const numStr = (n: number | null | undefined) => (n ? String(Math.round(n * 100) / 100) : "");
@@ -154,6 +225,7 @@ const FAQS: Record<PlanShape, string[]> = {
   save: ["How much should I set aside each month?", "Where should I keep this money?", "Am I saving fast enough?"],
   buy: ["How much can I afford?", "How big a down payment do I need?", "Should I clear debt before I buy?"],
   payoff: ["What is the fastest way to pay this off?", "Avalanche or snowball for me?", "Should I consolidate or refinance?"],
+  income: ["What's the fastest way to raise my income?", "Should I ask for a raise or switch jobs?", "How do I build a side income stream?"],
 };
 
 const PlusIcon = () => (
@@ -224,6 +296,7 @@ type PlanView = {
   domain: string;
   title: string;
   shape: PlanShape;
+  icon: string;
   color: PlanColor;
   current: number;
   target: number;
@@ -246,10 +319,16 @@ function viewOf(plan: Plan): PlanView {
   const pct = target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0;
   const done = plan.status === "completed";
 
-  // A payoff balance keeps accruing, so its finish line has to account for the
-  // rate. Saving gets rate 0 on purpose: we do not know what yield the member's
-  // cash earns, and inventing one would overstate their pace.
-  const months = monthsToClose(remaining, monthly, shape === "payoff" ? (rate ?? 0) : 0);
+  // Income has no monthly figure and no rate, so there is no pace to project
+  // from: `months` stays null and a date only ever shows when the member set
+  // one explicitly. Inventing a raise-and-therefore-date the same way `save`
+  // projects a savings pace would be a number nobody gave us.
+  const months = shape === "income"
+    ? null
+    // A payoff balance keeps accruing, so its finish line has to account for
+    // the rate. Saving gets rate 0 on purpose: we do not know what yield the
+    // member's cash earns, and inventing one would overstate their pace.
+    : monthsToClose(remaining, monthly, shape === "payoff" ? (rate ?? 0) : 0);
   const dateLabel = targetDate
     ? `${copy.readyPrefix} ${formatTargetDate(targetDate)}`
     : months != null && months > 0
@@ -266,7 +345,13 @@ function viewOf(plan: Plan): PlanView {
   } else if (target <= 0) {
     statusClass = "setup";
     statusLabel = "Setup";
-    next = `Add a ${shape === "payoff" ? "balance" : "target amount"} so Juniper can track this.`;
+    next = `Add a ${shape === "payoff" ? "balance" : shape === "income" ? "target income" : "target amount"} so Juniper can track this.`;
+  } else if (shape === "income") {
+    // No monthly-contribution concept to be "New" about: the plan is either
+    // set up (a target exists) and in progress, or it has reached the target.
+    statusClass = current >= target ? "done" : "ok";
+    statusLabel = current >= target ? "Reached" : "In progress";
+    next = current >= target ? "You've hit your target income." : "Ask Juniper for steps to close the gap.";
   } else if (monthly == null || monthly <= 0) {
     statusClass = "new";
     statusLabel = "New";
@@ -280,11 +365,13 @@ function viewOf(plan: Plan): PlanView {
     : target > 0
       ? shape === "payoff"
         ? `${money(remaining)} left${rate != null ? ` at ${rate.toFixed(1)}%` : ""}`
-        : `${money(remaining)} to go`
+        : shape === "income"
+          ? remaining > 0 ? `${money(remaining)} more to reach your target` : "Target income reached"
+          : `${money(remaining)} to go`
       : "No target set yet";
 
   return {
-    domain: plan.domain, title: planTitle(plan), shape, color: planColor(plan),
+    domain: plan.domain, title: planTitle(plan), shape, icon: planIcon(plan), color: planColor(plan),
     current, target, pct, monthly, rate, dateLabel,
     done, statusClass, statusLabel, note, next,
   };
@@ -353,7 +440,7 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
     // it was meant to replace.
     <div className={`card plan-lg ${v.done ? "done" : ""}`} onClick={() => { if (!editing) onOpen(); }}>
       <div className="ph">
-        <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={SHAPE_ICON[v.shape]} /></div>
+        <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={v.icon} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {editing === "title" ? (
             <InlineField
@@ -396,7 +483,7 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
         </div>
         <div className="bar"><i style={{ width: `${v.pct}%`, background: cssVar(v.color) }} /></div>
         <div className="plan-meta">
-          <span>{copy.contribVerb} <b>{v.monthly ? `${money(v.monthly)}/mo` : "not set"}</b></span>
+          {copy.contribVerb && <span>{copy.contribVerb} <b>{v.monthly ? `${money(v.monthly)}/mo` : "not set"}</b></span>}
           {v.dateLabel && <span className="pm-date">{v.dateLabel}</span>}
         </div>
         <div className="next"><b>{v.done ? "Outcome:" : "Next:"}</b> {v.next}</div>
@@ -461,32 +548,33 @@ function isIncomeGoal(goal: string): boolean {
 
 type GoalOffer = {
   goal: string; // shown verbatim: these are the member's words
-  // "plan" opens the create form pre-filled. "talk" opens the planner, for a
-  // goal a plan cannot honestly hold.
-  kind: "plan" | "talk";
   shape: PlanShape;
   color: PlanColor;
   prefill: PrefillKey;
-  note: string;
+  icon?: string;
 };
 
+// "Increase my income" used to have nothing a plan shape could honestly hold
+// (no target to save toward, nothing to buy, no balance to clear) and got
+// handed to the planner instead. The `income` shape (issue #262) closes that:
+// every signup goal now becomes a real plan.
 function offerFor(goal: string, i: number): GoalOffer {
   // Spread by list position rather than by hashing: a goal has no `domain` to
   // hash yet, and whatever color is chosen here is written into the plan on
   // create, so the chip and the card that follows it match.
   const color = PLAN_COLORS[i % PLAN_COLORS.length];
   if (isIncomeGoal(goal)) {
-    return { goal, kind: "talk", shape: "save", color, prefill: null, note: "No amount to track, so Juniper can talk this one through." };
+    const t = TEMPLATES.find((x) => x.label === "Grow your income")!;
+    return { goal, shape: t.shape, color: t.color, prefill: t.prefill, icon: t.icon };
   }
   const route = GOAL_ROUTES[domainFromName(goal)];
   const template = route?.template ? TEMPLATES.find((t) => t.label === route.template) : undefined;
   return {
     goal,
-    kind: "plan",
     shape: template?.shape ?? route?.shape ?? suggestShape(goal),
     color: template?.color ?? color,
     prefill: template?.prefill ?? null,
-    note: "",
+    icon: template?.icon,
   };
 }
 
@@ -498,11 +586,9 @@ function offerFor(goal: string, i: number): GoalOffer {
 //
 // Every figure is "Not set" rather than a zero. A zero would be a number the
 // member never gave, which is the dishonesty that rule exists to prevent.
-function UnstartedCard({ goal, color, talk, onStart, onQuickStart }: {
+function UnstartedCard({ goal, color, onStart, onQuickStart }: {
   goal: string;
   color: PlanColor;
-  /** A goal no plan shape can hold honestly, so it gets the planner, not a target. */
-  talk: boolean;
   onStart: () => void;
   /** Create the row with this target and nothing else invented. False if it did not save. */
   onQuickStart: (target: number) => Promise<boolean>;
@@ -544,45 +630,36 @@ function UnstartedCard({ goal, color, talk, onStart, onQuickStart }: {
           <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>no target yet</div>
         </div>
         <div className="bar"><i style={{ width: "0%", background: cssVar(color) }} /></div>
-        <div className="next"><b>Next:</b> {talk ? "no amount to track, so Juniper can talk this one through" : "set a target and Juniper starts tracking it"}</div>
+        <div className="next"><b>Next:</b> set a target and Juniper starts tracking it</div>
         {error && <div className="plan-err">{error}</div>}
-        {talk ? (
-          <div className="plan-foot">
-            <button className="btn sm" onClick={(e) => { e.stopPropagation(); onStart(); }}
-              aria-label={`Talk through ${goal} with Juniper`}>Talk it through</button>
-          </div>
-        ) : (
-          <>
-            {/* The quick route. Typing a number here is the whole of creating
-                the plan, so the full form stops being the only way in. The stop
-                on the wrapper is because the card itself is a click shortcut to
-                that form, and a click meant for this input must not open it. */}
-            <div className="quick-target" onClick={(e) => e.stopPropagation()}>
-              <span className="qt-pre">$</span>
-              <input
-                className="qt-in tnum"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void start(); } }}
-                inputMode="numeric"
-                placeholder="10,000"
-                aria-label={`Target amount for ${goal}`}
-              />
-              <button className="btn sm" disabled={busy} onClick={() => void start()}>
-                {busy ? "Starting…" : "Start it"}
-              </button>
-            </div>
-            <div className="plan-foot">
-              <button
-                className="edit-hint"
-                onClick={(e) => { e.stopPropagation(); onStart(); }}
-                aria-label={`More options for ${goal}`}
-              >
-                More options
-              </button>
-            </div>
-          </>
-        )}
+        {/* The quick route. Typing a number here is the whole of creating
+            the plan, so the full form stops being the only way in. The stop
+            on the wrapper is because the card itself is a click shortcut to
+            that form, and a click meant for this input must not open it. */}
+        <div className="quick-target" onClick={(e) => e.stopPropagation()}>
+          <span className="qt-pre">$</span>
+          <input
+            className="qt-in tnum"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void start(); } }}
+            inputMode="numeric"
+            placeholder="10,000"
+            aria-label={`Target amount for ${goal}`}
+          />
+          <button className="btn sm" disabled={busy} onClick={() => void start()}>
+            {busy ? "Starting…" : "Start it"}
+          </button>
+        </div>
+        <div className="plan-foot">
+          <button
+            className="edit-hint"
+            onClick={(e) => { e.stopPropagation(); onStart(); }}
+            aria-label={`More options for ${goal}`}
+          >
+            More options
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -780,6 +857,12 @@ type Draft = {
   name: string;
   shape: PlanShape;
   color: PlanColor;
+  // The template this draft was opened from, if any (goal.icon). Not user
+  // editable: there is no icon picker, only a shape picker, and changing shape
+  // clears it (see CreateForm/EditForm's `set`), since a template's icon is a
+  // promise about that specific template, not about whatever shape it happens
+  // to share.
+  icon: string;
   current: string;
   target: string;
   monthly: string;
@@ -801,14 +884,23 @@ function DraftFields({ draft, set }: { draft: Draft; set: (patch: Partial<Draft>
         <div className="field"><label>{copy.targetLabel}</label><input value={draft.target} onChange={(e) => set({ target: e.target.value })} inputMode="numeric" placeholder="10,000" /></div>
         <div className="field"><label>{copy.currentLabel}</label><input value={draft.current} onChange={(e) => set({ current: e.target.value })} inputMode="numeric" placeholder="0" /></div>
       </div>
-      <div className="field2">
-        <div className="field"><label>{copy.contribLabel}</label><input value={draft.monthly} onChange={(e) => set({ monthly: e.target.value })} inputMode="numeric" placeholder="300" /></div>
-        {draft.shape === "payoff"
-          ? <div className="field"><label>Rate (% a year)</label><input value={draft.rate} onChange={(e) => set({ rate: e.target.value })} inputMode="decimal" placeholder="22.9" /></div>
-          : <div className="field"><label>Target date (optional)</label><input value={draft.date} onChange={(e) => set({ date: e.target.value })} placeholder="Dec 2027" /></div>}
-      </div>
-      {draft.shape === "payoff" && (
-        <div className="field"><label>Target date (optional)</label><input value={draft.date} onChange={(e) => set({ date: e.target.value })} placeholder="Dec 2029" /></div>
+      {/* Income has no monthly-contribution concept (see SHAPE_COPY), so it
+          gets a bare target-date field instead of the contribution+date/rate
+          row every other shape shows. */}
+      {!copy.contribLabel ? (
+        <div className="field"><label>Target date (optional)</label><input value={draft.date} onChange={(e) => set({ date: e.target.value })} placeholder="Dec 2027" /></div>
+      ) : (
+        <>
+          <div className="field2">
+            <div className="field"><label>{copy.contribLabel}</label><input value={draft.monthly} onChange={(e) => set({ monthly: e.target.value })} inputMode="numeric" placeholder="300" /></div>
+            {draft.shape === "payoff"
+              ? <div className="field"><label>Rate (% a year)</label><input value={draft.rate} onChange={(e) => set({ rate: e.target.value })} inputMode="decimal" placeholder="22.9" /></div>
+              : <div className="field"><label>Target date (optional)</label><input value={draft.date} onChange={(e) => set({ date: e.target.value })} placeholder="Dec 2027" /></div>}
+          </div>
+          {draft.shape === "payoff" && (
+            <div className="field"><label>Target date (optional)</label><input value={draft.date} onChange={(e) => set({ date: e.target.value })} placeholder="Dec 2029" /></div>
+          )}
+        </>
       )}
     </>
   );
@@ -844,6 +936,7 @@ function goalFrom(draft: Draft, existing: PlanGoal | null): PlanGoal {
   const date = draft.date.trim();
   if (date) goal.target_date = date; else delete goal.target_date;
   if (draft.shape === "payoff" && rate > 0) goal.rate = rate; else delete goal.rate;
+  if (draft.icon) goal.icon = draft.icon; else delete goal.icon;
   return goal;
 }
 
@@ -873,9 +966,9 @@ export default function Plans({ profile = null, profileReady = false }: {
   const waitingGoals = useMemo(() => unplannedGoals(profile?.goals, plans), [profile?.goals, plans]);
 
   // Opening one is the same create path the chip strip used, so a goal turned
-  // into a plan keeps the colour and shape it was shown with. An income goal
-  // still goes to the planner instead: all three plan shapes are fictions for
-  // it, and offerFor is where that judgement already lives.
+  // into a plan keeps the colour, shape, and icon it was shown with. Every
+  // signup goal becomes a real plan now, income included (issue #262):
+  // offerFor is where that judgement lives.
   // Whether unstarted goal cards are on screen. Named once because two places
   // ask: the empty state has to stand down for them, and the grid has to render
   // them. When #184 first shipped only the grid knew, so a member with goals and
@@ -884,33 +977,28 @@ export default function Plans({ profile = null, profileReady = false }: {
 
   const startGoal = (g: UnplannedGoal, i: number) => {
     const o = offerFor(g.goal, i);
-    if (o.kind === "talk") {
-      navigate(`/app/ask?q=${encodeURIComponent(`${o.goal}. Where should I start?`)}`);
-      return;
-    }
-    setModal({ k: "form", label: o.goal, shape: o.shape, color: o.color, prefill: o.prefill, fromGoal: true });
+    setModal({ k: "form", label: o.goal, shape: o.shape, color: o.color, prefill: o.prefill, icon: o.icon, fromGoal: true });
   };
 
   // Quick add from a signup goal: the target the member just typed, and nothing
-  // else invented. Shape and colour come from `offerFor`, the same judgement
-  // the full form would have applied, so the card that appears matches the one
-  // they were looking at. No monthly amount and no date, because they gave us
-  // neither: the card lands on "New" and asks for the monthly next.
+  // else invented. Shape, colour, and icon come from `offerFor`, the same
+  // judgement the full form would have applied, so the card that appears
+  // matches the one they were looking at. No monthly amount and no date,
+  // because they gave us neither: the card lands on "New" and asks for the
+  // monthly next (or, for income, just sits ready to track).
   const quickStartGoal = async (g: UnplannedGoal, i: number, target: number) => {
     const o = offerFor(g.goal, i);
-    const saved = await savePlan({
-      domain: uniqueDomain(g.goal, plans),
-      status: "in_progress",
-      goal: {
-        headline: SHAPE_COPY[o.shape].headline(g.goal, target),
-        name: g.goal,
-        shape: o.shape,
-        color: o.color,
-        target_value: target,
-        current_value: 0,
-        monthly_contribution: 0,
-      },
-    });
+    const goal: PlanGoal = {
+      headline: SHAPE_COPY[o.shape].headline(g.goal, target),
+      name: g.goal,
+      shape: o.shape,
+      color: o.color,
+      target_value: target,
+      current_value: 0,
+      monthly_contribution: 0,
+    };
+    if (o.icon) goal.icon = o.icon;
+    const saved = await savePlan({ domain: uniqueDomain(g.goal, plans), status: "in_progress", goal });
     if (!saved) return false;
     upsertLocal(saved);
     setFilter("active");
@@ -963,7 +1051,7 @@ export default function Plans({ profile = null, profileReady = false }: {
     const ex = t ? undefined : EXAMPLES.find((x) => domainFromName(x.title) === want);
     setModal(
       t
-        ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill }
+        ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill, icon: t.icon }
         : ex
           ? { k: "form", label: ex.title, shape: ex.shape, color: ex.color, prefill: ex.prefill, seed: { target: ex.target, monthly: ex.monthly } }
           : { k: "new" },
@@ -1090,7 +1178,6 @@ export default function Plans({ profile = null, profileReady = false }: {
               key={g.goal}
               goal={g.goal}
               color={g.color}
-              talk={offerFor(g.goal, i).kind === "talk"}
               onStart={() => startGoal(g, i)}
               onQuickStart={(target) => quickStartGoal(g, i, target)}
             />
@@ -1124,10 +1211,8 @@ export default function Plans({ profile = null, profileReady = false }: {
           <h3>Start a new plan</h3>
           <p>Pick a starting point. Juniper seeds the numbers from your linked accounts where it can, and you can change anything.</p>
           <div className="tmpl-grid">
-            {TEMPLATES.map((t) => (
-              <button key={t.label} className="tmpl" onClick={() => setModal({ k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill })}>
-                <span className="tmpl-ic" style={{ background: cssVar(t.color) }}><PlanIcon name={SHAPE_ICON[t.shape]} /></span>{t.label}
-              </button>
+            {TEMPLATE_GROUPS.map((g) => (
+              <SectionOfTemplates key={g.label} group={g} onPick={(t) => setModal({ k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill, icon: t.icon })} />
             ))}
           </div>
           <div className="modal-actions" style={{ marginTop: 14 }}>
@@ -1163,7 +1248,7 @@ export default function Plans({ profile = null, profileReady = false }: {
 function CreateForm({
   state, prefill, existing, fromGoal = false, onBack, onCreated,
 }: {
-  state: { label: string; shape: PlanShape; color: PlanColor; seed?: Seed };
+  state: { label: string; shape: PlanShape; color: PlanColor; icon?: string; seed?: Seed };
   prefill: Prefill;
   existing: Plan[];
   /** Opened from a signup goal rather than from the template picker. */
@@ -1178,6 +1263,7 @@ function CreateForm({
     name: isCustom ? "" : state.label,
     shape: state.shape,
     color: state.color,
+    icon: state.icon ?? "",
     // `current` never comes from an example. The illustration's progress is
     // money the member has not put anywhere, and writing it in as theirs is
     // exactly the dishonesty the examples are labelled against.
@@ -1200,8 +1286,12 @@ function CreateForm({
   const set = (patch: Partial<Draft>) => {
     setDraft((d) => {
       const next = { ...d, ...patch };
-      if (patch.shape) return next;
-      if (isCustom && patch.name !== undefined && !shapePinned) next.shape = suggestShape(patch.name);
+      // A manual shape change, from the picker or the keyword auto-guess
+      // below, drops the template's icon: that icon was a promise about the
+      // specific template ("Wedding"), not about whichever shape it happened
+      // to share, so it should not survive onto a different shape.
+      if (patch.shape) return { ...next, icon: "" };
+      if (isCustom && patch.name !== undefined && !shapePinned) return { ...next, shape: suggestShape(patch.name), icon: "" };
       return next;
     });
     if (patch.shape) setShapePinned(true);
@@ -1274,6 +1364,7 @@ function EditForm({
     name: title,
     shape: planShape(plan),
     color: planColor(plan),
+    icon: plan.goal?.icon ?? "",
     current: numStr(nums.current),
     target: numStr(nums.target),
     monthly: numStr(nums.monthly),
@@ -1290,7 +1381,9 @@ function EditForm({
   const ask = (q: string) => navigate(`/app/ask?q=${encodeURIComponent(q)}&plan=${encodeURIComponent(title)}`);
   const newChat = () => navigate(`/app/ask?plan=${encodeURIComponent(title)}`);
   const openChat = (id: string) => navigate(`/app/ask?thread=${encodeURIComponent(id)}`);
-  const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  // A manual shape change drops whatever icon the plan had: that icon was a
+  // promise about the plan's original template, not about the new shape.
+  const set = (patch: Partial<Draft>) => setDraft((d) => (patch.shape ? { ...d, ...patch, icon: "" } : { ...d, ...patch }));
 
   const write = async (extra: { status?: Plan["status"] } = {}) => {
     setBusy(true);
