@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
-import { HouseholdSwitcher } from "@/components/juniper/household-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
 import { resetHouseholdCache } from "@/lib/household";
@@ -67,6 +66,15 @@ function sharedNav(holds: { accounts: boolean; goals: boolean; bills: boolean; a
   return nav;
 }
 
+// The household's nav (issue #258), same "derived from what it holds" rule as
+// sharedNav above, at the same day-one stage: a household has one page and
+// no sub-surfaces yet (no accounts/goals/bills/activity equivalents), so this
+// is a single tab named for the household rather than a fixed label, until
+// those surfaces exist and give it more than one place to point at.
+function householdNav(name: string): NavItem[] {
+  return [{ path: "/app/household", label: name || "Household" }];
+}
+
 const PERSONAL_NAV: NavItem[] = [
   { path: "/app", label: "Overview" },
   // Transactions sits second, next to the dashboard it drills into. The compact
@@ -100,7 +108,7 @@ export function AppBar({
 }) {
   const [loc, setLocation] = useLocation();
   const [open, setOpen] = useState<null | "account" | "notifications">(null);
-  const { workspace, holds } = useWorkspace();
+  const { workspace, holds, household } = useWorkspace();
   const shared = workspace === "shared";
   const initial = (name || "You").trim().charAt(0).toUpperCase();
   const { active: newNotifs, earlier: earlierNotifs, markRead, clear } = useNotifications();
@@ -134,7 +142,6 @@ export function AppBar({
               changes the meaning of every number below it belongs. */}
           <div className="appbar-ws">
             <WorkspaceSwitcher initial={initial} />
-            <HouseholdSwitcher />
           </div>
 
           {/* The "N linked" pill used to live here. It counted accounts, not
@@ -237,7 +244,7 @@ export function AppBar({
 
         {/* Row 2, primary nav */}
         <nav className="nav" aria-label={shared ? "Shared" : "Primary"}>
-          {(shared ? sharedNav(holds) : PERSONAL_NAV).map((n) => (
+          {(shared ? sharedNav(holds) : workspace === "household" ? householdNav(household.name) : PERSONAL_NAV).map((n) => (
             <Link key={n.path} href={n.path} className={isActive(loc, n.path) ? "on" : undefined}>
               <span className="lbl">{n.label}</span>
               {n.count != null && <span className="count">{n.count}</span>}
