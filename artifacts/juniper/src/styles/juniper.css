@@ -1967,6 +1967,15 @@
   .jnpr .share-toggle,.jnpr .share-toggle i{transition:none}
 }
 
+/* Household Overview: three cards summarizing Members/Accounts/Plans, each a
+   button onto its own tab (`.sum-strip` from shared/bills.tsx is the grid). */
+.jnpr .hh-ov-card{cursor:pointer;text-align:left;font:inherit;color:inherit;transition:border-color .12s}
+.jnpr .hh-ov-card:hover,.jnpr .hh-ov-card:focus-visible{border-color:var(--jnpr-accent)}
+.jnpr .hh-ov-card:focus-visible{outline:2px solid var(--jnpr-accent);outline-offset:2px}
+.jnpr .hh-ov-link{font-size:12px;font-weight:650;color:var(--jnpr-accent)}
+.jnpr .hh-ov-avatars{display:flex}
+.jnpr .hh-ov-avatars .tile{margin-right:-8px;border:2px solid var(--jnpr-surface)}
+
 /* A rows list that fills the card it is in, and does NOT scroll inside it.
    The card sits in a two-column grid beside Accounts and grid children stretch,
    so its height is whatever the taller column happens to be, and the list grows
