@@ -18,16 +18,29 @@ import { useLocation } from "wouter";
 import { money } from "@/lib/mock-data";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import { PageHeader } from "@/components/juniper/app-frame";
+import { resolveInstitutionMark } from "@/lib/institution-brand";
 import {
   useHousehold, isShared, leaveHousehold, removeHouseholdMember, editHouseholdMemberRole,
   setHouseholdAccountShare, setHouseholdPlanShare,
   type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
-import { planTitle, planIcon, planColor, planNumbers } from "@/lib/plans";
+import { planTitle, planIcon, planColor, planNumbers, domainFromName, SHAPE_ICON } from "@/lib/plans";
+import { EXAMPLES, type Example } from "@/pages/app/plans";
 
 const roleLabel: Record<HouseholdRole, string> = { owner: "Owner", adult: "Adult", teen: "Teen" };
 const MEMBER_COLORS = ["--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c1", "--jnpr-c7"];
+
+// A household-flavored slice of the personal Plans page's own example
+// gallery (`EXAMPLES` in lib/plans.ts), not a second set of illustrations:
+// "Buy a home" and "Emergency fund" read as household goals as easily as
+// personal ones, and the two new entries (vacation, college) were added there
+// rather than kept local so the same `?new=<slug>` deep link on /app/plans
+// that already resolves every other example resolves these too.
+const FAMILY_EXAMPLE_IDS = ["vacation", "college", "home", "emergency"];
+const FAMILY_EXAMPLES: Example[] = FAMILY_EXAMPLE_IDS
+  .map((id) => EXAMPLES.find((e) => e.id === id))
+  .filter((e): e is Example => !!e);
 
 type Tab = "overview" | "members" | "accounts" | "plans";
 
@@ -36,9 +49,18 @@ function AccountRow({ a, canToggle, onToggle, busy }: {
 }) {
   const on = isShared(a.scope);
   const hidden = a.scope === "private" && !a.mine;
+  // Real bundled brand art where the institution's name matches one (the same
+  // chain Connections and Overview use), a tinted monogram otherwise. No
+  // per-request Plaid logo here: that endpoint only ever returns marks for the
+  // CALLER's own linked institutions, and half these rows belong to someone else.
+  const mark = resolveInstitutionMark(a.inst);
   return (
     <div className="share-row">
-      <div className="tile sm" style={{ background: cssVar("--jnpr-c4") }}>{a.n.charAt(0)}</div>
+      {mark.kind === "logo" ? (
+        <img className="blogo" src={mark.src} alt="" />
+      ) : (
+        <div className="tile sm" style={{ background: cssVar("--jnpr-c4") }}>{a.n.charAt(0)}</div>
+      )}
       <div className="share-id">
         <div className="nm">{a.n}</div>
         <div className="mt">{a.inst}</div>
@@ -268,6 +290,9 @@ export function HouseholdView() {
       {tab === "accounts" && (
         <div className="card">
           <div className="card-head"><h3>Choose what to share</h3></div>
+          <button className="ob-add" style={{ marginBottom: 14, width: "100%" }} onClick={() => navigate("/app/connections?add=1")}>
+            + Add an account to share
+          </button>
           {myAccounts.length === 0 ? (
             <p className="sub">Link an account first, and it will show up here to share.</p>
           ) : (
@@ -277,9 +302,6 @@ export function HouseholdView() {
               ))}
             </div>
           )}
-          <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/connections?add=1")}>
-            + Add an account to share
-          </button>
           {sharedAccountsByOthers.length > 0 && (
             <>
               <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>
@@ -294,31 +316,58 @@ export function HouseholdView() {
       )}
 
       {tab === "plans" && (
-        <div className="card">
-          <div className="card-head"><h3>Share a plan</h3></div>
-          {myPlans.length === 0 ? (
-            <p className="sub">Start a plan first, and it will show up here to share.</p>
-          ) : (
-            <div className="share-list">
-              {myPlans.map((p) => (
-                <PlanRow key={p.domain} p={p} canToggle busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
-              ))}
-            </div>
-          )}
-          <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
-            + Create a plan for the household
-          </button>
-          {sharedPlansByOthers.length > 0 && (
-            <>
-              <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>
+        <>
+          <div className="card">
+            <div className="card-head"><h3>Share a plan</h3></div>
+            {myPlans.length === 0 ? (
+              <p className="sub">Start a plan first, and it will show up here to share.</p>
+            ) : (
               <div className="share-list">
-                {sharedPlansByOthers.map((p) => (
-                  <PlanRow key={`${p.owner_id}:${p.domain}`} p={p} canToggle={false} busy={false} onToggle={() => {}} />
+                {myPlans.map((p) => (
+                  <PlanRow key={p.domain} p={p} canToggle busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
                 ))}
               </div>
-            </>
-          )}
-        </div>
+            )}
+            <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
+              + Create a plan for the household
+            </button>
+            {sharedPlansByOthers.length > 0 && (
+              <>
+                <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>
+                <div className="share-list">
+                  {sharedPlansByOthers.map((p) => (
+                    <PlanRow key={`${p.owner_id}:${p.domain}`} p={p} canToggle={false} busy={false} onToggle={() => {}} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <section className="ex-wrap">
+            <div className="ex-lede">
+              <h3>Ideas for a household plan</h3>
+              <p>Start one of these and it lands on your own Plans page, prefilled and ready to adjust.</p>
+            </div>
+            <div className="grid ex-grid">
+              {FAMILY_EXAMPLES.map((e) => (
+                <button
+                  key={e.id}
+                  className="card plan-ex hh-ov-card"
+                  style={{ width: "100%" }}
+                  onClick={() => navigate(`/app/plans?new=${domainFromName(e.title)}`)}
+                >
+                  <div className="ex-top">
+                    <span className="ex-ic" style={{ background: cssVar(e.color) }}><PlanIcon name={SHAPE_ICON[e.shape]} /></span>
+                    <div className="ex-head-txt">
+                      <div className="ex-t">{e.title}</div>
+                    </div>
+                  </div>
+                  <p className="ex-b">{e.blurb}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
       {error && <div className="form-error" style={{ marginTop: 16 }}>{error}</div>}

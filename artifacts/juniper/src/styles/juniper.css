@@ -1975,6 +1975,7 @@
 .jnpr .hh-ov-link{font-size:12px;font-weight:650;color:var(--jnpr-accent)}
 .jnpr .hh-ov-avatars{display:flex}
 .jnpr .hh-ov-avatars .tile{margin-right:-8px;border:2px solid var(--jnpr-surface)}
+.jnpr .share-row .blogo{width:30px;height:30px;border-radius:8px}
 
 /* A rows list that fills the card it is in, and does NOT scroll inside it.
    The card sits in a two-column grid beside Accounts and grid children stretch,

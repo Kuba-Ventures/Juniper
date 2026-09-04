@@ -684,7 +684,7 @@ function UnstartedCard({ goal, color, onStart, onQuickStart }: {
  * Overview.
  * ------------------------------------------------------------------ */
 
-type Example = {
+export type Example = {
   id: string;
   title: string;
   shape: PlanShape;
@@ -699,7 +699,7 @@ type Example = {
   prefill: PrefillKey;
 };
 
-const EXAMPLES: Example[] = [
+export const EXAMPLES: Example[] = [
   {
     id: "home", title: "Buy a home", shape: "buy", color: "--jnpr-c1", prefill: "cash",
     current: 28000, target: 60000, monthly: 850,
@@ -719,6 +719,16 @@ const EXAMPLES: Example[] = [
     id: "trip", title: "Six months abroad", shape: "save", color: "--jnpr-c5", prefill: null,
     current: 3100, target: 14000, monthly: 450,
     blurb: "Any goal you can name, not just the ones on the template list.",
+  },
+  {
+    id: "vacation", title: "Save for a family vacation", shape: "save", color: "--jnpr-c5", prefill: null,
+    current: 1200, target: 6000, monthly: 300,
+    blurb: "A trip the whole family can look forward to, funded before you book it.",
+  },
+  {
+    id: "college", title: "Save for college", shape: "save", color: "--jnpr-c2", prefill: null,
+    current: 4000, target: 80000, monthly: 350,
+    blurb: "A head start on tuition, years before the bill arrives.",
   },
 ];
 
