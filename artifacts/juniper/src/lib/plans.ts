@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
-// The three framings a plan can take. A plan's shape decides how its numbers
-// are read (saving up vs paying down) and which icon it gets, so it belongs with
-// the plan data rather than the card that renders it.
-export type PlanShape = "save" | "buy" | "payoff";
+// The framings a plan can take. A plan's shape decides how its numbers are
+// read (saving up vs paying down vs growing) and which icon it gets by
+// default, so it belongs with the plan data rather than the card that renders
+// it. `income` is the one shape with no accumulation math at all: there is
+// nothing to save toward or pay off, only a gap between a current and a
+// target figure, which is why it carries no monthly-contribution field (see
+// SHAPE_COPY in pages/app/plans.tsx). Wedding, a car, education, moving, and a
+// sabbatical are deliberately NOT new shapes: each is a save or a buy goal
+// wearing its own name and icon (see TEMPLATES), because none of them needs
+// math `save`/`buy` cannot already express.
+export type PlanShape = "save" | "buy" | "payoff" | "income";
 
 // The palette tokens a member may pick from, straight out of juniper.css. Kept
 // as a literal union so a stored value that is not one of these (hand-edited
@@ -35,6 +42,12 @@ export type PlanGoal = {
   current_value?: number;
   monthly_contribution?: number;
   rate?: number; // annual percentage on a payoff balance, e.g. 22.9
+  // A template's own icon (see TEMPLATES in pages/app/plans.tsx), carried onto
+  // the plan it created so "Wedding" keeps its own mark forever rather than
+  // reverting to `save`'s generic target the moment it becomes a real row.
+  // Unset means "use this plan's shape default" (SHAPE_ICON), which is every
+  // plan written before this field existed.
+  icon?: string;
   [k: string]: unknown;
 };
 
@@ -225,6 +238,10 @@ const SHAPE_KEYWORDS: Array<{ shape: PlanShape; words: string[] }> = [
   // loan" is a payoff, not a purchase, even though it says car.
   { shape: "payoff", words: ["loan", "debt", "card", "payoff", "paydown", "credit", "owe"] },
   { shape: "buy", words: ["home", "house", "property", "condo", "mortgage", "car", "vehicle", "buy"] },
+  // Checked before the "save" catch-all so a typed "ask for a raise" lands on
+  // income rather than being guessed as a savings goal with nothing to save
+  // toward.
+  { shape: "income", words: ["income", "salary", "raise", "promotion", "freelance"] },
   { shape: "save", words: ["nomad", "travel", "trip", "wedding", "baby", "family", "fund", "emergency", "retire", "save", "saving", "vacation"] },
 ];
 
@@ -238,7 +255,8 @@ export function suggestShape(...text: Array<string | null | undefined>): PlanSha
   return "save";
 }
 
-const isShape = (v: unknown): v is PlanShape => v === "save" || v === "buy" || v === "payoff";
+const isShape = (v: unknown): v is PlanShape =>
+  v === "save" || v === "buy" || v === "payoff" || v === "income";
 
 export function planShape(plan: Plan): PlanShape {
   const stored = plan.goal?.shape;
@@ -274,7 +292,18 @@ export const SHAPE_ICON: Record<PlanShape, string> = {
   save: "target",
   buy: "home",
   payoff: "debt",
+  income: "income",
 };
+
+// The icon a plan actually renders: a template's own mark where the plan was
+// created from one and still carries it (`goal.icon`), else the shape's
+// default. Read through this rather than `SHAPE_ICON[planShape(plan)]`
+// directly, the same reason `planShape`/`planColor` exist: one place that
+// degrades sensibly for a row with none of these fields.
+export function planIcon(plan: Plan): string {
+  const stored = plan.goal?.icon;
+  return typeof stored === "string" && stored.trim() ? stored : SHAPE_ICON[planShape(plan)];
+}
 
 // Readable labels for the five scripted domains, which are slugs the member
 // never typed. Anything else is free text they DID type, so it is de-slugified

@@ -27,6 +27,10 @@ const ICONS: Record<string, ReactNode> = {
   shield: <path d="M12 3l7 3v6c0 4-3 6.8-7 8-4-1.2-7-4-7-8V6z" />,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" /></>,
   target: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" /></>,
+  income: <><path d="M3 17l6-6 4 4 8-9" /><path d="M15 6h6v6" /></>,
+  car: <><path d="M4 16l1.4-4.8A2 2 0 017.3 10h9.4a2 2 0 011.9 1.2L20 16" /><rect x="2.5" y="16" width="19" height="3.5" rx="1.2" /><circle cx="7" cy="19.5" r="1.5" /><circle cx="17" cy="19.5" r="1.5" /></>,
+  education: <><path d="M12 4L2 9l10 5 10-5-10-5z" /><path d="M6 11.5V17c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5" /></>,
+  moving: <><path d="M3 8l9-4 9 4-9 4-9-4z" /><path d="M3 8v9l9 4 9-4V8" /><path d="M12 12v9" /></>,
 };
 export function PlanIcon({ name }: { name: string }) {
   return (
