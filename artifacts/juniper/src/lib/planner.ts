@@ -16,6 +16,7 @@
 // pushed up as a one-time backfill.
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
+import type { PlanShape } from "@/lib/plans";
 
 export type Msg = { role: "user" | "assistant"; content: string };
 
@@ -290,6 +291,86 @@ export async function generateReport(messages: Msg[], planContext?: string): Pro
   const data = (await res.json()) as Omit<PlanReport, "generatedAt"> & { error?: string };
   if (data.error) throw new Error(data.error);
   return { ...data, generatedAt: Date.now() };
+}
+
+/* ------------------------------------------------------------------ *
+ * "Track this as a plan": issue #262. Distinct from generateReport
+ * above, which writes a narrative PDF nobody can check a box against.
+ * This extracts a draft for a real Plan row, and is honest about what the
+ * conversation did not establish rather than inventing round numbers.
+ * ------------------------------------------------------------------ */
+
+export type PlanDraftField = "target_value" | "current_value" | "monthly_contribution" | "rate" | "target_date";
+
+export type PlanDraftFromChat = {
+  name: string;
+  shape: PlanShape;
+  target_value?: number;
+  current_value?: number;
+  monthly_contribution?: number;
+  rate?: number;
+  target_date?: string;
+  // Which of the fields above the model is confident actually came from the
+  // conversation, as opposed to the plausible-sounding gap-filling a model
+  // asked for "the target amount" will otherwise produce. Empty means the
+  // conversation never got concrete, which is a real and expected outcome,
+  // not a failure of extraction.
+  found: PlanDraftField[];
+};
+
+const isPlanShape = (v: unknown): v is PlanShape => v === "save" || v === "buy" || v === "payoff" || v === "income";
+const isDraftField = (v: unknown): v is PlanDraftField =>
+  v === "target_value" || v === "current_value" || v === "monthly_contribution" || v === "rate" || v === "target_date";
+
+export async function extractPlanDraft(messages: Msg[], planContext?: string): Promise<PlanDraftFromChat> {
+  const token = await getAccessToken();
+  const res = await fetch("/api/planner/extract-plan", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ messages, planContext }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown> & { error?: string };
+  if (data.error) throw new Error(String(data.error));
+
+  // Narrowed by hand rather than trusted as-is: this is the one place a
+  // model's output becomes numbers a create form pre-fills, and a malformed
+  // shape or a `found` entry naming a field that isn't even a number would
+  // otherwise reach the page as a silent type mismatch rather than a caught
+  // one here.
+  const found = (Array.isArray(data.found) ? data.found : []).filter(isDraftField);
+  const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  return {
+    name: typeof data.name === "string" && data.name.trim() ? data.name.trim() : "New plan",
+    shape: isPlanShape(data.shape) ? data.shape : "save",
+    target_value: found.includes("target_value") ? num(data.target_value) : undefined,
+    current_value: found.includes("current_value") ? num(data.current_value) : undefined,
+    monthly_contribution: found.includes("monthly_contribution") ? num(data.monthly_contribution) : undefined,
+    rate: found.includes("rate") ? num(data.rate) : undefined,
+    target_date: found.includes("target_date") && typeof data.target_date === "string" ? data.target_date : undefined,
+    found,
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Handoff from Ask Juniper's "Adjust first" to the Plans create form: an
+ * in-memory pass rather than a URL param or localStorage, because the draft
+ * is a JS object with several optional numeric fields, the two pages are
+ * mounted in the same SPA session, and `navigate()` between them is a
+ * client-side route change, never a hard reload. A lost draft (a hard
+ * refresh mid-handoff) costs nothing worse than clicking the button again.
+ * ------------------------------------------------------------------ */
+let pendingChatDraft: PlanDraftFromChat | null = null;
+export function setPendingChatDraft(d: PlanDraftFromChat): void {
+  pendingChatDraft = d;
+}
+export function takePendingChatDraft(): PlanDraftFromChat | null {
+  const d = pendingChatDraft;
+  pendingChatDraft = null;
+  return d;
 }
 
 // The declarative list a route maps to, and what a member can switch a

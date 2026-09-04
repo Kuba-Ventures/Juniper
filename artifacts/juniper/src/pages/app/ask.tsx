@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useThreads, runTurn, pageContextFor, isPageContext, PAGE_CONTEXTS, titleFrom, generateReport, type Thread } from "@/lib/planner";
+import {
+  useThreads, runTurn, pageContextFor, isPageContext, PAGE_CONTEXTS, titleFrom, generateReport,
+  extractPlanDraft, setPendingChatDraft, type Thread, type PlanDraftFromChat,
+} from "@/lib/planner";
 import { PlanReportView } from "@/components/juniper/plan-report";
+import { useMemberPlans, savePlan, uniqueDomain, planTitle, type PlanGoal } from "@/lib/plans";
+import { money } from "@/lib/mock-data";
 
 // Global starter prompts (the standalone surface). Plan-scoped chats arrive
 // pre-seeded with a question from the Plans page, so they skip this screen.
@@ -36,6 +41,7 @@ function Rich({ text }: { text: string }) {
 
 export default function Ask() {
   const { threads, create, remove, update } = useThreads();
+  const { plans, upsertLocal } = useMemberPlans();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -43,6 +49,14 @@ export default function Ask() {
   const [reportBusy, setReportBusy] = useState(false);
   const [reportErr, setReportErr] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  // "Track this as a plan" (issue #262): a draft extracted from the thread,
+  // previewed in place before it becomes a real row. `planCreated` is the
+  // confirmation shown after "Looks right, create it", separate from
+  // `planDraft` so the preview and its aftermath are never on screen at once.
+  const [planDraft, setPlanDraft] = useState<PlanDraftFromChat | null>(null);
+  const [planDraftBusy, setPlanDraftBusy] = useState(false);
+  const [planDraftErr, setPlanDraftErr] = useState(false);
+  const [planCreated, setPlanCreated] = useState<{ domain: string; title: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -50,8 +64,64 @@ export default function Ask() {
 
   const active: Thread | undefined = threads.find((t) => t.id === activeId);
 
-  // Reset the report overlay when switching threads.
-  useEffect(() => { setShowReport(false); setReportErr(false); }, [activeId]);
+  // Reset the report overlay and any plan draft when switching threads: a
+  // draft extracted from one conversation has no business surviving onto
+  // another.
+  useEffect(() => {
+    setShowReport(false);
+    setReportErr(false);
+    setPlanDraft(null);
+    setPlanDraftErr(false);
+    setPlanCreated(null);
+  }, [activeId]);
+
+  async function makePlanDraft() {
+    if (!active || planDraftBusy) return;
+    setPlanDraftBusy(true);
+    setPlanDraftErr(false);
+    setPlanCreated(null);
+    try {
+      const draft = await extractPlanDraft(active.messages, active.planContext);
+      setPlanDraft(draft);
+    } catch {
+      setPlanDraftErr(true);
+    } finally {
+      setPlanDraftBusy(false);
+    }
+  }
+
+  // "Looks right, create it": writes the row directly, the same call the
+  // Plans page's own quick-start makes, so a draft the member accepts as-is
+  // never has to detour through a form just to be confirmed twice.
+  async function createFromDraft() {
+    if (!planDraft || planDraftBusy) return;
+    setPlanDraftBusy(true);
+    setPlanDraftErr(false);
+    const goal: PlanGoal = { headline: planDraft.name, name: planDraft.name, shape: planDraft.shape };
+    if (planDraft.target_value != null) goal.target_value = planDraft.target_value;
+    if (planDraft.current_value != null) goal.current_value = planDraft.current_value;
+    if (planDraft.monthly_contribution != null) goal.monthly_contribution = planDraft.monthly_contribution;
+    if (planDraft.rate != null && planDraft.shape === "payoff") goal.rate = planDraft.rate;
+    if (planDraft.target_date) goal.target_date = planDraft.target_date;
+    const saved = await savePlan({ domain: uniqueDomain(planDraft.name, plans), status: "in_progress", goal });
+    setPlanDraftBusy(false);
+    if (!saved) {
+      setPlanDraftErr(true);
+      return;
+    }
+    upsertLocal(saved);
+    setPlanCreated({ domain: saved.domain, title: planTitle(saved) });
+    setPlanDraft(null);
+  }
+
+  // "Adjust first": hands the same draft to the real create form on Plans,
+  // marked as from-conversation there too, rather than building a second
+  // place that can edit a plan's numbers.
+  function adjustDraft() {
+    if (!planDraft) return;
+    setPendingChatDraft(planDraft);
+    navigate("/app/plans?fromChat=1");
+  }
 
   async function makeReport() {
     if (!active || reportBusy) return;
@@ -114,7 +184,7 @@ export default function Ask() {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [active?.messages.length, streamText, streaming]);
+  }, [active?.messages.length, streamText, streaming, planDraft, planCreated]);
 
   async function send(text: string, thread?: Thread) {
     const t = thread ?? active;
@@ -216,6 +286,15 @@ export default function Ask() {
                     ) : (
                       <button className="btn sm" onClick={makeReport}>Save as plan (PDF)</button>
                     )}
+                    {/* Only for a generic or page-grounded thread. A thread
+                        already scoped to a real plan (active.planTitle set
+                        and not one of the switchable page options) has
+                        nothing to "become": that plan already exists. */}
+                    {(!active.planTitle || isPageContext(active.planContext)) && (
+                      <button className="btn sm ghost" disabled={planDraftBusy} onClick={makePlanDraft}>
+                        {planDraftBusy ? "Reading…" : "Track this as a plan"}
+                      </button>
+                    )}
                   </span>
                 )}
               </div>
@@ -232,6 +311,16 @@ export default function Ask() {
                     <div className="ask-bubble">{streamText ? <Rich text={streamText} /> : <span className="ask-dots"><i /><i /><i /></span>}</div>
                   </div>
                 )}
+                {planDraftErr && !planDraft && (
+                  <div className="ask-plandraft-done"><span>Couldn't read a plan out of that conversation. Try again.</span></div>
+                )}
+                {planDraft && <PlanDraftCard draft={planDraft} busy={planDraftBusy} err={planDraftErr} onCreate={createFromDraft} onAdjust={adjustDraft} />}
+                {planCreated && (
+                  <div className="ask-plandraft-done">
+                    <span><b>{planCreated.title}</b> is now a plan.</span>
+                    <button className="view-link" onClick={() => navigate(`/app/plans?open=${encodeURIComponent(planCreated.domain)}`)}>View it</button>
+                  </div>
+                )}
               </div>
               <Composer disabled={streaming} onSend={(v) => send(v)} value={input} setValue={setInput} />
             </>
@@ -242,6 +331,63 @@ export default function Ask() {
       {showReport && active?.report && (
         <PlanReportView report={active.report} planTitle={active.planTitle} onClose={() => setShowReport(false)} />
       )}
+    </div>
+  );
+}
+
+// Field labels for the draft preview. Deliberately its own small table rather
+// than importing Plans' SHAPE_COPY: this is a transient preview of what would
+// be created, not the plan card itself, and the two are allowed to word
+// things slightly differently without drifting into two sources of truth
+// about a real plan's fields (goalFrom in pages/app/plans.tsx is still the
+// only thing that ever writes a plan's `goal` object).
+const DRAFT_LABEL: Record<PlanDraftFromChat["shape"], { target: string; current: string; monthly: string }> = {
+  save: { target: "Target", current: "Saved so far", monthly: "Monthly" },
+  buy: { target: "Down payment needed", current: "Set aside so far", monthly: "Monthly" },
+  payoff: { target: "Balance to clear", current: "Paid off so far", monthly: "Monthly" },
+  income: { target: "Target income", current: "Current income", monthly: "" },
+};
+const SHAPE_NAME: Record<PlanDraftFromChat["shape"], string> = {
+  save: "Saving up", buy: "Buying", payoff: "Paying off", income: "Growing income",
+};
+
+function PlanDraftCard({ draft, busy, err, onCreate, onAdjust }: {
+  draft: PlanDraftFromChat;
+  busy: boolean;
+  err: boolean;
+  onCreate: () => void;
+  onAdjust: () => void;
+}) {
+  const labels = DRAFT_LABEL[draft.shape];
+  const rows: Array<[string, string]> = [];
+  if (draft.found.includes("target_value") && draft.target_value != null) rows.push([labels.target, money(draft.target_value)]);
+  if (draft.found.includes("current_value") && draft.current_value != null) rows.push([labels.current, money(draft.current_value)]);
+  if (labels.monthly && draft.found.includes("monthly_contribution") && draft.monthly_contribution != null) rows.push([labels.monthly, `${money(draft.monthly_contribution)}/mo`]);
+  if (draft.shape === "payoff" && draft.found.includes("rate") && draft.rate != null) rows.push(["Rate", `${draft.rate.toFixed(1)}%/yr`]);
+  if (draft.found.includes("target_date") && draft.target_date) rows.push(["Target date", draft.target_date]);
+
+  return (
+    <div className="ask-plandraft">
+      <div className="ask-plandraft-t">{draft.name} · {SHAPE_NAME[draft.shape]}</div>
+      {rows.length ? (
+        rows.map(([k, v]) => (
+          <div className="ask-plandraft-row" key={k}><span>{k}</span><b>{v}</b></div>
+        ))
+      ) : (
+        <div className="ask-plandraft-sub">Nothing concrete came up in this conversation yet, so it would start blank and Juniper would ask for a target once it exists.</div>
+      )}
+      {err && <div className="ask-tool-err" style={{ marginBottom: 6 }}>That didn't save. Check your connection and try again.</div>}
+      <div className="ask-plandraft-actions">
+        {/* Nothing to confirm with no figures found: offering "looks right"
+            over an empty card would ask the member to accept a plan that
+            has nothing in it yet. The form is where a plan with no target
+            belongs (it lands in Setup there, same as any other), not a
+            one-tap accept here. */}
+        {rows.length > 0 && (
+          <button className="btn sm" disabled={busy} onClick={onCreate}>{busy ? "Creating…" : "Looks right, create it"}</button>
+        )}
+        <button className="btn sm ghost" disabled={busy} onClick={onAdjust}>{rows.length > 0 ? "Adjust first" : "Set it up"}</button>
+      </div>
     </div>
   );
 }

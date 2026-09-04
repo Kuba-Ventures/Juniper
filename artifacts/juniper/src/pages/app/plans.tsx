@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
-import { useThreads, previewOf, relativeTime } from "@/lib/planner";
+import { useThreads, previewOf, relativeTime, takePendingChatDraft, type PlanDraftFromChat, type PlanDraftField } from "@/lib/planner";
 import { useSession } from "@/lib/use-session";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import {
@@ -81,7 +81,7 @@ type Seed = { target: number; monthly: number };
 type ModalState =
   | null
   | { k: "new" }
-  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string; fromGoal?: boolean; seed?: Seed }
+  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string; fromGoal?: boolean; seed?: Seed; chatDraft?: PlanDraftFromChat }
   | { k: "edit"; domain: string };
 
 // `icon` overrides the shape's default mark (SHAPE_ICON) for this template
@@ -217,6 +217,16 @@ function SectionOfTemplates({ group, onPick }: {
 }
 
 const parseNum = (s: string) => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
+
+// A stable color for a plan draft that has no list position to spread by
+// (offerFor's callers all have one; a chat draft does not). Cheap and
+// deterministic is all this needs: the member can change it in the picker,
+// and `planColor` will derive its own hash from the domain later regardless.
+function colorForName(name: string): PlanColor {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return PLAN_COLORS[Math.abs(h) % PLAN_COLORS.length];
+}
 const numStr = (n: number | null | undefined) => (n ? String(Math.round(n * 100) / 100) : "");
 
 // Per-shape FAQs, the questions people actually ask about a goal framed this
@@ -1060,6 +1070,21 @@ export default function Plans({ profile = null, profileReady = false }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // "Adjust first" from an Ask Juniper thread (issue #262): `?fromChat=1`
+  // means a draft is waiting in the in-memory handoff (lib/planner.ts),
+  // opened here rather than passed as its own URL param because it is a full
+  // object with several optional numeric fields, not a slug. Read once and
+  // consumed: a stale `?fromChat=1` left in the URL (a reload, a bookmark)
+  // finds nothing waiting and falls through to the plain list.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("fromChat") !== "1") return;
+    navigate("/app/plans", { replace: true });
+    const draft = takePendingChatDraft();
+    if (!draft) return;
+    setModal({ k: "form", label: draft.name, shape: draft.shape, color: colorForName(draft.name), prefill: null, chatDraft: draft });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   // Where an accepted partner invite lands: `?open=<domain>` opens that plan
   // once the list has loaded. Accepting an invite attaches the caller as
   // `partner_user_id` on the inviter's existing row rather than creating a
@@ -1248,7 +1273,7 @@ export default function Plans({ profile = null, profileReady = false }: {
 function CreateForm({
   state, prefill, existing, fromGoal = false, onBack, onCreated,
 }: {
-  state: { label: string; shape: PlanShape; color: PlanColor; icon?: string; seed?: Seed };
+  state: { label: string; shape: PlanShape; color: PlanColor; icon?: string; seed?: Seed; chatDraft?: PlanDraftFromChat };
   prefill: Prefill;
   existing: Plan[];
   /** Opened from a signup goal rather than from the template picker. */
@@ -1259,6 +1284,8 @@ function CreateForm({
   // A signup goal's label is the member's own text, so it is always the name to
   // pre-fill, even in the unlikely event they typed the words "Custom goal".
   const isCustom = !fromGoal && state.label === "Custom goal";
+  const chat = state.chatDraft;
+  const chatFound = (f: PlanDraftField) => !!chat?.found.includes(f);
   const [draft, setDraft] = useState<Draft>({
     name: isCustom ? "" : state.label,
     shape: state.shape,
@@ -1266,13 +1293,17 @@ function CreateForm({
     icon: state.icon ?? "",
     // `current` never comes from an example. The illustration's progress is
     // money the member has not put anywhere, and writing it in as theirs is
-    // exactly the dishonesty the examples are labelled against.
-    current: numStr(prefill.current),
-    // Real balances first, the example's figure only where we have nothing.
-    target: numStr(prefill.target || state.seed?.target),
-    monthly: numStr(state.seed?.monthly),
-    date: "",
-    rate: "",
+    // exactly the dishonesty the examples are labelled against. A chat draft
+    // is different: its `current` is a figure the conversation established
+    // (or nothing, if `found` does not list it), never an invented one, so it
+    // is trusted the same way a real linked balance is.
+    current: numStr(chatFound("current_value") ? chat!.current_value : prefill.current),
+    // Real balances first, the example's or chat's figure only where we have
+    // nothing more concrete.
+    target: numStr(chatFound("target_value") ? chat!.target_value : (prefill.target || state.seed?.target)),
+    monthly: numStr(chatFound("monthly_contribution") ? chat!.monthly_contribution : state.seed?.monthly),
+    date: chatFound("target_date") ? (chat!.target_date ?? "") : "",
+    rate: numStr(chatFound("rate") ? chat!.rate : undefined),
   });
   // Whether the member has touched the shape control. On a custom goal, until
   // they do, a typed name re-runs the keyword guess, so "nomad" lands on save
@@ -1324,7 +1355,16 @@ function CreateForm({
           ? "One of the goals you picked at signup. Set a target and Juniper starts tracking it from here."
           : "Name it, pick how it works, and set a target. You can change all of it later."}
       </p>
-      {prefill.hint ? (
+      {chat ? (
+        <div className="prefill-hint">
+          <PlanIcon name="target" />
+          <span>
+            {chat.found.length
+              ? "Filled in from your conversation with Juniper. Only what was actually discussed is here, check it before saving."
+              : "Nothing concrete came up in that conversation, so this starts blank. Set a target and Juniper will track it from here."}
+          </span>
+        </div>
+      ) : prefill.hint ? (
         <div className="prefill-hint"><PlanIcon name="target" /><span>{prefill.hint}</span></div>
       ) : state.seed ? (
         <div className="prefill-hint">
