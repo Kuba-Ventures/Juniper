@@ -7,19 +7,29 @@
 // workspace (components/juniper/shared-frame.tsx): a household is a distinct
 // model (migration 0055), and reusing that frame would couple this to
 // lib/workspace.tsx, which this feature does not touch.
+//
+// Four tabs (issue #321): Overview, Members, Accounts, Plans. Members and
+// Accounts carried the whole page before this; Overview is new (three summary
+// cards, the same "card links deeper" pattern the individual and partner
+// Overviews already use) and so is Plans (sharing a plan to the household,
+// migration 0056 / household_plan_shares).
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { money } from "@/lib/mock-data";
-import { cssVar } from "@/components/juniper/primitives";
+import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import { PageHeader } from "@/components/juniper/app-frame";
 import {
-  useHousehold, isShared, leaveHousehold, removeHouseholdMember, setHouseholdAccountShare,
-  type HouseholdAccount, type HouseholdRole, type AccountScope,
+  useHousehold, isShared, leaveHousehold, removeHouseholdMember, editHouseholdMemberRole,
+  setHouseholdAccountShare, setHouseholdPlanShare,
+  type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
+import { planTitle, planIcon, planColor, planNumbers } from "@/lib/plans";
 
 const roleLabel: Record<HouseholdRole, string> = { owner: "Owner", adult: "Adult", teen: "Teen" };
 const MEMBER_COLORS = ["--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c1", "--jnpr-c7"];
+
+type Tab = "overview" | "members" | "accounts" | "plans";
 
 function AccountRow({ a, canToggle, onToggle, busy }: {
   a: HouseholdAccount; canToggle: boolean; onToggle: (next: AccountScope) => void; busy: boolean;
@@ -54,11 +64,43 @@ function AccountRow({ a, canToggle, onToggle, busy }: {
   );
 }
 
+function PlanRow({ p, canToggle, onToggle, busy }: {
+  p: HouseholdPlan; canToggle: boolean; onToggle: (next: boolean) => void; busy: boolean;
+}) {
+  const { current, target } = planNumbers(p);
+  return (
+    <div className="share-row">
+      <div className="track" style={{ background: cssVar(planColor(p)) }}><PlanIcon name={planIcon(p)} /></div>
+      <div className="share-id">
+        <div className="nm">{planTitle(p)}</div>
+        <div className="mt">{target > 0 ? `${money(current)} of ${money(target)}` : "No target set"}</div>
+      </div>
+      {canToggle ? (
+        <button
+          className={p.shared ? "share-toggle on" : "share-toggle"}
+          role="switch"
+          aria-checked={p.shared}
+          aria-label={`Share ${planTitle(p)} with the household`}
+          disabled={busy}
+          onClick={() => onToggle(!p.shared)}
+        >
+          <i />
+        </button>
+      ) : (
+        <span className="chip shared">Shared</span>
+      )}
+    </div>
+  );
+}
+
 export function HouseholdView() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { data, loading, refresh } = useHousehold();
+  const [tab, setTab] = useState<Tab>("overview");
   const [inviting, setInviting] = useState(false);
   const [busyAccount, setBusyAccount] = useState<string | null>(null);
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [busyRole, setBusyRole] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,10 +127,30 @@ export function HouseholdView() {
   const isOwner = data.role === "owner";
   const accounts = data.accounts ?? [];
   const members = data.members ?? [];
+  const plans = data.plans ?? [];
+  const myAccounts = accounts.filter((a) => a.mine);
+  const sharedAccountsByOthers = accounts.filter((a) => !a.mine);
+  const myPlans = plans.filter((p) => p.mine);
+  const sharedPlansByOthers = plans.filter((p) => !p.mine);
+  const mySharedAccountCount = myAccounts.filter((a) => isShared(a.scope)).length;
+  const mySharedPlanCount = myPlans.filter((p) => p.shared).length;
 
-  const toggle = (a: HouseholdAccount, next: AccountScope) => {
+  const toggleAccount = (a: HouseholdAccount, next: AccountScope) => {
     setBusyAccount(a.account_id);
     void setHouseholdAccountShare(a.account_id, next).then(() => { refresh(); setBusyAccount(null); });
+  };
+
+  const togglePlan = (p: HouseholdPlan, next: boolean) => {
+    setBusyPlan(p.domain);
+    void setHouseholdPlanShare(p.domain, next).then(() => { refresh(); setBusyPlan(null); });
+  };
+
+  const changeRole = (userId: string, role: "adult" | "teen") => {
+    setBusyRole(userId); setError(null);
+    void editHouseholdMemberRole(userId, role).then((res) => {
+      setBusyRole(null);
+      if (res.ok) refresh(); else setError(res.error || "Couldn't change that role.");
+    });
   };
 
   const remove = (userId: string) => {
@@ -103,7 +165,7 @@ export function HouseholdView() {
     setBusyAction(true); setError(null);
     void leaveHousehold().then((res) => {
       setBusyAction(false);
-      if (res.ok) setLocation("/app");
+      if (res.ok) navigate("/app");
       else setError(res.error || "Couldn't leave the household.");
     });
   };
@@ -116,56 +178,152 @@ export function HouseholdView() {
         actions={isOwner ? <button className="btn" onClick={() => setInviting(true)}>Invite a member</button> : undefined}
       />
 
-      <div className="card pad-lg together" style={{ marginBottom: 16 }}>
-        <div className="eyebrow">Together</div>
-        <div className="big-num tnum" style={{ margin: "6px 0 2px" }}>{money(data.combined?.netWorth ?? 0)}</div>
-        <p className="sub" style={{ margin: "6px 0 0" }}>What the household has chosen to share, summed across everyone.</p>
+      <div className="pills" style={{ marginBottom: 16 }}>
+        <button className={tab === "overview" ? "on" : undefined} onClick={() => setTab("overview")}>Overview</button>
+        <button className={tab === "members" ? "on" : undefined} onClick={() => setTab("members")}>Members</button>
+        <button className={tab === "accounts" ? "on" : undefined} onClick={() => setTab("accounts")}>Accounts</button>
+        <button className={tab === "plans" ? "on" : undefined} onClick={() => setTab("plans")}>Plans</button>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head"><h3>Members</h3></div>
-        <div className="rows">
-          {members.map((m, i) => (
-            <div className="share-row" key={m.userId}>
-              <div className="tile sm" style={{ background: cssVar(MEMBER_COLORS[i % MEMBER_COLORS.length]) }}>{m.name.charAt(0).toUpperCase()}</div>
-              <div className="share-id">
-                <div className="nm">{m.name}{m.isMe ? " (you)" : ""}</div>
-                <div className="mt">{roleLabel[m.role]}</div>
+      {tab === "overview" && (
+        <>
+          <div className="card pad-lg together" style={{ marginBottom: 16 }}>
+            <div className="eyebrow">Together</div>
+            <div className="big-num tnum" style={{ margin: "6px 0 2px" }}>{money(data.combined?.netWorth ?? 0)}</div>
+            <p className="sub" style={{ margin: "6px 0 0" }}>What the household has chosen to share, summed across everyone.</p>
+          </div>
+
+          <div className="sum-strip">
+            <button className="card hh-ov-card" onClick={() => setTab("members")}>
+              <div className="card-head"><h3>Members</h3><span className="hh-ov-link">See all ›</span></div>
+              <div className="hh-ov-avatars">
+                {members.map((m, i) => (
+                  <div className="tile sm" key={m.userId} style={{ background: cssVar(MEMBER_COLORS[i % MEMBER_COLORS.length]) }}>
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                ))}
               </div>
-              {isOwner && !m.isMe && (
-                <button className="btn ghost sm" disabled={busyAction} onClick={() => remove(m.userId)}>Remove</button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+              <p className="sub" style={{ margin: "10px 0 0" }}>
+                {members.length} {members.length === 1 ? "person" : "people"} · {members.map((m) => `${m.name}${m.isMe ? " (you)" : ""} (${roleLabel[m.role]})`).join(", ")}
+              </p>
+            </button>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head"><h3>Choose what to share</h3></div>
-        {accounts.filter((a) => a.mine).length === 0 ? (
-          <p className="sub">Link an account first, and it will show up here to share.</p>
-        ) : (
-          <div className="share-list">
-            {accounts.filter((a) => a.mine).map((a) => (
-              <AccountRow key={a.account_id} a={a} canToggle busy={busyAccount === a.account_id} onToggle={(next) => toggle(a, next)} />
+            <button className="card hh-ov-card" onClick={() => setTab("accounts")}>
+              <div className="card-head"><h3>Accounts</h3><span className="hh-ov-link">See all ›</span></div>
+              <p className="sub" style={{ margin: 0 }}>{mySharedAccountCount} of {myAccounts.length} of your accounts shared</p>
+              <p className="sub" style={{ margin: "6px 0 0", color: "var(--jnpr-ink-3)" }}>
+                {sharedAccountsByOthers.length > 0
+                  ? `Plus ${sharedAccountsByOthers.length} shared by others.`
+                  : "Toggle one on to start the combined total above."}
+              </p>
+            </button>
+
+            <button className="card hh-ov-card" onClick={() => setTab("plans")}>
+              <div className="card-head"><h3>Plans</h3><span className="hh-ov-link">See all ›</span></div>
+              <p className="sub" style={{ margin: 0 }}>{mySharedPlanCount + sharedPlansByOthers.length} plan{mySharedPlanCount + sharedPlansByOthers.length === 1 ? "" : "s"} shared with {data.household?.name}</p>
+              <p className="sub" style={{ margin: "6px 0 0", color: "var(--jnpr-ink-3)" }}>Share one of your own, or start one for the household.</p>
+            </button>
+          </div>
+        </>
+      )}
+
+      {tab === "members" && (
+        <div className="card">
+          <div className="card-head"><h3>Members</h3></div>
+          <div className="rows">
+            {members.map((m, i) => (
+              <div className="share-row" key={m.userId}>
+                <div className="tile sm" style={{ background: cssVar(MEMBER_COLORS[i % MEMBER_COLORS.length]) }}>{m.name.charAt(0).toUpperCase()}</div>
+                <div className="share-id">
+                  <div className="nm">{m.name}{m.isMe ? " (you)" : ""}</div>
+                  {isOwner && !m.isMe ? (
+                    <select
+                      className="mt"
+                      value={m.role}
+                      disabled={busyRole === m.userId}
+                      onChange={(e) => changeRole(m.userId, e.target.value as "adult" | "teen")}
+                      style={{ marginTop: 2, background: "var(--jnpr-surface-2)", border: "1px solid var(--jnpr-line)", borderRadius: 7, padding: "3px 6px", fontFamily: "inherit", fontWeight: 600 }}
+                    >
+                      <option value="adult">Adult</option>
+                      <option value="teen">Teen</option>
+                    </select>
+                  ) : (
+                    <div className="mt">{roleLabel[m.role]}</div>
+                  )}
+                </div>
+                {isOwner && !m.isMe && (
+                  <button className="btn ghost sm" disabled={busyAction} onClick={() => remove(m.userId)}>Remove</button>
+                )}
+              </div>
             ))}
           </div>
-        )}
-        {accounts.some((a) => !a.mine) && (
-          <>
-            <div className="card-head" style={{ marginTop: 16 }}><h3>Shared by others</h3></div>
+          {isOwner && (
+            <button className="ob-add" style={{ marginTop: 14, width: "100%" }} onClick={() => setInviting(true)}>
+              + Invite another member
+            </button>
+          )}
+        </div>
+      )}
+
+      {tab === "accounts" && (
+        <div className="card">
+          <div className="card-head"><h3>Choose what to share</h3></div>
+          {myAccounts.length === 0 ? (
+            <p className="sub">Link an account first, and it will show up here to share.</p>
+          ) : (
             <div className="share-list">
-              {accounts.filter((a) => !a.mine).map((a) => (
-                <AccountRow key={`${a.owner_id}:${a.account_id}`} a={a} canToggle={false} busy={false} onToggle={() => {}} />
+              {myAccounts.map((a) => (
+                <AccountRow key={a.account_id} a={a} canToggle busy={busyAccount === a.account_id} onToggle={(next) => toggleAccount(a, next)} />
               ))}
             </div>
-          </>
-        )}
-      </div>
+          )}
+          <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/connections?add=1")}>
+            + Add an account to share
+          </button>
+          {sharedAccountsByOthers.length > 0 && (
+            <>
+              <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>
+              <div className="share-list">
+                {sharedAccountsByOthers.map((a) => (
+                  <AccountRow key={`${a.owner_id}:${a.account_id}`} a={a} canToggle={false} busy={false} onToggle={() => {}} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
-      {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {tab === "plans" && (
+        <div className="card">
+          <div className="card-head"><h3>Share a plan</h3></div>
+          {myPlans.length === 0 ? (
+            <p className="sub">Start a plan first, and it will show up here to share.</p>
+          ) : (
+            <div className="share-list">
+              {myPlans.map((p) => (
+                <PlanRow key={p.domain} p={p} canToggle busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
+              ))}
+            </div>
+          )}
+          <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
+            + Create a plan for the household
+          </button>
+          {sharedPlansByOthers.length > 0 && (
+            <>
+              <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>
+              <div className="share-list">
+                {sharedPlansByOthers.map((p) => (
+                  <PlanRow key={`${p.owner_id}:${p.domain}`} p={p} canToggle={false} busy={false} onToggle={() => {}} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
-      <button className="btn ghost" onClick={leave} disabled={busyAction}>Leave household</button>
+      {error && <div className="form-error" style={{ marginTop: 16 }}>{error}</div>}
+
+      <button className="btn ghost" style={{ marginTop: 16 }} onClick={leave} disabled={busyAction}>Leave household</button>
 
       {inviting && <InviteHouseholdModal onClose={() => { setInviting(false); refresh(); }} />}
     </div>

@@ -258,7 +258,14 @@ export function suggestShape(...text: Array<string | null | undefined>): PlanSha
 const isShape = (v: unknown): v is PlanShape =>
   v === "save" || v === "buy" || v === "payoff" || v === "income";
 
-export function planShape(plan: Plan): PlanShape {
+// What planShape/planColor/planIcon/planTitle/planNumbers actually read, no
+// more. A full `Plan` satisfies this trivially; the household page's shared
+// and unshared plan rows (from /api/household, which never carries dialogue
+// history or chat) satisfy it too, so the same five formatters read both
+// without a second implementation.
+export type PlanLike = Pick<Plan, "goal" | "domain" | "current_state" | "kpis">;
+
+export function planShape(plan: PlanLike): PlanShape {
   const stored = plan.goal?.shape;
   if (isShape(stored)) return stored;
   return suggestShape(plan.goal?.name, plan.goal?.headline, plan.domain);
@@ -278,7 +285,7 @@ function hashString(s: string): number {
 // `domain`. Deriving it (rather than picking at random or by list position)
 // means a plan keeps the same color across reloads, devices, and re-orderings,
 // with nothing stored.
-export function planColor(plan: Plan): PlanColor {
+export function planColor(plan: PlanLike): PlanColor {
   const stored = plan.goal?.color;
   if (typeof stored === "string" && (PLAN_COLORS as string[]).includes(stored)) {
     return stored as PlanColor;
@@ -300,7 +307,7 @@ export const SHAPE_ICON: Record<PlanShape, string> = {
 // default. Read through this rather than `SHAPE_ICON[planShape(plan)]`
 // directly, the same reason `planShape`/`planColor` exist: one place that
 // degrades sensibly for a row with none of these fields.
-export function planIcon(plan: Plan): string {
+export function planIcon(plan: PlanLike): string {
   const stored = plan.goal?.icon;
   return typeof stored === "string" && stored.trim() ? stored : SHAPE_ICON[planShape(plan)];
 }
@@ -322,7 +329,7 @@ function titleFromSlug(slug: string): string {
   return words[0].toUpperCase() + words.slice(1);
 }
 
-export function planTitle(plan: Plan): string {
+export function planTitle(plan: PlanLike): string {
   const name = plan.goal?.name;
   if (typeof name === "string" && name.trim()) return name.trim();
   return DOMAIN_TITLES[plan.domain] ?? titleFromSlug(plan.domain);
@@ -370,7 +377,7 @@ export type PlanNumbers = {
 
 // Read a plan's numbers, newest convention first, so a plan written by the
 // Plans page and one written by the dialogue synthesis both come back usable.
-export function planNumbers(plan: Plan): PlanNumbers {
+export function planNumbers(plan: PlanLike): PlanNumbers {
   const goal = plan.goal ?? ({} as PlanGoal);
   const collected = (plan.current_state?.collected as Record<string, unknown>) ?? {};
 

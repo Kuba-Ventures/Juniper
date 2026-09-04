@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLocation, useSearch } from "wouter";
 import { Building2, Trash2, ShieldCheck, RefreshCw, PencilLine, Plus, X } from "lucide-react";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
@@ -194,6 +195,8 @@ function tileFigure(t: Tile): { total: number; currency: string } | null {
 const tileCount = (t: Tile) => (t.kind === "plaid" ? t.item.accounts.length : 1);
 
 export function ConnectionsView() {
+  const [, navigate] = useLocation();
+  const search = useSearch();
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [manualAccts, setManualAccts] = useState<ManualAccount[]>([]);
   // institution_id -> Plaid brand metadata, for the marks below. Held per page
@@ -305,6 +308,17 @@ export function ConnectionsView() {
       cancelled = true;
     };
   }, [refresh]);
+
+  // Deep link from the household page's "Add an account to share" row:
+  // `?add=1` opens this page's own add-account panel, the same one the header
+  // button opens, rather than building a second add flow over there. Replaced
+  // out of the URL so a reload does not reopen it.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("add") !== "1") return;
+    setAddOpen(true);
+    navigate("/app/connections", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleConnect = useCallback(
     (institutions: Parameters<typeof start>[0]) => {

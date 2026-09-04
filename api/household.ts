@@ -5,7 +5,9 @@
 //   POST { action: "accept", token }     -> accept an invite, joining the household
 //   POST { action: "leave" }             -> leave the caller's household
 //   POST { action: "remove-member", userId } -> owner-only: remove another member
+//   POST { action: "edit-role", userId, role } -> owner-only: change another member's role
 //   POST { action: "set-account-share", accountId, scope } -> update the caller's per-account sharing
+//   POST { action: "share-plan", domain, shared } -> update the caller's per-plan sharing
 //
 // Every table here is server-only (migration 0055), same posture as
 // partnerships (0012). This endpoint is the sole mediator: it verifies
@@ -38,6 +40,18 @@ type Member = { id: string; household_id: string; user_id: string; role: Role; j
 type Household = { id: string; name: string; created_by: string };
 type Invite = { id: string; household_id: string; invite_token: string; invited_name: string | null; invited_role: Role; status: string };
 type Share = { user_id: string; account_id: string; scope: string };
+type PlanShare = { user_id: string; domain: string };
+// Only what the client's pure formatters (planTitle/planIcon/planNumbers in
+// src/lib/plans.ts) read. Never dialogue_history, chat history, or anything
+// else in the row: this is a household member's plan, read by other members,
+// and the row carries none of the conversation that built it.
+type PlanRow = {
+  domain: string;
+  status: string;
+  goal: unknown;
+  current_state: unknown;
+  kpis: unknown;
+};
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
   try { const r = await adminRest(pathAndQuery); if (!r.ok) return []; return (await r.json()) as T[]; }
@@ -67,6 +81,13 @@ async function memberAccounts(uid: string): Promise<DisplayAcct[]> {
       };
     }),
   );
+}
+
+// A member's own plans, the fields a household page can honestly show
+// somebody else. Copied alongside memberAccounts() for the same reason: this
+// endpoint is the sole mediator and does not share helpers with api/plans.ts.
+async function memberPlans(uid: string): Promise<PlanRow[]> {
+  return rows<PlanRow>(`plans?user_id=eq.${uid}&select=domain,status,goal,current_state,kpis`);
 }
 
 // The caller's active household membership, if any.
@@ -115,12 +136,30 @@ async function overview(uid: string): Promise<Response> {
     }
   }
 
+  const planShareRows = await rows<PlanShare>(`household_plan_shares?household_id=eq.${mine.household_id}&select=user_id,domain`);
+  const planSharedFor = (memberId: string, domain: string): boolean =>
+    planShareRows.some((s) => s.user_id === memberId && s.domain === domain);
+
+  const plans: { domain: string; status: string; goal: unknown; current_state: unknown; kpis: unknown; owner_id: string; shared: boolean; mine: boolean }[] = [];
+  for (const m of members) {
+    const isMine = m.user_id === uid;
+    const own = await memberPlans(m.user_id);
+    for (const p of own) {
+      const shared = planSharedFor(m.user_id, p.domain);
+      // Same rule as accounts: the caller sees all of their own plans so they
+      // can decide what to share; everyone else's unshared plans are absent.
+      if (!isMine && !shared) continue;
+      plans.push({ domain: p.domain, status: p.status, goal: p.goal, current_state: p.current_state, kpis: p.kpis, owner_id: m.user_id, shared, mine: isMine });
+    }
+  }
+
   return json({
     connected: true,
     household: { id: household.id, name: household.name },
     role: mine.role,
     members: members.map((m) => ({ userId: m.user_id, name: nameOf(m.user_id), role: m.role, isMe: m.user_id === uid })),
     accounts,
+    plans,
     combined: { netWorth: Math.round(netWorth) },
   });
 }
@@ -141,6 +180,7 @@ export default async function handler(req: Request): Promise<Response> {
   const body = (await req.json().catch(() => ({}))) as {
     action?: string; name?: string; token?: string; role?: string;
     userId?: string; accountId?: string; scope?: string;
+    domain?: string; shared?: boolean;
   };
 
   if (body.action === "create") {
@@ -240,6 +280,48 @@ export default async function handler(req: Request): Promise<Response> {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ left_at: new Date().toISOString() }),
     });
+    return json({ ok: true });
+  }
+
+  if (body.action === "edit-role") {
+    if (mine.role !== "owner") return json({ error: "Only the household owner can change a role" }, 403);
+    const targetId = (body.userId || "").trim();
+    const nextRole = body.role;
+    if (!targetId) return json({ error: "userId is required" }, 400);
+    if (targetId === uid) return json({ error: "You can't change your own role" }, 400);
+    if (nextRole !== "adult" && nextRole !== "teen") return json({ error: "role must be adult or teen" }, 400);
+    const target = await rows<Member>(
+      `household_members?household_id=eq.${mine.household_id}&user_id=eq.${targetId}&left_at=is.null&select=id&limit=1`,
+    );
+    if (!target[0]) return json({ error: "Member not found" }, 404);
+    await adminRest(`household_members?id=eq.${target[0].id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ role: nextRole }),
+    });
+    return json({ ok: true });
+  }
+
+  if (body.action === "share-plan") {
+    const domain = (body.domain || "").trim();
+    if (!domain) return json({ error: "domain is required" }, 400);
+    if (body.shared) {
+      // Only a plan the caller actually owns can be shared. `plans` is
+      // client-readable elsewhere (RLS owner/partner), but this endpoint runs
+      // on the service-role key, so the check is explicit rather than borrowed
+      // from a policy that does not apply to it.
+      const owned = await rows<{ id: string }>(`plans?user_id=eq.${uid}&domain=eq.${encodeURIComponent(domain)}&select=id&limit=1`);
+      if (!owned[0]) return json({ error: "You don't have a plan with that domain" }, 404);
+      const r = await adminRest("household_plan_shares?on_conflict=household_id,user_id,domain", {
+        method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ household_id: mine.household_id, user_id: uid, domain }),
+      });
+      if (!r.ok) return json({ error: "Failed to share the plan" }, 500);
+    } else {
+      await adminRest(
+        `household_plan_shares?household_id=eq.${mine.household_id}&user_id=eq.${uid}&domain=eq.${encodeURIComponent(domain)}`,
+        { method: "DELETE", headers: { Prefer: "return=minimal" } },
+      );
+    }
     return json({ ok: true });
   }
 

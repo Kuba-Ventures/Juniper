@@ -6,6 +6,7 @@
 // store from day one rather than repeating that bug once a second page reads it.
 import { useCallback, useEffect, useReducer } from "react";
 import { getAccessToken } from "@/lib/supabase";
+import type { PlanLike } from "@/lib/plans";
 
 export type HouseholdRole = "owner" | "adult" | "teen";
 
@@ -30,12 +31,24 @@ export interface HouseholdAccount {
   mine: boolean;
 }
 
+// A plan as the household page sees it: `goal`/`domain`/`current_state`/`kpis`
+// are exactly PlanLike, so planTitle()/planIcon()/planNumbers() from
+// lib/plans.ts read this object directly, with no second formatter for the
+// household's copy of a plan.
+export interface HouseholdPlan extends PlanLike {
+  status: string;
+  owner_id: string;
+  shared: boolean;
+  mine: boolean;
+}
+
 export interface HouseholdData {
   connected: boolean;
   household?: { id: string; name: string };
   role?: HouseholdRole;
   members?: HouseholdMember[];
   accounts?: HouseholdAccount[];
+  plans?: HouseholdPlan[];
   combined?: { netWorth: number };
 }
 
@@ -68,7 +81,9 @@ export const inviteToHousehold = (opts: { name?: string; role?: "adult" | "teen"
 export const acceptHouseholdInvite = (token: string) => post("accept", { token });
 export const leaveHousehold = () => post("leave");
 export const removeHouseholdMember = (userId: string) => post("remove-member", { userId });
+export const editHouseholdMemberRole = (userId: string, role: "adult" | "teen") => post("edit-role", { userId, role });
 export const setHouseholdAccountShare = (accountId: string, scope: AccountScope) => post("set-account-share", { accountId, scope });
+export const setHouseholdPlanShare = (domain: string, shared: boolean) => post("share-plan", { domain, shared });
 
 /** Who sent a household invite, for the page the invited person lands on.
  *  Carries no session, same reasoning as fetchInviteInfo in lib/partner.ts:
