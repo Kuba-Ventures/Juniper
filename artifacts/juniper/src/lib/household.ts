@@ -8,7 +8,13 @@ import { useCallback, useEffect, useReducer } from "react";
 import { getAccessToken } from "@/lib/supabase";
 import type { PlanLike } from "@/lib/plans";
 
-export type HouseholdRole = "owner" | "adult" | "teen";
+// Issue #333: was "owner" | "adult" | "teen". Adult and teen were already
+// functionally identical (neither api/household.ts nor any RLS policy ever
+// checked role for anything but "owner or not"), so the age framing is gone
+// in favor of the capability it was actually gesturing at: `member` can
+// share and unshare their own accounts and plans, `viewer` can only see what
+// is already shared. Migration 0057 moves existing rows to `member`.
+export type HouseholdRole = "owner" | "member" | "viewer";
 
 export interface HouseholdMember {
   userId: string;
@@ -77,11 +83,11 @@ async function post(action: string, extra: Record<string, unknown> = {}): Promis
 }
 
 export const createHousehold = (name: string) => post("create", { name });
-export const inviteToHousehold = (opts: { name?: string; role?: "adult" | "teen" } = {}) => post("invite", opts);
+export const inviteToHousehold = (opts: { name?: string; role?: "member" | "viewer" } = {}) => post("invite", opts);
 export const acceptHouseholdInvite = (token: string) => post("accept", { token });
 export const leaveHousehold = () => post("leave");
 export const removeHouseholdMember = (userId: string) => post("remove-member", { userId });
-export const editHouseholdMemberRole = (userId: string, role: "adult" | "teen") => post("edit-role", { userId, role });
+export const editHouseholdMemberRole = (userId: string, role: "member" | "viewer") => post("edit-role", { userId, role });
 export const setHouseholdAccountShare = (accountId: string, scope: AccountScope) => post("set-account-share", { accountId, scope });
 export const setHouseholdPlanShare = (domain: string, shared: boolean) => post("share-plan", { domain, shared });
 

@@ -28,7 +28,7 @@ import { InviteHouseholdModal } from "@/components/juniper/household-invite-moda
 import { planTitle, planIcon, planColor, planNumbers, domainFromName, SHAPE_ICON } from "@/lib/plans";
 import { EXAMPLES, type Example } from "@/pages/app/plans";
 
-const roleLabel: Record<HouseholdRole, string> = { owner: "Owner", adult: "Adult", teen: "Teen" };
+const roleLabel: Record<HouseholdRole, string> = { owner: "Owner", member: "Member", viewer: "Viewer" };
 const MEMBER_COLORS = ["--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c1", "--jnpr-c7"];
 
 // A household-flavored slice of the personal Plans page's own example
@@ -147,6 +147,12 @@ export function HouseholdView() {
   }
 
   const isOwner = data.role === "owner";
+  // Issue #333: a viewer can see everything already shared (GET overview()
+  // never checks role) but api/household.ts 403s set-account-share and
+  // share-plan for one. The toggle is hidden here too rather than left
+  // clickable and failing, since showing a control a viewer's own request
+  // will always reject is worse than not showing it.
+  const isViewer = data.role === "viewer";
   const accounts = data.accounts ?? [];
   const members = data.members ?? [];
   const plans = data.plans ?? [];
@@ -167,7 +173,7 @@ export function HouseholdView() {
     void setHouseholdPlanShare(p.domain, next).then(() => { refresh(); setBusyPlan(null); });
   };
 
-  const changeRole = (userId: string, role: "adult" | "teen") => {
+  const changeRole = (userId: string, role: "member" | "viewer") => {
     setBusyRole(userId); setError(null);
     void editHouseholdMemberRole(userId, role).then((res) => {
       setBusyRole(null);
@@ -263,11 +269,11 @@ export function HouseholdView() {
                       className="mt"
                       value={m.role}
                       disabled={busyRole === m.userId}
-                      onChange={(e) => changeRole(m.userId, e.target.value as "adult" | "teen")}
+                      onChange={(e) => changeRole(m.userId, e.target.value as "member" | "viewer")}
                       style={{ marginTop: 2, background: "var(--jnpr-surface-2)", border: "1px solid var(--jnpr-line)", borderRadius: 7, padding: "3px 6px", fontFamily: "inherit", fontWeight: 600 }}
                     >
-                      <option value="adult">Adult</option>
-                      <option value="teen">Teen</option>
+                      <option value="member">Member</option>
+                      <option value="viewer">Viewer</option>
                     </select>
                   ) : (
                     <div className="mt">{roleLabel[m.role]}</div>
@@ -290,15 +296,17 @@ export function HouseholdView() {
       {tab === "accounts" && (
         <div className="card">
           <div className="card-head"><h3>Choose what to share</h3></div>
-          <button className="ob-add" style={{ marginBottom: 14, width: "100%" }} onClick={() => navigate("/app/connections?add=1")}>
-            + Add an account to share
-          </button>
+          {!isViewer && (
+            <button className="ob-add" style={{ marginBottom: 14, width: "100%" }} onClick={() => navigate("/app/connections?add=1")}>
+              + Add an account to share
+            </button>
+          )}
           {myAccounts.length === 0 ? (
             <p className="sub">Link an account first, and it will show up here to share.</p>
           ) : (
             <div className="share-list">
               {myAccounts.map((a) => (
-                <AccountRow key={a.account_id} a={a} canToggle busy={busyAccount === a.account_id} onToggle={(next) => toggleAccount(a, next)} />
+                <AccountRow key={a.account_id} a={a} canToggle={!isViewer} busy={busyAccount === a.account_id} onToggle={(next) => toggleAccount(a, next)} />
               ))}
             </div>
           )}
@@ -324,13 +332,15 @@ export function HouseholdView() {
             ) : (
               <div className="share-list">
                 {myPlans.map((p) => (
-                  <PlanRow key={p.domain} p={p} canToggle busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
+                  <PlanRow key={p.domain} p={p} canToggle={!isViewer} busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
                 ))}
               </div>
             )}
-            <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
-              + Create a plan for the household
-            </button>
+            {!isViewer && (
+              <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
+                + Create a plan for the household
+              </button>
+            )}
             {sharedPlansByOthers.length > 0 && (
               <>
                 <div className="card-head" style={{ marginTop: 20 }}><h3>Shared by others</h3></div>

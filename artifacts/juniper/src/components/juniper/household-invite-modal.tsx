@@ -45,7 +45,7 @@ export function CreateHouseholdModal({ onDone, onClose }: { onDone: () => void; 
 
 export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
-  const [role, setRole] = useState<HouseholdRole>("adult");
+  const [role, setRole] = useState<HouseholdRole>("member");
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,7 +54,7 @@ export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
 
   const createLink = async () => {
     setBusy(true); setError(null);
-    const res = await inviteToHousehold({ name: name.trim() || undefined, role: role === "teen" ? "teen" : "adult" });
+    const res = await inviteToHousehold({ name: name.trim() || undefined, role: role === "viewer" ? "viewer" : "member" });
     setBusy(false);
     if (res.ok && res.url) setUrl(res.url);
     else setError(res.error || "We couldn't generate a live link yet, please try again.");
@@ -80,8 +80,8 @@ export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
       <div className="field">
         <label>Role</label>
         <select value={role} onChange={(e) => setRole(e.target.value as HouseholdRole)}>
-          <option value="adult">Adult, full member</option>
-          <option value="teen">Teen, can view and share, can't invite or remove anyone</option>
+          <option value="member">Member, can share their own accounts and plans</option>
+          <option value="viewer">Viewer, can only see what's already shared</option>
         </select>
       </div>
 
