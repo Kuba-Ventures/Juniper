@@ -105,6 +105,35 @@ export function takeOnboardingReplay(): boolean {
   }
 }
 
+function pendingHouseholdKey(email: string): string {
+  return `juniper_pending_household_${email}`;
+}
+
+// The household question moved from the first onboarding step to the sign-up
+// screen itself (issue #267: folding it into sign-up removes a whole screen),
+// but there is no session yet at that point to save it through the normal
+// profile path. Stashed by email, the one thing sign-up knows for certain, and
+// consumed once onboarding actually runs, the same "written once, read once"
+// shape as `requestOnboardingReplay`/`takeOnboardingReplay` above.
+export function stashPendingHousehold(email: string, value: "solo" | "partner"): void {
+  try {
+    if (email) localStorage.setItem(pendingHouseholdKey(email), value);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function takePendingHousehold(email: string): "solo" | "partner" | undefined {
+  try {
+    const v = localStorage.getItem(pendingHouseholdKey(email));
+    if (v !== "solo" && v !== "partner") return undefined;
+    localStorage.removeItem(pendingHouseholdKey(email));
+    return v;
+  } catch {
+    return undefined;
+  }
+}
+
 // The whole rule for whether a member sees first-run onboarding, in one place
 // and free of React, so it can be reasoned about and tested on its own. A
 // replay beats everything: it is an explicit request, and the point of it is to
@@ -124,6 +153,15 @@ export function shouldShowOnboarding(opts: {
 
 // True if the profile already carries meaningful financial data (so an
 // existing user isn't shown onboarding).
+//
+// `household` joined this list when onboarding shrank to a single "connect
+// accounts" step (issue #267): income, expenses and goals moved to dismissible
+// dashboard nudges a member can skip entirely, so a fully-onboarded,
+// fully-connected member who never fills either nudge would otherwise carry
+// none of the other fields here and could see onboarding again on a cleared
+// browser or a second device. `household` is the one thing the shortened
+// onboarding still always writes, so it is what a returning member's fallback
+// now rests on.
 export function hasProfileData(p: UserProfile | null): boolean {
   if (!p) return false;
   return (
@@ -131,6 +169,7 @@ export function hasProfileData(p: UserProfile | null): boolean {
     typeof p.monthlyExpenses === "number" ||
     typeof p.totalSavings === "number" ||
     typeof p.totalDebt === "number" ||
+    typeof p.household === "string" ||
     (Array.isArray(p.accounts) && p.accounts.length > 0)
   );
 }

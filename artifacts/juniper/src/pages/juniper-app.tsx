@@ -127,6 +127,13 @@ export default function JuniperApp() {
             {() => (
               <Overview
                 name={displayName}
+                email={email}
+                // The whole profile, for the goals and money-snapshot nudges
+                // (issue #267): each needs to know what is already answered,
+                // and `onSaveProfile` merges onto it rather than replacing it,
+                // the same rule `onLayout` below already follows.
+                profile={profile}
+                onSaveProfile={(next) => saveProfile(next)}
                 // The goals picked at signup, so the "Your plans" card can list
                 // the ones that are not plans yet instead of claiming there is
                 // nothing. Passed rather than re-read: the profile is already
