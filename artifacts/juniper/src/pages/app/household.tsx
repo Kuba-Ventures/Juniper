@@ -28,6 +28,10 @@ import {
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
 import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, SHAPE_ICON } from "@/lib/plans";
 import { EXAMPLES, TEMPLATES, type Example } from "@/pages/app/plans";
+// Issue #321 follow-up: the household Overview's "Shared plans" section reuses
+// the individual Overview's own real progress row (icon, $current/$targetk,
+// bar, percent funded, status pill) instead of a text-only summary sentence.
+import { PlanProgressRow, toPlanProgressRow } from "@/components/juniper/plan-progress-row";
 // The create-plan form (issue #338 follow-up): mounted in place here instead
 // of navigating to /app/plans and back, so creating a plan for the household
 // never leaves this page, not even for the flash of a route change.
@@ -185,6 +189,12 @@ export function HouseholdView() {
   const sharedPlansByOthers = plans.filter((p) => !p.mine);
   const mySharedAccountCount = myAccounts.filter((a) => isShared(a.scope)).length;
   const mySharedPlanCount = myPlans.filter((p) => p.shared).length;
+  // The full shared-plans list (option A, issue #321 follow-up): the same
+  // union the Plans tab already renders across its two sections, my own
+  // shared plans plus everyone else's (the household API never sends an
+  // unshared plan that isn't mine, see api/household.ts), read once here
+  // rather than the tab re-deriving it.
+  const sharedPlans = [...myPlans.filter((p) => p.shared), ...sharedPlansByOthers];
 
   const toggleAccount = (a: HouseholdAccount, next: AccountScope) => {
     setBusyAccount(a.account_id);
@@ -244,7 +254,7 @@ export function HouseholdView() {
             <p className="sub" style={{ margin: "6px 0 0" }}>What the household has chosen to share, summed across everyone.</p>
           </div>
 
-          <div className="sum-strip">
+          <div className="sum-strip sum-strip-2">
             <button className="card hh-ov-card" onClick={() => setTab("members")}>
               <div className="card-head"><h3>Members</h3><span className="hh-ov-link">See all ›</span></div>
               <div className="hh-ov-avatars">
@@ -268,12 +278,31 @@ export function HouseholdView() {
                   : "Toggle one on to start the combined total above."}
               </p>
             </button>
+          </div>
 
-            <button className="card hh-ov-card" onClick={() => setTab("plans")}>
-              <div className="card-head"><h3>Plans</h3><span className="hh-ov-link">See all ›</span></div>
-              <p className="sub" style={{ margin: 0 }}>{mySharedPlanCount + sharedPlansByOthers.length} plan{mySharedPlanCount + sharedPlansByOthers.length === 1 ? "" : "s"} shared with {data.household?.name}</p>
-              <p className="sub" style={{ margin: "6px 0 0", color: "var(--jnpr-ink-3)" }}>Share one of your own, or start one for the household.</p>
-            </button>
+          {/* Option A (issue #321 follow-up): the Plans tile above was a
+              single text sentence with no progress, no amounts, no icons.
+              It moves out of the tile row entirely and becomes this
+              full-width section, rendering each shared plan as the same
+              real progress row the individual member's own Overview shows
+              on "Your plans" (components/juniper/plan-progress-row.tsx). */}
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card-head"><h3>Shared plans</h3><button className="link" onClick={() => setTab("plans")}>See all ›</button></div>
+            {sharedPlans.length === 0 ? (
+              <p className="sub" style={{ margin: 0 }}>
+                No plans shared with {data.household?.name} yet. Share one of your own, or start one for the household.
+              </p>
+            ) : (
+              <div className="plans-col">
+                {sharedPlans.map((p) => (
+                  <PlanProgressRow
+                    key={`${p.owner_id}:${p.domain}`}
+                    row={toPlanProgressRow(p, `${p.owner_id}:${p.domain}`)}
+                    onClick={() => setTab("plans")}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

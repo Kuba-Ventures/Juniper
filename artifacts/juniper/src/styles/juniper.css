@@ -401,7 +401,8 @@
 
 /* ---------- plans (compact rows on Home) ---------- */
 .jnpr .plans-col{display:flex;flex-direction:column;gap:10px}
-.jnpr .plan-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);cursor:pointer;transition:border-color .15s,transform .15s}
+.jnpr .plan-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);background:var(--jnpr-surface-2);cursor:pointer;transition:border-color .15s,transform .15s;
+  width:100%;text-align:left;font:inherit;color:inherit} /* the last three reset a <button>-rendered row (household Overview, issue #321 follow-up); a no-op for the <a>-rendered one */
 .jnpr .plan-row:hover{border-color:var(--jnpr-accent);transform:translateX(2px)}
 .jnpr .track{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;flex:0 0 auto}
 .jnpr .track svg{width:58%;height:58%;display:block;color:#fff}
@@ -658,6 +659,10 @@
 /* ---------- summary strip (shared bills) + list rows ---------- */
 .jnpr .sum-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
 @media(max-width:640px){.jnpr .sum-strip{grid-template-columns:1fr}}
+/* Household Overview (issue #321 follow-up): Members + Accounts only, once the
+   Plans tile moved out into its own full-width "Shared plans" section below. */
+.jnpr .sum-strip-2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.jnpr .sum-strip-2{grid-template-columns:1fr}}
 .jnpr .sum-card{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);padding:16px 18px;box-shadow:var(--jnpr-shadow)}
 .jnpr .sum-card .l{font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600}
 .jnpr .sum-card .v{font-size:24px;font-weight:750;letter-spacing:-.02em;margin-top:4px;color:var(--jnpr-ink)}.jnpr .sum-card .v.acc{color:var(--jnpr-accent)}
