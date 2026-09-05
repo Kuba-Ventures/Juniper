@@ -24,6 +24,9 @@ import {
 } from "@/components/juniper/overview-widgets";
 import { Factors } from "@/components/juniper/score-factors";
 import type { PlaidItem } from "@/lib/plaid";
+import type { UserProfile } from "@/lib/profile";
+import { GoalsNudge } from "@/components/juniper/goals-nudge";
+import { SnapshotNudge } from "@/components/juniper/snapshot-nudge";
 
 // Points down for a decline. The net-worth delta used to be hardcoded up-and-
 // green, which was safe only while the number came from a demo household that
@@ -1181,6 +1184,9 @@ function SpendWidget({ spending, totalSpent, month, size }: { spending: SpendCat
 
 export default function Overview({
   name,
+  email = "",
+  profile = null,
+  onSaveProfile,
   goals = [],
   goalsReady = false,
   showWelcome,
@@ -1189,6 +1195,20 @@ export default function Overview({
   onLayout,
 }: {
   name: string;
+  /** For the two dismissible nudges below (issue #267): their "don't ask again"
+      flag is keyed by email, the same convention the welcome banner already
+      uses. */
+  email?: string;
+  /** The whole profile, so the goals and snapshot nudges can tell whether
+      there is anything left to ask for. `goals` below stays a separate prop
+      too: `YourPlansCard` only ever needed the array, not the rest of the
+      profile, and threading the whole object through it for two fields would
+      be a second, wider seam for no reason. */
+  profile?: UserProfile | null;
+  /** Merges onto the CURRENT profile and saves, same shape as `onLayout`
+      below: a nudge must send `{ ...profile, goals }`, never a bare
+      `{ goals }`, or it blanks every other field the member already saved. */
+  onSaveProfile?: (next: UserProfile) => void;
   goals?: string[];
   // False until the profile has resolved. The card waits on it rather than
   // rendering "No plans yet" for a beat at somebody who has goals.
@@ -1568,6 +1588,29 @@ export default function Overview({
             <CloseIcon />
           </button>
         </div>
+      )}
+
+      {/* Goals and the money snapshot, moved here from onboarding (issue #267).
+          Hidden while arranging: an interactive form has no business competing
+          with the drag-and-drop board it would otherwise sit inside. Both are
+          self-gating (each returns null once answered, dismissed, or, for the
+          snapshot, silently filled from a live estimate), so stacking them
+          costs nothing when neither applies. */}
+      {!editing && email && onSaveProfile && (
+        <>
+          <GoalsNudge
+            email={email}
+            profile={profile}
+            onSave={(nextGoals) => onSaveProfile({ ...(profile ?? {}), goals: nextGoals })}
+          />
+          <SnapshotNudge
+            email={email}
+            profile={profile}
+            onSave={(income, expenses) =>
+              onSaveProfile({ ...(profile ?? {}), monthlyIncome: income, monthlyExpenses: expenses })
+            }
+          />
+        </>
       )}
 
       {editing && (

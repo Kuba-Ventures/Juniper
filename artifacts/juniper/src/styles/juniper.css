@@ -1387,6 +1387,17 @@
 .jnpr .welcome-tip .wt-x{background:none;border:0;cursor:pointer;color:var(--jnpr-ink-3);padding:2px;flex:0 0 auto}
 .jnpr .welcome-tip .wt-x:hover{color:var(--jnpr-ink)}
 
+/* Dismissible dashboard nudges (issue #267): goals and the money snapshot
+   moved off the onboarding wizard onto cards here, so a member sees them once
+   there is a real dashboard to plan against rather than before. A regular
+   `.card.pad-lg` with a dismiss X in the corner, since the content (chips, a
+   money field pair) needs the same room a normal card gives it, unlike the
+   thin single-line `.welcome-tip` above. */
+.jnpr .dash-nudge{position:relative}
+.jnpr .dash-nudge .dash-nudge-x{position:absolute;top:16px;right:16px;background:none;border:0;
+  cursor:pointer;color:var(--jnpr-ink-3);padding:4px;border-radius:8px}
+.jnpr .dash-nudge .dash-nudge-x:hover{color:var(--jnpr-ink);background:var(--jnpr-surface-3)}
+
 /* dashboard connect-to-unlock nudge (reuses .connect-empty inside a card) */
 .jnpr .nudge-card{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;gap:10px;padding:30px 22px}
 .jnpr .nudge-card .nc-mark{width:46px;height:46px;border-radius:13px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);display:grid;place-items:center}

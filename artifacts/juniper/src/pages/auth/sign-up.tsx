@@ -6,6 +6,7 @@ import { useSession } from "@/lib/use-session";
 import { acceptInvite } from "@/lib/invites";
 import { fetchInviteInfo } from "@/lib/partner";
 import { fetchHouseholdInviteInfo } from "@/lib/household";
+import { stashPendingHousehold } from "@/lib/profile";
 import "@/styles/juniper.css";
 
 const REQUIRED_INVITE_CODE = (import.meta.env.VITE_SIGNUP_INVITE_CODE ?? "") as string;
@@ -16,6 +17,12 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Folded in from the first onboarding step (issue #267), which removes a
+  // whole screen: anybody arriving via a partner or household invite has
+  // already answered this by the fact of the invite, so the picker only shows
+  // for a plain sign-up. See stashPendingHousehold below for why this can't be
+  // saved right here.
+  const [household, setHousehold] = useState<"solo" | "partner" | undefined>();
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -111,8 +118,9 @@ export default function SignUp() {
               : `${window.location.origin}/app`
         : undefined;
 
+    const normalizedEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       password,
       options: {
         data: { name: name.trim() || undefined },
@@ -125,6 +133,14 @@ export default function SignUp() {
       setError(error.message);
       return;
     }
+
+    // Stashed by email rather than saved directly: there is no session yet to
+    // save it THROUGH (confirmation may still be pending), and onboarding picks
+    // it up once one exists. A partner/household invite answers the question
+    // by the fact of the invite, regardless of what the (hidden) picker holds.
+    const chosenHousehold: "solo" | "partner" | undefined =
+      partnershipToken || householdToken ? "partner" : household;
+    if (chosenHousehold) stashPendingHousehold(normalizedEmail, chosenHousehold);
 
     if (data.session) {
       // Session-effect above will handle the redirect, including invite accept.
@@ -170,6 +186,29 @@ export default function SignUp() {
             onChange={(e) => setName(e.target.value)}
             autoComplete="given-name"
           />
+          {!partnershipToken && !householdToken && (
+            <div>
+              <p style={{ fontSize: 13, color: "var(--jnpr-ink-3)", margin: "2px 0 8px" }}>
+                Who are you planning for?
+              </p>
+              <div className="ob-seg">
+                <button
+                  type="button"
+                  className={household === "solo" ? "on" : undefined}
+                  onClick={() => setHousehold("solo")}
+                >
+                  Just me<small>Planning on your own</small>
+                </button>
+                <button
+                  type="button"
+                  className={household === "partner" ? "on" : undefined}
+                  onClick={() => setHousehold("partner")}
+                >
+                  Me &amp; my partner<small>Planning for two</small>
+                </button>
+              </div>
+            </div>
+          )}
           <input
             type="email"
             placeholder="Email address"
