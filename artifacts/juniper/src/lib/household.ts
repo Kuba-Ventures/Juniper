@@ -91,6 +91,31 @@ export const editHouseholdMemberRole = (userId: string, role: "member" | "viewer
 export const setHouseholdAccountShare = (accountId: string, scope: AccountScope) => post("set-account-share", { accountId, scope });
 export const setHouseholdPlanShare = (domain: string, shared: boolean) => post("share-plan", { domain, shared });
 
+/* ------------------------------------------------------------------ *
+ * Handoff from the household page's "create a plan for the household" entry
+ * points (the plain button and the "Ideas for a household plan" gallery) to
+ * the Plans create form (issue #324): an in-memory pass rather than a URL
+ * param or localStorage, mirroring setPendingChatDraft/takePendingChatDraft
+ * in lib/planner.ts, since the two pages are mounted in the same SPA session
+ * and `navigate()` between them is a client-side route change, never a hard
+ * reload. Carries only the household's name, which is all the create form's
+ * "Share with <name>" toggle needs to show; the return trip itself is a
+ * fixed route (`/app/household?tab=plans`), so no household id rides along.
+ * A lost handoff (a hard refresh mid-flow) just means the create form opens
+ * with no household toggle, the same graceful degradation a lost chat draft
+ * gets.
+ * ------------------------------------------------------------------ */
+export type PendingHouseholdReturn = { householdName: string };
+let pendingHouseholdReturn: PendingHouseholdReturn | null = null;
+export function setPendingHouseholdReturn(d: PendingHouseholdReturn): void {
+  pendingHouseholdReturn = d;
+}
+export function takePendingHouseholdReturn(): PendingHouseholdReturn | null {
+  const d = pendingHouseholdReturn;
+  pendingHouseholdReturn = null;
+  return d;
+}
+
 /** Who sent a household invite, for the page the invited person lands on.
  *  Carries no session, same reasoning as fetchInviteInfo in lib/partner.ts:
  *  the person making this call does not have one yet. Never rejects. */

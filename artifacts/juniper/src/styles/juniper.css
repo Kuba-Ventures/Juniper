@@ -719,6 +719,8 @@
 .jnpr .form-error{background:var(--jnpr-bad-soft);border:1px solid var(--jnpr-bad);color:var(--jnpr-bad);border-radius:var(--jnpr-r-sm);padding:9px 12px;font-size:12.5px;margin-bottom:12px}
 .jnpr .prefill-hint{display:flex;align-items:flex-start;gap:8px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent-deep);border-radius:var(--jnpr-r-sm);padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:14px}
 .jnpr .prefill-hint svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;stroke:var(--jnpr-accent);fill:none}
+.jnpr .prefill-hint.household-share-hint{align-items:center}
+.jnpr .prefill-hint.household-share-hint .hsh-text{flex:1}
 .jnpr .share-link{display:flex;gap:8px;margin-bottom:16px}
 .jnpr .share-link input{flex:1;min-width:0;font:inherit;font-size:12.5px;color:var(--jnpr-ink-2);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:9px 11px}
 .jnpr .share-link .btn{flex:0 0 auto}
