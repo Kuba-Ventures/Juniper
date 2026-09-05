@@ -262,7 +262,10 @@ export function ConnectionsView() {
     notice: queueNotice,
     setNotice: setQueueNotice,
   } = useLinkQueue({
-    onItemLinked: refresh,
+    onItemLinked: () => {
+      void refresh();
+      void refreshFinances();
+    },
     onDone: ({ linked }) => {
       // Plaid links one institution per session, so the panel has served its
       // purpose the moment the queue drains: closing it puts the member back on
@@ -334,10 +337,14 @@ export function ConnectionsView() {
       setRemovingId(itemId);
       const ok = await removePlaidItem(itemId);
       setRemovingId(null);
-      if (ok) await refresh();
-      else setNotice("Couldn't disconnect that account. Please try again.");
+      if (ok) {
+        await refresh();
+        void refreshFinances();
+      } else {
+        setNotice("Couldn't disconnect that account. Please try again.");
+      }
     },
-    [refresh],
+    [refresh, refreshFinances],
   );
 
   const handleRemoveManual = useCallback(
@@ -345,10 +352,14 @@ export function ConnectionsView() {
       setRemovingManualId(id);
       const ok = await removeManualAccount(id);
       setRemovingManualId(null);
-      if (ok) await refresh();
-      else setNotice("Couldn't remove that account. Please try again.");
+      if (ok) {
+        await refresh();
+        void refreshFinances();
+      } else {
+        setNotice("Couldn't remove that account. Please try again.");
+      }
     },
-    [refresh],
+    [refresh, refreshFinances],
   );
 
   const hasItems = items.length > 0 || manualAccts.length > 0;
@@ -379,7 +390,13 @@ export function ConnectionsView() {
       ...manualAccts.map((m) => ({
         key: `m:${m.id}`,
         kind: "manual" as const,
-        name: m.institution || m.name,
+        // The member's own name for the account ("401k"), never the optional
+        // institution ("Human Interest"): a Plaid tile's name is genuinely an
+        // institution, since one login can hold several accounts underneath
+        // it, but a manual account has no such grouping, so preferring
+        // `institution` here read the member's own account as if Juniper had
+        // renamed it to whichever bank they typed in.
+        name: m.name,
         manual: m,
       })),
     ],
@@ -419,6 +436,7 @@ export function ConnectionsView() {
         <LayerDiscovery
           onLinked={() => {
             void refresh();
+            void refreshFinances();
           }}
         />
       )}
@@ -435,6 +453,14 @@ export function ConnectionsView() {
             setEditingManual(null);
             setAddOpen(false);
             await refresh();
+            // This page's own `refresh()` only re-reads Plaid items and manual
+            // accounts for ITS OWN tile grid. Overview reads net worth from the
+            // shared FinancesContext, a separate cached /api/finances payload
+            // that this save never touched, so a member who had just added an
+            // account saw it here and not on their own dashboard until
+            // something else happened to trigger a re-fetch (a reload, a tab
+            // focus more than a minute later, the six-hour sync).
+            void refreshFinances();
           }}
           // Cancelling an EDIT closes the whole panel, cancelling an ADD only
           // steps back to the picker. The two arrive from different places and
@@ -557,7 +583,13 @@ export function ConnectionsView() {
                     onClick={() => openTile(t.key)}
                   >
                     <InstitutionMark
-                      name={t.name}
+                      // The mark still resolves off the INSTITUTION for a manual
+                      // account (falling back to its name only when no
+                      // institution was given), because that is what makes a
+                      // real bank's mark or a sensible monogram show up here;
+                      // only the heading text below moved to the account's own
+                      // name.
+                      name={t.kind === "manual" ? t.manual.institution || t.manual.name : t.name}
                       brand={
                         t.kind === "plaid" && t.item.institution_id
                           ? brands[t.item.institution_id]
@@ -571,7 +603,9 @@ export function ConnectionsView() {
                         {t.kind === "manual" && <span className="conn-tag">Manual</span>}
                       </span>
                       <span className="ct-count">
-                        {tileCount(t)} account{tileCount(t) === 1 ? "" : "s"}
+                        {t.kind === "manual"
+                          ? t.manual.institution || "1 account"
+                          : `${tileCount(t)} account${tileCount(t) === 1 ? "" : "s"}`}
                       </span>
                       {st && <span className={`ci-status ${st.tone}`}>{st.text}</span>}
                     </span>
@@ -664,9 +698,14 @@ export function ConnectionsView() {
                           reaches the local brand map or the pencil glyph. The
                           "Manual" tag beside it still carries that meaning when a
                           logo resolves. */}
-                      <InstitutionMark name={selected.name} glyph={<PencilLine size={17} />} />
+                      <InstitutionMark
+                        name={selected.manual.institution || selected.manual.name}
+                        glyph={<PencilLine size={17} />}
+                      />
                       <span className="ci-name">
-                        {selected.name} <span className="conn-tag">Manual</span>
+                        {selected.name}
+                        {selected.manual.institution && <> &middot; {selected.manual.institution}</>}{" "}
+                        <span className="conn-tag">Manual</span>
                       </span>
                       {/* A plain text button rather than a second filled one. Edit
                           is the safe action and Remove is the destructive one, so
