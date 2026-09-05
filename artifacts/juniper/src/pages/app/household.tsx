@@ -13,20 +13,25 @@
 // cards, the same "card links deeper" pattern the individual and partner
 // Overviews already use) and so is Plans (sharing a plan to the household,
 // migration 0056 / household_plan_shares).
-import { useEffect, useState } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { money } from "@/lib/mock-data";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
+import { useFinances } from "@/lib/finances";
 import {
   useHousehold, isShared, leaveHousehold, removeHouseholdMember, editHouseholdMemberRole,
-  setHouseholdAccountShare, setHouseholdPlanShare, setPendingHouseholdReturn,
+  setHouseholdAccountShare, setHouseholdPlanShare,
   type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
-import { planTitle, planIcon, planColor, planNumbers, domainFromName, SHAPE_ICON } from "@/lib/plans";
-import { EXAMPLES, type Example } from "@/pages/app/plans";
+import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, SHAPE_ICON } from "@/lib/plans";
+import { EXAMPLES, TEMPLATES, type Example } from "@/pages/app/plans";
+// The create-plan form (issue #338 follow-up): mounted in place here instead
+// of navigating to /app/plans and back, so creating a plan for the household
+// never leaves this page, not even for the flash of a route change.
+import { CreateForm, balancesFromFinances, prefillFor, type CreateFormState, type PrefillKey } from "@/components/juniper/plan-create-form";
 
 const roleLabel: Record<HouseholdRole, string> = { owner: "Owner", member: "Member", viewer: "Viewer" };
 const MEMBER_COLORS = ["--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c1", "--jnpr-c7"];
@@ -43,6 +48,13 @@ const FAMILY_EXAMPLES: Example[] = FAMILY_EXAMPLE_IDS
   .filter((e): e is Example => !!e);
 
 type Tab = "overview" | "members" | "accounts" | "plans";
+
+// Issue #338: the create-plan modal, mirroring the shape plans.tsx's own
+// `modal` state uses for its `{ k: "form", ... }` case. `prefill` rides
+// alongside `CreateFormState` rather than inside it, same split plans.tsx
+// makes, because it names which real-balance figure to seed from and is
+// resolved to an actual `Prefill` at render time via `prefillFor`.
+type ModalState = null | ({ k: "form"; prefill: PrefillKey } & CreateFormState);
 
 function AccountRow({ a, canToggle, onToggle, busy }: {
   a: HouseholdAccount; canToggle: boolean; onToggle: (next: AccountScope) => void; busy: boolean;
@@ -117,36 +129,25 @@ function PlanRow({ p, canToggle, onToggle, busy }: {
 
 export function HouseholdView() {
   const [, navigate] = useLocation();
-  const search = useSearch();
   const { data, loading, refresh } = useHousehold();
-  // Issue #324: creating a plan from this page's own buttons hands the
-  // member off to /app/plans and back again (see the two onClick handlers in
-  // the Plans tab below and the `?fromHousehold=1` handling in plans.tsx).
-  // The return trip lands on `?tab=plans`, so tab state has to read the URL
-  // on mount rather than always starting at "overview". Read once, at mount:
-  // this page remounts fresh on every route change into it, which the
-  // household-return navigate() is.
-  const [tab, setTab] = useState<Tab>(() => {
-    const want = new URLSearchParams(search).get("tab");
-    return want === "members" || want === "accounts" || want === "plans" ? want : "overview";
-  });
+  const [tab, setTab] = useState<Tab>("overview");
   const [inviting, setInviting] = useState(false);
   const [busyAccount, setBusyAccount] = useState<string | null>(null);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [busyRole, setBusyRole] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Issue #324: `?tab=` on this route only ever arrives from the Plans-page
-  // handoff, right after creating (and maybe sharing) a plan for the
-  // household, so `useHousehold()`'s module-level cache (populated by an
-  // earlier visit this session, if there was one) has to be treated as
-  // stale: force one refetch rather than trust whatever it already held, or
-  // the just-shared plan would not show up until something else refreshed it.
-  useEffect(() => {
-    if (new URLSearchParams(search).get("tab")) refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Issue #338: the create-plan modal, mounted in place rather than reached
+  // by navigating to /app/plans. `useFinances()` and `useMemberPlans()` are
+  // exactly what CreateForm needs beyond what this page already has: real
+  // balances to prefill from, and the member's own plans so a new plan's
+  // domain does not collide with one already on this account (the same two
+  // things plans.tsx itself reads for the same reasons).
+  const [modal, setModal] = useState<ModalState>(null);
+  const closeModal = () => setModal(null);
+  const { data: finances } = useFinances();
+  const balances = balancesFromFinances(finances);
+  const { plans: myOwnPlans, upsertLocal: upsertOwnPlanLocal } = useMemberPlans();
 
   if (loading) {
     return (
@@ -363,17 +364,23 @@ export function HouseholdView() {
                 className="ob-add"
                 style={{ marginTop: 6, width: "100%" }}
                 onClick={() => {
-                  // Issue #324: this button's whole point is starting a plan
+                  // Issue #338: this button's whole point is starting a plan
                   // FOR the household, so it skips the template picker and
-                  // opens a blank create form directly, the same "custom-goal"
-                  // template slug the `?new=` deep link already resolves for
-                  // an example (there is no separate "blank form" entry point
-                  // to reuse: the ordinary New plan button opens the template
-                  // picker, not a blank form, and Custom goal IS that blank
-                  // form). `fromHousehold=1` tells plans.tsx to read the
-                  // pending handoff and show the share toggle.
-                  setPendingHouseholdReturn({ householdName: data.household?.name || "your household" });
-                  navigate("/app/plans?new=custom-goal&fromHousehold=1");
+                  // opens a blank create form directly, the same "Custom
+                  // goal" template the ordinary New plan picker on
+                  // /app/plans offers (there is no separate "blank form"
+                  // entry point to reuse: Custom goal IS that blank form).
+                  // The form mounts in place, no navigation of any kind.
+                  const custom = TEMPLATES.find((t) => t.label === "Custom goal")!;
+                  setModal({
+                    k: "form",
+                    label: custom.label,
+                    shape: custom.shape,
+                    color: custom.color,
+                    prefill: custom.prefill,
+                    icon: custom.icon,
+                    household: { householdName: data.household?.name || "your household" },
+                  });
                 }}
               >
                 + Create a plan for the household
@@ -394,7 +401,7 @@ export function HouseholdView() {
           <section className="ex-wrap">
             <div className="ex-lede">
               <h3>Ideas for a household plan</h3>
-              <p>Start one of these and it lands on your own Plans page, prefilled and ready to adjust.</p>
+              <p>Start one of these, prefilled and ready to adjust, right here.</p>
             </div>
             <div className="grid ex-grid">
               {FAMILY_EXAMPLES.map((e) => (
@@ -403,9 +410,19 @@ export function HouseholdView() {
                   className="card plan-ex hh-ov-card"
                   style={{ width: "100%" }}
                   onClick={() => {
-                    // Same household handoff as the button above.
-                    setPendingHouseholdReturn({ householdName: data.household?.name || "your household" });
-                    navigate(`/app/plans?new=${domainFromName(e.title)}&fromHousehold=1`);
+                    // Issue #338: `e` is already the same `Example` object
+                    // plans.tsx's own `?new=` deep link would have resolved
+                    // by slug, so the form is seeded straight from it, no
+                    // navigation, no lookup, no round trip.
+                    setModal({
+                      k: "form",
+                      label: e.title,
+                      shape: e.shape,
+                      color: e.color,
+                      prefill: e.prefill,
+                      seed: { target: e.target, monthly: e.monthly },
+                      household: { householdName: data.household?.name || "your household" },
+                    });
                   }}
                 >
                   <div className="ex-top">
@@ -427,6 +444,27 @@ export function HouseholdView() {
       <button className="btn ghost" style={{ marginTop: 16 }} onClick={leave} disabled={busyAction}>Leave household</button>
 
       {inviting && <InviteHouseholdModal onClose={() => { setInviting(false); refresh(); }} />}
+
+      {/* Issue #338: mounted right here rather than reached by navigating to
+          /app/plans, so the member never leaves this page, not even for the
+          flash of a route change. CreateForm's own `create()` already calls
+          setHouseholdPlanShare internally when `state.household` is set and
+          its toggle is left checked, so there is nothing left to do here on
+          save but close the modal and refresh the household data the new
+          plan should now show up in. */}
+      {modal?.k === "form" && (
+        <CreateForm
+          state={modal}
+          prefill={prefillFor(modal.prefill, balances)}
+          existing={myOwnPlans}
+          onBack={closeModal}
+          onCreated={(plan) => {
+            upsertOwnPlanLocal(plan);
+            closeModal();
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
