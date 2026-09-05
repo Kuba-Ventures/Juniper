@@ -133,6 +133,11 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
   // on this screen, so a member who links two banks in a row needs to see both
   // names to know the first one took.
   const [connected, setConnected] = useState<Map<string, string>>(new Map());
+  // Accounts entered by hand this session (issue #328): ManualAccountForm's
+  // onSaved always succeeded, but nothing on this screen ever said so, unlike
+  // a Plaid link, which gets the banner below through `connected`. A member
+  // typing in a real balance had no way to tell it took.
+  const [manualAdded, setManualAdded] = useState<string[]>([]);
 
   // What the picker sees: this session's links on top of the ones the member
   // already had. The picker lists these as Connected and drops them out of its
@@ -150,8 +155,9 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
 
   // Linked in THIS run, which is a different question from whether anything is
   // linked at all: the confirmation below reports what just happened, so a bank
-  // linked last month must not claim "Account added".
-  const linkedThisSession = connected.size > 0;
+  // linked last month must not claim "Account added". A manual add counts too,
+  // for the same reason.
+  const linkedThisSession = connected.size > 0 || manualAdded.length > 0;
 
   const markConnected = useCallback(
     (institutions?: string[]) => {
@@ -197,7 +203,10 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
 
       {linkedThisSession && (
         <div className="ob-connected">
-          <Check size={18} strokeWidth={2.5} /> Account added. Search for another below, or continue.
+          <Check size={18} strokeWidth={2.5} />{" "}
+          {connected.size === 0 && manualAdded.length === 1
+            ? `${manualAdded[0]} added. Add another below, or continue.`
+            : "Account added. Search for another below, or continue."}
         </div>
       )}
       {!linkedThisSession && already.length > 0 && (
@@ -222,7 +231,8 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
 
       {manual ? (
         <ManualAccountForm
-          onSaved={() => {
+          onSaved={(acct) => {
+            setManualAdded((prev) => [...prev, acct.name]);
             setManual(false);
             onLinked();
           }}

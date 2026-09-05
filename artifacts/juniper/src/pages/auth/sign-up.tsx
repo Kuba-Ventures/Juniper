@@ -67,9 +67,18 @@ export default function SignUp() {
     return () => { alive = false; };
   }, [householdToken]);
 
-  // Someone arriving on an invite of any kind was vouched for by the member
-  // who invited them, so the private-preview code is waived for them.
-  const needsSignupCode = !!REQUIRED_INVITE_CODE && !planInviteToken && !partnershipToken && !householdToken;
+  // Issue #327: a plain solo account (or accepting a single plan invite,
+  // `?invite=`) stays open with no code, on the reasoning that one person's
+  // own data is the lower-stakes surface. Joining a shared partnership or a
+  // household is the higher-stakes one, exposing account and net-worth
+  // sharing between more than one person, so it is the one gated while
+  // Stage 6 compliance (TOS, privacy policy, security review) is still open.
+  // This is the reverse of the previous rule, which waived the code for
+  // every invite type on the theory that the invite itself vouched for the
+  // signup; the code the invite creator hands over now (see
+  // invite-modal.tsx / household-invite-modal.tsx) is what actually vouches
+  // for it.
+  const needsSignupCode = !!REQUIRED_INVITE_CODE && (!!partnershipToken || !!householdToken);
 
   useEffect(() => {
     if (!session) return;
