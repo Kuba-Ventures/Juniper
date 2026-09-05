@@ -35,7 +35,14 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-type Role = "owner" | "adult" | "teen";
+// Issue #333: adult/teen renamed to a capability axis. `member` is what both
+// of those already were (can share and unshare their own accounts and plans,
+// cannot invite, remove, or change roles); `viewer` is new and the first role
+// that actually withholds a capability -- see the block on set-account-share
+// and share-plan below. Migration 0057 moves existing adult/teen rows to
+// `member`, never `viewer`, since neither had ever been restricted from
+// sharing and a naming cleanup must not silently take that away.
+type Role = "owner" | "member" | "viewer";
 type Member = { id: string; household_id: string; user_id: string; role: Role; joined_at: string; left_at: string | null };
 type Household = { id: string; name: string; created_by: string };
 type Invite = { id: string; household_id: string; invite_token: string; invited_name: string | null; invited_role: Role; status: string };
@@ -231,7 +238,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (body.action === "invite") {
     if (mine.role !== "owner") return json({ error: "Only the household owner can invite" }, 403);
-    const invitedRole: Role = body.role === "teen" ? "teen" : "adult";
+    const invitedRole: Role = body.role === "viewer" ? "viewer" : "member";
     const invitedName = (body.name || "").trim().slice(0, 60) || null;
     const origin = new URL(req.url).origin;
     const newToken = crypto.randomUUID().replace(/-/g, "");
@@ -289,7 +296,7 @@ export default async function handler(req: Request): Promise<Response> {
     const nextRole = body.role;
     if (!targetId) return json({ error: "userId is required" }, 400);
     if (targetId === uid) return json({ error: "You can't change your own role" }, 400);
-    if (nextRole !== "adult" && nextRole !== "teen") return json({ error: "role must be adult or teen" }, 400);
+    if (nextRole !== "member" && nextRole !== "viewer") return json({ error: "role must be member or viewer" }, 400);
     const target = await rows<Member>(
       `household_members?household_id=eq.${mine.household_id}&user_id=eq.${targetId}&left_at=is.null&select=id&limit=1`,
     );
@@ -302,6 +309,13 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (body.action === "share-plan") {
+    // The one place `viewer` actually differs from `member` (issue #333):
+    // everything else a non-owner can do is already gated on owning the row
+    // being acted on, which a viewer passes as easily as anyone. Sharing is
+    // the one action that ADDS to what the household sees, so it is the one
+    // a view-only member is withheld from -- viewing what is already shared
+    // is untouched, since GET overview() never checks role at all.
+    if (mine.role === "viewer") return json({ error: "Viewers can view the household but can't share a plan to it" }, 403);
     const domain = (body.domain || "").trim();
     if (!domain) return json({ error: "domain is required" }, 400);
     if (body.shared) {
@@ -326,6 +340,13 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (body.action === "set-account-share") {
+    // Same rule as share-plan above, and deliberately including the "turn an
+    // already-shared account back to private" direction: a viewer downgraded
+    // from member with something already shared has to ask the owner (or be
+    // moved back to member) to unshare it, rather than this endpoint growing
+    // a special case for retracting versus adding. Uncommon enough in
+    // practice not to be worth the extra branch.
+    if (mine.role === "viewer") return json({ error: "Viewers can view the household but can't change account sharing" }, 403);
     const accountId = (body.accountId || "").trim();
     const scope = body.scope;
     if (!accountId || (scope !== "shared" && scope !== "private")) {
