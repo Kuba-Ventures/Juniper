@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
-  money, moneyK, money2,
+  money, money2,
   type Budget, type Account, type Txn, type SpendCat,
 } from "@/lib/mock-data";
 import { useFinances, type FinanceData } from "@/lib/finances";
@@ -9,9 +9,8 @@ import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from
 import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { fmtDay } from "@/lib/txn-format";
-import {
-  useMemberPlans, planTitle, planColor, planShape, planNumbers, SHAPE_ICON, unplannedGoals,
-} from "@/lib/plans";
+import { useMemberPlans, unplannedGoals } from "@/lib/plans";
+import { PlanProgressRow, toPlanProgressRow, type PlanProgressRowData } from "@/components/juniper/plan-progress-row";
 import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH, paintOf,
 } from "@/components/juniper/primitives";
@@ -772,45 +771,14 @@ function NetWorthCard({ netWorth, cashflow, size }: { netWorth: FinanceData["net
 // page uses so the two surfaces cannot disagree about what exists. Example plans
 // live only on the Plans page: they are illustration, so they must never appear
 // here, where everything on the screen is the member's own money.
-// One plan or waiting goal, reduced to the fields every shape below draws from,
-// so List/Compact/Tiles read one list rather than each re-deriving it from the
-// two source arrays (real plans, unplanned goals) with their own field names.
-interface PlanRow {
-  key: string;
-  title: string;
-  color: string;
-  icon: string;
-  current: number;
-  target: number;
-  prog: number;
-  /** A signup goal with no plan behind it yet, not a plan the member started.
-   *  Every shape below dims its progress element for one, the same "hasn't
-   *  really begun" cue the original list-only `.waiting` class carried. */
-  waiting: boolean;
-}
-
-function PlanListRow({ row }: { row: PlanRow }) {
-  return (
-    <Link href="/app/plans" className={row.waiting ? "plan-row waiting" : "plan-row"}>
-      <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
-      <div className="pr-body">
-        <div className="pr-top">
-          <span className="pt">{row.title}</span>
-          {row.target > 0 ? <span className="amt tnum">{moneyK(row.current)} <small>/ {moneyK(row.target)}</small></span> : null}
-        </div>
-        <div className="bar"><i style={{ width: `${row.prog}%`, background: cssVar(row.color) }} /></div>
-        <div className="pr-bot">
-          <span>{row.target > 0 ? `${row.prog}% funded` : "No target set yet"}</span>
-          <span className={`status ${row.target > 0 ? "ok" : "setup"}`}>{row.target > 0 ? "On track" : "Setup"}</span>
-        </div>
-      </div>
-    </Link>
-  );
-}
+// The real progress row (icon, title, $current/$targetk, bar, percent funded,
+// status pill) now lives in components/juniper/plan-progress-row.tsx, shared
+// with the household Overview's "Shared plans" section; PlanCompactRow and
+// PlanTile below are this page's own size options and stayed local.
 
 // Compact: a name and a percent, nothing else. For a member with several plans
 // who wants to scan all of them without the progress bar's vertical cost.
-function PlanCompactRow({ row }: { row: PlanRow }) {
+function PlanCompactRow({ row }: { row: PlanProgressRowData }) {
   return (
     <Link href="/app/plans" className={row.waiting ? "plan-crow waiting" : "plan-crow"}>
       <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
@@ -824,7 +792,7 @@ function PlanCompactRow({ row }: { row: PlanRow }) {
 // Gallery (half width) and Grid (full width, issue #259) because the two
 // differ only in how many columns the board gives them room for, which
 // `auto-fill`/`minmax` already answers without a second component.
-function PlanTile({ row }: { row: PlanRow }) {
+function PlanTile({ row }: { row: PlanProgressRowData }) {
   return (
     <Link href="/app/plans" className={row.waiting ? "plan-tile waiting" : "plan-tile"}>
       <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
@@ -844,20 +812,8 @@ function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsRead
   // "No plans yet" to somebody who had just told onboarding three of them.
   const waiting = useMemo(() => unplannedGoals(goals, plans), [goals, plans]);
   const hasAnything = active.length > 0 || waiting.length > 0;
-  const rows: PlanRow[] = [
-    ...active.map((p) => {
-      const { current, target } = planNumbers(p);
-      return {
-        key: p.domain,
-        title: planTitle(p),
-        color: planColor(p),
-        icon: SHAPE_ICON[planShape(p)],
-        current,
-        target,
-        prog: target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0,
-        waiting: false,
-      };
-    }),
+  const rows: PlanProgressRowData[] = [
+    ...active.map((p) => toPlanProgressRow(p, p.domain)),
     ...waiting.map((g) => ({
       key: g.goal, title: g.goal, color: g.color, icon: "target", current: 0, target: 0, prog: 0, waiting: true,
     })),
@@ -873,7 +829,7 @@ function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsRead
         ) : size === "gallery" || size === "grid" ? (
           <div className="plan-tiles">{rows.map((r) => <PlanTile row={r} key={r.key} />)}</div>
         ) : (
-          <div className="plans-col">{rows.map((r) => <PlanListRow row={r} key={r.key} />)}</div>
+          <div className="plans-col">{rows.map((r) => <PlanProgressRow row={r} href="/app/plans" key={r.key} />)}</div>
         )
       ) : goalsReady ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
