@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
 import { useThreads, previewOf, relativeTime, takePendingChatDraft, type PlanDraftFromChat, type PlanDraftField } from "@/lib/planner";
+import { setHouseholdPlanShare, takePendingHouseholdReturn } from "@/lib/household";
 import { useSession } from "@/lib/use-session";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import {
@@ -81,7 +82,17 @@ type Seed = { target: number; monthly: number };
 type ModalState =
   | null
   | { k: "new" }
-  | { k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string; fromGoal?: boolean; seed?: Seed; chatDraft?: PlanDraftFromChat }
+  | {
+      k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string;
+      fromGoal?: boolean; seed?: Seed; chatDraft?: PlanDraftFromChat;
+      // Issue #324: set only when this create form was opened from the
+      // household page's "Create a plan for the household" button or one of
+      // its gallery cards (`?fromHousehold=1`, resolved via
+      // takePendingHouseholdReturn in the `?new=` effect below). Drives the
+      // "Share with <name>" toggle in CreateForm and, on save, the return
+      // trip to /app/household?tab=plans instead of staying on this page.
+      household?: { householdName: string };
+    }
   | { k: "edit"; domain: string };
 
 // `icon` overrides the shape's default mark (SHAPE_ICON) for this template
@@ -1061,19 +1072,32 @@ export default function Plans({ profile = null, profileReady = false }: {
   // is replaced out of the URL so a reload or a back-navigation does not reopen
   // the modal on them.
   useEffect(() => {
-    const want = new URLSearchParams(search).get("new");
-    if (!want) return;
-    const t = TEMPLATES.find((x) => domainFromName(x.label) === want);
+    const params = new URLSearchParams(search);
+    const want = params.get("new");
+    // Issue #324: the household page's own create-a-plan entry points ride
+    // this same `?new=` deep link, adding `fromHousehold=1` alongside it, and
+    // the plain "+ Create a plan for the household" button (no template to
+    // name) points at the "Custom goal" slug rather than inventing a second
+    // way to open a blank form. `takePendingHouseholdReturn` reads the
+    // household name stashed by household.tsx's onClick handlers (an
+    // in-memory handoff, same shape as `?fromChat=1`'s pendingChatDraft
+    // below); a lost handoff (a hard refresh mid-flow) just means no
+    // household toggle shows, which is a real create form still worth having.
+    const fromHousehold = params.get("fromHousehold") === "1";
+    if (!want && !fromHousehold) return;
+    const household = fromHousehold ? takePendingHouseholdReturn() : null;
+    const householdField = household ? { household: { householdName: household.householdName } } : {};
+    const t = want ? TEMPLATES.find((x) => domainFromName(x.label) === want) : undefined;
     // An example is a second thing the slug can name, and it seeds the form the
     // same way its own "Use this plan" button does. Same normalizer for both,
     // so a link to an example survives the example being reworded only as far
     // as its slug survives, which is the deal the templates already take.
-    const ex = t ? undefined : EXAMPLES.find((x) => domainFromName(x.title) === want);
+    const ex = want && !t ? EXAMPLES.find((x) => domainFromName(x.title) === want) : undefined;
     setModal(
       t
-        ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill, icon: t.icon }
+        ? { k: "form", label: t.label, shape: t.shape, color: t.color, prefill: t.prefill, icon: t.icon, ...householdField }
         : ex
-          ? { k: "form", label: ex.title, shape: ex.shape, color: ex.color, prefill: ex.prefill, seed: { target: ex.target, monthly: ex.monthly } }
+          ? { k: "form", label: ex.title, shape: ex.shape, color: ex.color, prefill: ex.prefill, seed: { target: ex.target, monthly: ex.monthly }, ...householdField }
           : { k: "new" },
     );
     navigate("/app/plans", { replace: true });
@@ -1262,8 +1286,22 @@ export default function Plans({ profile = null, profileReady = false }: {
           prefill={prefillFor(modal.prefill, balances)}
           existing={plans}
           fromGoal={!!modal.fromGoal}
-          onBack={() => setModal(modal.fromGoal ? null : { k: "new" })}
-          onCreated={(plan) => { upsertLocal(plan); setFilter("active"); close(); }}
+          onBack={() => setModal(modal.fromGoal || modal.household ? null : { k: "new" })}
+          onCreated={(plan) => {
+            upsertLocal(plan);
+            // Issue #324: a plan created from the household page's own
+            // buttons returns there, to the Plans tab, rather than staying
+            // here. Whether it landed shared or private was already decided
+            // (and, if shared, already written) inside CreateForm before this
+            // fires, so this is unconditional on that choice.
+            if (modal.household) {
+              navigate("/app/household?tab=plans");
+              close();
+              return;
+            }
+            setFilter("active");
+            close();
+          }}
         />
       )}
 
@@ -1283,7 +1321,10 @@ export default function Plans({ profile = null, profileReady = false }: {
 function CreateForm({
   state, prefill, existing, fromGoal = false, onBack, onCreated,
 }: {
-  state: { label: string; shape: PlanShape; color: PlanColor; icon?: string; seed?: Seed; chatDraft?: PlanDraftFromChat };
+  state: {
+    label: string; shape: PlanShape; color: PlanColor; icon?: string; seed?: Seed; chatDraft?: PlanDraftFromChat;
+    household?: { householdName: string };
+  };
   prefill: Prefill;
   existing: Plan[];
   /** Opened from a signup goal rather than from the template picker. */
@@ -1323,6 +1364,10 @@ function CreateForm({
   const [shapePinned, setShapePinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Issue #324: pre-checked, since the whole point of arriving here from the
+  // household page is to share the thing being created; unchecking it keeps
+  // the plan private, same as creating from the ordinary /app/plans page.
+  const [shareHousehold, setShareHousehold] = useState(!!state.household);
 
   const set = (patch: Partial<Draft>) => {
     setDraft((d) => {
@@ -1354,6 +1399,12 @@ function CreateForm({
       setError("That did not save. Check your connection and try again.");
       return;
     }
+    // The share has to happen after the plan exists: household.ts's
+    // share-plan action checks ownership by domain against `plans`, so a
+    // call made before this save resolves would find nothing to share.
+    if (state.household && shareHousehold) {
+      await setHouseholdPlanShare(saved.domain, true);
+    }
     onCreated(saved);
   };
 
@@ -1382,11 +1433,34 @@ function CreateForm({
           <span>Filled in from the example, so there is something to change rather than a blank form. Every figure is yours to overwrite.</span>
         </div>
       ) : null}
+      {/* Issue #324: a separate banner from the hint chain above, since it is
+          a decision to make rather than a note about where the numbers came
+          from, and the two can appear together (a household gallery card
+          carries both a seed and this toggle). Same `.prefill-hint` shape as
+          the chatDraft/prefill/example hints above, with a switch control
+          added rather than a plain checkbox, matching the toggle household.tsx
+          already uses for account and plan sharing. */}
+      {state.household && (
+        <div className="prefill-hint household-share-hint">
+          <PlanIcon name="target" />
+          <span className="hsh-text">Share with {state.household.householdName} once this is saved. Uncheck to keep it private.</span>
+          <button
+            type="button"
+            className={shareHousehold ? "share-toggle on" : "share-toggle"}
+            role="switch"
+            aria-checked={shareHousehold}
+            aria-label={`Share with ${state.household.householdName}`}
+            onClick={() => setShareHousehold((v) => !v)}
+          >
+            <i />
+          </button>
+        </div>
+      )}
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
       <div className="modal-actions">
         <button className="btn" disabled={saving} onClick={create}>{saving ? "Creating…" : "Create plan"}</button>
-        <button className="btn ghost" disabled={saving} onClick={onBack}>{fromGoal ? "Cancel" : "Back"}</button>
+        <button className="btn ghost" disabled={saving} onClick={onBack}>{fromGoal || state.household ? "Cancel" : "Back"}</button>
       </div>
     </Backdrop>
   );

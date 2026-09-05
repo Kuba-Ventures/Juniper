@@ -13,15 +13,15 @@
 // cards, the same "card links deeper" pattern the individual and partner
 // Overviews already use) and so is Plans (sharing a plan to the household,
 // migration 0056 / household_plan_shares).
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { money } from "@/lib/mock-data";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
 import {
   useHousehold, isShared, leaveHousehold, removeHouseholdMember, editHouseholdMemberRole,
-  setHouseholdAccountShare, setHouseholdPlanShare,
+  setHouseholdAccountShare, setHouseholdPlanShare, setPendingHouseholdReturn,
   type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
@@ -117,14 +117,36 @@ function PlanRow({ p, canToggle, onToggle, busy }: {
 
 export function HouseholdView() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { data, loading, refresh } = useHousehold();
-  const [tab, setTab] = useState<Tab>("overview");
+  // Issue #324: creating a plan from this page's own buttons hands the
+  // member off to /app/plans and back again (see the two onClick handlers in
+  // the Plans tab below and the `?fromHousehold=1` handling in plans.tsx).
+  // The return trip lands on `?tab=plans`, so tab state has to read the URL
+  // on mount rather than always starting at "overview". Read once, at mount:
+  // this page remounts fresh on every route change into it, which the
+  // household-return navigate() is.
+  const [tab, setTab] = useState<Tab>(() => {
+    const want = new URLSearchParams(search).get("tab");
+    return want === "members" || want === "accounts" || want === "plans" ? want : "overview";
+  });
   const [inviting, setInviting] = useState(false);
   const [busyAccount, setBusyAccount] = useState<string | null>(null);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [busyRole, setBusyRole] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Issue #324: `?tab=` on this route only ever arrives from the Plans-page
+  // handoff, right after creating (and maybe sharing) a plan for the
+  // household, so `useHousehold()`'s module-level cache (populated by an
+  // earlier visit this session, if there was one) has to be treated as
+  // stale: force one refetch rather than trust whatever it already held, or
+  // the just-shared plan would not show up until something else refreshed it.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("tab")) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (
@@ -337,7 +359,23 @@ export function HouseholdView() {
               </div>
             )}
             {!isViewer && (
-              <button className="ob-add" style={{ marginTop: 6, width: "100%" }} onClick={() => navigate("/app/plans")}>
+              <button
+                className="ob-add"
+                style={{ marginTop: 6, width: "100%" }}
+                onClick={() => {
+                  // Issue #324: this button's whole point is starting a plan
+                  // FOR the household, so it skips the template picker and
+                  // opens a blank create form directly, the same "custom-goal"
+                  // template slug the `?new=` deep link already resolves for
+                  // an example (there is no separate "blank form" entry point
+                  // to reuse: the ordinary New plan button opens the template
+                  // picker, not a blank form, and Custom goal IS that blank
+                  // form). `fromHousehold=1` tells plans.tsx to read the
+                  // pending handoff and show the share toggle.
+                  setPendingHouseholdReturn({ householdName: data.household?.name || "your household" });
+                  navigate("/app/plans?new=custom-goal&fromHousehold=1");
+                }}
+              >
                 + Create a plan for the household
               </button>
             )}
@@ -364,7 +402,11 @@ export function HouseholdView() {
                   key={e.id}
                   className="card plan-ex hh-ov-card"
                   style={{ width: "100%" }}
-                  onClick={() => navigate(`/app/plans?new=${domainFromName(e.title)}`)}
+                  onClick={() => {
+                    // Same household handoff as the button above.
+                    setPendingHouseholdReturn({ householdName: data.household?.name || "your household" });
+                    navigate(`/app/plans?new=${domainFromName(e.title)}&fromHousehold=1`);
+                  }}
                 >
                   <div className="ex-top">
                     <span className="ex-ic" style={{ background: cssVar(e.color) }}><PlanIcon name={SHAPE_ICON[e.shape]} /></span>
