@@ -259,16 +259,41 @@ export default async function handler(req: Request): Promise<Response> {
     debt: [...group((a) => a.type === "credit" || a.type === "loan", true), ...manualIn("debt")],
   };
 
-  // Net worth: from snapshots, else a single point from current balances
+  // Net worth: history from snapshots, but the LATEST point is always this
+  // request's own live balances, never a stored figure that can predate it.
+  //
+  // Every day but today is a recorded (or reconstructed) observation and
+  // stays exactly as the snapshot table has it -- that history is what the
+  // whole estimated/backfill machinery exists to protect, and nothing here
+  // touches a stored row. Today is different: the snapshot for it, if one
+  // exists at all, was written by whatever last ran (a Plaid sync, the daily
+  // cron) and does not know about anything that happened after, a manual
+  // account added or edited being the case that surfaced this. `current` is
+  // computed two lines up from this same request's own account reads, so it
+  // already reflects that change; using the stored figure instead when a
+  // fresher one is sitting right here just reintroduces the staleness by
+  // hand. A member who edited a manual balance five minutes ago saw the
+  // Accounts list update immediately (it was always live) and the headline
+  // number stay wrong until the next scheduled snapshot write, which could be
+  // hours away.
   const assets = [...accounts.cash, ...accounts.invest].reduce((a, x) => a + x.v, 0);
   const debts = accounts.debt.reduce((a, x) => a + x.v, 0); // negative
   const current = Math.round(assets + debts);
-  const series = snaps.length ? snaps.map((s) => Math.round(s.net_worth)) : [current];
-  const labels = snaps.length ? snaps.map((s) => MONTHS[+s.as_of.split("-")[1] - 1]) : [MONTHS[now.getUTCMonth()]];
+  const todayStr = now.toISOString().slice(0, 10);
+  const rawSeries = snaps.length ? snaps.map((s) => Math.round(s.net_worth)) : [];
+  const rawLabels = snaps.length ? snaps.map((s) => MONTHS[+s.as_of.split("-")[1] - 1]) : [];
+  const rawEstimated = snaps.length ? snaps.map((s) => s.estimated === true) : [];
+  const hasToday = snaps.length > 0 && snaps[snaps.length - 1].as_of === todayStr;
+  // Today's own point is live either way: replace the stored figure if a
+  // snapshot for today already exists, or append one if it doesn't yet.
+  const series = hasToday ? [...rawSeries.slice(0, -1), current] : [...rawSeries, current];
+  const labels = hasToday ? rawLabels : [...rawLabels, MONTHS[now.getUTCMonth()]];
   // Which points were reconstructed by networth-backfill rather than observed.
   // Sent per point rather than as a cutoff index, so the client can slice it
-  // alongside the series for whichever range window is selected.
-  const estimated = snaps.length ? snaps.map((s) => s.estimated === true) : [false];
+  // alongside the series for whichever range window is selected. Today's
+  // point is never one of them: it is a live read of this member's own
+  // current balances, not a guess walked back from them.
+  const estimated = hasToday ? [...rawEstimated.slice(0, -1), false] : [...rawEstimated, false];
   const value = series[series.length - 1];
   const changeAbs = series.length > 1 ? value - series[0] : 0;
   const changePct = series.length > 1 && series[0] ? Math.round((changeAbs / series[0]) * 1000) / 10 : 0;
