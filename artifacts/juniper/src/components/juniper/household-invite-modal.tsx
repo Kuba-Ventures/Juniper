@@ -5,6 +5,12 @@ import { ModalBackdrop } from "@/components/juniper/modal-portal";
 // Two jobs, one modal, chosen by whether the caller already has a household:
 // name a household into existence, or invite the next member into the one
 // that already exists. Modeled on invite-modal.tsx's create-link flow.
+//
+// Issue #327: joining a household is gated on VITE_SIGNUP_INVITE_CODE the same
+// way joining a partnership is (see invite-modal.tsx's header for why), so the
+// invite creator needs the same code shown here to hand off alongside the link.
+const SIGNUP_CODE = (import.meta.env.VITE_SIGNUP_INVITE_CODE ?? "") as string;
+
 function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return <ModalBackdrop onClose={onClose}>{children}</ModalBackdrop>;
 }
@@ -43,6 +49,7 @@ export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const createLink = async () => {
@@ -57,6 +64,12 @@ export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
     if (!url) return;
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); }
     catch { /* link is still selectable */ }
+  };
+
+  const copyCode = async () => {
+    if (!SIGNUP_CODE) return;
+    try { await navigator.clipboard.writeText(SIGNUP_CODE); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); }
+    catch { /* code is still selectable */ }
   };
 
   return (
@@ -76,6 +89,15 @@ export function InviteHouseholdModal({ onClose }: { onClose: () => void }) {
         <>
           <div className="share-ok">✓ Link ready, send it to {name.trim() || "them"} to join.</div>
           <div className="share-link"><input readOnly value={url} onFocus={(e) => e.currentTarget.select()} /><button className="btn sm" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+          {SIGNUP_CODE && (
+            <div className="field">
+              <label>Invite code (they&rsquo;ll need this too)</label>
+              <div className="share-link">
+                <input readOnly value={SIGNUP_CODE} onFocus={(e) => e.currentTarget.select()} />
+                <button className="btn sm" onClick={copyCode}>{codeCopied ? "Copied" : "Copy"}</button>
+              </div>
+            </div>
+          )}
         </>
       )}
       {error && <div className="form-error">{error}</div>}
