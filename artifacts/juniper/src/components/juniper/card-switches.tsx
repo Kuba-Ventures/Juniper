@@ -124,6 +124,18 @@ function UpgradeRow({
 }
 
 export function CardSwitches({ data }: { data: CardRewards }) {
+  // Checked first, before anything below touches `data.catalog`: the
+  // no-linked-accounts response (api/card-rewards.ts) omits `catalog` entirely,
+  // and `switches`/`upgrades` are always empty in that response too, so this
+  // guard is reachable on every account with nothing to identify yet. It used to
+  // sit after the catalog-dependent maps below, which meant `pointValueMap` and
+  // `faceInfoMap` ran their `data.catalog.map(...)` against `undefined` and threw
+  // before this function ever got to say there was nothing to render, blanking
+  // the whole Credit page for exactly the member who just signed up.
+  const hasSwitches = data.switches.length > 0;
+  const hasUpgrades = data.upgrades.length > 0;
+  if (!hasSwitches && !hasUpgrades) return null;
+
   // The CATALOG, not `cards`, for the same reason faceInfoMap and pointValueMap
   // read from it: the upgrade rows name products the member does NOT hold, and
   // those never appear in `cards`. Reading from `cards` returned null for every
@@ -138,10 +150,6 @@ export function CardSwitches({ data }: { data: CardRewards }) {
   const faces = faceInfoMap(data);
   const faceFor = (productId: string) =>
     faces.get(productId) ?? { shortName: "", network: null, artUrl: null };
-
-  const hasSwitches = data.switches.length > 0;
-  const hasUpgrades = data.upgrades.length > 0;
-  if (!hasSwitches && !hasUpgrades) return null;
 
   const totalGain = data.switches.reduce((a, s) => a + s.gain, 0);
 
