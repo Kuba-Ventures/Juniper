@@ -65,9 +65,19 @@ export function SubscriptionsPanel() {
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
-  const openCancelStreams = new Set(
-    cancellations.filter((c) => c.status === "requested" || c.status === "contacted").map((c) => c.stream_id),
-  );
+  // The API returns these newest-first, so the first match per stream is its
+  // most recent request; a stream can have more than one over time (a failed
+  // attempt is exactly the case where trying again is the point, migration
+  // 0059's own header).
+  const latestRequestByStream = new Map<string, CancellationRequest>();
+  for (const c of cancellations) if (!latestRequestByStream.has(c.stream_id)) latestRequestByStream.set(c.stream_id, c);
+  const confirmedCancellations = cancellations.filter((c) => c.status === "confirmed");
+  // A projection at the moment the member asked, not a verified fact: this is
+  // a stated total on the panel, deliberately not fed into the Juniper Score.
+  // See docs/RECURRING_DETECTION.md section 5 and _finance-snapshot.ts's
+  // manual-limit isolation principle: a real cancellation already shows up in
+  // the Score for free once the charge stops appearing in live transactions.
+  const cancellationSavings = confirmedCancellations.reduce((a, c) => a + (c.monthly_at_request ?? 0) * 12, 0);
 
   const act = async (id: string, action: SubAction, edits?: { name?: string; expectedAmount?: number | null; frequency?: string | null }) => {
     setBusy(id);
@@ -132,6 +142,13 @@ export function SubscriptionsPanel() {
         )}
       </div>
 
+      {confirmedCancellations.length > 0 && (
+        <p className="sub-note">
+          You&apos;ve canceled {confirmedCancellations.length} {confirmedCancellations.length === 1 ? "subscription" : "subscriptions"} through
+          Juniper, an estimated <b>{money2(cancellationSavings)}/yr</b> back in your pocket.
+        </p>
+      )}
+
       {pending.length > 0 && (
         <div className="sub-review">
           <div className="sub-review-h">
@@ -170,11 +187,7 @@ export function SubscriptionsPanel() {
                       {openId === i.id ? "Close" : "Edit"}
                     </button>
                     <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>Undo</button>
-                    {openCancelStreams.has(i.id) ? (
-                      <button className="btn ghost sm" disabled>Cancellation requested</button>
-                    ) : (
-                      <button className="btn ghost sm" disabled={busy === i.id} onClick={() => setCancelTarget(i)}>Cancel</button>
-                    )}
+                    <CancelControl request={latestRequestByStream.get(i.id)} busy={busy === i.id} onCancel={() => setCancelTarget(i)} />
                   </>
                 } />
               {openId === i.id && (
@@ -229,6 +242,29 @@ export function SubscriptionsPanel() {
 // ship: Juniper acting as a member's agent to cancel something, plainly
 // stated at the moment it is asked for. A real Terms of Service covering that
 // is a legal document gated on counsel (ROADMAP.md Stage 6) and is not this.
+// Three states beyond plain Cancel, matching the request's own status: open
+// (requested or contacted, so Cancel is disabled rather than offered twice),
+// a prior attempt that failed (Cancel stays offered, since trying again is
+// exactly the point, with a small note so the member isn't asking again blind),
+// and nothing on file (a plain Cancel).
+const OPEN_LABEL: Record<string, string> = { requested: "Cancellation requested", contacted: "Being canceled…" };
+function CancelControl({ request, busy, onCancel }: { request: CancellationRequest | undefined; busy: boolean; onCancel: () => void }) {
+  if (request && (request.status === "requested" || request.status === "contacted")) {
+    return <button className="btn ghost sm" disabled>{OPEN_LABEL[request.status]}</button>;
+  }
+  return (
+    <>
+      {/* A sibling of the buttons in .sub-act, not a nested wrapper: .sub-act's
+         own mobile rule (juniper.css) drops each direct child to its own
+         full-width line, which a wrapper span would have blocked. */}
+      {request?.status === "failed" && <span className="sub-cancel-note">Last attempt didn&apos;t work</span>}
+      <button className="btn ghost sm" disabled={busy} onClick={onCancel}>
+        {request?.status === "failed" ? "Try again" : "Cancel"}
+      </button>
+    </>
+  );
+}
+
 function CancelModal({ i, onClose, onRequested }: { i: SubItem; onClose: () => void; onRequested: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
