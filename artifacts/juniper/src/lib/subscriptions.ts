@@ -44,6 +44,9 @@ export interface SubItem {
   expected: number | null;
   last: number | null;
   drift: number | null;
+  /** Migration 0058: one point per day the amount cleared the 5%/$1 drift
+   *  threshold, oldest first. Empty for a stream that has never moved. */
+  priceHistory: { amount: number; observedOn: string }[];
   nextDate: string | null;
   overdue: boolean;
   lastDate: string | null;

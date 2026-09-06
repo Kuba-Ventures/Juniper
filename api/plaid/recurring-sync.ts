@@ -32,6 +32,7 @@ import { isDeadItemCode, markItemDead } from "../_item-sync-state";
 import { taxonomyFor } from "../_taxonomy";
 import type { Taxonomy } from "../_categorize";
 import { mapPool } from "../_pool";
+import { isMeaningfulDrift } from "../_recurring-drift";
 
 export const config = { runtime: "edge" };
 
@@ -227,6 +228,19 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (rows.length) {
+    // Snapshotted BEFORE the upsert below overwrites it: this is the one
+    // chance to see what last_amount was before this sync, since
+    // recurring_streams keeps no history of its own (0016's whole point).
+    const ids = rows.map((r) => `"${r.stream_id}"`).join(",");
+    const prevRes = await adminRest(
+      `recurring_streams?user_id=eq.${uid}&stream_id=in.(${ids})&select=stream_id,last_amount`,
+    );
+    const previous = new Map<string, number | null>(
+      prevRes.ok
+        ? ((await prevRes.json()) as { stream_id: string; last_amount: number | null }[]).map((p) => [p.stream_id, p.last_amount])
+        : [],
+    );
+
     const up = await adminRest("recurring_streams?on_conflict=user_id,stream_id", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -236,6 +250,25 @@ export default async function handler(req: Request): Promise<Response> {
       const detail = await up.text().catch(() => "");
       console.error(`[plaid] recurring upsert failed (${up.status}): ${detail}`);
       return json({ error: "Failed to store recurring streams", detail }, 500);
+    }
+
+    // Logged only on a genuine move (same 5%/$1 test api/subscriptions.ts uses),
+    // so the table grows on real price rises rather than once per stream per
+    // sync. Best-effort: a missed history row costs a data point, not the sync
+    // that just succeeded above.
+    const historyRows = rows
+      .filter((r) => isMeaningfulDrift(previous.get(r.stream_id) ?? null, r.last_amount))
+      .map((r) => ({ user_id: uid, stream_id: r.stream_id, amount: r.last_amount, observed_on: new Date().toISOString().slice(0, 10) }));
+    if (historyRows.length) {
+      const h = await adminRest("recurring_amount_history?on_conflict=user_id,stream_id,observed_on", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(historyRows),
+      });
+      if (!h.ok) {
+        const detail = await h.text().catch(() => "");
+        console.error(`[plaid] recurring amount-history write failed (${h.status}): ${detail}`);
+      }
     }
   }
 
