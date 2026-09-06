@@ -35,6 +35,8 @@ import { localBrandLogo } from "@/lib/institution-brand";
 import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money2 } from "@/lib/txn-format";
 import { CADENCES, fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
+import { ModalBackdrop } from "@/components/juniper/modal-portal";
+import { fetchCancellationRequests, requestCancellation, type CancellationRequest } from "@/lib/cancellations";
 
 const CONFIDENCE_NOTE: Record<string, string> = {
   established: "Charged regularly",
@@ -50,13 +52,22 @@ export function SubscriptionsPanel() {
   // One open at a time. Two panels of fields open at once turns the card into a
   // form, and the member is editing one charge.
   const [openId, setOpenId] = useState<string | null>(null);
+  // The member's own cancellation requests (issue #285), loaded alongside the
+  // streams so a row whose request is still open renders "Cancellation
+  // requested" rather than offering Cancel a second time.
+  const [cancellations, setCancellations] = useState<CancellationRequest[]>([]);
+  const [cancelTarget, setCancelTarget] = useState<SubItem | null>(null);
 
   const load = useCallback(async () => {
-    const d = await fetchSubscriptions();
+    const [d, c] = await Promise.all([fetchSubscriptions(), fetchCancellationRequests()]);
     setData(d);
+    setCancellations(c);
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  const openCancelStreams = new Set(
+    cancellations.filter((c) => c.status === "requested" || c.status === "contacted").map((c) => c.stream_id),
+  );
 
   const act = async (id: string, action: SubAction, edits?: { name?: string; expectedAmount?: number | null; frequency?: string | null }) => {
     setBusy(id);
@@ -159,6 +170,11 @@ export function SubscriptionsPanel() {
                       {openId === i.id ? "Close" : "Edit"}
                     </button>
                     <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>Undo</button>
+                    {openCancelStreams.has(i.id) ? (
+                      <button className="btn ghost sm" disabled>Cancellation requested</button>
+                    ) : (
+                      <button className="btn ghost sm" disabled={busy === i.id} onClick={() => setCancelTarget(i)}>Cancel</button>
+                    )}
                   </>
                 } />
               {openId === i.id && (
@@ -197,7 +213,51 @@ export function SubscriptionsPanel() {
           ))}
         </div>
       )}
+
+      {cancelTarget && (
+        <CancelModal
+          i={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onRequested={() => { setCancelTarget(null); void load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// The consent line is the product-level disclosure this feature can actually
+// ship: Juniper acting as a member's agent to cancel something, plainly
+// stated at the moment it is asked for. A real Terms of Service covering that
+// is a legal document gated on counsel (ROADMAP.md Stage 6) and is not this.
+function CancelModal({ i, onClose, onRequested }: { i: SubItem; onClose: () => void; onRequested: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setErr(null);
+    const r = await requestCancellation(i.id);
+    setBusy(false);
+    if (!r.ok) { setErr(r.error ?? "Couldn't queue the request."); return; }
+    onRequested();
+  };
+
+  return (
+    <ModalBackdrop onClose={onClose}>
+      <h3>Cancel {i.name}?</h3>
+      <p>
+        Juniper will reach out on your behalf to cancel this. Nothing is canceled until you approve
+        here, and we can&apos;t promise a specific timeline.
+        {i.perMonth != null && <> Estimated savings: <b>{money2(i.perMonth * 12)}/yr</b>.</>}
+      </p>
+      {err && <p className="sub-bad">{err}</p>}
+      <div className="modal-actions">
+        <button className="btn" disabled={busy} onClick={() => void submit()}>
+          {busy ? "Requesting…" : "Request cancellation"}
+        </button>
+        <button className="btn ghost" disabled={busy} onClick={onClose}>Keep it</button>
+      </div>
+    </ModalBackdrop>
   );
 }
 

@@ -21,6 +21,7 @@ import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
 import { isMeaningfulDrift } from "./_recurring-drift";
+import { PER_YEAR, monthlyAmount } from "./_recurring-monthly";
 
 export const config = { runtime: "edge" };
 
@@ -45,20 +46,6 @@ type StreamRow = {
   is_active: boolean; transaction_ids: string[];
 };
 type OverrideRow = { stream_id: string; state: string; name: string | null; expected_amount: number | null; frequency: string | null };
-
-// How many times a year each cadence bills. UNKNOWN is deliberately absent
-// rather than defaulting to monthly: a stream Plaid cannot put a cadence on
-// cannot be converted into a monthly figure, and guessing "monthly" would
-// silently add an annual charge to every month's total. Those streams are
-// listed, and counted in `unknownCadence`, but never folded into `monthly`.
-const PER_YEAR: Record<string, number> = {
-  WEEKLY: 52, BIWEEKLY: 26, SEMI_MONTHLY: 24, MONTHLY: 12, ANNUALLY: 1,
-};
-const monthly = (amount: number | null, frequency: string | null): number | null => {
-  const per = PER_YEAR[(frequency || "").toUpperCase()];
-  if (amount == null || !per) return null;
-  return (amount * per) / 12;
-};
 
 // The cadences a member may set on a stream themselves (migration 0030). These
 // are exactly the keys PER_YEAR can convert, deliberately: storing UNKNOWN would
@@ -255,7 +242,7 @@ export default async function handler(req: Request): Promise<Response> {
     // to be sure, and PER_YEAR cannot convert UNKNOWN, so those streams are
     // listed and left out of the total until somebody who knows says otherwise.
     const frequency = o?.frequency || s.frequency;
-    const perMonth = monthly(expected, frequency);
+    const perMonth = monthlyAmount(expected, frequency);
     // Id first, same as every other read since stage 3, so a stream and the
     // charges behind it name the category the same way after a rename.
     const cat = tax.classify(s.category_id, s.category);
