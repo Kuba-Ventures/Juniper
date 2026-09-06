@@ -112,7 +112,18 @@
   .jnpr .appbar-in{padding:9px 16px 10px;gap:8px}
   .jnpr .plaid-pill{display:none}
   .jnpr .nav{flex-wrap:nowrap;justify-content:flex-start;min-width:0;overflow-x:auto;
-    scrollbar-width:none;-ms-overflow-style:none}
+    scrollbar-width:none;-ms-overflow-style:none;
+    /* The native scrollbar is hidden above, and nothing else on this row said
+       "Connections" was one swipe further right rather than simply clipped.
+       Two-layer scroll-shadow trick (local + scroll attachment): the shadow
+       only shows on the side there is still something to scroll to, with no
+       JS and no scroll listener. */
+    background:
+      radial-gradient(farthest-side at 0 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat local,
+      radial-gradient(farthest-side at 100% 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat scroll;
+    background-attachment:local,local,scroll,scroll}
   .jnpr .nav::-webkit-scrollbar{display:none}
 }
 /* Phones can't fit brand · switcher · account on one line, so the switcher
@@ -1603,7 +1614,12 @@
 .jnpr .td-m .blogo,.jnpr .td-m .tile{width:26px;height:26px;flex:0 0 auto;border-radius:8px}
 .jnpr .td-m img.blogo{object-fit:contain;background:var(--jnpr-surface-3);padding:2px}
 .jnpr .sub-row img.blogo{object-fit:contain;background:var(--jnpr-surface-3);padding:2px}
-.jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink)}
+/* overflow-wrap: without it, a single word too long for the remaining space on
+   its line (a bank's own transfer description, easily 40+ chars with no
+   spaces to break on before it) overflows past the row instead of wrapping,
+   since white-space stays "normal" and a too-long word is otherwise left
+   whole. min-width:0 alone (the flex-shrink fix) does not cover this case. */
+.jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink);overflow-wrap:anywhere}
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed
    out, as though the category were disabled or uncertain rather than simply
@@ -1907,7 +1923,11 @@
 @media(max-width:640px){
   .jnpr .sub-row{flex-wrap:wrap}
   .jnpr .sub-amt{align-items:flex-start;text-align:left}
-  .jnpr .sub-act{width:100%}
+  /* flex-wrap here, not just width:100%: below 560px .sub-row .btn (line ~795)
+     forces each button in here to flex:1 0 100%, and with no wrap on this
+     container two full-width, non-shrinking buttons overflow side by side
+     instead of stacking (Edit ran off the right edge with Undo hidden behind it). */
+  .jnpr .sub-act{width:100%;flex-wrap:wrap}
   /* Stacked, because three controls side by side at this width leaves the name
      field about eight characters wide. */
   .jnpr .sub-fields{flex-direction:column;align-items:stretch}
