@@ -394,10 +394,16 @@ function PlanDraftCard({ draft, busy, err, onCreate, onAdjust }: {
 
 function Composer({ value, setValue, onSend, disabled }: { value: string; setValue: (v: string) => void; onSend: (v: string) => void; disabled: boolean }) {
   return (
-    <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); const v = value.trim(); if (v && !disabled) onSend(v); }}>
-      <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={disabled ? "Juniper is thinking…" : "Reply to Juniper…"} disabled={disabled} />
-      <button className="btn" type="submit" disabled={disabled || !value.trim()}>Send</button>
-    </form>
+    <div className="ask-composer-wrap">
+      <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); const v = value.trim(); if (v && !disabled) onSend(v); }}>
+        <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={disabled ? "Juniper is thinking…" : "Reply to Juniper…"} disabled={disabled} />
+        <button className="btn" type="submit" disabled={disabled || !value.trim()}>Send</button>
+      </form>
+      {/* Persistent, not just on the empty welcome screen (issue #287): once a
+          thread is open the welcome copy is gone for the rest of it, so this
+          repeats the same line under every composer rather than showing it once. */}
+      <p className="ask-disclaimer">Educational guidance, not licensed financial, tax, or legal advice.</p>
+    </div>
   );
 }
 
