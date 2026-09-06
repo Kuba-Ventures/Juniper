@@ -20,6 +20,7 @@ import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
+import { isMeaningfulDrift } from "./_recurring-drift";
 
 export const config = { runtime: "edge" };
 
@@ -69,14 +70,6 @@ const CADENCE_LABEL: Record<string, string> = {
   WEEKLY: "Weekly", BIWEEKLY: "Every 2 weeks", SEMI_MONTHLY: "Twice a month",
   MONTHLY: "Monthly", ANNUALLY: "Yearly",
 };
-
-// An amount is "different from expected" only when it moves by BOTH a
-// meaningful fraction and a meaningful number of dollars. A utility bill that
-// swings 4% is not news, and neither is a 12% move on a $2 charge. Without both
-// tests the whole list renders amber every month and the state stops meaning
-// anything.
-const AMOUNT_TOLERANCE = 0.05;
-const AMOUNT_FLOOR = 1;
 
 // Plaid's `description` is the raw string the bank sent, which for a fee charged
 // by the card issuer rather than a merchant arrives in capitals: "ANNUAL
@@ -176,7 +169,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
 
-  const [sRes, oRes, iRes] = await Promise.all([
+  const [sRes, oRes, iRes, hRes] = await Promise.all([
     adminRest(`recurring_streams?user_id=eq.${uid}&select=*&order=average_amount.desc`),
     adminRest(`recurring_overrides?user_id=eq.${uid}&select=stream_id,state,name,expected_amount,frequency`),
     // For the mark on a stream Plaid gave no merchant for. A fee charged by the
@@ -186,6 +179,9 @@ export default async function handler(req: Request): Promise<Response> {
     // `institution_name` since 0007. The client resolves that name through the
     // same institution chain Connections and Credit already use.
     adminRest(`plaid_items?user_id=eq.${uid}&select=item_id,institution_name`),
+    // Migration 0058. Ordered oldest first per stream so the client can render
+    // it directly as a left-to-right timeline with no client-side sort.
+    adminRest(`recurring_amount_history?user_id=eq.${uid}&select=stream_id,amount,observed_on&order=observed_on.asc`),
   ]);
   // A missing table reads as "nothing detected yet" rather than an error, so the
   // panel renders its empty state on a deploy where migration 0016 has not been
@@ -196,6 +192,15 @@ export default async function handler(req: Request): Promise<Response> {
   // A failed read costs a logo and nothing else, so it degrades rather than 500s.
   const instRows: { item_id: string; institution_name: string | null }[] = iRes.ok ? await iRes.json() : [];
   const instOf = new Map(instRows.filter((r) => r.institution_name).map((r) => [r.item_id, r.institution_name as string]));
+  // Same degrade-rather-than-500 rule as everything else here: a deploy ahead
+  // of migration 0058 shows no history, not a broken panel.
+  const historyRows: { stream_id: string; amount: number; observed_on: string }[] = hRes.ok ? await hRes.json() : [];
+  const historyOf = new Map<string, { amount: number; observedOn: string }[]>();
+  for (const h of historyRows) {
+    const list = historyOf.get(h.stream_id) ?? [];
+    list.push({ amount: h.amount, observedOn: h.observed_on });
+    historyOf.set(h.stream_id, list);
+  }
 
   // Same merchant art the transactions list uses, so a subscription and the
   // charges behind it show the same mark. Plaid's recurring streams carry a
@@ -233,9 +238,7 @@ export default async function handler(req: Request): Promise<Response> {
     const expected = o?.expected_amount ?? s.average_amount;
     const last = s.last_amount;
     const drift = expected != null && last != null ? last - expected : null;
-    const amountChanged =
-      drift != null && expected != null && expected > 0 &&
-      Math.abs(drift) > AMOUNT_FLOOR && Math.abs(drift) / expected > AMOUNT_TOLERANCE;
+    const amountChanged = isMeaningfulDrift(expected, last);
 
     // Tri-state, matching the only convention found in a shipped product:
     // paid as expected, paid at a DIFFERENT amount than expected, or expected
@@ -280,6 +283,9 @@ export default async function handler(req: Request): Promise<Response> {
       expected,
       last,
       drift: amountChanged ? Math.round((drift ?? 0) * 100) / 100 : null,
+      // Migration 0058, written only on a genuine move: a stream that has never
+      // moved has an empty history, not a single point equal to the average.
+      priceHistory: historyOf.get(s.stream_id) ?? [],
       // Null whenever Plaid declined to predict one. Never filled in from the
       // cadence: a made-up date on the one screen that tells a member what is
       // about to leave their account is worse than no date.

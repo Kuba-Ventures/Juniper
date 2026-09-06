@@ -338,6 +338,20 @@ function EditPanel({ i, busy, onSave, onReset }: {
         this gets flagged rather than quietly replacing it.
       </p>
 
+      {i.priceHistory.length > 0 && (
+        <div className="sub-history">
+          <span className="sub-history-lbl">Price history</span>
+          <div className="sub-history-row">
+            {i.priceHistory.map((h, idx) => (
+              <span key={h.observedOn} className="sub-history-pt">
+                {idx > 0 && <span className="sub-history-arrow" aria-hidden="true">→</span>}
+                {money2(h.amount)} <span className="sub-history-date">{fmtDay(h.observedOn)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="sub-panel-f">
         <span className="sub-meta">
           {i.charges > 0 && `Detected from ${i.charges} ${i.charges === 1 ? "charge" : "charges"}`}
