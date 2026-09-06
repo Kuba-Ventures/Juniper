@@ -25,6 +25,8 @@ Write for a smart person who is not a finance expert. Ground the plan in the num
 - steps: 3 to 6 concrete, ordered actions. Each has a short title and a detail sentence; include a timeline and a dollar amount where it makes sense.
 - assumptions: any figures or conditions the plan assumes, so the user can sanity-check them.
 
+Never recommend a specific security, ticker, or cryptocurrency; speak in account types and asset classes (a low-cost index fund, a high-yield savings account), not a specific pick.
+
 Style: warm, direct, plain language. Never use em-dashes (— or --); use a comma or a period. This is educational guidance, not licensed financial, tax, or legal advice.`;
 
 const PLAN_TOOL: Anthropic.Tool = {
