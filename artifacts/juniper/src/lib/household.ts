@@ -137,6 +137,16 @@ export function resetHouseholdCache(): void {
   emit();
 }
 
+// Called after something outside this module changes a fact the store already
+// holds (a member's own name, via useProfile's saveProfile). Forces a refetch
+// without an intervening "loading" flicker, since `loaded` never flips false:
+// a page already showing the household keeps showing it until the fresh
+// answer lands. Unlike resetHouseholdCache, safe to call while a household
+// page is mounted.
+export function invalidateHousehold(): void {
+  void load(true);
+}
+
 export function useHousehold(): { data: HouseholdData | null; loading: boolean; refresh: () => void } {
   const [, bump] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {

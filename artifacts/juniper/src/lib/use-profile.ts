@@ -17,6 +17,7 @@ import {
 } from "@/lib/profile";
 import { asHolderStyle } from "@/lib/holder-style";
 import { asDashboardLayout, PERSONAL_REGISTRY, SHARED_REGISTRY } from "@/lib/dashboard-layout";
+import { invalidateHousehold } from "@/lib/household";
 
 export function nameFromEmail(email: string): string {
   if (!email) return "there";
@@ -123,12 +124,19 @@ export function useProfile(email: string, metaName?: string): UseProfile {
     (p: UserProfile, name?: string) => {
       saveProfileLocal(p, email);
       setProfileState(p);
-      const nextName = name?.trim() || displayName;
-      if (nextName && nextName !== displayName) setDisplayName(nextName);
+      const trimmedName = name?.trim();
+      if (trimmedName) setDisplayName(trimmedName);
       // The financial fields and the holder choice have remote columns;
-      // accounts/connections stay local.
-      void postRemoteProfile({
-        name: nextName,
+      // accounts/connections stay local. `name` is sent only on an explicit
+      // edit: every other caller (layout, holder style, ...) calls this with
+      // no `name` argument, and resending the CURRENT displayName here would
+      // let a save unrelated to the member's name silently overwrite the
+      // stored one with whatever displayName happened to be at that moment
+      // (e.g. still the "there" placeholder before remote hydration resolves).
+      // The server PATCH only touches fields present in the body, so omitting
+      // `name` leaves the stored value alone.
+      const promise = postRemoteProfile({
+        ...(trimmedName ? { name: trimmedName } : {}),
         monthly_income: p.monthlyIncome ?? null,
         monthly_expenses: p.monthlyExpenses ?? null,
         total_savings: p.totalSavings ?? null,
@@ -140,8 +148,9 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         dashboard_layout: p.dashboardLayout ?? null,
         shared_dashboard_layout: p.sharedDashboardLayout ?? null,
       });
+      if (trimmedName) void promise.then(invalidateHousehold);
     },
-    [email, displayName],
+    [email],
   );
 
   return { profile, displayName, ready, saveProfile, setDisplayName };
