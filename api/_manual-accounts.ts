@@ -7,6 +7,10 @@
 import { adminRest } from "./_supabase-admin";
 
 export type ManualAccountRow = {
+  // Issue #289: a stable key for the /api/finances account rollup. Safe to add
+  // to the SHARED select (unlike credit_limit, an id carries no claim that
+  // could move the Score): it is an identifier, not a fact about money.
+  id: string;
   name: string;
   institution: string | null;
   category: string; // banking | investing | credit | loans | cash | other
@@ -18,7 +22,7 @@ export type ManualAccountRow = {
 export async function fetchManualAccounts(uid: string): Promise<ManualAccountRow[]> {
   try {
     const r = await adminRest(
-      `manual_accounts?user_id=eq.${uid}&select=name,institution,category,kind,balance,currency&order=created_at.asc`,
+      `manual_accounts?user_id=eq.${uid}&select=id,name,institution,category,kind,balance,currency&order=created_at.asc`,
     );
     if (!r.ok) return [];
     const data = (await r.json()) as ManualAccountRow[];

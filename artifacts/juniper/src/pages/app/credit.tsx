@@ -33,10 +33,17 @@ import type { HolderStyle } from "@/lib/holder-style";
 // is to route money features through the lib/finances.ts seam. The original reason
 // is gone: api/finances.ts no longer withholds everything until transactions exist,
 // it gates per section, so balances arrive for a member whose card has no feed yet.
-// One reason remains, and it is why this page still has its own data path: the
-// /api/finances account rollup carries name/institution/balance only, and
-// utilization needs each card's `limit`, which lives on the stored snapshot this
-// endpoint returns. Collapsing onto useFinances() means widening that rollup first.
+// The remaining reason, `limit` and per-account spend missing from the rollup, is
+// ALSO gone as of issue #289: `/api/finances`'s account rollup now carries `id`,
+// `limit`, `mask`, `type`, `currency` and `institutionId` per account, and a new
+// `accountSpend` field carries per-account, per-category spend over the same
+// window api/card-rewards.ts uses. This page has not yet been moved onto it,
+// which is the actual remaining follow-up: swapping fetchPlaidItems() for
+// useFinances() here needs credit-type filtering the rollup does not do itself
+// (it mixes cards and loans in one debt bucket) and a brand-logo fetch keyed on
+// `institutionId` instead of the item list this page reads today. Left as a
+// separate, verifiable-live change rather than done blind in the same pass that
+// built the rollup.
 //
 // APR is not shown. Plaid only returns card APRs under the `liabilities` product,
 // and PLAID_PRODUCTS is `transactions` (see api/_plaid.ts), so there is no honest
@@ -63,9 +70,14 @@ import type { HolderStyle } from "@/lib/holder-style";
 //     about this member: split out once it stopped being free to send on
 //     every card-rewards request, and fetched once here for every component
 //     on this page that needs to name or draw a card.
-// Collapsing the first three means widening the /api/finances rollup with
-// `limit` and with per-account spend, which is the follow-up this page has
-// been waiting on since #132 and is deliberately not attempted here.
+// The /api/finances rollup is now widened with `limit` and per-account spend
+// (issue #289), closing the gap open since #132, but collapsing
+// fetchPlaidItems (and the institution ids fetchInstitutionLogos keys off of
+// it) into that rollup is a separate, still-open follow-up: see the note
+// above this page's own header for exactly what stands between here and
+// that. /api/card-rewards and /api/card-catalog stay their own fetches
+// either way, since they answer different questions (rewards, and reference
+// data everyone shares) that the rollup was never going to carry.
 //
 // ── CARDS THE MEMBER ENTERED BY HAND (migration 0046) ──────────────────────
 //

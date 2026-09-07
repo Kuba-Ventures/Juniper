@@ -20,11 +20,12 @@
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
-import { fetchScoreInput } from "./_finance-snapshot";
+import { fetchScoreInput, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import { fetchManualAccounts, manualBucket } from "./_manual-accounts";
 import { computeScore } from "./_score";
 import { taxonomyFor } from "./_taxonomy";
 import { isDeveloperEmail } from "./_admin";
+import { accountCategorySpend, type SpendTxnRow } from "./_account-spend";
 
 export const config = { runtime: "edge" };
 
@@ -59,8 +60,23 @@ type Txn = { name: string | null; merchant_name: string | null; amount: number; 
 type Bud = { category: string; category_id: string | null; limit_amount: number };
 type Snap = { as_of: string; net_worth: number; estimated?: boolean };
 type ScoreRow = { as_of: string; value: number };
-type Acct = { name: string; mask: string | null; type: string | null; subtype: string | null; balance: number | null };
+type Acct = {
+  account_id: string; name: string; mask: string | null; type: string | null;
+  subtype: string | null; balance: number | null;
+  // Issue #289: each card's limit, straight off the stored Plaid snapshot.
+  // Already present in this same JSONB column (api/card-rewards.ts reads it
+  // from the identical `accounts` field), just not typed or used here before
+  // now. Absent on a snapshot stored before the server sanitized this field
+  // in, same as `PlaidAccount.limit` on the client: absent and null both mean
+  // "unknown", not zero.
+  limit?: number | null;
+  currency: string | null;
+};
 type Item = {
+  // Issue #289: alongside the account rollup's new `limit`, so a consumer can
+  // resolve a brand mark per account the same way api/card-rewards.ts already
+  // does, without a second fetch.
+  institution_id: string | null;
   institution_name: string | null;
   accounts: Acct[];
   // Per-item sync state (migration 0017). Absent on a deploy where 0017 has not
@@ -82,7 +98,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
   const uid = payload.sub;
 
-  const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_name,accounts,last_synced_at,last_error_code,last_error_at`);
+  const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=institution_id,institution_name,accounts,last_synced_at,last_error_code,last_error_at`);
   const txns = await rows<Txn>(`transactions?user_id=eq.${uid}&select=name,merchant_name,amount,date,category,category_id,logo_url&order=date.desc&limit=400`);
   // Manual accounts (tier 3) are a balance source in their own right, so they're
   // read up here with the other two: the "does this member have anything" test
@@ -106,6 +122,18 @@ export default async function handler(req: Request): Promise<Response> {
     ? await rows<Bud>(`budgets?user_id=eq.${uid}&select=category,category_id,limit_amount`)
     : [];
   const snaps = await rows<Snap>(`net_worth_snapshots?user_id=eq.${uid}&select=as_of,net_worth,estimated&order=as_of.asc&limit=400`);
+  // Per-account spend (issue #289), over the same WINDOW_DAYS/limit shape
+  // api/card-rewards.ts already uses for its own annualized rewards guide,
+  // not the "most recent 400" window `txns` above reads: those are different
+  // questions ("what's in the recent-transactions list" vs "how much has this
+  // account spent lately"), so this is its own fetch rather than a slice of
+  // the same rows. Read only when there is anything to aggregate.
+  const spendTxns = hasTransactions
+    ? await rows<SpendTxnRow>(
+        `transactions?user_id=eq.${uid}&date=gte.${isoDaysAgo(WINDOW_DAYS)}` +
+        `&select=account_id,amount,date,category,category_id&limit=2000`,
+      )
+    : [];
 
   const now = new Date();
   const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -132,6 +160,13 @@ export default async function handler(req: Request): Promise<Response> {
   // the donut, the budgets and the recent rows on one response cannot disagree
   // about what a category is. Stage 2 of docs/CUSTOM_CATEGORIES.md.
   const tax = await taxonomyFor(uid);
+  // Per-account spend (issue #289), same classification the month's cashflow
+  // above uses (transfers dropped, spend summed signed), shared with
+  // api/card-rewards.ts via api/_account-spend.ts so the two cannot disagree
+  // about one account's own spend from what is otherwise the same fact.
+  const { spend: accountSpend } = accountCategorySpend(
+    spendTxns, (id, label) => tax.classify(id, label), (label) => tax.categoryIdOf(label),
+  );
   const byCat = new Map<string, number>();   // leaf category -> net spend, for budgets
   const byGroup = new Map<string, number>(); // group -> net spend, for the donut
   let incomeRaw = 0;
@@ -233,12 +268,21 @@ export default async function handler(req: Request): Promise<Response> {
     l: Math.round(b.limit_amount),
   }));
 
-  // Accounts grouped from the linked snapshots
+  // Accounts grouped from the linked snapshots. `id`/`limit`/`institutionId`
+  // (issue #289) are new; `n`/`i`/`v` are unchanged so nothing already reading
+  // this rollup breaks. `limit` is the BANK's number only: a member-typed
+  // limit for a card the bank reports none for (#211) or a hand-entered card's
+  // own limit (0046) are both claims rather than facts, and neither belongs in
+  // a rollup that also feeds net worth and the Score -- same isolation
+  // api/_manual-accounts.ts's header insists on for the manual side.
   const group = (pred: (a: Acct) => boolean, debt = false) =>
     items.flatMap((it) =>
       (it.accounts || []).filter(pred).map((a) => ({
         n: a.name, i: it.institution_name || a.subtype || a.type || "Account",
         v: debt ? -Math.abs(a.balance || 0) : (a.balance || 0),
+        id: a.account_id, institutionId: it.institution_id, mask: a.mask,
+        type: a.type, currency: a.currency,
+        limit: a.limit != null && a.limit > 0 ? a.limit : null,
       })),
     );
   // The manual accounts read at the top of the handler join the same groups, so
@@ -251,6 +295,15 @@ export default async function handler(req: Request): Promise<Response> {
         n: m.name,
         i: m.institution || "Manual",
         v: bucket === "debt" ? -Math.abs(m.balance || 0) : Math.abs(m.balance || 0),
+        // Prefixed like every other manual/linked key pairing in this app
+        // (lib/credit-cards.ts's `manual:${id}`), since a manual account id and
+        // a Plaid account id are different namespaces sharing one array here.
+        id: `manual:${m.id}`, institutionId: null, mask: null, type: null,
+        currency: m.currency,
+        // A manual account's own limit (0046) never rides here, on purpose:
+        // it is the member's claim, not the bank's fact, and this rollup feeds
+        // net worth and the Score. See api/_manual-accounts.ts's header.
+        limit: null,
       }));
 
   const accounts = {
@@ -388,6 +441,16 @@ export default async function handler(req: Request): Promise<Response> {
           groups: groupsOut,
           budgets: budgetsOut,
           transactions,
+          // Per-account, per-category spend over the trailing WINDOW_DAYS
+          // (issue #289), so a consumer like the Credit page's rewards guide
+          // can eventually read it here instead of its own separate fetch.
+          // `pid`/`cid`/`cl`/`amt` rather than the longer field names
+          // AccountCategorySpend uses server-side, matching this endpoint's
+          // own terse convention (`n`/`i`/`v` above) rather than the rewards
+          // module's.
+          accountSpend: accountSpend.map((s) => ({
+            pid: s.plaid_account_id, cid: s.category_id, cl: s.category_label, amt: s.amount,
+          })),
         }
       : {}),
     score: scoreOut,
