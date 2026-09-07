@@ -128,6 +128,14 @@ export interface EarnRow {
    * that spend at its normal rate rather than scored zero.
    */
   merchant_key: string | null;
+  /**
+   * A free-text grouping key. NULL (the default for every row seeded before
+   * migration 0062) means this row's cap, if it has one, is its own. Two rows
+   * on the SAME product sharing a non-null value are read as one COMBINED cap
+   * by `groupCapAdjustedEarn`, e.g. Discover it Chrome's gas and restaurant
+   * rows, which share one $1,000-per-quarter cap rather than $1,000 each.
+   */
+  cap_group: string | null;
 }
 
 export interface Benefit {
@@ -259,6 +267,50 @@ export function annualEarn(
   const overflow = annualSpend - capped;
   // The overflow earns the BASE rate, not zero, and not the bonus rate.
   return (capped * bonusPct) / 100 + (overflow * basePct) / 100;
+}
+
+/**
+ * `annualEarn` for N rows on ONE product that share a single combined cap
+ * (`EarnRow.cap_group`), rather than each carrying its own.
+ *
+ * The cap and its window are read off the FIRST entry, which is safe only
+ * because every row sharing a `cap_group` on one product is expected to carry
+ * the same `cap_amount`/`cap_period`, the one combined figure the issuer
+ * actually publishes; nothing here reconciles a mismatch, so a seed that gave
+ * two grouped rows different caps would silently use the first one's.
+ *
+ * The combined cap is applied to the GROUP's total spend once, then the
+ * capped and overflow dollars are split back to each entry proportionally to
+ * its own share of that spend, so a category that contributed 80% of the
+ * group's spend gets 80% of the group's capped bonus dollars. This is a
+ * straight generalization of `annualEarn`'s own math (overflow earns the
+ * card's base rate, never zero): with exactly one entry, `share` is 1 and the
+ * two functions agree exactly.
+ */
+export function groupCapAdjustedEarn(
+  entries: { annualSpend: number; row: EarnRow }[],
+  product: CardProduct,
+): number[] {
+  if (!entries.length) return [];
+  const first = entries[0].row;
+  const groupCap =
+    first.cap_amount != null && first.cap_amount > 0 && first.cap_period
+      ? first.cap_amount * PERIODS_PER_YEAR[first.cap_period]
+      : Infinity;
+  const totalSpend = entries.reduce((sum, e) => sum + Math.max(0, e.annualSpend), 0);
+  if (!(totalSpend > 0)) return entries.map(() => 0);
+
+  const cappedTotal = Math.min(totalSpend, groupCap);
+  const basePct = ratePct(product.base_multiplier, product.base_unit, product.point_value_cents);
+  return entries.map((e) => {
+    const spend = Math.max(0, e.annualSpend);
+    if (!(spend > 0)) return 0;
+    const share = spend / totalSpend;
+    const cappedShare = cappedTotal * share;
+    const overflowShare = spend - cappedShare;
+    const bonusPct = ratePct(e.row.multiplier, e.row.unit, product.point_value_cents);
+    return (cappedShare * bonusPct) / 100 + (overflowShare * basePct) / 100;
+  });
 }
 
 // ── Resolving a card's rate for a category ──────────────────────────────────
@@ -510,6 +562,16 @@ export interface SwitchIdea {
  * _finance-snapshot.ts covers days rather than assuming a full month: a member
  * eleven days into their first linked card had every monthly figure divided by
  * three before that was fixed.
+ *
+ * DELIBERATELY NOT cap-group aware, unlike `upgradeIdeas`. Each idea here
+ * evaluates and reports ONE category's gain in isolation and the ideas are
+ * never summed into a single figure, so a shared cap has nothing to
+ * double-count within any one idea; two separate ideas that would both land
+ * on the same cap-grouped card are shown as two independent numbers, same as
+ * they always were. `upgradeIdeas` needed the fix because it SUMS every
+ * category's gain into one `grossGain`/`netGain` for a single candidate card,
+ * which is exactly where counting a shared cap twice would overstate the
+ * headline number.
  */
 export function switchIdeas(args: {
   cards: MemberCard[];
@@ -650,12 +712,38 @@ export function upgradeIdeas(args: {
   const ideas: UpgradeIdea[] = [];
   for (const candidate of args.products.values()) {
     if (heldIds.has(candidate.id)) continue;
+
+    // What THIS candidate would earn per category, honoring a shared cap
+    // across every category in `byCategory` that lands on the same
+    // `cap_group` row. Computed once per candidate, ahead of the wins loop,
+    // because a shared cap has to see every category in the group at once:
+    // evaluating one category's `annualEarn` in isolation is exactly the bug
+    // 0062 fixes (Discover it Chrome's combined gas+dining cap counted twice).
+    const rateByCategory = new Map<string, ResolvedRate>();
+    const grouped = new Map<string, { categoryId: string; annualSpend: number; row: EarnRow }[]>();
+    const earnByCategory = new Map<string, number>();
+    for (const [categoryId, { annual }] of byCategory) {
+      const rate = rateFor(candidate, categoryId, args.earnByProduct, args.parentOf);
+      rateByCategory.set(categoryId, rate);
+      if (rate.row?.cap_group) {
+        const list = grouped.get(rate.row.cap_group);
+        const entry = { categoryId, annualSpend: annual, row: rate.row };
+        if (list) list.push(entry); else grouped.set(rate.row.cap_group, [entry]);
+      } else {
+        earnByCategory.set(categoryId, annualEarn(annual, rate.row, candidate));
+      }
+    }
+    for (const entries of grouped.values()) {
+      const earns = groupCapAdjustedEarn(entries, candidate);
+      entries.forEach((e, i) => earnByCategory.set(e.categoryId, earns[i]));
+    }
+
     const wins: UpgradeIdea["wins"] = [];
     let grossGain = 0;
     let assumes = false;
-    for (const [categoryId, { label, annual }] of byCategory) {
-      const rate = rateFor(candidate, categoryId, args.earnByProduct, args.parentOf);
-      const gain = annualEarn(annual, rate.row, candidate) - (mineByCategory.get(categoryId) ?? 0);
+    for (const [categoryId, { label }] of byCategory) {
+      const rate = rateByCategory.get(categoryId)!;
+      const gain = (earnByCategory.get(categoryId) ?? 0) - (mineByCategory.get(categoryId) ?? 0);
       if (gain <= 0) continue;
       wins.push({ categoryId, categoryLabel: label, display: rate.display, gain });
       grossGain += gain;

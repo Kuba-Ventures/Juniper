@@ -262,7 +262,7 @@ export default async function handler(req: Request): Promise<Response> {
     readCatalog(),
     rowsWithOptional<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
-      ["merchant_key"], "earn rates"),
+      ["merchant_key", "cap_group"], "earn rates"),
     rowsWithOptional<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
            value_amount: number | null; period: BenefitPeriod | null;
            expires_on?: string | null; auto_merchant?: string | null; auto_mode?: string | null }>(
@@ -436,10 +436,11 @@ export default async function handler(req: Request): Promise<Response> {
       ...r,
       multiplier: Number(r.multiplier) || 0,
       cap_amount: r.cap_amount == null ? null : Number(r.cap_amount),
-      // Absent (column not there yet, migration 0063 not applied) and NULL
-      // both mean "an ordinary category rate", same convention benefits'
-      // expires_on uses.
+      // Absent (column not there yet, migration 0063/0062 not applied) and
+      // NULL both mean "an ordinary category rate with no shared cap", same
+      // convention benefits' expires_on uses.
       merchant_key: r.merchant_key ?? null,
+      cap_group: r.cap_group ?? null,
     };
     const list = earnByProduct.get(row.product_id);
     if (list) list.push(row); else earnByProduct.set(row.product_id, [row]);
