@@ -935,7 +935,16 @@
 .jnpr .pop-i .ck{margin-left:auto;color:var(--jnpr-accent);font-weight:700}
 .jnpr .pop-sep{height:1px;background:var(--jnpr-line-2);margin:5px 2px}
 .jnpr .pop-head{display:flex;align-items:center;gap:9px;padding:8px 10px 9px;border-bottom:1px solid var(--jnpr-line-2);margin-bottom:5px}
-.jnpr .pop-head b{font-size:12.5px;color:var(--jnpr-ink);display:block}.jnpr .pop-head small{font-size:10.5px;color:var(--jnpr-ink-3)}
+/* An email has no spaces to wrap on, so a long one (mrfinleyunderwood@gmail.com)
+   has nowhere to break: without a floor on the avatar and a ceiling on the text,
+   the flex row starves the avatar down toward its min-content width (a few px)
+   to make room, squashing the circle into a sliver. min-width:0 on the text
+   column is what lets IT truncate instead, and text-overflow needs display:block
+   (or inline-block) to have a box to clip, which `small` didn't have. */
+.jnpr .pop-head .avatar{flex:0 0 auto}
+.jnpr .pop-head > div{min-width:0}
+.jnpr .pop-head b{font-size:12.5px;color:var(--jnpr-ink);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .pop-head small{font-size:10.5px;color:var(--jnpr-ink-3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .jnpr .avatar{border:0;padding:0;font-family:inherit}
 .jnpr .avatar.sm{width:30px;height:30px;font-size:12px}
 
