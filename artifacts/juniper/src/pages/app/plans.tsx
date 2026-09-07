@@ -27,10 +27,12 @@ import {
   type PlanColor,
   type PlanGoal,
   type PlanShape,
+  type DebtItem,
   GOAL_ROUTES,
   unplannedGoals,
   type UnplannedGoal,
 } from "@/lib/plans";
+import { DebtBreakdown } from "@/components/juniper/debt-breakdown";
 import type { UserProfile } from "@/lib/profile";
 // The plan-create form and its shared building blocks live here now, so
 // pages/app/household.tsx can mount the exact same form in place (issue #338
@@ -1072,6 +1074,12 @@ function EditForm({
     date: nums.targetDate ?? "",
     rate: numStr(nums.rate),
   });
+  // Whatever debts this plan already carries (empty for anything that isn't a
+  // payoff plan, or a payoff plan created before this existed). Same
+  // "breakdown drives the flat fields" relationship as CreateForm.
+  const [debts, setDebts] = useState<DebtItem[]>(
+    Array.isArray(plan.current_state?.debts) ? (plan.current_state!.debts as DebtItem[]) : [],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1084,15 +1092,36 @@ function EditForm({
   const openChat = (id: string) => navigate(`/app/ask?thread=${encodeURIComponent(id)}`);
   // A manual shape change drops whatever icon the plan had: that icon was a
   // promise about the plan's original template, not about the new shape.
-  const set = (patch: Partial<Draft>) => setDraft((d) => (patch.shape ? { ...d, ...patch, icon: "" } : { ...d, ...patch }));
+  const set = (patch: Partial<Draft>) => {
+    setDraft((d) => (patch.shape ? { ...d, ...patch, icon: "" } : { ...d, ...patch }));
+    // A debt someone was tracking under "Debt payoff" should not silently
+    // follow the plan onto whatever shape it becomes.
+    if (patch.shape && patch.shape !== "payoff") setDebts([]);
+  };
+  const setDebtsAndTotals = (next: DebtItem[]) => {
+    setDebts(next);
+    if (!next.length) return;
+    const total = next.reduce((s, d) => s + (d.balance || 0), 0);
+    const blended = total > 0 ? next.reduce((s, d) => s + (d.balance || 0) * (d.apr || 0), 0) / total : 0;
+    set({ target: numStr(total), rate: numStr(blended) });
+  };
 
   const write = async (extra: { status?: Plan["status"] } = {}) => {
     setBusy(true);
     setError("");
+    // Merge rather than replace: current_state can carry other things (a
+    // legacy dialogue-built plan's `collected` figures), and this form only
+    // ever owns the `debts` key within it.
+    const { debts: _oldDebts, ...restState } = (plan.current_state ?? {}) as Record<string, unknown>;
+    const nextState =
+      draft.shape === "payoff" && debts.length
+        ? { ...restState, debts }
+        : (Object.keys(restState).length ? restState : null);
     const saved = await savePlan({
       domain: plan.domain,
       ...extra,
       goal: goalFrom({ ...draft, name: draft.name.trim() || title }, plan.goal),
+      current_state: nextState,
     });
     setBusy(false);
     if (!saved) {
@@ -1147,6 +1176,7 @@ function EditForm({
       <p>Update the goal, mark it done, or remove it. Changes save to your account.</p>
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
+      {draft.shape === "payoff" && <DebtBreakdown debts={debts} onChange={setDebtsAndTotals} />}
       <div className="modal-actions">
         <button className="btn" disabled={busy} onClick={() => write()}>{busy ? "Saving…" : "Save changes"}</button>
         <button
