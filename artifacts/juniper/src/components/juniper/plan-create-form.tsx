@@ -10,6 +10,7 @@ import type { PlanDraftFromChat, PlanDraftField } from "@/lib/planner";
 import { setHouseholdPlanShare } from "@/lib/household";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import { DebtBreakdown } from "@/components/juniper/debt-breakdown";
+import { InvestmentBreakdown } from "@/components/juniper/investment-breakdown";
 import {
   savePlan,
   suggestShape,
@@ -480,6 +481,9 @@ export function CreateForm({
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
       {draft.shape === "payoff" && <DebtBreakdown debts={debts} onChange={setDebtsAndTotals} />}
+      {draft.shape === "save" && (
+        <InvestmentBreakdown onAdd={(amt) => set({ monthly: numStr(parseNum(draft.monthly) + amt) })} />
+      )}
       <div className="modal-actions">
         <button className="btn" disabled={saving} onClick={create}>{saving ? "Creating…" : "Create plan"}</button>
         <button className="btn ghost" disabled={saving} onClick={onBack}>{fromGoal || state.household ? "Cancel" : "Back"}</button>
