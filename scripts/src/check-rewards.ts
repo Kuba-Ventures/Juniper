@@ -60,10 +60,10 @@ const points = (id: string, base: number, cents: number, fee = 0): R.CardProduct
 const earn = (
   product_id: string, category_id: string, multiplier: number,
   unit: R.EarnUnit = "percent", cap_amount: number | null = null,
-  cap_period: R.CapPeriod | null = null,
+  cap_period: R.CapPeriod | null = null, merchant_key: string | null = null,
 ): R.EarnRow => ({
   product_id, category_id, category_label: category_id, multiplier, unit,
-  cap_amount, cap_period, note: null,
+  cap_amount, cap_period, note: null, merchant_key,
 });
 const held = (product_id: string, account = product_id + "-acct"): R.MemberCard => ({
   plaid_account_id: account, product_id, institution: "Testbank",
@@ -267,6 +267,62 @@ ok("guide order follows the caller's category order, which is the member's spend
     earnByProduct: byProduct([]), parentOf, categories: GUIDE_CATS,
   });
   deepStrictEqual(g.map((e) => e.categoryId), ["c_groceries", "c_gas"]);
+});
+
+// ── 4b. Merchant-scoped rates, issue #289 ────────────────────────────────────
+ok("a merchant-scoped row wins over the card's own plain category rate", () => {
+  // The DoorDash card: 3% dining bought direct, 4% DoorDash orders. A member
+  // spending at DoorDash must be told the 4% row, not the 3% one just because
+  // both share c_restaurants_bars.
+  const p = cash("doordash", 1);
+  const rows = byProduct([
+    earn("doordash", "c_restaurants_bars", 3),
+    earn("doordash", "c_restaurants_bars", 4, "percent", null, null, "doordash"),
+  ]);
+  const g = R.merchantEarningGuide({
+    cards: [held("doordash")], products: productMap([p]), earnByProduct: rows, parentOf,
+    merchants: [{ merchantKey: "doordash", merchantLabel: "DoorDash", categoryId: "c_restaurants_bars", categoryLabel: "Restaurants & bars" }],
+  });
+  strictEqual(g[0].categoryId, "m_doordash");
+  strictEqual(g[0].best?.pct, 4);
+});
+ok("a held card with no merchant deal is still compared at its ordinary category rate", () => {
+  // Two cards, neither with an Amazon-specific row. The 2% card must still
+  // win "best at Amazon", at its plain Shopping rate, rather than reading as
+  // if it earns nothing there.
+  const products = productMap([cash("flat", 1), cash("shopper", 1)]);
+  const rows = byProduct([earn("shopper", "c_shopping", 2)]);
+  const g = R.merchantEarningGuide({
+    cards: [held("flat"), held("shopper")], products, earnByProduct: rows, parentOf,
+    merchants: [{ merchantKey: "amazon", merchantLabel: "Amazon", categoryId: "c_shopping", categoryLabel: "Shopping" }],
+  });
+  strictEqual(g[0].best?.product.id, "shopper");
+  strictEqual(g[0].best?.pct, 2);
+});
+ok("a merchant-scoped row's own cap still applies", () => {
+  // Instacart: 5% up to $6,000/year then 1% base. A merchant-scoped row is not
+  // exempt from annualEarn's own cap handling; groupCapAdjustedEarn and
+  // annualEarn both read cap_amount/cap_period off the row regardless of
+  // whether it also carries a merchant_key.
+  const p = cash("instacart", 1);
+  const row = earn("instacart", "c_groceries", 5, "percent", 6000, "year", "instacart");
+  strictEqual(R.annualEarn(10_000, row, p), 6_000 * 0.05 + 4_000 * 0.01);
+});
+ok("assumesPointValue still travels on a merchant-scoped points rate", () => {
+  const p = points("prime", 1, 1.25);
+  const rows = byProduct([earn("prime", "c_shopping", 5, "points", null, null, "amazon")]);
+  const g = R.merchantEarningGuide({
+    cards: [held("prime")], products: productMap([p]), earnByProduct: rows, parentOf,
+    merchants: [{ merchantKey: "amazon", merchantLabel: "Amazon", categoryId: "c_shopping", categoryLabel: "Shopping" }],
+  });
+  strictEqual(g[0].best?.assumesPointValue, true);
+});
+ok("no held card at all means an empty merchant guide, same as the category one", () => {
+  const g = R.merchantEarningGuide({
+    cards: [], products: productMap([]), earnByProduct: byProduct([]), parentOf,
+    merchants: [{ merchantKey: "amazon", merchantLabel: "Amazon", categoryId: "c_shopping", categoryLabel: "Shopping" }],
+  });
+  deepStrictEqual(g, []);
 });
 
 // ── 5. Switch ideas ─────────────────────────────────────────────────────────

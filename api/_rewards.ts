@@ -114,6 +114,20 @@ export interface EarnRow {
   /** The fine print, verbatim enough to be useful: "online grocery purchases
       only, excludes Target, Walmart and wholesale clubs". */
   note: string | null;
+  /**
+   * A merchant this row applies to instead of its category generally, matched
+   * EXACTLY against Plaid's own `merchant_name` (lowercased, trimmed, space-
+   * collapsed -- the same normalization `_category-precedence.ts`'s
+   * `merchantKey()` already applies to a member's own merchant rules, and for
+   * the same reason: guessing at variants is how a rate ends up applying to
+   * the wrong charge). NULL (the default for every row seeded before migration
+   * 0063) means this row is an ordinary category rate. `category_id` is still
+   * required on a merchant-scoped row and still means something: it is the
+   * category this merchant's spend would otherwise fall under, which is what
+   * lets a card with no merchant-specific deal still be compared fairly on
+   * that spend at its normal rate rather than scored zero.
+   */
+  merchant_key: string | null;
 }
 
 export interface Benefit {
@@ -394,6 +408,72 @@ export function earningGuide(args: {
     return {
       categoryId: id,
       categoryLabel: label,
+      best,
+      tied,
+      others,
+      assumesPointValue: rates.some((r) => r.assumesPointValue),
+    };
+  });
+}
+
+/** One merchant the member has spend at that some catalog card has a specific
+    rate for, e.g. Amazon.com. `categoryId`/`categoryLabel` are the FALLBACK
+    category this merchant's spend would otherwise fall under, so a held card
+    with no merchant-specific row is still compared fairly at its ordinary
+    rate rather than scored zero. */
+export interface MerchantSpend {
+  merchantKey: string;
+  merchantLabel: string;
+  categoryId: string;
+  categoryLabel: string;
+}
+
+/**
+ * `earningGuide`'s counterpart for merchant-scoped rates (issue #289): "who is
+ * best at Amazon" rather than "who is best at Groceries". Returns entries in
+ * the exact `GuideEntry` shape earningGuide does, with `categoryId` set to a
+ * synthetic `m_<merchantKey>` id (never a real taxonomy id, so it cannot
+ * collide with one) purely so a caller merging the two lists has a stable key
+ * to render against; nothing in this module reads it back.
+ *
+ * For each held card: use its merchant-scoped row for this merchant if it has
+ * one, else fall back to its ordinary rate for the merchant's fallback
+ * category, exactly `rateFor` would already compute for spend Juniper could
+ * not tell apart from the rest of that category.
+ */
+export function merchantEarningGuide(args: {
+  cards: MemberCard[];
+  products: Map<string, CardProduct>;
+  earnByProduct: Map<string, EarnRow[]>;
+  parentOf: ParentOf;
+  merchants: MerchantSpend[];
+}): GuideEntry[] {
+  const held = heldProducts(args.cards, args.products);
+  if (!held.length) return [];
+
+  return args.merchants.map((m) => {
+    const rates = held
+      .map((p): ResolvedRate => {
+        const rows = args.earnByProduct.get(p.id) ?? [];
+        const row = rows.find((r) => r.merchant_key === m.merchantKey);
+        if (!row) return rateFor(p, m.categoryId, args.earnByProduct, args.parentOf);
+        return {
+          product: p,
+          row,
+          pct: ratePct(row.multiplier, row.unit, p.point_value_cents),
+          display: displayRate(row.multiplier, row.unit, p.rewards_currency),
+          cap: displayCap(row.cap_amount, row.cap_period),
+          note: row.note,
+          assumesPointValue: needsValuation(row.unit),
+        };
+      })
+      .sort(byRate);
+    const best = rates[0] ?? null;
+    const tied = best ? rates.slice(1).filter((r) => r.pct === best.pct) : [];
+    const others = best ? rates.slice(1).filter((r) => r.pct !== best.pct) : [];
+    return {
+      categoryId: `m_${m.merchantKey}`,
+      categoryLabel: m.merchantLabel,
       best,
       tied,
       others,
