@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { deleteAllPlans } from "@/lib/plans";
 import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay, takePendingHousehold } from "@/lib/profile";
+import { clearThreadsLocal } from "@/lib/planner";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { useTheme } from "@/lib/theme";
 import { HOLDER_STYLES, HOLDER_LABEL, holderClass, type HolderStyle } from "@/lib/holder-style";
@@ -52,16 +53,17 @@ async function resetAccountCompletely(email: string) {
     takePendingHousehold(email);
     try {
       localStorage.removeItem(`juniper_welcomed_${email}`);
-      // Duplicated literals: jnpr.planner.threads.v1 (lib/planner.ts) and
-      // jnpr.workspace.v1 (lib/workspace.tsx). Neither is per-account, so
-      // clearing them here is a bit broader than this one email, but both
-      // are pure client caches of server state this reset already erased or
-      // no longer applies to.
-      localStorage.removeItem("jnpr.planner.threads.v1");
+      // jnpr.workspace.v1 (lib/workspace.tsx) is still a duplicated literal
+      // and still not per-account, so clearing it here is a bit broader than
+      // this one email; it is a pure client cache of server state this reset
+      // has already erased. The Ask Juniper store is no longer in that
+      // category: since #361 it is keyed per account, so it is cleared
+      // through its own helper rather than by naming the key twice.
       localStorage.removeItem("jnpr.workspace.v1");
     } catch {
       /* ignore */
     }
+    clearThreadsLocal();
   }
   window.location.assign("/app");
 }

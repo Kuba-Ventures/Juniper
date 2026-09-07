@@ -5,6 +5,7 @@ import { WorkspaceSwitcher } from "@/components/juniper/workspace-switcher";
 import { useWorkspace } from "@/lib/workspace";
 import { resetPartnerCache } from "@/lib/partner";
 import { resetHouseholdCache } from "@/lib/household";
+import { resetThreadsCache } from "@/lib/planner";
 import { useNotifications, agoLabel, type NotificationRecord } from "@/lib/notifications";
 
 // One row in the bell's dropdown, New or Earlier. A separate component
@@ -122,6 +123,11 @@ export function AppBar({
     // would see the previous one's partner until the first fetch returned.
     resetPartnerCache();
     resetHouseholdCache();
+    // Same reason, higher stakes: the Ask Juniper store held the previous
+    // member's whole chat history, and until #361 it was neither cleared here
+    // nor keyed per account, so the next member to sign in on this browser was
+    // shown those conversations (and pushed them up under their own JWT).
+    resetThreadsCache();
     setLocation("/");
   };
 
