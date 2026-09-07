@@ -173,8 +173,12 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "wall", label: "Merchant wall" },
     ],
   },
-  // Four more shelf widgets (issue #290): see overview-widgets.tsx for why
-  // two of these need no fetch of their own.
+  // Four more shelf widgets (issue #290): each a one-figure summary of a
+  // surface that already has its own page, same rule #251 gave Cards and
+  // Recurring charges. A single declared size, unlike those two: they have no
+  // size picker yet, which is a later enhancement rather than something these
+  // need on day one. See overview-widgets.tsx for why two of them need no
+  // fetch of their own.
   {
     id: "levers", title: "Score levers", home: "/app/score", homeLabel: "Score", defaultOff: true,
     sizes: DEFAULT_SIZES,

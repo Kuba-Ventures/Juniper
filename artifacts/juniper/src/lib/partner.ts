@@ -179,16 +179,26 @@ export function resetPartnerCache(): void {
   emit();
 }
 
-export function usePartner(): { data: PartnerData | null; loading: boolean; refresh: () => void } {
+/**
+ * `active` defaults to true, so every existing call site (the shared frame,
+ * the share sheet, and the Overview/Accounts/Goals pages) is unchanged: they
+ * always want the fetch. It exists for the Overview's Together summary
+ * widget, which ships off in the shelf (#290) and must cost nothing while it
+ * is there, the same rule every other shelf widget's hook follows. Passing
+ * false only skips the INITIAL `load()`: it still subscribes, so a widget
+ * that starts off and is switched on later sees whatever another active
+ * caller has already fetched, with no request of its own.
+ */
+export function usePartner(active = true): { data: PartnerData | null; loading: boolean; refresh: () => void } {
   const [, bump] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     subscribers.add(bump);
-    if (!loaded) void load(false);
+    if (active && !loaded) void load(false);
     return () => { subscribers.delete(bump); };
-  }, []);
+  }, [active]);
   return {
     data: cache,
-    loading: !loaded,
+    loading: active && !loaded,
     refresh: useCallback(() => { void load(true); }, []),
   };
 }
