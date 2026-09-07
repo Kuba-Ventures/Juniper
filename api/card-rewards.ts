@@ -23,14 +23,15 @@
 // Plaid account or a session. This file's whole job is reading the rows and
 // handing them over.
 //
-// WHY THIS DOES NOT GO THROUGH lib/finances.ts. The house rule routes money
-// features through that seam, and the Credit page already carries a documented
-// exception for the same reason this endpoint does: the `/api/finances` account
-// rollup carries name, institution and balance only. This surface needs two
-// things it does not have, each card's `limit` (from the stored Plaid snapshot)
-// and per-ACCOUNT spend (from `transactions.account_id`), because "your
-// groceries are on the wrong card" is a statement about one account, not about
-// the member's total. Collapsing onto the seam means widening that rollup twice.
+// WHY THIS DOES NOT (YET) GO THROUGH lib/finances.ts. The house rule routes
+// money features through that seam, and the Credit page already carries a
+// documented exception for the same reason this endpoint does. `/api/finances`
+// carried name, institution and balance only when this was written; issue #289
+// widened it with `limit` per account and a per-ACCOUNT spend field
+// (`accountSpend`), sharing the exact aggregation this file uses via
+// api/_account-spend.ts, so the two cannot disagree about one account's own
+// spend. This endpoint has not been moved onto reading it instead of its own
+// fetches, which is the actual remaining follow-up, not the widening itself.
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
@@ -40,10 +41,11 @@ import { fetchManualCreditAccounts } from "./_manual-accounts";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import { merchantKey } from "./_category-precedence";
 import { readCardCatalog, type CardTier } from "./_card-catalog";
+import { accountCategorySpend } from "./_account-spend";
 import {
   anyUnverified, benefitPeriodKey, earningGuide, matchAutoBenefits, merchantEarningGuide,
   oldestAsOf, rankCandidates, shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
-  type AccountCategorySpend, type Benefit, type BenefitPeriod, type CapPeriod,
+  type Benefit, type BenefitPeriod, type CapPeriod,
   type CardProduct, type EarnRow, type EarnUnit, type MemberCard, type MerchantSpend,
 } from "./_rewards";
 
@@ -476,35 +478,30 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  const spendMap = new Map<string, AccountCategorySpend>();
+  // The per-account, per-category aggregation itself lives in
+  // api/_account-spend.ts, shared with api/finances.ts (issue #289), so the
+  // two cannot compute a different answer to "how much did this account
+  // spend in this category" from what is otherwise the same underlying fact.
+  const { spend, spendDates } = accountCategorySpend(
+    txns, (id, label) => tax.classify(id, label), (label) => tax.categoryIdOf(label),
+  );
+
+  // A second, separate pass for merchant-scoped spend (issue #289): the
+  // shared aggregation above has no notion of a merchant, only a category, so
+  // this stays here rather than folding into it. Only for merchants the
+  // catalog actually has a rate for, so this never grows with the member's
+  // whole merchant list; summed across every account, unlike the per-account
+  // category spend above, because a merchant-scoped rate is about WHO was
+  // paid, not which card an account happens to be.
   const merchantSpendMap = new Map<string, number>();
-  const spendDates: string[] = [];
   for (const t of txns) {
     if (!t.account_id) continue;
-    const cls = tax.classify(t.category_id, t.category);
-    if (cls.k !== "spend") continue;
-    spendDates.push(t.date);
-    const categoryId = t.category_id || tax.categoryIdOf(t.category);
-    if (!categoryId) continue;   // an unrecognized label gets no id, and no guess
-    const key = `${t.account_id}|${categoryId}`;
-    const prev = spendMap.get(key);
-    if (prev) prev.amount += t.amount;
-    else spendMap.set(key, {
-      plaid_account_id: t.account_id, category_id: categoryId,
-      category_label: cls.c, amount: t.amount,
-    });
-
-    // Same charge, a second bucket: only for merchants the catalog actually
-    // has a rate for, so this never grows with the member's whole merchant
-    // list. Summed across every account, unlike the per-account category
-    // spend above, because a merchant-scoped rate is about WHO was paid, not
-    // which card an account happens to be.
+    if (tax.classify(t.category_id, t.category).k !== "spend") continue;
     const mKey = merchantKey(t.merchant_name);
     if (mKey && merchantFallback.has(mKey)) {
       merchantSpendMap.set(mKey, (merchantSpendMap.get(mKey) ?? 0) + t.amount);
     }
   }
-  const spend = [...spendMap.values()];
   // The history that actually exists, never an assumed 90 days. Getting this
   // wrong is the bug _finance-snapshot.ts already had once.
   const months = coveredDays(spendDates) / 30;
