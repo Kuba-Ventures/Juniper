@@ -34,11 +34,12 @@ import { taxonomyFor } from "./_taxonomy";
 import { creditPosition } from "./_credit-balance";
 import { fetchManualCreditAccounts } from "./_manual-accounts";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
+import { merchantKey } from "./_category-precedence";
 import {
-  anyUnverified, benefitPeriodKey, earningGuide, matchAutoBenefits, oldestAsOf,
-  rankCandidates, shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
+  anyUnverified, benefitPeriodKey, earningGuide, matchAutoBenefits, merchantEarningGuide,
+  oldestAsOf, rankCandidates, shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
   type AccountCategorySpend, type Benefit, type BenefitPeriod, type CapPeriod,
-  type CardProduct, type EarnRow, type EarnUnit, type MemberCard,
+  type CardProduct, type EarnRow, type EarnUnit, type MemberCard, type MerchantSpend,
 } from "./_rewards";
 
 export const config = { runtime: "edge" };
@@ -105,7 +106,7 @@ async function rowsWithOptional<T>(
 ): Promise<T[]> {
   const full = await adminRest(`${base},${optional.join(",")}`);
   if (full.ok) return (await full.json().catch(() => [])) as T[];
-  console.warn(`[cards] ${what}: ${optional.join(", ")} unavailable, is migration 0043 applied?`);
+  console.warn(`[cards] ${what}: ${optional.join(", ")} unavailable, is the migration adding it applied?`);
   return rows<T>(base, what);
 }
 
@@ -259,9 +260,9 @@ export default async function handler(req: Request): Promise<Response> {
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
     readConfirmations(uid),
     readCatalog(),
-    rows<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
+    rowsWithOptional<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
-      "earn rates"),
+      ["merchant_key"], "earn rates"),
     rowsWithOptional<{ id: string; product_id: string; benefit_group: string; name: string; detail: string | null;
            value_amount: number | null; period: BenefitPeriod | null;
            expires_on?: string | null; auto_merchant?: string | null; auto_mode?: string | null }>(
@@ -435,6 +436,10 @@ export default async function handler(req: Request): Promise<Response> {
       ...r,
       multiplier: Number(r.multiplier) || 0,
       cap_amount: r.cap_amount == null ? null : Number(r.cap_amount),
+      // Absent (column not there yet, migration 0063 not applied) and NULL
+      // both mean "an ordinary category rate", same convention benefits'
+      // expires_on uses.
+      merchant_key: r.merchant_key ?? null,
     };
     const list = earnByProduct.get(row.product_id);
     if (list) list.push(row); else earnByProduct.set(row.product_id, [row]);
@@ -518,7 +523,25 @@ export default async function handler(req: Request): Promise<Response> {
   // for paying off a card), income is not spending, and spending is summed
   // SIGNED so a refund reduces the category it came back to.
   const tax = await taxonomyFor(uid);
+
+  // Every merchant the catalog has a specific rate for (issue #289), and the
+  // category that merchant's spend falls under absent such a rate, read off
+  // the earn rows themselves rather than hardcoded here: whatever the seed
+  // pairs a merchant_key with is the fallback a card with no deal is judged
+  // against. A Map so the first row seen for a merchant_key wins, which holds
+  // only because a merchant like 'amazon' is expected to pair with the same
+  // category_id across every product that carries it.
+  const merchantFallback = new Map<string, { categoryId: string; categoryLabel: string }>();
+  for (const rows of earnByProduct.values()) {
+    for (const r of rows) {
+      if (r.merchant_key && !merchantFallback.has(r.merchant_key)) {
+        merchantFallback.set(r.merchant_key, { categoryId: r.category_id, categoryLabel: r.category_label });
+      }
+    }
+  }
+
   const spendMap = new Map<string, AccountCategorySpend>();
+  const merchantSpendMap = new Map<string, number>();
   const spendDates: string[] = [];
   for (const t of txns) {
     if (!t.account_id) continue;
@@ -534,11 +557,33 @@ export default async function handler(req: Request): Promise<Response> {
       plaid_account_id: t.account_id, category_id: categoryId,
       category_label: cls.c, amount: t.amount,
     });
+
+    // Same charge, a second bucket: only for merchants the catalog actually
+    // has a rate for, so this never grows with the member's whole merchant
+    // list. Summed across every account, unlike the per-account category
+    // spend above, because a merchant-scoped rate is about WHO was paid, not
+    // which card an account happens to be.
+    const mKey = merchantKey(t.merchant_name);
+    if (mKey && merchantFallback.has(mKey)) {
+      merchantSpendMap.set(mKey, (merchantSpendMap.get(mKey) ?? 0) + t.amount);
+    }
   }
   const spend = [...spendMap.values()];
   // The history that actually exists, never an assumed 90 days. Getting this
   // wrong is the bug _finance-snapshot.ts already had once.
   const months = coveredDays(spendDates) / 30;
+
+  const merchantSpend: MerchantSpend[] = [...merchantSpendMap.entries()]
+    .filter(([, amount]) => amount > 0)
+    .map(([key, amount]) => {
+      const fallback = merchantFallback.get(key)!;
+      return {
+        merchantKey: key,
+        // Title-cased for display; the raw key is Plaid's lowercased name.
+        merchantLabel: key.replace(/\b\w/g, (c) => c.toUpperCase()),
+        categoryId: fallback.categoryId, categoryLabel: fallback.categoryLabel,
+      };
+    });
 
   // ── The guide's category list: the member's own, in their own spend order ─
   //
@@ -557,6 +602,12 @@ export default async function handler(req: Request): Promise<Response> {
     .slice(0, GUIDE_CATEGORIES)
     .map(([id, v]) => ({ id, label: v.label, monthlySpend: v.total / months }));
 
+  // Keyed by categoryId rather than by array position, since the response's
+  // `guide` below is category rows followed by merchant rows, two different
+  // lists concatenated: an index into one tells you nothing about the other.
+  const monthlySpendById = new Map<string, number>(spendOrder.map((c) => [c.id, c.monthlySpend]));
+  for (const m of merchantSpend) monthlySpendById.set(`m_${m.merchantKey}`, (merchantSpendMap.get(m.merchantKey) ?? 0) / months);
+
   const parentOf = (categoryId: string): string | null => {
     // The member's own tree, so a leaf they created resolves to the group they
     // put it in. A group id has no parent, and neither does anything unknown.
@@ -567,10 +618,16 @@ export default async function handler(req: Request): Promise<Response> {
     return null;
   };
 
-  const guide = earningGuide({
-    cards: memberCards, products, earnByProduct, parentOf,
-    categories: spendOrder.map((c) => ({ id: c.id, label: c.label })),
-  });
+  const guide = [
+    ...earningGuide({
+      cards: memberCards, products, earnByProduct, parentOf,
+      categories: spendOrder.map((c) => ({ id: c.id, label: c.label })),
+    }),
+    // Merchant-scoped rows (issue #289) appended after the category ones, in
+    // the same GuideEntry shape, so the client needs no new component: "Best
+    // Amazon.com purchases" reads the same as "Best Groceries".
+    ...merchantEarningGuide({ cards: memberCards, products, earnByProduct, parentOf, merchants: merchantSpend }),
+  ];
   const switches = switchIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
   const upgrades = upgradeIdeas({ cards: memberCards, products, earnByProduct, parentOf, spend, months });
   // ── Auto-matching, and writing what it finds (issue #264; migration 0053
@@ -674,10 +731,10 @@ export default async function handler(req: Request): Promise<Response> {
       };
     }),
     unidentified,
-    guide: guide.map((g, i) => ({
+    guide: guide.map((g) => ({
       categoryId: g.categoryId,
       categoryLabel: g.categoryLabel,
-      monthlySpend: spendOrder[i]?.monthlySpend ?? 0,
+      monthlySpend: monthlySpendById.get(g.categoryId) ?? 0,
       assumesPointValue: g.assumesPointValue,
       best: g.best && {
         productId: g.best.product.id, productName: g.best.product.name,
