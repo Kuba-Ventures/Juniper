@@ -1545,6 +1545,22 @@
 .jnpr .cs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .jnpr .cs-chips span{font-size:11px;font-weight:650;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:7px;padding:3px 9px}
 
+/* Stage 10b: the live sandbox-sourced score panel. Sits beside .cs-note/.cs-chips
+   above (the not-tracked-yet fallback) since both render in the same slot. */
+.jnpr .sandbox-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-warn);
+  background:var(--jnpr-warn-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}
+.jnpr .cs-ring-row{display:flex;align-items:center;gap:20px;margin-bottom:18px}
+.jnpr .cs-meta{display:flex;flex-direction:column;gap:2px}
+.jnpr .cs-band{font-size:16px;font-weight:650;color:var(--jnpr-good)}
+.jnpr .cs-sub{font-size:12px;color:var(--jnpr-ink-2)}
+.jnpr .cs-factors{display:flex;flex-direction:column}
+.jnpr .cs-factor{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .cs-factor:first-child{border-top:0}
+.jnpr .cs-fnum{flex:0 0 auto;width:18px;height:18px;border-radius:999px;background:var(--jnpr-surface-3);
+  color:var(--jnpr-ink-2);font-size:10.5px;font-weight:700;display:grid;place-items:center;margin-top:1px}
+.jnpr .cs-fdesc{font-size:12.5px;color:var(--jnpr-ink);line-height:1.45}
+
 /* ---------- transactions tab (/app/transactions) ---------- */
 /* The chart switcher. Sits in the card head beside the range, so choosing a view
    never moves the card's title or the figures under it. */

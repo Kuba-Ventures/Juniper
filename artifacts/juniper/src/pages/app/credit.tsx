@@ -17,6 +17,7 @@ import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
 import type { HolderStyle } from "@/lib/holder-style";
+import { useCreditScore, vantageBand, type CreditScoreSnapshot } from "@/lib/credit-score";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -147,14 +148,17 @@ const limitBadge = (c: LinkedCard, source: string): string | null => {
 const pct = (owed: number, limit: number) => utilizationPct(owed, limit) ?? 0;
 
 // The factors a real score is built from, named so the not-live panel is specific
-// about what is coming rather than vaguely promising "credit features".
+// about what is coming rather than vaguely promising "credit features". Only
+// rendered now when /api/credit/score itself has nothing to say (not
+// configured, or the sandbox pull failed) -- see CreditScore below for the
+// live path, which since Stage 10b renders the provider's own real, ordered
+// factors instead of this placeholder list.
 //
 // FOUR, not five, and that is a statutory cap rather than a layout choice.
 // 15 U.S.C. 1681g(f) and Cal. Civ. Code 1785.15.1 both require that a disclosed
 // score come with AT MOST FOUR adverse key factors, ordered by importance, per
-// model. This list is illustrative today because no score is displayed, but the
-// moment a real one is, the live component must render the provider's own
-// ordered factors and must not exceed four. Do not grow this array.
+// model. Do not grow this array; the live path enforces the same cap server-side
+// (api/credit/score.ts's MAX_FACTORS).
 const PLANNED_FACTORS = [
   "Utilization",
   "On-time payments",
@@ -185,6 +189,88 @@ function ScorePending() {
       </div>
     </div>
   );
+}
+
+// Ring diameter and geometry match previews/credit-score-panel-options.html's
+// option A exactly (the treatment Finley picked, dial enlarged once from the
+// first render). A dedicated ring rather than reusing MiniRing
+// (components/juniper/primitives.tsx): MiniRing's fill fraction and its
+// displayed text are the SAME number (a 0-100 Juniper Score), and a bureau
+// score needs those to differ -- the arc fills by position in the 300-850
+// range while the number shown in the middle is the real score, not a
+// percentage.
+const SCORE_RING_D = 148;
+const SCORE_RING_R = 66;
+const SCORE_RING_STROKE = 11;
+
+// Parsed and formatted in UTC on purpose: `new Date("2024-03-04")` is midnight
+// UTC, and formatting that in a US-local timezone (anything behind UTC) prints
+// the day before. This is a calendar date the bureau reported, not an instant,
+// so the viewer's own timezone must never shift it.
+function scoreDateLabel(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (Number.isNaN(dt.getTime())) return iso;
+  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+function CreditScoreLive({ s }: { s: CreditScoreSnapshot }) {
+  const frac = Math.max(0, Math.min(1, (s.score - 300) / 550));
+  const c = 2 * Math.PI * SCORE_RING_R;
+  const cx = SCORE_RING_D / 2;
+  return (
+    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+      <div className="card-head">
+        <div className="eyebrow">Credit score</div>
+        {/* SANDBOX badge is load-bearing, not decoration: this pull is a single
+            pre-connected Spinwheel test identity (Stage 10b), never the
+            member's own credit file. Same provenance-honesty rule this page
+            already applies to a member-typed credit limit ("You set this" /
+            "You added this") -- a number that isn't the member's own must
+            never be indistinguishable from one that is. */}
+        {s.sandbox && <span className="sandbox-tag">Sandbox</span>}
+      </div>
+      <div className="cs-ring-row">
+        <div className="mini-ring" style={{ width: SCORE_RING_D, height: SCORE_RING_D }}>
+          <svg width={SCORE_RING_D} height={SCORE_RING_D} viewBox={`0 0 ${SCORE_RING_D} ${SCORE_RING_D}`}>
+            <circle cx={cx} cy={cx} r={SCORE_RING_R} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={SCORE_RING_STROKE} />
+            <circle
+              cx={cx} cy={cx} r={SCORE_RING_R} fill="none" stroke="var(--jnpr-good)" strokeWidth={SCORE_RING_STROKE}
+              strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - frac)} transform={`rotate(-90 ${cx} ${cx})`}
+            />
+          </svg>
+          <span className="rv tnum" style={{ fontSize: 38 }}>{s.score}</span>
+        </div>
+        <div className="cs-meta">
+          <span className="cs-band">{vantageBand(s.score)}</span>
+          <span className="cs-sub">VantageScore 3.0 &middot; range 300&ndash;850</span>
+          <span className="cs-sub">{s.sourceBureau} &middot; as of {scoreDateLabel(s.asOf)}</span>
+        </div>
+      </div>
+      {/* Ordered, not a bag of chips: 1681g(f) requires these ranked by
+          importance, and a numbered row is what actually shows that, where
+          the old PLANNED_FACTORS chip row above only implied it. */}
+      <div className="cs-factors">
+        {s.factors.map((f, i) => (
+          <div className="cs-factor" key={f.code}>
+            <span className="cs-fnum">{i + 1}</span>
+            <span className="cs-fdesc">{f.description}</span>
+          </div>
+        ))}
+      </div>
+      <p className="cs-note" style={{ marginTop: 12 }}>
+        {s.sandbox && "Sandbox test data (Stage 10b), not your own credit file. "}
+        A lender may use a different score when making a decision about you.
+      </p>
+    </div>
+  );
+}
+
+function CreditScore() {
+  const { data } = useCreditScore();
+  if (data && data.available) return <CreditScoreLive s={data} />;
+  return <ScorePending />;
 }
 
 function CardsEmpty() {
@@ -636,11 +722,12 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         sub="Every credit card you have linked, what you owe on it, and how much of the limit you are using."
       />
 
-      {/* 1. Credit score. Not tracked yet, and the panel says so honestly; stays
-          first because it is what the page is named after. Issue #264 orders the
-          rest of the page below it: the holder, then the card list, then benefits
-          and credits. */}
-      <ScorePending />
+      {/* 1. Credit score. Stage 10b: a real, sandbox-sourced VantageScore 3.0 pull
+          when /api/credit/score has one, the honest "not tracked yet" panel
+          otherwise (CreditScore picks between them). Stays first because it is
+          what the page is named after. Issue #264 orders the rest of the page
+          below it: the holder, then the card list, then benefits and credits. */}
+      <CreditScore />
 
       {/* Above the holder, because it is the one thing on this page with something
           for the member to DO, and because the holder and everything below it is
