@@ -15,9 +15,17 @@
 // never quietly becomes a public unauthenticated read once Stage 10c/10d
 // land real per-member data behind the same route.
 //
-// No storage, by design, ahead of Stage 10d's retention rule (never keep the
-// report payload past the display session): every call is a live pull, and
-// nothing here writes a table.
+// No DATABASE storage, by design, ahead of Stage 10d's retention rule (never
+// keep the report payload past the display session): nothing here writes a
+// table. There IS a small in-memory cache below, and it exists for a real
+// reason found live on 2026-09-07: Spinwheel's sandbox rate-limits
+// /debtProfile to ONE request per test identity PER DAY regardless of what's
+// requested (`DAILY_USER_REQUEST_LIMIT_REACHED`, "Credit report orders are
+// limited to one request per user per day"), so a page reloaded twice in the
+// same day 429s without it. This is also just the right shape for production,
+// not only a sandbox workaround: Spinwheel bills per fetch (see Stage 10e),
+// so pulling live on every single page view was always going to be the wrong
+// design, cost aside.
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
 import { creditConfigured, creditFetch, creditSandboxUserId } from "../_credit-provider";
@@ -64,6 +72,14 @@ export type CreditScoreSnapshot = {
   factors: SpinwheelFactor[];
 };
 
+// Module-scope, so it only lives for the life of one warm Edge Function
+// instance: it evaporates on a cold start or a redeploy, is never shared
+// across regions, and is not a substitute for a real refresh-subscription
+// cadence (Stage 10e). Kept comfortably under Spinwheel's 24h window so a
+// redeploy or a cold start can't land inside a stale cache and still 429.
+const CACHE_TTL_MS = 20 * 60 * 60 * 1000;
+let cache: { userId: string; snapshot: CreditScoreSnapshot; at: number } | null = null;
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -77,6 +93,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   const userId = creditSandboxUserId();
   if (!userId) return json({ available: false, reason: "No sandbox identity connected yet" });
+
+  if (cache && cache.userId === userId && Date.now() - cache.at < CACHE_TTL_MS) {
+    return json(cache.snapshot);
+  }
 
   const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${userId}/debtProfile`, {
     creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
@@ -101,5 +121,6 @@ export default async function handler(req: Request): Promise<Response> {
     asOf: detail.reportedDate,
     factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
   };
+  cache = { userId, snapshot, at: Date.now() };
   return json(snapshot);
 }
