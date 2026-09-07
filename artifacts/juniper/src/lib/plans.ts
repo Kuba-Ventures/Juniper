@@ -73,10 +73,14 @@ export type PlanNextAction = {
 
 // A single debt the user lists on a Debt Paydown plan. Stored (as an array)
 // in current_state.debts, no table/migration. `apr` is a percentage (e.g. 22).
+// `payment` and `term` are optional so a row written before they existed, or
+// one for a card (which has no fixed term), still reads fine with them absent.
 export type DebtItem = {
   name: string;
   balance: number;
   apr: number;
+  payment?: number | null;
+  term?: string | null;
 };
 
 export type DialogueTurn = {

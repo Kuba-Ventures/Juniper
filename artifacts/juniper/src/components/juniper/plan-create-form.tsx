@@ -9,12 +9,14 @@ import type { FinanceData } from "@/lib/finances";
 import type { PlanDraftFromChat, PlanDraftField } from "@/lib/planner";
 import { setHouseholdPlanShare } from "@/lib/household";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
+import { DebtBreakdown } from "@/components/juniper/debt-breakdown";
 import {
   savePlan,
   suggestShape,
   uniqueDomain,
   PLAN_COLORS,
   SHAPE_ICON,
+  type DebtItem,
   type Plan,
   type PlanColor,
   type PlanGoal,
@@ -361,6 +363,14 @@ export function CreateForm({
   // household page is to share the thing being created; unchecking it keeps
   // the plan private, same as creating from the ordinary /app/plans page.
   const [shareHousehold, setShareHousehold] = useState(!!state.household);
+  // Payoff-only, populated from suggested or hand-entered debts (see
+  // DebtBreakdown below). Kept as its own piece of state rather than folded
+  // into `draft`, because it drives `draft.target`/`draft.rate` rather than
+  // being driven by them: DraftFields' Target and Rate fields still exist and
+  // are still directly editable, they just get overwritten from this list
+  // whenever it changes, same "the breakdown is the source of truth once it
+  // exists" rule a bank-reported credit limit already follows elsewhere.
+  const [debts, setDebts] = useState<DebtItem[]>([]);
 
   const set = (patch: Partial<Draft>) => {
     setDraft((d) => {
@@ -373,7 +383,20 @@ export function CreateForm({
       if (isCustom && patch.name !== undefined && !shapePinned) return { ...next, shape: suggestShape(patch.name), icon: "" };
       return next;
     });
-    if (patch.shape) setShapePinned(true);
+    if (patch.shape) {
+      setShapePinned(true);
+      // A debt someone added while trying "Debt payoff" should not silently
+      // follow them onto whatever shape they switch to next.
+      if (patch.shape !== "payoff") setDebts([]);
+    }
+  };
+
+  const setDebtsAndTotals = (next: DebtItem[]) => {
+    setDebts(next);
+    if (!next.length) return;
+    const total = next.reduce((s, d) => s + (d.balance || 0), 0);
+    const blended = total > 0 ? next.reduce((s, d) => s + (d.balance || 0) * (d.apr || 0), 0) / total : 0;
+    set({ target: numStr(total), rate: numStr(blended) });
   };
 
   const create = async () => {
@@ -381,11 +404,16 @@ export function CreateForm({
     setSaving(true);
     setError("");
     // `domain` is the plan's key and is fixed here for the row's whole life:
-    // renaming later rewrites goal.name and leaves the key alone.
+    // renaming later rewrites goal.name and leaves the key alone. The debts
+    // list rides in `current_state` beside `goal`, and only for a plan that
+    // is still shaped `payoff` when Create is pressed (belt and suspenders
+    // alongside the shape-change clear above): a plan saved under any other
+    // shape has no debts concept to carry.
     const saved = await savePlan({
       domain: uniqueDomain(name, existing),
       status: "in_progress",
       goal: goalFrom({ ...draft, name }, null),
+      current_state: draft.shape === "payoff" && debts.length ? { debts } : null,
     });
     setSaving(false);
     if (!saved) {
@@ -451,6 +479,7 @@ export function CreateForm({
       )}
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
+      {draft.shape === "payoff" && <DebtBreakdown debts={debts} onChange={setDebtsAndTotals} />}
       <div className="modal-actions">
         <button className="btn" disabled={saving} onClick={create}>{saving ? "Creating…" : "Create plan"}</button>
         <button className="btn ghost" disabled={saving} onClick={onBack}>{fromGoal || state.household ? "Cancel" : "Back"}</button>

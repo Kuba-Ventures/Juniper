@@ -594,6 +594,34 @@
 .jnpr .plan-empty h3{font-size:17px;margin-bottom:7px;color:var(--jnpr-ink)}
 .jnpr .plan-empty p{font-size:13.5px;color:var(--jnpr-ink-2);line-height:1.55;margin:0 auto 16px;max-width:400px}
 .jnpr .field-hint{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.45}
+
+/* Debt payoff plan's "Your debts" builder (components/juniper/debt-breakdown.tsx).
+   Suggestions come from api/plaid/liabilities.ts; every field on an added row
+   is a live input, so nothing pulled from Plaid is stuck read-only. */
+.jnpr .debt-bd{margin-bottom:16px}
+.jnpr .debt-sugg-list{display:flex;flex-direction:column;gap:8px;margin:2px 0 12px}
+.jnpr .debt-sugg-row{display:flex;align-items:center;gap:10px;padding:10px 11px;background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm)}
+.jnpr .debt-sugg-ic{width:30px;height:30px;border-radius:8px;background:var(--jnpr-surface-3);display:grid;place-items:center;flex:0 0 auto;font-size:10.5px;font-weight:750;color:var(--jnpr-ink-2)}
+.jnpr .debt-sugg-body{flex:1;min-width:0}
+.jnpr .debt-sugg-name{font-size:12.5px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .debt-sugg-sub{font-size:11px;color:var(--jnpr-ink-3);margin-top:1px}
+.jnpr .debt-sugg-nums{font-size:11px;color:var(--jnpr-ink-2);text-align:right;flex:0 0 auto;white-space:nowrap;line-height:1.5}
+.jnpr .debt-sugg-nums b{color:var(--jnpr-ink)}
+.jnpr .debt-row{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r-sm);padding:11px;margin-bottom:8px}
+.jnpr .debt-row-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.jnpr .debt-row-top input{flex:1;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--jnpr-line);border-radius:8px;background:var(--jnpr-surface-2);color:var(--jnpr-ink);outline:none;min-width:0}
+.jnpr .debt-row-top input:focus{border-color:var(--jnpr-accent)}
+.jnpr .debt-x{width:24px;height:24px;border:0;background:none;color:var(--jnpr-ink-3);cursor:pointer;display:grid;place-items:center;border-radius:6px;flex:0 0 auto;padding:0}
+.jnpr .debt-x:hover{background:var(--jnpr-surface-3);color:var(--jnpr-bad)}
+.jnpr .debt-row-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.jnpr .debt-row-grid .field{margin-bottom:0;gap:3px}
+.jnpr .debt-row-grid .field label{font-size:9.5px}
+.jnpr .debt-row-grid .field input{font-size:12px;padding:6px 7px}
+@media(max-width:480px){.jnpr .debt-row-grid{grid-template-columns:1fr 1fr;row-gap:8px}}
+.jnpr .debt-empty{font-size:11.5px;color:var(--jnpr-ink-3);padding:10px 8px;text-align:center;background:var(--jnpr-surface-2);border:1px dashed var(--jnpr-line);border-radius:var(--jnpr-r-sm);margin-bottom:10px}
+.jnpr .debt-add{width:100%;justify-content:center;margin-top:2px}
+.jnpr .debt-foot{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--jnpr-ink);margin:10px 2px 0;padding-top:9px;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .debt-foot b{font-size:14.5px}
 .jnpr .shape-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px}
 .jnpr .shape-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border:1px solid var(--jnpr-line);border-radius:10px;background:var(--jnpr-surface-2);font-family:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-ink-2);cursor:pointer;text-align:center;line-height:1.25}
 .jnpr .shape-btn:hover{border-color:var(--jnpr-accent)}

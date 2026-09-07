@@ -615,3 +615,35 @@ export async function fetchConnectionNames(): Promise<string[]> {
   const items = await fetchPlaidItems();
   return items.map((i) => i.institution_name).filter((n): n is string => !!n);
 }
+
+// Mirrors api/plaid/liabilities.ts's LiabilityAccount. Duplicated rather than
+// imported because the client cannot reach into api/.
+export type LiabilitySuggestion = {
+  item_id: string;
+  institution_name: string | null;
+  account_id: string;
+  name: string;
+  mask: string | null;
+  liability_type: "mortgage" | "student" | "credit";
+  balance: number | null;
+  apr: number | null;
+  monthly_payment: number | null;
+  term: string | null;
+};
+
+// Suggested debt rows for the payoff plan's "Your debts" builder, read live
+// from the caller's own linked credit cards, student loans and mortgages.
+// `available: false` (no `liabilities` consent yet, or the Plaid account
+// isn't entitled) is not an error: it just means there is nothing to suggest,
+// same as an empty list, so callers can treat both the same way and fall
+// back to manual entry.
+export async function fetchLiabilitySuggestions(): Promise<LiabilitySuggestion[]> {
+  try {
+    const res = await authedFetch("/api/plaid/liabilities", { method: "POST" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { available?: boolean; liabilities?: LiabilitySuggestion[] };
+    return data.available ? (data.liabilities ?? []) : [];
+  } catch {
+    return [];
+  }
+}
