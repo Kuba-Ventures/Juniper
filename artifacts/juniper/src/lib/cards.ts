@@ -294,16 +294,30 @@ export interface CardRewards {
     assumesPointValue: boolean;
     periods: { month: string; quarter: string; year: string };
   };
-  /** BOTH tiers, deliberately. `featured` products are the ones with researched
-      rates; `listed` ones exist so the Identify picker can name any card a member
-      holds, and so their faces resolve art and colour rather than drawing blank.
-      Anything computing a rate must read `switches`/`upgrades`/`guide`, which the
-      server already builds from featured products only -- never filter this list
-      and do maths on it. */
-  catalog: { product_id: string; name: string; short_name: string; issuer: string;
-             annual_fee: number; rewards_currency: string; brand_color: string | null;
-             network: string | null; point_value_cents: number | null;
-             art_url: string | null; tier: CardTier }[];
+}
+
+/**
+ * One catalog row: BOTH tiers, deliberately. `featured` products are the ones
+ * with researched rates; `listed` ones exist so the Identify picker can name
+ * any card a member holds, and so their faces resolve art and colour rather
+ * than drawing blank. Anything computing a rate must read
+ * `switches`/`upgrades`/`guide` off `CardRewards`, which the server already
+ * builds from featured products only -- never filter this list and do maths
+ * on it.
+ *
+ * Its own type, and its own endpoint (`GET /api/card-catalog`, issue #289),
+ * split out of `CardRewards` once the catalog was no longer cheap to send on
+ * every card-rewards request: this list is member-agnostic reference data,
+ * the same 32-ish rows for everybody, so a component that only needs to name
+ * or draw a card (the Identify picker, the manual-account form, a face
+ * lookup) no longer has to fetch the member's whole rewards computation to
+ * get it.
+ */
+export interface CardCatalogEntry {
+  product_id: string; name: string; short_name: string; issuer: string;
+  annual_fee: number; rewards_currency: string; brand_color: string | null;
+  network: string | null; point_value_cents: number | null;
+  art_url: string | null; tier: CardTier;
 }
 
 /**
@@ -314,9 +328,9 @@ export interface CardRewards {
  * in `cards`. Same reason `pointValueMap` reads the catalog.
  */
 export function faceInfoMap(
-  data: CardRewards,
+  catalog: CardCatalogEntry[],
 ): Map<string, { shortName: string; network: string | null; artUrl: string | null }> {
-  return new Map(data.catalog.map((p) => [p.product_id, {
+  return new Map(catalog.map((p) => [p.product_id, {
     shortName: p.short_name, network: p.network, artUrl: p.art_url,
   }]));
 }
@@ -328,8 +342,8 @@ export function faceInfoMap(
  * products the member does NOT hold and those never appear in `cards`. One map
  * covers both, which is why the endpoint carries the valuation on catalog rows.
  */
-export function pointValueMap(data: CardRewards): Map<string, number | null> {
-  return new Map(data.catalog.map((p) => [p.product_id, p.point_value_cents]));
+export function pointValueMap(catalog: CardCatalogEntry[]): Map<string, number | null> {
+  return new Map(catalog.map((p) => [p.product_id, p.point_value_cents]));
 }
 
 async function authedFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -351,6 +365,22 @@ export async function fetchCardRewards(): Promise<CardRewards | null> {
     return (await r.json()) as CardRewards;
   } catch {
     return null;
+  }
+}
+
+/** The catalog alone (issue #289's split), for a component that only needs to
+    name or draw a card and would otherwise fetch the member's whole rewards
+    computation just to reach `.catalog` off the end of it. Failure is silent
+    and returns `[]`, the same convention `fetchCardRewards` already follows:
+    naming a card is a nicety, not a gate on anything else rendering. */
+export async function fetchCardCatalog(): Promise<CardCatalogEntry[]> {
+  try {
+    const r = await authedFetch("/api/card-catalog");
+    if (!r.ok) return [];
+    const data = (await r.json()) as { catalog?: CardCatalogEntry[] };
+    return data.catalog ?? [];
+  } catch {
+    return [];
   }
 }
 
@@ -471,6 +501,28 @@ export function useCardRewards(): CardRewardsValue {
   }, []);
 
   return { data, loading, refresh: load };
+}
+
+/**
+ * The catalog alone, fetched once. No `refresh`: unlike `useCardRewards`,
+ * nothing a member does on this page changes what the catalog itself
+ * contains (it is reference data, the same rows for every member), so there
+ * is nothing a write would need to invalidate.
+ */
+export function useCardCatalog(): { data: CardCatalogEntry[]; loading: boolean } {
+  const [data, setData] = useState<CardCatalogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const next = await fetchCardCatalog();
+      if (!cancelled) { setData(next); setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { data, loading };
 }
 
 // ── Formatting, shared by the components below ─────────────────────────────

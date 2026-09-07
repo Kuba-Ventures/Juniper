@@ -7,12 +7,16 @@
 // benefits checklist, and the credit cards they entered by hand (migration 0046,
 // limit and balance only, see `manual` below).
 //
-// ONE ENDPOINT ON PURPOSE. The alternative is four (catalog, confirmations,
-// guide, benefits) and four round trips before the page can draw anything, and
-// three of them would need the same three joins. The whole payload is small
-// because the catalog is small. THE MOMENT THE CATALOG PASSES A FEW HUNDRED
-// PRODUCTS, `catalog` below has to become its own searchable endpoint rather
-// than riding along here; it is listed last in the response for that reason.
+// ONE ENDPOINT FOR THE MEMBER'S OWN DATA. The alternative is four
+// (confirmations, guide, benefits, plus the catalog) and several round trips
+// before the page can draw anything, and most of them would need the same
+// joins. The CATALOG itself is no longer one of the four (issue #289): it is
+// reference data, the same rows for every member, so it moved to its own
+// endpoint, `GET /api/card-catalog`, backed by the shared read in
+// `api/_card-catalog.ts`. This file still reads the raw catalog rows
+// server-side, for `rankCandidates` (an account name is scored against every
+// product, held or not) and for a hand-entered card's art lookup, but no
+// longer sends them.
 //
 // The arithmetic is not here. It is in api/_rewards.ts, pure and I/O-free, so
 // scripts/src/check-rewards.ts can exercise all of it without a database, a
@@ -35,6 +39,7 @@ import { creditPosition } from "./_credit-balance";
 import { fetchManualCreditAccounts } from "./_manual-accounts";
 import { coveredDays, isoDaysAgo, WINDOW_DAYS } from "./_finance-snapshot";
 import { merchantKey } from "./_category-precedence";
+import { readCardCatalog, type CardTier } from "./_card-catalog";
 import {
   anyUnverified, benefitPeriodKey, earningGuide, matchAutoBenefits, merchantEarningGuide,
   oldestAsOf, rankCandidates, shortCardName, switchIdeas, trackBenefits, upgradeIdeas,
@@ -172,77 +177,6 @@ async function readConfirmations(uid: string): Promise<MemberCardRow[]> {
   }
 }
 
-/**
- * The card catalog, degrading if migration 0035 has not been applied.
- *
- * PostgREST rejects the whole select on one unknown column, and `rows()` turns any
- * failure into an empty array, which here would mean an empty catalog: no rewards,
- * no benefits, and an Identify picker with nothing in it. So `art_url` is
- * requested as optional and retried without, the same shape as the #211 columns in
- * `readConfirmations` and the per-item health columns in api/plaid/accounts.ts.
- */
-/**
- * How much Juniper knows about a product, from migration 0039.
- *
- * `featured` has researched rates and feeds the earning guide, the switch
- * suggestions and the upgrade rows. `listed` is identity only -- it exists so the
- * Identify picker can always name a member's card -- and is kept out of anything
- * rate-driven, because it has no rates to be right about.
- *
- * Deliberately declared HERE rather than in api/_rewards.ts, for the same reason
- * art is: the pure rewards module should not have to know that some products are
- * withheld from it. It receives featured products and computes. Whether a catalog
- * row earned its place in that list is this handler's problem.
- */
-type CardTier = "featured" | "listed";
-
-async function readCatalog(): Promise<
-  (CardProduct & { art_url: string | null; tier: CardTier })[]
-> {
-  const base = "id,issuer,network,name,annual_fee,brand_color,rewards_currency," +
-    "point_value_cents,base_multiplier,base_unit,source_url,as_of,verified";
-  const scope = "card_products?status=eq.active";
-  // Tried most-complete first and degraded one optional column at a time, the
-  // same shape the #211 columns and the per-item health columns use. The point is
-  // that a deploy landing ahead of its migration serves a catalog missing one
-  // field rather than no catalog at all -- and losing `tier` must not also cost
-  // us `art_url`, which is why these are separate steps and not one fallback.
-  const attempts: { select: string; warn?: string }[] = [
-    { select: `${base},art_url,tier` },
-    { select: `${base},art_url`, warn: "tier unavailable, is migration 0039 applied?" },
-    { select: base, warn: "art_url and tier unavailable, are migrations 0035 and 0039 applied?" },
-  ];
-  try {
-    let r: Response | null = null;
-    for (const a of attempts) {
-      r = await adminRest(`${scope}&select=${a.select}`);
-      if (r.ok) {
-        if (a.warn) console.warn(`[cards] ${a.warn}`);
-        break;
-      }
-    }
-    if (!r || !r.ok) {
-      console.error(`[cards] could not read the card catalog (${r?.status})`);
-      return [];
-    }
-    const raw = (await r.json().catch(() => [])) as
-      (CardProduct & { art_url?: string | null; tier?: string })[];
-    // Absent `tier` means the column is not there yet, and every row that existed
-    // before 0039 was researched, so featured is the honest default rather than a
-    // lenient one. An unrecognized value is treated as listed: the failure mode of
-    // wrongly withholding a card from the rewards maths is a quiet gap, and the
-    // failure mode of wrongly including one is a wrong dollar figure.
-    return (Array.isArray(raw) ? raw : []).map((p) => ({
-      ...p,
-      art_url: p.art_url ?? null,
-      tier: p.tier == null ? "featured" : p.tier === "featured" ? "featured" : "listed",
-    }));
-  } catch {
-    console.error("[cards] read threw for the card catalog");
-    return [];
-  }
-}
-
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -259,7 +193,7 @@ export default async function handler(req: Request): Promise<Response> {
     await Promise.all([
     rows<ItemRow>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_id,institution_name,accounts`, "linked items"),
     readConfirmations(uid),
-    readCatalog(),
+    readCardCatalog(),
     rowsWithOptional<EarnRow & { unit: EarnUnit; cap_period: CapPeriod | null }>(
       "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
       ["merchant_key", "cap_group"], "earn rates"),
@@ -413,10 +347,11 @@ export default async function handler(req: Request): Promise<Response> {
   // would turn it into 0 -- so the member would be told a card they might hold
   // earns nothing, which is worse than saying nothing at all.
   //
-  // `identifiable` feeds the Identify picker and the `catalog` payload, and holds
+  // `identifiable` feeds the Identify picker's ranked candidates below, and holds
   // BOTH tiers. That is the point of the tier: a member must be able to name any
-  // card, and every face on the page resolves its art and colour through the
-  // catalog payload, listed cards included, so that none of them draw blank.
+  // card. The client's own art/colour lookup for every face on the page (listed
+  // cards included, so none of them draw blank) now reads `GET /api/card-catalog`
+  // instead of a payload this endpoint sends (issue #289).
   const featuredRows = productRows.filter((p) => p.tier === "featured");
   const products = new Map<string, CardProduct>(
     featuredRows.map((p) => [p.id, {
@@ -777,30 +712,7 @@ export default async function handler(req: Request): Promise<Response> {
         year: benefitPeriodKey("year", new Date()),
       },
     },
-    // Last, and flagged: this is the whole catalog, for the "my card is not
-    // listed" and "search all cards" paths in the picker. It rides along only
-    // while the catalog is small enough for that to be free.
-    catalog: catalog.map((p) => ({
-      product_id: p.id, name: p.name, issuer: p.issuer,
-      annual_fee: Number(p.annual_fee) || 0, rewards_currency: p.rewards_currency,
-      brand_color: p.brand_color,
-      // Carried so the disclosure chip can NAME the assumption ("assumes
-      // 1.25c/pt") rather than gesturing at it ("assumes a point value"). A
-      // caveat that does not say what it assumes is barely a caveat, and this is
-      // the only place the number is available for a product the member does not
-      // hold, which the upgrade rows need.
-      point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
-      // Carried for every product, held or not, because the switch and upgrade
-      // rows draw faces for cards the member does not own and those faces need a
-      // name that fits. Derived once, server-side, by the function the check
-      // script proves.
-      short_name: shortCardName(p.name, p.issuer),
-      network: p.network,
-      art_url: artOf(p.id),
-      // Sent so the client can say "Juniper does not have this card's rewards
-      // yet" instead of rendering a rates section that would be empty and read
-      // as "this card earns nothing".
-      tier: tierOf(p.id),
-    })),
+    // No `catalog` here any more (issue #289): a client that needs to name or
+    // draw a card, held or not, reads `GET /api/card-catalog` instead.
   });
 }
