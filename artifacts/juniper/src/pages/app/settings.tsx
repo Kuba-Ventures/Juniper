@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { deleteAllPlans } from "@/lib/plans";
-import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay } from "@/lib/profile";
+import { clearProfile, clearOnboarded, deleteRemoteProfile, requestOnboardingReplay, takePendingHousehold } from "@/lib/profile";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { useTheme } from "@/lib/theme";
 import { HOLDER_STYLES, HOLDER_LABEL, holderClass, type HolderStyle } from "@/lib/holder-style";
@@ -24,6 +24,41 @@ async function resetForTesting(email: string) {
     clearOnboarded(email);
     try {
       localStorage.removeItem(`juniper_welcomed_${email}`);
+    } catch {
+      /* ignore */
+    }
+  }
+  window.location.assign("/app");
+}
+
+// The full account wipe: everything resetForTesting does, plus every other
+// table this account owns (transactions, categories, budgets, recurring
+// overrides, card identifications, notifications, Ask Juniper history, and
+// more, see api/reset-account.ts for the exact list and the rule behind it),
+// Plaid connections actually unlinked at Plaid rather than only forgotten
+// locally, and a partnership or household this account belongs to ended the
+// same way leaving one deliberately already works, rather than left dangling.
+// Gated server-side on isDeveloperEmail; the button is hidden the same way.
+async function resetAccountCompletely(email: string) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (token) {
+    await fetch("/api/reset-account", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
+  }
+  if (email) {
+    clearProfile(email);
+    clearOnboarded(email);
+    // Consumes as a side effect, which is exactly "clear" here.
+    takePendingHousehold(email);
+    try {
+      localStorage.removeItem(`juniper_welcomed_${email}`);
+      // Duplicated literals: jnpr.planner.threads.v1 (lib/planner.ts) and
+      // jnpr.workspace.v1 (lib/workspace.tsx). Neither is per-account, so
+      // clearing them here is a bit broader than this one email, but both
+      // are pure client caches of server state this reset already erased or
+      // no longer applies to.
+      localStorage.removeItem("jnpr.planner.threads.v1");
+      localStorage.removeItem("jnpr.workspace.v1");
     } catch {
       /* ignore */
     }
@@ -75,7 +110,7 @@ export function Settings({
   const [, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<null | "plans" | "account">(null);
   const [busy, setBusy] = useState(false);
   const [refreshed, setRefreshed] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -166,6 +201,12 @@ export function Settings({
     setBusy(true);
     await resetForTesting(email);
     // resetForTesting navigates away; no need to unset busy.
+  };
+
+  const doResetAccount = async () => {
+    setBusy(true);
+    await resetAccountCompletely(email);
+    // resetAccountCompletely navigates away; no need to unset busy.
   };
 
   const saveName = () => {
@@ -385,7 +426,7 @@ export function Settings({
              allowlist; the endpoints behind it are unchanged and still scoped
              to the caller. */}
           {activeTab === "developer" && isDeveloper && (
-            !confirming ? (
+            confirming === null ? (
               <div className="dev-tools">
                 <div className="dev-row">
                   <div className="dev-t">
@@ -435,10 +476,23 @@ export function Settings({
                       connected.
                     </div>
                   </div>
-                  <button className="btn ghost sm danger" onClick={() => setConfirming(true)}>Reset</button>
+                  <button className="btn ghost sm danger" onClick={() => setConfirming("plans")}>Reset</button>
+                </div>
+
+                <div className="dev-row">
+                  <div className="dev-t">
+                    <div className="dev-n">Reset account &amp; start over</div>
+                    <div className="dev-s">
+                      Wipes everything: profile, plans, transactions, categories and rules, cards, budgets,
+                      notifications, Ask Juniper history, and every linked bank, actually unlinked at Plaid rather
+                      than just forgotten here. A partnership or household you're in is ended for you, the same as
+                      Disconnect or Leave. Then back to onboarding.
+                    </div>
+                  </div>
+                  <button className="btn ghost sm danger" onClick={() => setConfirming("account")}>Reset account</button>
                 </div>
               </div>
-            ) : (
+            ) : confirming === "plans" ? (
               <>
                 <div className="form-error">
                   This wipes your profile, plans, and onboarding for <b>{email}</b>. This can't be undone.
@@ -447,7 +501,23 @@ export function Settings({
                   <button className="btn" onClick={doReset} disabled={busy} style={{ background: "var(--jnpr-bad)", flex: 1, justifyContent: "center" }}>
                     {busy ? "Resetting…" : "Yes, reset everything"}
                   </button>
-                  <button className="btn ghost" onClick={() => setConfirming(false)} disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
+                  <button className="btn ghost" onClick={() => setConfirming(null)} disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-error">
+                  This wipes <b>everything</b> for <b>{email}</b>: your profile, plans, transactions, every linked
+                  bank (unlinked at Plaid, not just forgotten here), and any partnership or household you're in.
+                  This can't be undone.
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn" onClick={doResetAccount} disabled={busy} style={{ background: "var(--jnpr-bad)", flex: 1, justifyContent: "center" }}>
+                    {busy ? "Resetting…" : "Yes, reset my account"}
+                  </button>
+                  <button className="btn ghost" onClick={() => setConfirming(null)} disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
                     Cancel
                   </button>
                 </div>
