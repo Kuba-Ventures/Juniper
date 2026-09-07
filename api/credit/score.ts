@@ -80,6 +80,51 @@ export type CreditScoreSnapshot = {
 const CACHE_TTL_MS = 20 * 60 * 60 * 1000;
 let cache: { userId: string; snapshot: CreditScoreSnapshot; at: number } | null = null;
 
+// A 429 here means "not again today" (Spinwheel's own daily-per-identity
+// limit, not a transient failure), found live 2026-09-07 by two requests
+// racing the plain result cache above within the same warm instance: the
+// first started, hadn't written `cache` yet, and the second saw an empty
+// cache and re-called Spinwheel, burning the SAME day's one allowed pull a
+// second time before the first response could ever be reused. Caching the
+// 429 itself (same TTL as a success) stops that instance from trying again
+// for the rest of the day; caching a genuinely transient failure (502, a
+// timeout) would be wrong, so only 429 is remembered here.
+let rateLimitedUntil: { userId: string; at: number } | null = null;
+
+// De-dupes concurrent callers within one warm instance onto a single Spinwheel
+// request, which is the other half of the race above: two nearly-simultaneous
+// requests must share one in-flight pull rather than each starting their own.
+let inFlight: Promise<CreditScoreSnapshot | { failed: true; status: number }> | null = null;
+
+async function pullFresh(userId: string): Promise<CreditScoreSnapshot | { failed: true; status: number }> {
+  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${userId}/debtProfile`, {
+    creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
+    creditScore: { model: "VANTAGE_SCORE_3_0", sourceBureau: "Equifax" },
+  });
+  if (!r.ok) {
+    console.error(`[credit] debtProfile failed (${r.status}): ${r.data.status?.messages?.[0]?.desc ?? "unknown"}`);
+    if (r.status === 429) rateLimitedUntil = { userId, at: Date.now() };
+    return { failed: true, status: r.status };
+  }
+
+  const detail = r.data.data?.creditReports?.[0]?.creditScoreDetails?.[0];
+  if (!detail || detail.model !== "VANTAGE_SCORE_3_0") {
+    return { failed: true, status: 200 };
+  }
+
+  const snapshot: CreditScoreSnapshot = {
+    available: true,
+    sandbox: true,
+    score: detail.creditScore,
+    model: "VANTAGE_SCORE_3_0",
+    sourceBureau: detail.sourceBureau,
+    asOf: detail.reportedDate,
+    factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
+  };
+  cache = { userId, snapshot, at: Date.now() };
+  return snapshot;
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -97,30 +142,12 @@ export default async function handler(req: Request): Promise<Response> {
   if (cache && cache.userId === userId && Date.now() - cache.at < CACHE_TTL_MS) {
     return json(cache.snapshot);
   }
-
-  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${userId}/debtProfile`, {
-    creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
-    creditScore: { model: "VANTAGE_SCORE_3_0", sourceBureau: "Equifax" },
-  });
-  if (!r.ok) {
-    console.error(`[credit] debtProfile failed (${r.status}): ${r.data.status?.messages?.[0]?.desc ?? "unknown"}`);
-    return json({ available: false, reason: "Credit provider did not answer" }, 502);
+  if (rateLimitedUntil && rateLimitedUntil.userId === userId && Date.now() - rateLimitedUntil.at < CACHE_TTL_MS) {
+    return json({ available: false, reason: "Sandbox identity already pulled today" }, 429);
   }
 
-  const detail = r.data.data?.creditReports?.[0]?.creditScoreDetails?.[0];
-  if (!detail || detail.model !== "VANTAGE_SCORE_3_0") {
-    return json({ available: false, reason: "No VantageScore 3.0 in the response" });
-  }
-
-  const snapshot: CreditScoreSnapshot = {
-    available: true,
-    sandbox: true,
-    score: detail.creditScore,
-    model: "VANTAGE_SCORE_3_0",
-    sourceBureau: detail.sourceBureau,
-    asOf: detail.reportedDate,
-    factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
-  };
-  cache = { userId, snapshot, at: Date.now() };
-  return json(snapshot);
+  if (!inFlight) inFlight = pullFresh(userId).finally(() => { inFlight = null; });
+  const result = await inFlight;
+  if ("failed" in result) return json({ available: false, reason: "Credit provider did not answer" }, 502);
+  return json(result);
 }
