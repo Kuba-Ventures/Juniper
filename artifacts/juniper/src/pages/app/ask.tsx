@@ -41,7 +41,11 @@ function Rich({ text }: { text: string }) {
 
 export default function Ask() {
   const { threads, create, remove, update } = useThreads();
-  const { plans, upsertLocal } = useMemberPlans();
+  // `allPlans`, not `plans`: this only ever feeds `uniqueDomain` below, which
+  // has to see every domain already on the account, household plans included,
+  // or a plan tracked from a conversation could collide with one and PATCH
+  // over it (issue #362, see useMemberPlans in lib/plans.ts).
+  const { allPlans, upsertLocal } = useMemberPlans();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -103,7 +107,7 @@ export default function Ask() {
     if (planDraft.monthly_contribution != null) goal.monthly_contribution = planDraft.monthly_contribution;
     if (planDraft.rate != null && planDraft.shape === "payoff") goal.rate = planDraft.rate;
     if (planDraft.target_date) goal.target_date = planDraft.target_date;
-    const saved = await savePlan({ domain: uniqueDomain(planDraft.name, plans), status: "in_progress", goal });
+    const saved = await savePlan({ domain: uniqueDomain(planDraft.name, allPlans), status: "in_progress", goal });
     setPlanDraftBusy(false);
     if (!saved) {
       setPlanDraftErr(true);

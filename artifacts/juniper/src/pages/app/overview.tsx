@@ -809,13 +809,17 @@ function PlanTile({ row }: { row: PlanProgressRowData }) {
 }
 
 function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsReady: boolean; size: string }) {
-  const { plans, loading } = useMemberPlans();
+  // `plans` here is the member's OWN: a plan created for a household lives on
+  // the household page and is deliberately not listed as one of theirs (issue
+  // #362). `allPlans` is still what decides whether a signup goal is already
+  // planned, so a household plan does not get the same goal offered twice.
+  const { plans, allPlans, loading } = useMemberPlans();
   const active = plans.filter((p) => p.status !== "completed");
   // Goals picked at signup that no plan covers yet. They are listed under the
   // real plans, reading "No target yet" rather than a number, because no plan
   // row exists for them until the member sets one. Without this the card said
   // "No plans yet" to somebody who had just told onboarding three of them.
-  const waiting = useMemo(() => unplannedGoals(goals, plans), [goals, plans]);
+  const waiting = useMemo(() => unplannedGoals(goals, allPlans), [goals, allPlans]);
   const hasAnything = active.length > 0 || waiting.length > 0;
   const rows: PlanProgressRowData[] = [
     ...active.map((p) => toPlanProgressRow(p, p.domain)),

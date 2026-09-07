@@ -26,8 +26,12 @@ import {
   type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
-import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, SHAPE_ICON } from "@/lib/plans";
-import { EXAMPLES, TEMPLATES, type Example } from "@/pages/app/plans";
+import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, isHouseholdPlan, SHAPE_ICON, type Plan } from "@/lib/plans";
+// EditForm comes from the Plans page rather than being rebuilt here (issue
+// #362): a plan created for the household no longer appears on the individual
+// Plans page, so this is the only place left that can edit, complete or delete
+// it, and it must be the same editor rather than a second one free to drift.
+import { EXAMPLES, TEMPLATES, EditForm, type Example } from "@/pages/app/plans";
 // Issue #321 follow-up: the household Overview's "Shared plans" section reuses
 // the individual Overview's own real progress row (icon, $current/$targetk,
 // bar, percent funded, status pill) instead of a text-only summary sentence.
@@ -58,7 +62,13 @@ type Tab = "overview" | "members" | "accounts" | "plans";
 // alongside `CreateFormState` rather than inside it, same split plans.tsx
 // makes, because it names which real-balance figure to seed from and is
 // resolved to an actual `Prefill` at render time via `prefillFor`.
-type ModalState = null | ({ k: "form"; prefill: PrefillKey } & CreateFormState);
+// `edit` (issue #362) mounts the Plans page's own EditForm on one of the
+// member's plans, keyed by the full `Plan` row rather than the trimmed
+// HouseholdPlan /api/household sends, since the editor writes every field.
+type ModalState =
+  | null
+  | ({ k: "form"; prefill: PrefillKey } & CreateFormState)
+  | { k: "edit"; plan: Plan };
 
 function AccountRow({ a, canToggle, onToggle, busy }: {
   a: HouseholdAccount; canToggle: boolean; onToggle: (next: AccountScope) => void; busy: boolean;
@@ -102,17 +112,30 @@ function AccountRow({ a, canToggle, onToggle, busy }: {
   );
 }
 
-function PlanRow({ p, canToggle, onToggle, busy }: {
-  p: HouseholdPlan; canToggle: boolean; onToggle: (next: boolean) => void; busy: boolean;
+function PlanRow({ p, canToggle, onToggle, onEdit, busy }: {
+  p: HouseholdPlan; canToggle: boolean; onToggle: (next: boolean) => void;
+  /** Absent on someone else's plan, and on the caller's own where no full row
+      has loaded yet, in which case no Edit control is drawn at all rather than
+      one that cannot do anything. */
+  onEdit?: () => void;
+  busy: boolean;
 }) {
   const { current, target } = planNumbers(p);
+  // Issue #362: a plan made FOR the household is named as such, because it is
+  // the reason that plan is not on the member's own Plans page. Without the
+  // label, its absence there reads as a plan having gone missing.
+  const forHousehold = isHouseholdPlan(p);
   return (
     <div className="share-row">
       <div className="track" style={{ background: cssVar(planColor(p)) }}><PlanIcon name={planIcon(p)} /></div>
       <div className="share-id">
         <div className="nm">{planTitle(p)}</div>
-        <div className="mt">{target > 0 ? `${money(current)} of ${money(target)}` : "No target set"}</div>
+        <div className="mt">
+          {target > 0 ? `${money(current)} of ${money(target)}` : "No target set"}
+          {forHousehold && p.mine ? " · the household's plan" : ""}
+        </div>
       </div>
+      {onEdit && <button className="btn ghost sm" onClick={onEdit}>Edit</button>}
       {canToggle ? (
         <button
           className={p.shared ? "share-toggle on" : "share-toggle"}
@@ -151,7 +174,15 @@ export function HouseholdView() {
   const closeModal = () => setModal(null);
   const { data: finances } = useFinances();
   const balances = balancesFromFinances(finances);
-  const { plans: myOwnPlans, upsertLocal: upsertOwnPlanLocal } = useMemberPlans();
+  // `allPlans`, not `plans`: this feeds CreateForm's `existing` (so
+  // `uniqueDomain` sees every domain already on the account, household plans
+  // included) and backs the Edit control below, which has to reach the plans
+  // the individual Plans page now leaves out. See useMemberPlans in
+  // lib/plans.ts.
+  const {
+    allPlans: myOwnPlans, upsertLocal: upsertOwnPlanLocal,
+    removeLocal: removeOwnPlanLocal, refresh: refreshOwnPlans,
+  } = useMemberPlans();
 
   if (loading) {
     return (
@@ -195,6 +226,14 @@ export function HouseholdView() {
   // unshared plan that isn't mine, see api/household.ts), read once here
   // rather than the tab re-deriving it.
   const sharedPlans = [...myPlans.filter((p) => p.shared), ...sharedPlansByOthers];
+  // Which household a plan created here is created FOR (issue #362). The id is
+  // what the plan stores; the name is only ever copy. `data.connected` is true
+  // by this point, so `household` is present, but the fallbacks keep this off
+  // the type's optional path rather than asserting.
+  const householdTarget = {
+    householdId: data.household?.id ?? "",
+    householdName: data.household?.name || "your household",
+  };
 
   const toggleAccount = (a: HouseholdAccount, next: AccountScope) => {
     setBusyAccount(a.account_id);
@@ -203,7 +242,15 @@ export function HouseholdView() {
 
   const togglePlan = (p: HouseholdPlan, next: boolean) => {
     setBusyPlan(p.domain);
-    void setHouseholdPlanShare(p.domain, next).then(() => { refresh(); setBusyPlan(null); });
+    void setHouseholdPlanShare(p.domain, next).then(() => {
+      refresh();
+      // Un-sharing hands a household plan back as a personal one: the server
+      // clears `goal.household_id` (issue #362, api/household.ts's share-plan
+      // action), so the member's own plan list has to be re-read or the plan
+      // stays hidden here until a reload.
+      if (!next) refreshOwnPlans();
+      setBusyPlan(null);
+    });
   };
 
   const changeRole = (userId: string, role: "member" | "viewer") => {
@@ -383,9 +430,23 @@ export function HouseholdView() {
               <p className="sub">Start a plan first, and it will show up here to share.</p>
             ) : (
               <div className="share-list">
-                {myPlans.map((p) => (
-                  <PlanRow key={p.domain} p={p} canToggle={!isViewer} busy={busyPlan === p.domain} onToggle={(next) => togglePlan(p, next)} />
-                ))}
+                {myPlans.map((p) => {
+                  // The full row, for the editor. /api/household sends only
+                  // the five display fields (see PlanRow in api/household.ts),
+                  // so the plan is matched back to the member's own list by
+                  // domain, which is its key alongside user_id.
+                  const full = myOwnPlans.find((o) => o.domain === p.domain);
+                  return (
+                    <PlanRow
+                      key={p.domain}
+                      p={p}
+                      canToggle={!isViewer}
+                      busy={busyPlan === p.domain}
+                      onToggle={(next) => togglePlan(p, next)}
+                      onEdit={full ? () => setModal({ k: "edit", plan: full }) : undefined}
+                    />
+                  );
+                })}
               </div>
             )}
             {!isViewer && (
@@ -408,7 +469,7 @@ export function HouseholdView() {
                     color: custom.color,
                     prefill: custom.prefill,
                     icon: custom.icon,
-                    household: { householdName: data.household?.name || "your household" },
+                    household: householdTarget,
                   });
                 }}
               >
@@ -450,7 +511,7 @@ export function HouseholdView() {
                       color: e.color,
                       prefill: e.prefill,
                       seed: { target: e.target, monthly: e.monthly },
-                      household: { householdName: data.household?.name || "your household" },
+                      household: householdTarget,
                     });
                   }}
                 >
@@ -492,6 +553,22 @@ export function HouseholdView() {
             closeModal();
             refresh();
           }}
+        />
+      )}
+
+      {/* Issue #362: the same editor the Plans page uses, on a plan of the
+          member's own. It is the only way to change a plan created FOR the
+          household, since that plan is deliberately no longer listed among
+          the member's individual plans. Both the household view and the
+          member's own plan list are re-read after a write, because a rename
+          or a delete changes what each of them shows. */}
+      {modal?.k === "edit" && (
+        <EditForm
+          plan={modal.plan}
+          owned
+          onSaved={(plan) => { upsertOwnPlanLocal(plan); closeModal(); refresh(); }}
+          onDeleted={(domain) => { removeOwnPlanLocal(domain); closeModal(); refresh(); }}
+          onClose={closeModal}
         />
       )}
     </div>

@@ -92,7 +92,12 @@ export type CreateFormState = {
   icon?: string;
   seed?: Seed;
   chatDraft?: PlanDraftFromChat;
-  household?: { householdName: string };
+  // `householdId` rides alongside the name (issue #362) because the plan being
+  // created has to record WHICH household it is for, not just be shared into
+  // one: that is what keeps it off the creating member's own Plans and
+  // Overview, where it used to appear as if it were their personal plan. See
+  // PlanGoal.household_id in lib/plans.ts.
+  household?: { householdId: string; householdName: string };
 };
 
 export const parseNum = (s: string): number => Number(String(s).replace(/[^0-9.]/g, "")) || 0;
@@ -404,6 +409,15 @@ export function CreateForm({
     const name = draft.name.trim() || state.label;
     setSaving(true);
     setError("");
+    // Issue #362: a plan created FOR a household records which household on
+    // the row itself, so the individual Plans and Overview surfaces can leave
+    // it out (`useMemberPlans().plans`) while the household page shows it.
+    // Only when the share toggle is actually left on: unchecking it means
+    // "keep this private", and a private plan is a personal plan, exactly as
+    // if it had been created from /app/plans.
+    const goal = goalFrom({ ...draft, name }, null);
+    const hhId = state.household?.householdId.trim();
+    if (hhId && shareHousehold) goal.household_id = hhId;
     // `domain` is the plan's key and is fixed here for the row's whole life:
     // renaming later rewrites goal.name and leaves the key alone. The debts
     // list rides in `current_state` beside `goal`, and only for a plan that
@@ -413,7 +427,7 @@ export function CreateForm({
     const saved = await savePlan({
       domain: uniqueDomain(name, existing),
       status: "in_progress",
-      goal: goalFrom({ ...draft, name }, null),
+      goal,
       current_state: draft.shape === "payoff" && debts.length ? { debts } : null,
     });
     setSaving(false);
@@ -465,7 +479,14 @@ export function CreateForm({
       {state.household && (
         <div className="prefill-hint household-share-hint">
           <PlanIcon name="target" />
-          <span className="hsh-text">Share with {state.household.householdName} once this is saved. Uncheck to keep it private.</span>
+          {/* Issue #362: the copy says where the plan will LIVE, not just that
+              it will be shared. Left on, this is the household's plan and it
+              sits on the household page rather than among the member's own;
+              turned off, it is an ordinary personal plan, the same thing
+              /app/plans would have made. */}
+          <span className="hsh-text">
+            Save this as a plan for {state.household.householdName}, kept on the household page rather than among your own Plans. Uncheck to make it a personal plan instead.
+          </span>
           <button
             type="button"
             className={shareHousehold ? "share-toggle on" : "share-toggle"}
