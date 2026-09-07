@@ -3,7 +3,7 @@
 -- ROADMAP wording; the issue body calls it "a merchant- and portal-scoped earn
 -- category"). Idempotent, safe to re-run.
 --
--- ── WHY MERCHANT AND NOT PORTAL, HERE ────────────────────────────────────────
+-- ---- WHY MERCHANT AND NOT PORTAL, HERE --------------------------------------
 --
 -- The gap 0040/0042 documented is really two different gaps wearing one name.
 -- A merchant-scoped rate ("5% at Amazon.com") is knowable from a transaction:
@@ -24,7 +24,7 @@
 -- MERCHANT half only, because that half is the one Juniper can actually
 -- compute, and the portal half needs no new column.
 --
--- ── THE COLUMN ───────────────────────────────────────────────────────────────
+-- ---- THE COLUMN --------------------------------------------------------------
 --
 -- `merchant_key` is nullable free text, lowercased, the same normalization
 -- `_category-precedence.ts`'s `merchantKey()` already applies to a merchant
@@ -39,7 +39,7 @@
 -- which is what lets a card with NO merchant deal still be compared fairly on
 -- that spend, at its ordinary category rate, rather than being scored zero.
 --
--- ── WHY THE UNIQUE INDEX WIDENS ──────────────────────────────────────────────
+-- ---- WHY THE UNIQUE INDEX WIDENS ---------------------------------------------
 --
 -- The existing (product_id, category_id) index assumed one rate per category
 -- per card, true until now: DoorDash's card already has a plain 3 percent
