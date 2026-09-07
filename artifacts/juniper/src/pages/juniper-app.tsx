@@ -196,7 +196,17 @@ export default function JuniperApp() {
               conditions in components/juniper/shared-frame.tsx. Both of these
               handle "no partnership yet" themselves rather than being hidden,
               so a typed URL lands somewhere that explains itself. */}
-          <Route path="/app/shared" component={SharedOverview} />
+          <Route path="/app/shared">
+            {() => (
+              <SharedOverview
+                // How THIS member arranged the shared Overview (migration
+                // 0060), or null for "has not arranged anything". Same
+                // merge-onto-current-profile rule dashboardLayout follows.
+                layout={profile?.sharedDashboardLayout ?? null}
+                onLayout={(next) => saveProfile({ ...(profile ?? {}), sharedDashboardLayout: next })}
+              />
+            )}
+          </Route>
           <Route path="/app/shared/goals" component={SharedGoals} />
           <Route path="/app/shared/accounts" component={SharedAccounts} />
           <Route path="/app/shared/bills" component={SharedBills} />

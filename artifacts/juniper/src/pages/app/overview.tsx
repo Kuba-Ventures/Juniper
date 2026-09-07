@@ -14,10 +14,11 @@ import { PlanProgressRow, toPlanProgressRow, type PlanProgressRowData } from "@/
 import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH, paintOf,
 } from "@/components/juniper/primitives";
+import { WIDGET_BY_ID, PERSONAL_REGISTRY, type DashboardLayout } from "@/lib/dashboard-layout";
+import { withFullFlags } from "@/lib/arrange-board";
 import {
-  WIDGETS, WIDGET_BY_ID, PERSONAL_REGISTRY, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
-  sizeFor, sizeLabel, sizeIsFull, type DashboardLayout,
-} from "@/lib/dashboard-layout";
+  useArrangeBoard, NUDGE_KEYS, GripIcon, ArrangeIcon, ChevronDownIcon, EmptySlot, LoadingSlot,
+} from "@/components/juniper/arrange-board";
 import {
   CardsWidget, RecurringWidget, useCardsWidget, useRecurringWidget,
   ScoreLeversWidget, useScoreLeversWidget,
@@ -881,115 +882,6 @@ function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsRead
 // arrange a page both of them look at is a question about the partnership, not
 // about layout, and it is not answered here.
 
-/** The keyboard's version of a drag. A grip is a real button, so it is reachable
- *  by Tab, and the arrows move the card it belongs to. Without this the whole
- *  feature is mouse-only, which is the defect #190 fixed on plan cards. */
-const NUDGE_KEYS: Record<string, -1 | 1> = {
-  ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1,
-};
-
-const GripIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={13} height={13}><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" /></svg>
-);
-
-const ArrangeIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" width={14} height={14}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-);
-
-/** Drawn in a widget's place while arranging, when the widget has nothing to
- *  show. Rule 3: it must not occupy a slot on the live page, and the member must
- *  still be able to move the slot they chose for it. */
-function EmptySlot({ title, why }: { title: string; why: string }) {
-  return (
-    <div className="card dash-empty">
-      <div className="card-head"><h3>{title}</h3></div>
-      <p>{why}</p>
-    </div>
-  );
-}
-
-function LoadingSlot({ title }: { title: string }) {
-  return (
-    <div className="card dash-empty">
-      <div className="card-head"><h3>{title}</h3></div>
-      <p>Loading…</p>
-    </div>
-  );
-}
-
-const DASH_GAP = 16;
-const DASH_BREAKPOINT = 860;
-/** Below this the packer falls back to one column, the same width the old
- *  grid switched to a single `1fr` track at. */
-
-/**
- * A widget spans the full row when its OWN size says so (issue #259: a
- * member's choice, not a fixed registry flag). Half-width otherwise, packed
- * below in `packMasonry`.
- *
- * The page used to have two different grids, a 1.5fr/1fr hero and two equal
- * rows, and then a plain 2-column grid once free ordering made the hero
- * pairing impossible to keep. The plain grid traded that pairing for a new
- * cost: a strict grid gives every row ONE height, the tallest thing in it, so
- * a short card beside a tall one sits at the top of a tall row with real dead
- * space below it, uncovered by any element, and a half left alone on the
- * final row had to be force-stretched to avoid sitting beside a hole.
- * `packMasonry` replaces the grid with two independently packed columns, so
- * neither problem exists any more: nothing forces a card to sit beside a
- * hole, because nothing ever leaves one.
- */
-function withFullFlags(ids: string[], sizeOf: (id: string) => string): { id: string; full: boolean }[] {
-  return ids.map((id) => ({ id, full: sizeIsFull(id, sizeOf(id), PERSONAL_REGISTRY) }));
-}
-
-/**
- * True masonry: each column packs its own cards tight, independent of the
- * other column's height. Walks the member's own order and drops each
- * half-width card into whichever column is CURRENTLY shorter, using real
- * measured heights (`heightOf`), so the result always matches the order the
- * member dragged into rather than a browser's own balancing guess. A
- * full-width card spans both columns at whichever is currently taller, and
- * resets both to the same height below it, the same way a full row did in
- * the old grid.
- *
- * Unmeasured heights (a card that has not painted yet) fall back to a
- * placeholder rather than 0, so the first pack is a reasonable layout instead
- * of every card collapsing to the same point; the real height replaces it,
- * and the board repacks, within the same paint in practice.
- */
-function packMasonry(
-  laidOut: { id: string; full: boolean }[],
-  heightOf: (id: string) => number,
-  colWidth: number,
-  cols: number,
-): { pos: Record<string, { x: number; y: number; width: number }>; height: number } {
-  const pos: Record<string, { x: number; y: number; width: number }> = {};
-  if (cols <= 1) {
-    let y = 0;
-    for (const { id } of laidOut) {
-      pos[id] = { x: 0, y, width: colWidth };
-      y += heightOf(id) + DASH_GAP;
-    }
-    return { pos, height: Math.max(0, y - DASH_GAP) };
-  }
-  const colH = [0, 0];
-  for (const { id, full } of laidOut) {
-    const h = heightOf(id);
-    if (full) {
-      const y = Math.max(colH[0], colH[1]);
-      pos[id] = { x: 0, y, width: colWidth * 2 + DASH_GAP };
-      const bottom = y + h + DASH_GAP;
-      colH[0] = bottom;
-      colH[1] = bottom;
-      continue;
-    }
-    const col = colH[0] <= colH[1] ? 0 : 1;
-    pos[id] = { x: col === 0 ? 0 : colWidth + DASH_GAP, y: colH[col], width: colWidth };
-    colH[col] += h + DASH_GAP;
-  }
-  return { pos, height: Math.max(0, Math.max(colH[0], colH[1]) - DASH_GAP) };
-}
-
 /** The Score at half width is either the strip (default) or a bigger centered
  *  ring, sized and laid out like the spending donut so a member who wants the
  *  Score to read as prominently as "Where it went" has that option; at full
@@ -1080,10 +972,6 @@ function ScoreWidget({ score, pending, size }: { score: FinanceData["score"]; pe
     </div>
   );
 }
-
-const ChevronDownIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={12} height={12}><path d="M6 9l6 6 6-6" /></svg>
-);
 
 /** "Where it went" at three sizes (issue #259). Donut is the shape everywhere
  *  else on the page already reads (the Credit and Score pages both draw a
@@ -1234,223 +1122,15 @@ export default function Overview({
   const hasTxns = hasTransactions && (transactions.length > 0 || spending.length > 0);
 
   // ── the member's arrangement ─────────────────────────────────────────────
-  const [editing, setEditing] = useState(false);
-  const [order, setOrder] = useState<string[]>(() => resolveOrder(layout, PERSONAL_REGISTRY));
-  const [hidden, setHidden] = useState<Set<string>>(
-    () => new Set(WIDGETS.filter((w) => !isShown(layout, w.id, PERSONAL_REGISTRY)).map((w) => w.id)),
-  );
-  // Issue #259: every widget's current size, keyed by id. Populated for every
-  // widget in the registry, not only the ones with a choice to make, so a
-  // reader never has to fall back to a default mid-render.
-  const [sizes, setSizes] = useState<Record<string, string>>(
-    () => Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id, PERSONAL_REGISTRY)])),
-  );
-  // Which widget's size menu is open, one at a time, closed by choosing a size,
-  // by clicking anywhere else, or by leaving arrange mode.
-  const [sizeMenuOpen, setSizeMenuOpen] = useState<string | null>(null);
-  const [announce, setAnnounce] = useState("");
-
-  // ── the write side reads the refs, not the state ─────────────────────────
-  //
-  // Both mutations below can fire more than once before React re-renders: two
-  // chips tapped in the same tick, or a held arrow key repeating. Reading
-  // `order`/`hidden`/`sizes` out of the closure loses every write but the last,
-  // which is not theoretical: adding both shelf widgets at once put exactly one
-  // of them back. The refs are updated synchronously, so the second call in a
-  // tick sees the first.
-  const orderRef = useRef(order);
-  const hiddenRef = useRef(hidden);
-  const sizesRef = useRef(sizes);
-  useEffect(() => { orderRef.current = order; }, [order]);
-  useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
-  useEffect(() => { sizesRef.current = sizes; }, [sizes]);
-
-
-  // The profile resolves after first paint, so the stored layout arrives late.
-  // Adopted only while NOT arranging: a remote answer landing mid-drag would
-  // pull the card out from under the member's finger.
-  useEffect(() => {
-    if (editing) return;
-    const nextOrder = resolveOrder(layout, PERSONAL_REGISTRY);
-    const nextHidden = new Set(WIDGETS.filter((w) => !isShown(layout, w.id, PERSONAL_REGISTRY)).map((w) => w.id));
-    const nextSizes = Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id, PERSONAL_REGISTRY)]));
-    orderRef.current = nextOrder;
-    hiddenRef.current = nextHidden;
-    sizesRef.current = nextSizes;
-    setOrder(nextOrder);
-    setHidden(nextHidden);
-    setSizes(nextSizes);
-    setSizeMenuOpen(null);
-  }, [layout, editing]);
-
-  // Written through the profile, so the arrangement lands in localStorage and in
-  // `user_profiles` by the same path holder_style takes, and travels with the
-  // member to every device rather than living on this one. Debounced, because a
-  // keyboard nudge held down would otherwise be one POST per keypress.
-  const saveTimer = useRef<number | null>(null);
-  const persist = useCallback((nextOrder: string[], nextHidden: Set<string>, nextSizes: Record<string, string>) => {
-    if (!onLayout) return;
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => {
-      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id), (id) => nextSizes[id], PERSONAL_REGISTRY));
-    }, 500);
-  }, [onLayout]);
-  useEffect(() => () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); }, []);
-
-  const setShown = (id: string, on: boolean) => {
-    const next = new Set(hiddenRef.current);
-    if (on) next.delete(id); else next.add(id);
-    hiddenRef.current = next;
-    setHidden(next);
-    persist(orderRef.current, next, sizesRef.current);
-    setAnnounce(`${WIDGET_BY_ID[id]?.title} ${on ? "added to" : "taken off"} your Overview`);
-  };
-
-  const nudge = (id: string, delta: -1 | 1) => {
-    const next = withNudged(orderRef.current, id, delta);
-    if (next === orderRef.current) return;
-    orderRef.current = next;
-    setOrder(next);
-    persist(next, hiddenRef.current, sizesRef.current);
-    const visible = next.filter((w) => !hiddenRef.current.has(w));
-    setAnnounce(`${WIDGET_BY_ID[id]?.title} moved to ${visible.indexOf(id) + 1} of ${visible.length}`);
-  };
-
-  // Issue #259: the member's own choice of size, one widget at a time. Reads
-  // the same refs-not-state rule as `setShown`/`nudge` for the same reason.
-  const setWidgetSize = (id: string, size: string) => {
-    const next = { ...sizesRef.current, [id]: size };
-    sizesRef.current = next;
-    setSizes(next);
-    setSizeMenuOpen(null);
-    persist(orderRef.current, hiddenRef.current, next);
-    setAnnounce(`${WIDGET_BY_ID[id]?.title} shown as ${sizeLabel(id, size, PERSONAL_REGISTRY).toLowerCase()}`);
-  };
-
-  // Closes an open size menu on a click anywhere else, the same behavior a
-  // native <select> gets for free. Only listens while a menu is actually open,
-  // so this costs nothing on every render of a page most members never arrange.
-  useEffect(() => {
-    if (!sizeMenuOpen) return;
-    const close = () => setSizeMenuOpen(null);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [sizeMenuOpen]);
-
-  // Pointer events rather than the native HTML5 drag, which does not fire for
-  // touch at all: this has to work on the phone the member is holding. The
-  // capture is taken on the BOARD rather than on the card, because the card is
-  // re-rendered mid-drag as the order changes and a capture on it would be lost
-  // with the node it was taken on.
-  const board = useRef<HTMLDivElement>(null);
-  // Which card is being dragged, in a ref for the same reason the order is: the
-  // handlers below can run before React has re-rendered with the new state, and
-  // a `pointerup` that reads a stale null leaves the board stuck mid-drag. The
-  // state copy exists only to put a class on the card.
-  const dragRef = useRef<string | null>(null);
-  const [dragId, setDragId] = useState<string | null>(null);
-
-  const onCardPointerDown = (e: React.PointerEvent, id: string) => {
-    if (!editing) return;
-    if ((e.target as HTMLElement).closest("button")) return; // the remove badge
-    e.preventDefault();
-    // Capture so the drag survives the pointer leaving the card, which it does
-    // immediately: the cards reorder under the finger. Guarded because capture
-    // throws on a pointer the browser no longer considers active, and losing the
-    // capture is survivable (the board still sees the moves) while throwing here
-    // would leave the page in a mode with no drag at all.
-    try { board.current?.setPointerCapture(e.pointerId); } catch { /* not fatal */ }
-    dragRef.current = id;
-    setDragId(id);
-  };
-  const onBoardPointerMove = (e: React.PointerEvent) => {
-    const id = dragRef.current;
-    if (!id || !board.current) return;
-    const rect = board.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const others = orderRef.current.filter((wid) => wid !== id && !hiddenRef.current.has(wid));
-    const i = bestDropIndex(others, id, (wid) => sizes[wid], (wid) => heights[wid] ?? 180, dashColWidth, dashCols, x, y);
-    const newShown = [...others.slice(0, i), id, ...others.slice(i)];
-    const next = withShownReordered(orderRef.current, hiddenRef.current, newShown);
-    if (next.length === orderRef.current.length && next.every((v, idx) => v === orderRef.current[idx])) return;
-    orderRef.current = next;
-    setOrder(next);
-  };
-  const endDrag = () => {
-    if (!dragRef.current) return;
-    dragRef.current = null;
-    setDragId(null);
-    persist(orderRef.current, hiddenRef.current, sizesRef.current);
-  };
-
-  // The board's own width, so the packer below knows how many columns fit and
-  // how wide one is; tracked rather than read once, because the board can
-  // resize without the window doing so (a sidebar, a font swap, a browser
-  // zoom change).
-  const [boardWidth, setBoardWidth] = useState(0);
-  useEffect(() => {
-    if (!board.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w != null) setBoardWidth(Math.round(w));
-    });
-    ro.observe(board.current);
-    return () => ro.disconnect();
-  }, []);
-
-  // Every card's real rendered height, which is what `packMasonry` packs
-  // against. One shared observer rather than one per card: the number of
-  // cards on screen is small and bounded, and a shared one means taking a
-  // widget off the board (into the shelf) can't leak an observer nobody is
-  // disconnecting. `cardRefs` caches one callback per id so React does not
-  // tear down and recreate the observation on every render, only when a
-  // card actually mounts or unmounts.
-  const [heights, setHeights] = useState<Record<string, number>>({});
-  const heightsRef = useRef(heights);
-  heightsRef.current = heights;
-  const observedEls = useRef(new Map<string, HTMLElement>());
-  const cardRefs = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
-
-  // Built synchronously during render, not inside an effect: a ref callback
-  // fires as part of the same commit that mounts the card, before any effect
-  // runs, so an observer created in a `useEffect` would still be null the one
-  // time a freshly-mounted card's ref callback could have started watching
-  // it, and would never observe anything. Guarded so it is built exactly
-  // once per instance of the page.
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  if (!resizeObserverRef.current) {
-    resizeObserverRef.current = new ResizeObserver((entries) => {
-      let changed = false;
-      const next = { ...heightsRef.current };
-      for (const entry of entries) {
-        const id = (entry.target as HTMLElement).dataset.widget;
-        if (!id) continue;
-        const h = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
-        if (next[id] !== h) { next[id] = h; changed = true; }
-      }
-      if (changed) setHeights(next);
-    });
-  }
-  useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
-
-  const cardRef = (id: string): ((el: HTMLDivElement | null) => void) => {
-    let fn = cardRefs.current.get(id);
-    if (!fn) {
-      fn = (el) => {
-        const prev = observedEls.current.get(id);
-        if (prev && prev !== el) resizeObserverRef.current?.unobserve(prev);
-        if (el) {
-          observedEls.current.set(id, el);
-          resizeObserverRef.current?.observe(el);
-        } else {
-          observedEls.current.delete(id);
-        }
-      };
-      cardRefs.current.set(id, fn);
-    }
-    return fn;
-  };
+  // Shared with the shared Overview's own board (components/juniper/arrange-
+  // board.tsx): the state, the refs-not-state write side, the pointer drag and
+  // the masonry packing. This board's own registry and stored column.
+  const {
+    editing, setEditing, order, hidden, sizes, sizeMenuOpen, setSizeMenuOpen, announce, setAnnounce,
+    setShown, nudge, setWidgetSize,
+    board, dragId, onCardPointerDown, onBoardPointerMove, endDrag, cardRef,
+    boardWidth, pack,
+  } = useArrangeBoard(PERSONAL_REGISTRY, layout, onLayout);
 
   const cardsOn = !hidden.has("cards");
   const recurringOn = !hidden.has("recurring");
@@ -1520,20 +1200,14 @@ export default function Overview({
   const shownIds = order.filter((id) => !hidden.has(id));
   // Rule 3 again, at the point it bites: an empty widget is skipped on the live
   // page and drawn as a placeholder while arranging.
-  const laidOut = withFullFlags(shownIds.filter((id) => editing || !emptyWhy[id]), (id) => sizes[id]);
+  const laidOut = withFullFlags(shownIds.filter((id) => editing || !emptyWhy[id]), (id) => sizes[id], PERSONAL_REGISTRY);
   const offIds = order.filter((id) => hidden.has(id));
 
-  // Two columns down to `DASH_BREAKPOINT`, matching the width the old grid
-  // switched its own single track at, one below it. `boardWidth` is 0 for the
-  // first render (the ref is not attached until after it), so this packs
-  // hidden until it has a real width to pack against.
-  const dashCols = boardWidth > 0 && boardWidth < DASH_BREAKPOINT ? 1 : 2;
-  const dashColWidth = dashCols === 1 ? boardWidth : Math.max(0, (boardWidth - DASH_GAP) / 2);
   // Not memoized: the whole pack is a handful of widgets and a few additions
   // and comparisons, nowhere near expensive enough to be worth the risk of a
   // dependency list going stale the next time something upstream of `laidOut`
   // changes what it filters on.
-  const { pos: dashPos, height: dashHeight } = packMasonry(laidOut, (id) => heights[id] ?? 180, dashColWidth, dashCols);
+  const { pos: dashPos, height: dashHeight } = pack(laidOut);
 
   return (
     <div className="frame">
@@ -1725,57 +1399,3 @@ export default function Overview({
   );
 }
 
-/**
- * Where a dragged widget should land among the other SHOWN widgets, for a
- * pointer at board-relative (x, y). Tries every position it could slot into,
- * packs each candidate with the same `packMasonry` the board renders with,
- * and keeps whichever puts the widget's OWN packed position closest to the
- * pointer.
- *
- * Issue #302: this replaces a hit test that asked "which card's CENTRE is
- * nearest the pointer, swap the dragged widget in next to it." That reads a
- * card's CURRENT position and ignores what dropping there would actually do,
- * and `packMasonry` decides a card's column from the accumulated height of
- * everything before it in the order, not from array parity, so swapping next
- * to a card near the pointer could still repack the dragged widget into the
- * wrong column once that swap reflowed every card after it. Dragging Net
- * Worth toward the Juniper Score's slot never actually traded the two,
- * because the old test moved the dragged widget relative to whatever card it
- * found, rather than asking "where would MY card sit" for every candidate
- * spot and picking the one nearest the pointer, which is what actually
- * answers "put it here."
- */
-function bestDropIndex(
-  others: string[],
-  id: string,
-  sizeOf: (widgetId: string) => string,
-  heightOf: (widgetId: string) => number,
-  colWidth: number,
-  cols: number,
-  x: number,
-  y: number,
-): number {
-  let bestIndex = others.length;
-  let bestDist = Infinity;
-  for (let i = 0; i <= others.length; i++) {
-    const candidate = [...others.slice(0, i), id, ...others.slice(i)];
-    const { pos } = packMasonry(withFullFlags(candidate, sizeOf), heightOf, colWidth, cols);
-    const p = pos[id];
-    if (!p) continue;
-    const cx = p.x + p.width / 2;
-    const cy = p.y + heightOf(id) / 2;
-    const d = (x - cx) ** 2 + (y - cy) ** 2;
-    if (d < bestDist) { bestDist = d; bestIndex = i; }
-  }
-  return bestIndex;
-}
-
-/** Replaces the SHOWN widgets in `fullOrder` with `newShown`, in that order,
- *  leaving every hidden widget exactly where it sat. Both lists hold the same
- *  shown ids, just reordered, so walking `fullOrder` and pulling the next
- *  shown id off `newShown` at every shown slot reproduces it with the hidden
- *  ones untouched. */
-function withShownReordered(fullOrder: string[], hidden: Set<string>, newShown: string[]): string[] {
-  const queue = [...newShown];
-  return fullOrder.map((wid) => (hidden.has(wid) ? wid : queue.shift()!));
-}

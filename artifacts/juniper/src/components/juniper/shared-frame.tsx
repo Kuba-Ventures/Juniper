@@ -47,8 +47,8 @@ const KINDS: Kind[] = ["accounts", "goals", "bills", "activity"];
 // weigh it against; on the empty canvas the button below is the only one, so
 // putting it here as well would be two calls to the same action on one screen.
 function SharedHeader({
-  title, sub, name, initial, onShare,
-}: { title: string; sub?: string; name: string; initial: string; onShare?: () => void }) {
+  title, sub, name, initial, onShare, extra,
+}: { title: string; sub?: string; name: string; initial: string; onShare?: () => void; extra?: ReactNode }) {
   return (
     <div className="page-head shared-head">
       <div>
@@ -62,6 +62,7 @@ function SharedHeader({
             the button below is the single call to action, and a second copy of
             it up here would be two routes to one place on one screen. */}
         {onShare && <button className="btn ghost" onClick={onShare}>Choose what to share</button>}
+        {extra}
       </div>
     </div>
   );
@@ -107,8 +108,18 @@ function BlankCanvas({ onShare, onGoal, onBill, onMessage }: {
 }
 
 export function SharedPage({
-  title, sub, children, onAddGoal,
-}: { title: string; sub?: string; children: ReactNode; onAddGoal?: () => void }) {
+  title, sub, children, onAddGoal, arrangeButton,
+}: {
+  title: string;
+  sub?: string;
+  children: ReactNode;
+  onAddGoal?: () => void;
+  /** The Overview page's own Arrange toggle (issue #290). Rendered in the
+   *  header next to "Choose what to share" only once there is content to
+   *  arrange, the same condition `onShare` already gates on: arranging an
+   *  empty canvas has nothing to do. */
+  arrangeButton?: ReactNode;
+}) {
   const { partner, holds, refresh: refreshWorkspace } = useWorkspace();
   const { data, loading, refresh } = usePartner();
   const session = useSession();
@@ -153,6 +164,7 @@ export function SharedPage({
         name={name}
         initial={initial}
         onShare={empty ? undefined : () => setShare(true)}
+        extra={empty ? undefined : arrangeButton}
       />
 
       {/* The canvas belongs to the shared Overview and nowhere else. It used to
