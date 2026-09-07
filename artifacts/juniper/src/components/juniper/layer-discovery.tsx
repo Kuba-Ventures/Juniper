@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Smartphone, Sparkles, Check, Lock } from "lucide-react";
-import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
+import { usePlaidLink } from "react-plaid-link";
 import {
   createLayerSession,
-  exchangePublicToken,
+  exchangeLayerSession,
   syncFinances,
   syncFinancesUntilTransactions,
   layerDemo,
-  type LinkInstitution,
 } from "@/lib/plaid";
 import {
   saveManualAccount,
@@ -22,10 +21,15 @@ import { trackEngagement } from "@/lib/analytics";
 //
 // Two modes (VITE_PLAID_LAYER):
 //  - "live": real Plaid Layer. Gated on Plaid Production + a Layer template
-//    (PLAID_LAYER_TEMPLATE_ID); the account-selection UI is Plaid-hosted. Layer's
-//    multi-item return + exchange can only be exercised against Production, so
-//    the exchange here reuses the standard public-token exchange and MUST be
-//    verified end-to-end when Layer is turned on.
+//    (PLAID_LAYER_TEMPLATE_ID); the account-selection UI is Plaid-hosted.
+//    onSuccess fires ONCE per completed session, but that one session can name
+//    several already-linked institutions at once, which is the whole point of
+//    Layer, so its public_token is handed to exchangeLayerSession()
+//    (api/plaid/layer-exchange.ts, Plaid's own /user_account/session/get)
+//    rather than the ordinary single-institution exchangePublicToken(). This
+//    path can only be exercised against Production, so it still needs a real
+//    end-to-end run once Layer is turned on, but the exchange itself now
+//    calls the endpoint Plaid's docs actually specify for Layer.
 //  - "demo": simulated discovery so the whole flow is testable on Sandbox. The
 //    recognized accounts are mocked and, on connect, saved as manual accounts
 //    (tier 3) so they actually land on the dashboard + net worth.
@@ -45,21 +49,26 @@ function LayerLive({ onLinked }: { onLinked: OnLinked }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const onSuccess = useCallback(
-    async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
-      const institution: LinkInstitution | undefined = metadata.institution
-        ? { institution_id: metadata.institution.institution_id, name: metadata.institution.name }
-        : undefined;
+    async (publicToken: string) => {
       setToken(null);
       setBusy(false);
-      const item = await exchangePublicToken(publicToken, institution);
-      if (item) {
+      // One session, possibly several institutions: unlike an ordinary Link
+      // success, a Layer public_token can turn into more than one stored item,
+      // so every step below works over the whole list rather than assuming one.
+      const items = await exchangeLayerSession(publicToken);
+      if (items && items.length > 0) {
         trackEngagement("connection_linked");
-        onLinked(institution?.name ? [institution.name] : undefined);
+        const names = [...new Set(items.map((it) => it.institution_name).filter((n): n is string => !!n))];
+        onLinked(names.length ? names : undefined);
         // A real Plaid link, so the same wait applies as on the other link
         // paths: retry until the transaction feed lands. (The demo path below
         // imports manual accounts, which never produce transactions, so it
         // stays on the single pass.)
         void syncFinancesUntilTransactions();
+      } else if (items) {
+        // A real, empty outcome (the member shared no accounts), not a
+        // failure: nothing to import, nothing to apologize for.
+        onLinked(undefined);
       } else {
         setNotice("We couldn't finish importing those accounts. You can pick them below instead.");
       }

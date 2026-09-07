@@ -286,6 +286,31 @@ export async function exchangePublicToken(
   }
 }
 
+// A Layer-imported item, mirroring api/plaid/layer-exchange.ts's
+// LayerImportedItem. Duplicated rather than imported because the client
+// cannot reach into api/.
+export type LayerImportedItem = { item_id: string; institution_name: string | null; accounts: PlaidAccount[] };
+
+// A completed Layer session's public_token names the SESSION, not one
+// institution: it can carry several already-linked accounts at once, which is
+// exactly what makes Layer "instant" rather than one-bank-at-a-time. Never
+// call exchangePublicToken with it; api/plaid/layer-exchange.ts hands the
+// token to Plaid's own /user_account/session/get instead, which returns
+// access tokens Plaid already exchanged server-side, one per item.
+export async function exchangeLayerSession(publicToken: string): Promise<LayerImportedItem[] | null> {
+  try {
+    const res = await authedFetch("/api/plaid/layer-exchange", {
+      method: "POST",
+      body: JSON.stringify({ public_token: publicToken }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { items?: LayerImportedItem[] };
+    return Array.isArray(data.items) ? data.items : [];
+  } catch {
+    return null;
+  }
+}
+
 // One item's leg of a sync that Plaid or storage refused, as both sync endpoints
 // now report them: they isolate per item rather than aborting the whole run, so
 // one dead connection no longer costs the member every other refresh.
