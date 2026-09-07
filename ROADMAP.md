@@ -218,7 +218,7 @@ Ongoing credit-score tracking and alerts on the Score/credit page (distinct from
 ## Stage 11 — Post-launch fast-follows **(build)**
 
 - [x] **"Ask Juniper"** LLM advisor — shipped, not deferred. `/app/ask` is routed in `pages/juniper-app.tsx` and `pages/app/ask.tsx` runs threaded conversations that stream from `api/planner/chat.ts` grounded in the member's real figures, plus generated plan reports through `api/planner/report.ts`. The Stage 0 decision to defer it was overtaken by the build. **This line used to read "still owed, and the reason this is not simply closed: the prompt safety pass and the financial advice disclaimers named alongside it have not been done." That is now wrong and is corrected here rather than silently rewritten, the same convention the 2026-09-02 `additional_consented_products` correction followed.** PR #342 (merge commit `682c229`, 2026-09-06) did both: the Compliance section in `api/planner/chat.ts` (matching line in `api/planner/report.ts`) now refuses to recommend or predict a specific security, ticker, or cryptocurrency, refuses to help hide assets, evade taxes, or commit insurance/mortgage fraud even framed as hypothetical, and redirects to 988 when a message mixes financial distress with signs of crisis; the disclaimer, which used to render only on the empty welcome screen and vanish the moment a thread had a first message, now persists under the composer (`ask-composer-wrap` / `ask-disclaimer` in `artifacts/juniper/src/pages/app/ask.tsx` and `juniper.css`) for the life of every active thread. `npx tsc --noEmit -p .` and `npm run build` both pass clean, and the composer/disclaimer markup was checked in a throwaway harness against the real stylesheet in both themes. **Closes the safety-pass half of issue #287 only, deliberately**, per Finley's explicit choice: the other two things #287 bundles under this same Stage 11 heading, Plaid data tiers into plan auto-fill and cross-device "accounts I use" sync, were left out of #342 and remain open on the two lines directly below, unchanged by this correction. **Still not verified: no real member's own Ask Juniper conversation has gone through the new prompt language yet**, so whether the model actually follows the new refusal and redirect instructions on real, messy chat text is unproven
-- [ ] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md)*
+- [~] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md, partially addressed 2026-09-07)*. **Liabilities is done for debt payoff plans**: PR #349 added `api/plaid/liabilities.ts` (per-item `/liabilities/get`, no storage) and a `DebtBreakdown` builder wired into both the create and edit plan forms, suggesting balance/APR/payment/term per linked credit card, student loan and mortgage. `liabilities` is deliberately not yet in `additional_consented_products` in `api/plaid/link-token.ts`, kept as its own watched deploy rather than bundled with the feature PR, so no real production item can be pulled through this yet. **Investments into plan auto-fill is untouched.**
 - [ ] Cross-device sync for "accounts I use" *(open loop from PROJECT.md)*
 
 ---
@@ -258,11 +258,34 @@ never-used-Plaid users get a good path:
     with a Layer template) + `createLayerSession()` + `layerEnabled()` flag
     (`src/lib/plaid.ts`) + a gated `LayerDiscovery` phone-entry component wired
     into onboarding **and** Connections. Inert until turned on.
-  - [ ] **Activate (ops):** get Plaid **Production** (Stage 6), create a **Layer
-    template** in the Plaid dashboard, set `PLAID_LAYER_TEMPLATE_ID` + flip
-    `VITE_PLAID_LAYER=1`. Then **verify Layer's multi-item return + exchange
-    end-to-end** (the one path that can't be exercised on Sandbox; the scaffold
-    reuses the standard public-token exchange and is marked to re-verify).
+  - [x] **The live exchange was wrong, not just unverified, and it is now fixed**
+    (issue #288, PR #352, 2026-09-07). This line used to say the scaffold "reuses
+    the standard public-token exchange" and was "marked to re-verify end-to-end,"
+    which framed this as a verification gap. It was a real defect: a completed
+    Layer session's `public_token` is a SESSION token, and per Plaid's own API
+    reference it must go to `/user_account/session/get`, never the single-item
+    `/item/public_token/exchange` the old code called, so the old code could
+    never store more than the first of several institutions Layer can return in
+    one `onSuccess`. An audit first floated a different, also-wrong theory
+    (`onSuccess` tearing down the Link session too early for a multi-item
+    return), disproven by Plaid's own docs: `onSuccess` fires exactly once
+    regardless of item count. New `api/plaid/layer-exchange.ts` +
+    `exchangeLayerSession()` in `lib/plaid.ts` call the correct endpoint,
+    resolve and dedupe institution names, and upsert every returned item. Passes
+    `npx tsc --noEmit -p .` and `npm run build`, and is checked against mocked
+    responses shaped like Plaid's own docs examples. **Still not run against a
+    real Layer session**, which needs the access below and, per Plaid's docs,
+    can never be exercised on Sandbox even once granted, only Production.
+  - [ ] **Activate (ops), corrected 2026-09-07: this is not a Plaid Production
+    prerequisite plus a dashboard toggle, it is a direct request to Plaid with
+    no self-serve path at all.** Confirmed by logging into the Plaid dashboard
+    and checking directly: no "Layer" product exists in the Products catalog or
+    under Link Customization. **Plaid support case #893152** ("Request access to
+    Plaid Layer") was filed 2026-09-07, CC'd to Patrick, open, no response yet.
+    Once granted: create a **Layer template** in the Plaid dashboard, set
+    `PLAID_LAYER_TEMPLATE_ID` + flip `VITE_PLAID_LAYER=1`, then run a real
+    end-to-end Layer session against Production, the only environment this path
+    can ever be tested on per Plaid's own docs.
   - [x] **Demo mode for Sandbox testing:** `VITE_PLAID_LAYER=demo` runs the full
     tier-1 UX without Production, phone entry, a "recognizing you…" beat, then a
     **Juniper-rendered categorized account list with Select all** (the experience
