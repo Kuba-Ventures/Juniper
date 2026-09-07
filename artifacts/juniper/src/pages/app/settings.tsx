@@ -106,8 +106,11 @@ export function Settings({
       this page usable from anywhere that has no profile to write to. */
   onHolderStyle?: (s: HolderStyle) => void;
   /** Persists a new display name through the same profile path holder_style
-      takes. Absent means Name renders read-only, same reasoning as above. */
-  onNameChange?: (name: string) => void;
+      takes. Absent means Name renders read-only, same reasoning as above.
+      Resolves to whether it actually persisted, so a dropped request or a
+      server error can be told apart from a real save and surfaced rather
+      than silently believed. */
+  onNameChange?: (name: string) => Promise<boolean>;
 }) {
   const [, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
@@ -117,6 +120,8 @@ export function Settings({
   const [refreshed, setRefreshed] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(name);
+  const [busyName, setBusyName] = useState(false);
+  const [nameNote, setNameNote] = useState<string | null>(null);
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailDraft, setEmailDraft] = useState(email);
   const [busyEmail, setBusyEmail] = useState(false);
@@ -211,10 +216,22 @@ export function Settings({
     // resetAccountCompletely navigates away; no need to unset busy.
   };
 
-  const saveName = () => {
+  const saveName = async () => {
     const trimmed = nameDraft.trim();
-    if (!trimmed) return;
-    onNameChange?.(trimmed);
+    if (!trimmed || !onNameChange) return;
+    setBusyName(true);
+    setNameNote(null);
+    const ok = await onNameChange(trimmed);
+    setBusyName(false);
+    if (!ok) {
+      // Keep the field open on a failed save: the member typed a name that
+      // never reached the server, so "Save" staying available to press again
+      // matters more than closing back to a read-only row that would then
+      // show whatever name it had before, with nothing on screen explaining
+      // why the edit did not take.
+      setNameNote("Couldn't save. Check your connection and try again.");
+      return;
+    }
     setEditingName(false);
   };
 
@@ -268,13 +285,14 @@ export function Settings({
                 <div className="st-body">
                   <div className="st-title">Name</div>
                   {!editingName && <div className="st-desc">{name || "-"}</div>}
+                  {nameNote && <div className="st-note bad">{nameNote}</div>}
                 </div>
                 <div className="st-control">
                   {!onNameChange ? null : !editingName ? (
                     <button
                       className="btn ghost sm"
                       type="button"
-                      onClick={() => { setNameDraft(name); setEditingName(true); }}
+                      onClick={() => { setNameDraft(name); setNameNote(null); setEditingName(true); }}
                     >
                       Edit
                     </button>
@@ -285,13 +303,19 @@ export function Settings({
                         onChange={(e) => setNameDraft(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && saveName()}
                         maxLength={80}
+                        disabled={busyName}
                         autoFocus
                       />
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button className="btn sm" type="button" disabled={!nameDraft.trim()} onClick={saveName}>
-                          Save
+                        <button className="btn sm" type="button" disabled={!nameDraft.trim() || busyName} onClick={saveName}>
+                          {busyName ? "Saving..." : "Save"}
                         </button>
-                        <button className="btn ghost sm" type="button" onClick={() => setEditingName(false)}>
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          disabled={busyName}
+                          onClick={() => { setNameNote(null); setEditingName(false); }}
+                        >
                           Cancel
                         </button>
                       </div>
