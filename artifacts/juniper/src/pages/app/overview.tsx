@@ -20,6 +20,10 @@ import {
 } from "@/lib/dashboard-layout";
 import {
   CardsWidget, RecurringWidget, useCardsWidget, useRecurringWidget,
+  ScoreLeversWidget, useScoreLeversWidget,
+  ConnectionHealthWidget, useConnectionHealthWidget,
+  BenefitsWidget, useBenefitsWidget,
+  TogetherWidget, useTogetherWidget,
 } from "@/components/juniper/overview-widgets";
 import { Factors } from "@/components/juniper/score-factors";
 import type { PlaidItem } from "@/lib/plaid";
@@ -1177,7 +1181,7 @@ export default function Overview({
   layout?: DashboardLayout | null;
   onLayout?: (next: DashboardLayout) => void;
 }) {
-  const { data, hasTransactions, scorePending } = useFinances();
+  const { data, hasTransactions, scorePending, sync } = useFinances();
   // Institution brand art for the Accounts card, and the credit accounts the
   // Cards widget reads. One fetch per page load, cached for a week server-side,
   // and it only ever covers institutions this member has linked. Failure is
@@ -1450,8 +1454,16 @@ export default function Overview({
 
   const cardsOn = !hidden.has("cards");
   const recurringOn = !hidden.has("recurring");
+  const benefitsOn = !hidden.has("benefits");
+  const togetherOn = !hidden.has("together");
   const cardsData = useCardsWidget(cardsOn, items);
   const recurringData = useRecurringWidget(recurringOn);
+  const benefitsData = useBenefitsWidget(benefitsOn);
+  const togetherData = useTogetherWidget(togetherOn);
+  // Neither fetches: both read figures already part of this same payload
+  // (score.improvements, sync), so there is nothing to gate on `active` here.
+  const leversData = useScoreLeversWidget(score.improvements);
+  const connHealthData = useConnectionHealthWidget(sync);
 
   // Every widget, drawn once. A widget's own emptiness is decided here rather
   // than inside it, because the board has to know whether to give it a slot
@@ -1475,6 +1487,14 @@ export default function Overview({
     recurring: recurringData.loading
       ? <LoadingSlot title="Recurring charges" />
       : <RecurringWidget data={recurringData} size={sizes.recurring} />,
+    levers: <ScoreLeversWidget data={leversData} />,
+    connhealth: <ConnectionHealthWidget data={connHealthData} />,
+    benefits: benefitsData.loading
+      ? <LoadingSlot title="Benefits tracker" />
+      : <BenefitsWidget data={benefitsData} />,
+    together: togetherData.loading
+      ? <LoadingSlot title="Together summary" />
+      : <TogetherWidget data={togetherData} />,
   };
 
   // Why each widget has nothing to say, in the member's terms, because the
@@ -1489,6 +1509,12 @@ export default function Overview({
     accounts: null,
     cards: cardsData.empty ? "No credit cards linked yet." : null,
     recurring: recurringData.empty ? "No recurring charges detected yet." : null,
+    levers: leversData.empty ? "No weak spots right now, nothing to shore up." : null,
+    connhealth: connHealthData.empty ? "Connect an account to see connection health here." : null,
+    benefits: benefitsData.empty ? "Identify your cards on the Credit page to track benefits here." : null,
+    together: togetherData.empty
+      ? (togetherData.connected ? "Neither of you is sharing a balance yet." : "Invite a partner to see your combined total here.")
+      : null,
   };
 
   const shownIds = order.filter((id) => !hidden.has(id));

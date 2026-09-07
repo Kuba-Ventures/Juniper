@@ -150,6 +150,27 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "wall", label: "Merchant wall" },
     ],
   },
+  // Four more shelf widgets (issue #290): each a one-figure summary of a
+  // surface that already has its own page, same rule #251 gave Cards and
+  // Recurring charges. A single declared size, unlike those two: they have no
+  // size picker yet, which is a later enhancement rather than something these
+  // need on day one.
+  {
+    id: "levers", title: "Score levers", home: "/app/score", homeLabel: "Score", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "benefits", title: "Benefits tracker", home: "/app/credit", homeLabel: "Credit", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "connhealth", title: "Connection health", home: "/app/connections", homeLabel: "Connections", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "together", title: "Together summary", home: "/app/shared", homeLabel: "Shared", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
 ];
 
 export const WIDGET_BY_ID: Record<string, WidgetMeta> =

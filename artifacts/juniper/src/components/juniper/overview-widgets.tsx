@@ -24,6 +24,10 @@ import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { localBrandLogo } from "@/lib/institution-brand";
 import { colorOf, paint } from "@/lib/category-color";
 import type { PlaidItem } from "@/lib/plaid";
+import { money, type ScoreImprovement } from "@/lib/mock-data";
+import { timeAgo, type SyncState } from "@/lib/auto-sync";
+import { usePartner } from "@/lib/partner";
+import { cssVar } from "@/components/juniper/primitives";
 
 // ── Cards and rewards ──────────────────────────────────────────────────────
 
@@ -509,6 +513,248 @@ export function RecurringWidget({ data, size }: { data: RecurringWidgetData; siz
           </span>
           <span className="ow-tip-n">Nothing here counts toward your total until you confirm it.</span>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Score levers ────────────────────────────────────────────────────────────
+//
+// The four widgets below are issue #290's "a few more could ship off in the
+// shelf, roughly an hour each": each an existing component with a home page.
+// Two of them (this one and Connection health) need no fetch of their own at
+// all, because the figure they summarize is already part of the same
+// /api/finances payload the Overview reads for its full-size widgets, so they
+// cost nothing whether or not they are on. The other two (Benefits tracker,
+// Together summary) do fetch, and take `active` the same way Cards and
+// Recurring charges do.
+
+export interface ScoreLeversWidgetData {
+  empty: boolean;
+  improvements: ScoreImprovement[];
+}
+
+/** No `active` gate: `improvements` is handed in from the Overview's own
+ *  `data.score`, already fetched for the full Score widget, so there is
+ *  nothing here to switch off. */
+export function useScoreLeversWidget(improvements: ScoreImprovement[]): ScoreLeversWidgetData {
+  return { empty: improvements.length === 0, improvements };
+}
+
+export function ScoreLeversWidget({ data }: { data: ScoreLeversWidgetData }) {
+  const top = [...data.improvements].sort((a, b) => b.potentialPts - a.potentialPts).slice(0, 3);
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Score levers</h3>
+        <Link href="/app/score" className="link">Score →</Link>
+      </div>
+      {top.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+          You're firing on all cylinders, no weak spots to shore up right now.
+        </div>
+      ) : (
+        <div className="cw-guide">
+          {top.map((im) => (
+            <div className="cw-g-row" key={im.factor}>
+              <span className="cat">{im.title}</span>
+              <b style={{ fontSize: 12.5, color: "var(--jnpr-good)" }}>+{im.potentialPts} pts</b>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Connection health ────────────────────────────────────────────────────────
+
+export interface ConnectionHealthWidgetData {
+  empty: boolean;
+  connections: number;
+  needsRelink: { institution: string; since: string | null }[];
+  syncedAt: string | null;
+}
+
+/** Also free: `sync` is the same object Connections itself reads off
+ *  /api/finances (lib/finances.ts), computed server-side with no Plaid call. */
+export function useConnectionHealthWidget(sync: SyncState | undefined): ConnectionHealthWidgetData {
+  return {
+    empty: !sync || sync.connections === 0,
+    connections: sync?.connections ?? 0,
+    needsRelink: sync?.needsRelink ?? [],
+    syncedAt: sync?.syncedAt ?? null,
+  };
+}
+
+export function ConnectionHealthWidget({ data }: { data: ConnectionHealthWidgetData }) {
+  const ago = timeAgo(data.syncedAt);
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Connection health</h3>
+        <Link href="/app/connections" className="link">Connections →</Link>
+      </div>
+      {data.needsRelink.length > 0 ? (
+        <>
+          <div className="eyebrow">Needs a look</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 4 }}>
+            <span className="big-num tnum" style={{ color: "var(--jnpr-bad)" }}>{data.needsRelink.length}</span>
+            <span style={{ fontSize: 12, color: "var(--jnpr-ink-3)", marginBottom: 6 }}>
+              {data.needsRelink.length === 1 ? "connection needs" : "connections need"} reconnecting
+            </span>
+          </div>
+          <div className="ow-tip">
+            <span>{data.needsRelink.map((n) => n.institution).join(", ")}</span>
+          </div>
+        </>
+      ) : (
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+          <span className="big-num tnum">{data.connections}</span>
+          <span style={{ fontSize: 12, color: "var(--jnpr-ink-3)", marginBottom: 6 }}>
+            {data.connections === 1 ? "connection" : "connections"}, all healthy{ago ? ` · updated ${ago}` : ""}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Benefits tracker ─────────────────────────────────────────────────────────
+
+export interface BenefitsWidgetData {
+  loading: boolean;
+  empty: boolean;
+  rewards: CardRewards | null;
+}
+
+/** Same /api/card-rewards call `useCardsWidget` makes, independently gated:
+ *  a member with both widgets on pays for two requests rather than one, the
+ *  same tradeoff Cards and Recurring charges already accept by each owning
+ *  their own fetch rather than sharing one. */
+export function useBenefitsWidget(active: boolean): BenefitsWidgetData {
+  const [rewards, setRewards] = useState<CardRewards | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    void fetchCardRewards().then((d) => {
+      if (cancelled) return;
+      setRewards(d);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [active]);
+
+  return {
+    loading,
+    empty: !loading && (!rewards?.benefits || rewards.benefits.total === 0),
+    rewards,
+  };
+}
+
+export function BenefitsWidget({ data }: { data: BenefitsWidgetData }) {
+  const summary = data.rewards?.benefits ?? null;
+  const identified = data.rewards?.cards.filter((c) => c.product) ?? [];
+  const currency = identified[0]?.currency ?? null;
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Benefits tracker</h3>
+        <Link href="/app/credit" className="link">Credit →</Link>
+      </div>
+      {!summary || summary.total === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+          Identify your cards on the Credit page to track their benefits here.
+        </div>
+      ) : (
+        <>
+          <div className="eyebrow">Ticked off this period</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 4 }}>
+            <span className="big-num tnum">{summary.usedCount}</span>
+            <span style={{ fontSize: 12, color: "var(--jnpr-ink-3)", marginBottom: 6 }}>
+              of {summary.total} from your {identified.length} {identified.length === 1 ? "card" : "cards"}
+            </span>
+          </div>
+          <div className="bar" style={{ height: 8, marginTop: 8 }}>
+            <i style={{ width: `${Math.round((summary.usedCount / summary.total) * 100)}%`, background: "var(--jnpr-accent)" }} />
+          </div>
+          {summary.unusedValue > 0 && (
+            <div className="ow-tip">
+              <span>
+                <b>{money0(summary.unusedValue, currency)}{summary.valuePartial ? "+" : ""}</b> in unused credits this period
+              </span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Together summary ────────────────────────────────────────────────────────
+
+export interface TogetherWidgetData {
+  loading: boolean;
+  empty: boolean;
+  connected: boolean;
+  total: number;
+  youShare: number;
+  partnerShare: number;
+  partnerName: string | null;
+}
+
+/** `usePartner(active)` only starts its fetch once `active` is true (see
+ *  lib/partner.ts): a member who never turns this widget on, and one who has
+ *  no partner at all, never sends /api/partner from the Overview. */
+export function useTogetherWidget(active: boolean): TogetherWidgetData {
+  const { data, loading } = usePartner(active);
+  const connected = !!data?.connected;
+  const combined = data?.combined;
+  return {
+    loading: active && loading,
+    empty: active && !loading && (!connected || !combined || combined.netWorth === 0),
+    connected,
+    total: combined?.netWorth ?? 0,
+    youShare: combined?.youShare ?? 0,
+    partnerShare: combined?.partnerShare ?? 0,
+    partnerName: data?.partner?.name ?? null,
+  };
+}
+
+export function TogetherWidget({ data }: { data: TogetherWidgetData }) {
+  const name = data.partnerName ?? "your partner";
+  const yShare = data.total ? Math.round((data.youShare / data.total) * 100) : 0;
+  const pShare = data.total ? 100 - yShare : 0;
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Together summary</h3>
+        <Link href="/app/shared" className="link">Together →</Link>
+      </div>
+      {!data.connected ? (
+        <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+          Invite a partner to see your combined total here.
+        </div>
+      ) : data.total === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--jnpr-ink-2)", lineHeight: 1.55 }}>
+          Neither of you is sharing a balance yet.
+        </div>
+      ) : (
+        <>
+          <div className="eyebrow">Together</div>
+          <div className="big-num tnum" style={{ margin: "4px 0 8px" }}>{money(data.total)}</div>
+          <div className="split-bar">
+            <i style={{ width: `${yShare}%`, background: cssVar("--jnpr-c3") }} />
+            <i style={{ width: `${pShare}%`, background: cssVar("--jnpr-c5") }} />
+          </div>
+          <div className="split-legend">
+            <span><span className="dot" style={{ background: cssVar("--jnpr-c3") }} /> You · <b className="tnum">{money(data.youShare)}</b></span>
+            <span><span className="dot" style={{ background: cssVar("--jnpr-c5") }} /> {name} · <b className="tnum">{money(data.partnerShare)}</b></span>
+          </div>
+        </>
       )}
     </div>
   );
