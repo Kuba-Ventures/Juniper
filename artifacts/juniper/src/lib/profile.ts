@@ -41,6 +41,12 @@ export type UserProfile = {
       not arranged anything, which is likewise not the same as saving the
       default order. See lib/dashboard-layout.ts. */
   dashboardLayout?: DashboardLayout;
+  /** How THIS member arranged the shared Overview (migration 0060): same shape,
+      separate column, separate registry (SHARED_WIDGETS). Issue #290: one
+      partner may arrange the shared page, but only for themselves, so this is
+      never read or written from the partnership's own data, only from this
+      member's own profile row. */
+  sharedDashboardLayout?: DashboardLayout;
 };
 
 function profileKey(email?: string) {

@@ -16,7 +16,7 @@ import {
   type UserProfile,
 } from "@/lib/profile";
 import { asHolderStyle } from "@/lib/holder-style";
-import { asDashboardLayout } from "@/lib/dashboard-layout";
+import { asDashboardLayout, PERSONAL_REGISTRY, SHARED_REGISTRY } from "@/lib/dashboard-layout";
 
 export function nameFromEmail(email: string): string {
   if (!email) return "there";
@@ -101,7 +101,10 @@ export function useProfile(email: string, metaName?: string): UseProfile {
             // they are the app's registry and a closed list there would mean a
             // migration before every new card. So the client is the only thing
             // that can drop an id it does not know.
-            dashboardLayout: asDashboardLayout(data.dashboard_layout) ?? prev?.dashboardLayout,
+            dashboardLayout: asDashboardLayout(data.dashboard_layout, PERSONAL_REGISTRY) ?? prev?.dashboardLayout,
+            // Same narrowing, same reasoning, the shared board's own registry:
+            // migration 0060's CHECK constrains the shape only, not the ids.
+            sharedDashboardLayout: asDashboardLayout(data.shared_dashboard_layout, SHARED_REGISTRY) ?? prev?.sharedDashboardLayout,
           };
           saveProfileLocal(next, email);
           return next;
@@ -135,6 +138,7 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         // rather than `|| null` because "" is not a value this field can hold.
         holder_style: p.holderStyle ?? null,
         dashboard_layout: p.dashboardLayout ?? null,
+        shared_dashboard_layout: p.sharedDashboardLayout ?? null,
       });
     },
     [email, displayName],
