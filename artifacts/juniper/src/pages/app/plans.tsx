@@ -33,6 +33,7 @@ import {
   type UnplannedGoal,
 } from "@/lib/plans";
 import { DebtBreakdown } from "@/components/juniper/debt-breakdown";
+import { InvestmentBreakdown } from "@/components/juniper/investment-breakdown";
 import type { UserProfile } from "@/lib/profile";
 // The plan-create form and its shared building blocks live here now, so
 // pages/app/household.tsx can mount the exact same form in place (issue #338
@@ -1177,6 +1178,9 @@ function EditForm({
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
       {draft.shape === "payoff" && <DebtBreakdown debts={debts} onChange={setDebtsAndTotals} />}
+      {draft.shape === "save" && (
+        <InvestmentBreakdown onAdd={(amt) => set({ monthly: numStr(parseNum(draft.monthly) + amt) })} />
+      )}
       <div className="modal-actions">
         <button className="btn" disabled={busy} onClick={() => write()}>{busy ? "Saving…" : "Save changes"}</button>
         <button

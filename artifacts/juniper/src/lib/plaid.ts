@@ -672,3 +672,35 @@ export async function fetchLiabilitySuggestions(): Promise<LiabilitySuggestion[]
     return [];
   }
 }
+
+// Mirrors api/plaid/investments.ts's InvestmentContribution. Duplicated rather
+// than imported for the same reason LiabilitySuggestion is: the client cannot
+// reach into api/.
+export type InvestmentSuggestion = {
+  item_id: string;
+  institution_name: string | null;
+  account_id: string;
+  name: string;
+  mask: string | null;
+  account_type: string;
+  monthly_contribution: number;
+  months_observed: number;
+};
+
+// Suggested monthly-contribution rows for a save plan's investment builder,
+// read live from the caller's own linked investment accounts' contribution
+// history. Same "available: false is not an error" contract as
+// fetchLiabilitySuggestions: it just means there is nothing to suggest yet
+// (no investments consent on this item, not entitled, or genuinely no net
+// contribution in the window), so callers fall back to manual entry either
+// way.
+export async function fetchInvestmentSuggestions(): Promise<InvestmentSuggestion[]> {
+  try {
+    const res = await authedFetch("/api/plaid/investments", { method: "POST" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { available?: boolean; contributions?: InvestmentSuggestion[] };
+    return data.available ? (data.contributions ?? []) : [];
+  } catch {
+    return [];
+  }
+}
