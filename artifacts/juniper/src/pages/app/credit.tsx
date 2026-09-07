@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/juniper/app-frame";
 import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap, type PlaidItem } from "@/lib/plaid";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
 import {
-  forgetCard, setCardLimit, useCardRewards, type CardRewards, type LinkedCard as RewardsCard,
+  forgetCard, setCardLimit, useCardCatalog, useCardRewards, type CardRewards, type LinkedCard as RewardsCard,
 } from "@/lib/cards";
 import {
   limitFor, linkedCards, manualCards, utilizationSummary, type CreditCardRow as LinkedCard,
@@ -51,17 +51,21 @@ import type { HolderStyle } from "@/lib/holder-style";
 // scripts/src/check-rewards.ts). Nothing on the client does rewards arithmetic,
 // so there is no second answer to "what is this worth a year".
 //
-// THREE FETCHES ON THIS PAGE, AND EACH ONE EARNS ITS PLACE, which is worth
+// FOUR FETCHES ON THIS PAGE, AND EACH ONE EARNS ITS PLACE, which is worth
 // saying because it looks like sloppiness:
 //   - fetchPlaidItems, for the balances and LIMITS the utilization card needs
 //     (the reason for the exception documented above).
 //   - fetchInstitutionLogos, for the marks, which is a separate endpoint by
 //     design so it can be cached per institution and fail silently.
-//   - /api/card-rewards, which needs the member's taxonomy, their per-account
-//     spend and the catalog joined together, none of which the other two carry.
-// Collapsing them means widening the /api/finances rollup with `limit` and with
-// per-account spend, which is the follow-up this page has been waiting on since
-// #132 and is deliberately not attempted here.
+//   - /api/card-rewards, which needs the member's taxonomy and their
+//     per-account spend, neither of which the other three carry.
+//   - /api/card-catalog (issue #289), reference data rather than anything
+//     about this member: split out once it stopped being free to send on
+//     every card-rewards request, and fetched once here for every component
+//     on this page that needs to name or draw a card.
+// Collapsing the first three means widening the /api/finances rollup with
+// `limit` and with per-account spend, which is the follow-up this page has
+// been waiting on since #132 and is deliberately not attempted here.
 //
 // ── CARDS THE MEMBER ENTERED BY HAND (migration 0046) ──────────────────────
 //
@@ -463,6 +467,9 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
   const rewards = useCardRewards();
+  // Its own fetch (issue #289, `GET /api/card-catalog`): reference data, the
+  // same rows for every member, no longer part of the rewards response.
+  const catalog = useCardCatalog();
   // Bumped to open the identify picker from somewhere other than the prompt's own
   // button: the wallet in the rewards hero draws an outline for each card still
   // to be named, and tapping one has to land on the answer. A counter rather than
@@ -629,7 +636,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
       {rewards.data && (
         <CardIdentifyPrompt
           cards={rewards.data.unidentified}
-          catalog={rewards.data.catalog}
+          catalog={catalog.data}
           openRequest={identifyRequest}
           onSaved={() => void rewards.refresh()}
         />
@@ -664,11 +671,11 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
           options in previews/benefits-merge-options.html, option A chosen). */}
       {rewards.data && (
         <>
-          <RewardsGuide data={rewards.data} />
+          <RewardsGuide data={rewards.data} catalog={catalog.data} />
           {rewards.data.benefits && (
             <BenefitsTracker
               summary={rewards.data.benefits}
-              catalog={rewards.data.catalog}
+              catalog={catalog.data}
               cardCount={rewards.data.cards.filter((c) => c.product).length}
               periods={rewards.data.provenance.periods}
               totalGain={rewards.data.switches.reduce((a, s) => a + s.gain, 0)}
@@ -676,7 +683,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
               onChanged={() => void rewards.refresh()}
             />
           )}
-          <CardSwitches data={rewards.data} />
+          <CardSwitches data={rewards.data} catalog={catalog.data} />
         </>
       )}
     </div>

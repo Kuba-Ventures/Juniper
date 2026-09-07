@@ -1,5 +1,5 @@
 import { CardFace, AssumesPointValue } from "@/components/juniper/card-rewards-bits";
-import { faceInfoMap, money0, pointValueMap, type CardRewards, type SwitchIdea, type UpgradeIdea } from "@/lib/cards";
+import { faceInfoMap, money0, pointValueMap, type CardCatalogEntry, type CardRewards, type SwitchIdea, type UpgradeIdea } from "@/lib/cards";
 
 // "Worth switching" and "Cards that would beat yours". Treatment A of three
 // (design/card-rewards-variants.html), issue #168.
@@ -123,15 +123,15 @@ function UpgradeRow({
   );
 }
 
-export function CardSwitches({ data }: { data: CardRewards }) {
-  // Checked first, before anything below touches `data.catalog`: the
-  // no-linked-accounts response (api/card-rewards.ts) omits `catalog` entirely,
-  // and `switches`/`upgrades` are always empty in that response too, so this
-  // guard is reachable on every account with nothing to identify yet. It used to
-  // sit after the catalog-dependent maps below, which meant `pointValueMap` and
-  // `faceInfoMap` ran their `data.catalog.map(...)` against `undefined` and threw
-  // before this function ever got to say there was nothing to render, blanking
-  // the whole Credit page for exactly the member who just signed up.
+export function CardSwitches({ data, catalog }: { data: CardRewards; catalog: CardCatalogEntry[] }) {
+  // Checked first, before anything below touches `catalog`: cheap, and this
+  // guard is reachable on every account with nothing to identify yet, the
+  // member who just signed up. `catalog` comes from its own fetch (issue
+  // #289, `GET /api/card-catalog`) and defaults to `[]` rather than being
+  // undefined while it loads, so nothing below would actually throw the way
+  // it once did when the catalog rode inside this same response and a
+  // no-linked-accounts reply omitted it entirely; the early return is still
+  // right, it just does not need to prevent a crash any more.
   const hasSwitches = data.switches.length > 0;
   const hasUpgrades = data.upgrades.length > 0;
   if (!hasSwitches && !hasUpgrades) return null;
@@ -143,11 +143,11 @@ export function CardSwitches({ data }: { data: CardRewards }) {
   // beside three real ones. `cards` is kept as a fallback so a held card whose
   // product has somehow left the active catalog still gets its colour.
   const brandColorOf = (productId: string): string | null =>
-    data.catalog.find((p) => p.product_id === productId)?.brand_color
+    catalog.find((p) => p.product_id === productId)?.brand_color
     ?? data.cards.find((c) => c.product?.id === productId)?.product?.brand_color ?? null;
-  const cents = pointValueMap(data);
+  const cents = pointValueMap(catalog);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
-  const faces = faceInfoMap(data);
+  const faces = faceInfoMap(catalog);
   const faceFor = (productId: string) =>
     faces.get(productId) ?? { shortName: "", network: null, artUrl: null };
 

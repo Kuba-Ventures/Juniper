@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { fetchCardRewards, type CardRewards } from "@/lib/cards";
+import { fetchCardCatalog, type CardCatalogEntry } from "@/lib/cards";
 import {
   MANUAL_CATEGORIES,
   saveManualAccount,
@@ -86,7 +86,9 @@ export function ManualAccountForm({
   // first-run onboarding) and neither holds it. Failure is silent and the field
   // simply does not appear: naming the card is optional, and a member who cannot
   // reach the catalog can still add the account, which is the part that matters.
-  const [catalog, setCatalog] = useState<CardRewards["catalog"]>([]);
+  // `GET /api/card-catalog` (issue #289) rather than the whole card-rewards
+  // response this used to call just to reach one field off the end of it.
+  const [catalog, setCatalog] = useState<CardCatalogEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,8 +99,8 @@ export function ManualAccountForm({
     // Only for a credit account, and only once: the other categories never show
     // the field, so fetching for them would be a request nothing reads.
     if (!isCredit || catalog.length) return;
-    void fetchCardRewards().then((d) => {
-      if (!cancelled && d?.catalog?.length) setCatalog(d.catalog);
+    void fetchCardCatalog().then((entries) => {
+      if (!cancelled && entries.length) setCatalog(entries);
     });
     return () => { cancelled = true; };
   }, [isCredit, catalog.length]);

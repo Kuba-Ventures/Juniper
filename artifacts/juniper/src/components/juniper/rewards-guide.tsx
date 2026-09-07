@@ -1,4 +1,4 @@
-import { faceInfoMap, money0, pointValueMap, type CardRewards, type GuideEntry } from "@/lib/cards";
+import { faceInfoMap, money0, pointValueMap, type CardCatalogEntry, type CardRewards, type GuideEntry } from "@/lib/cards";
 import { CardFace, AssumesPointValue, RewardsProvenance } from "@/components/juniper/card-rewards-bits";
 
 // The rewards earning guide. Treatment A of three (design/card-rewards-variants.html),
@@ -112,13 +112,13 @@ function GuideRow({
   );
 }
 
-export function RewardsGuide({ data }: { data: CardRewards }) {
+export function RewardsGuide({ data, catalog }: { data: CardRewards; catalog: CardCatalogEntry[] }) {
   const confirmed = data.cards.filter((c) => c.product);
   if (!confirmed.length) return null;
 
-  const cents = pointValueMap(data);
+  const cents = pointValueMap(catalog);
   const centsFor = (productId: string) => cents.get(productId) ?? null;
-  const faces = faceInfoMap(data);
+  const faces = faceInfoMap(catalog);
   const artFor = (productId: string) => faces.get(productId)?.artUrl ?? null;
 
   return (

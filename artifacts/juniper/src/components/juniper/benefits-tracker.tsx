@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { money0, periodWord, setBenefitUsed, dismissBenefitSuggestion, readableDate,
-         type BenefitSummary, type TrackedBenefit, type CardRewards } from "@/lib/cards";
+         type BenefitSummary, type TrackedBenefit, type CardCatalogEntry } from "@/lib/cards";
 import { CardFace } from "@/components/juniper/card-rewards-bits";
 
 // The benefits tracker. Originally treatment A of three
@@ -262,7 +262,7 @@ export function BenefitsTracker({
   summary: BenefitSummary;
   /** For the real card photo on each group's header. Only `product_id`,
       `brand_color` and `art_url` are read. */
-  catalog: CardRewards["catalog"];
+  catalog: CardCatalogEntry[];
   cardCount: number;
   /** The buckets ticks are recorded against right now, computed server-side, so
       the copy names the real period rather than describing one. */

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { CardFace } from "@/components/juniper/card-rewards-bits";
-import { confirmCard, money0, type Candidate, type CardRewards, type UnidentifiedCard } from "@/lib/cards";
+import { confirmCard, money0, type Candidate, type CardCatalogEntry, type UnidentifiedCard } from "@/lib/cards";
 
 // "Which card is this?" Issue #168.
 //
@@ -79,7 +79,7 @@ export function CardIdentifyDialog({
   onSaved,
 }: {
   card: UnidentifiedCard;
-  catalog: CardRewards["catalog"];
+  catalog: CardCatalogEntry[];
   /** Dismissed without answering. */
   onClose: () => void;
   /** Answered. The dialog does NOT also call onClose: the parent decides whether
@@ -94,9 +94,9 @@ export function CardIdentifyDialog({
   const [error, setError] = useState<string | null>(null);
 
   // The full catalog, shaped like a candidate so one row component draws both
-  // lists. Filtered client-side because the whole catalog already arrived with
-  // the page; the moment it is too big for that, this becomes a search endpoint
-  // and api/card-rewards.ts stops sending `catalog`. Both places say so.
+  // lists. Filtered client-side rather than server-side: the catalog (from
+  // `GET /api/card-catalog`, issue #289) is still small enough to fetch whole
+  // and search in the browser; server-side search is the fix once it isn't.
   const all = useMemo<Candidate[]>(() => {
     const q = query.trim().toLowerCase();
     return catalog
@@ -206,7 +206,7 @@ export function CardIdentifyPrompt({
   openRequest = 0,
 }: {
   cards: UnidentifiedCard[];
-  catalog: CardRewards["catalog"];
+  catalog: CardCatalogEntry[];
   onSaved: () => void;
   /**
    * A counter another surface increments to open the picker from a distance.
