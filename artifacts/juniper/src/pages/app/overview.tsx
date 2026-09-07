@@ -15,7 +15,7 @@ import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH, paintOf,
 } from "@/components/juniper/primitives";
 import {
-  WIDGETS, WIDGET_BY_ID, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
+  WIDGETS, WIDGET_BY_ID, PERSONAL_REGISTRY, isShown, layoutFrom, resolveOrder, withMoved, withNudged,
   sizeFor, sizeLabel, sizeIsFull, type DashboardLayout,
 } from "@/lib/dashboard-layout";
 import {
@@ -935,7 +935,7 @@ const DASH_BREAKPOINT = 860;
  * hole, because nothing ever leaves one.
  */
 function withFullFlags(ids: string[], sizeOf: (id: string) => string): { id: string; full: boolean }[] {
-  return ids.map((id) => ({ id, full: sizeIsFull(id, sizeOf(id)) }));
+  return ids.map((id) => ({ id, full: sizeIsFull(id, sizeOf(id), PERSONAL_REGISTRY) }));
 }
 
 /**
@@ -1231,15 +1231,15 @@ export default function Overview({
 
   // ── the member's arrangement ─────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
-  const [order, setOrder] = useState<string[]>(() => resolveOrder(layout));
+  const [order, setOrder] = useState<string[]>(() => resolveOrder(layout, PERSONAL_REGISTRY));
   const [hidden, setHidden] = useState<Set<string>>(
-    () => new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id)),
+    () => new Set(WIDGETS.filter((w) => !isShown(layout, w.id, PERSONAL_REGISTRY)).map((w) => w.id)),
   );
   // Issue #259: every widget's current size, keyed by id. Populated for every
   // widget in the registry, not only the ones with a choice to make, so a
   // reader never has to fall back to a default mid-render.
   const [sizes, setSizes] = useState<Record<string, string>>(
-    () => Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id)])),
+    () => Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id, PERSONAL_REGISTRY)])),
   );
   // Which widget's size menu is open, one at a time, closed by choosing a size,
   // by clicking anywhere else, or by leaving arrange mode.
@@ -1267,9 +1267,9 @@ export default function Overview({
   // pull the card out from under the member's finger.
   useEffect(() => {
     if (editing) return;
-    const nextOrder = resolveOrder(layout);
-    const nextHidden = new Set(WIDGETS.filter((w) => !isShown(layout, w.id)).map((w) => w.id));
-    const nextSizes = Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id)]));
+    const nextOrder = resolveOrder(layout, PERSONAL_REGISTRY);
+    const nextHidden = new Set(WIDGETS.filter((w) => !isShown(layout, w.id, PERSONAL_REGISTRY)).map((w) => w.id));
+    const nextSizes = Object.fromEntries(WIDGETS.map((w) => [w.id, sizeFor(layout, w.id, PERSONAL_REGISTRY)]));
     orderRef.current = nextOrder;
     hiddenRef.current = nextHidden;
     sizesRef.current = nextSizes;
@@ -1288,7 +1288,7 @@ export default function Overview({
     if (!onLayout) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id), (id) => nextSizes[id]));
+      onLayout(layoutFrom(nextOrder, (id) => !nextHidden.has(id), (id) => nextSizes[id], PERSONAL_REGISTRY));
     }, 500);
   }, [onLayout]);
   useEffect(() => () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); }, []);
@@ -1320,7 +1320,7 @@ export default function Overview({
     setSizes(next);
     setSizeMenuOpen(null);
     persist(orderRef.current, hiddenRef.current, next);
-    setAnnounce(`${WIDGET_BY_ID[id]?.title} shown as ${sizeLabel(id, size).toLowerCase()}`);
+    setAnnounce(`${WIDGET_BY_ID[id]?.title} shown as ${sizeLabel(id, size, PERSONAL_REGISTRY).toLowerCase()}`);
   };
 
   // Closes an open size menu on a click anywhere else, the same behavior a

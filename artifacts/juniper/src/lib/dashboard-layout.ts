@@ -1,5 +1,10 @@
-// How the member arranged their Overview: which widgets are on it, and in what
-// order. Migration 0049 stores it on `user_profiles.dashboard_layout`.
+// How a member arranged a page built from widgets: which ones are on it, and
+// in what order. Two boards read this module: the personal Overview
+// (migration 0049, `user_profiles.dashboard_layout`) and the shared Overview
+// (migration 0060, `user_profiles.shared_dashboard_layout`), each its own
+// widget registry and its own stored column, never the same one, because the
+// two registries' ids are not guaranteed to stay disjoint and a client bug
+// applying one board's order to the other page must not be representable.
 //
 // ── WHY THE HIDDEN SET AND NOT THE VISIBLE LIST ────────────────────────────
 //
@@ -14,13 +19,15 @@
 //
 // ── WHY "ABSENT" MEANS "WHATEVER THE REGISTRY SAYS" ────────────────────────
 //
-// Not simply "visible". Two of the widgets here ship OFF: Cards and rewards, and
-// Recurring charges. Both are summaries of surfaces that already have their own
-// page, and #251's own rule is that a member who never touches this sees exactly
-// what they see today, so they wait in the "Not on your Overview" shelf instead
-// of being added to everybody's dashboard by a deploy. Reading absence as "the
-// registry decides" is what lets a future widget ship either way and still
-// reach every existing member's shelf.
+// Not simply "visible". Several widgets ship OFF: Cards and rewards, Recurring
+// charges, and the four #290 added. All are summaries of a surface that
+// already has its own page (or, on the shared board, of a section that would
+// otherwise always be on), and #251's own rule is that a member who never
+// touches this sees exactly what they saw before, so a new widget waits in
+// the "Not on your Overview" shelf instead of being added to everybody's
+// dashboard by a deploy. Reading absence as "the registry decides" is what
+// lets a future widget ship either way and still reach every existing
+// member's shelf.
 
 /** One size a widget can honestly draw at: a stable id (what gets stored and
  *  compared, never shown), a label for the picker (in the member's words),
@@ -36,13 +43,14 @@ export interface WidgetSizeOption {
 }
 
 /** A widget's identity, its title, and where the unabridged version lives.
- *  Pure data: the components are wired up in pages/app/overview.tsx, which is
- *  the only thing that renders them. */
+ *  Pure data: the components are wired up in pages/app/overview.tsx and
+ *  pages/app/shared/overview.tsx, the only things that render them. */
 export interface WidgetMeta {
   id: string;
   title: string;
-  /** The page that owns the full version. Every widget has one, including net
-   *  worth, whose home is the Overview itself. */
+  /** The page that owns the full version. Every widget has one; several name
+   *  the board's own page, the same convention net worth already set on the
+   *  personal board. */
   home: string;
   /** How that page is named on screen, in the member's words. */
   homeLabel: string;
@@ -60,9 +68,24 @@ export interface WidgetMeta {
  *  "genuinely one shape", which is the honest state of most widgets today. */
 const DEFAULT_SIZES: WidgetSizeOption[] = [{ id: "default", label: "Compact" }];
 
-/** The registry, in the order a member who has never arranged anything sees.
- *  The first seven are the page as it stood before #251, unchanged and in the
- *  same order, which is what makes the default a no-op. */
+/** A board is a registry plus the lookup built from it. Two of these exist
+ *  (`PERSONAL_REGISTRY`, `SHARED_REGISTRY`) and every function below takes
+ *  one explicitly rather than reaching for a module-level default, so a
+ *  caller cannot resolve a shared-board id against the personal registry (or
+ *  the reverse) by forgetting an argument. */
+export interface WidgetRegistry {
+  widgets: WidgetMeta[];
+  byId: Record<string, WidgetMeta>;
+}
+
+function createRegistry(widgets: WidgetMeta[]): WidgetRegistry {
+  return { widgets, byId: Object.fromEntries(widgets.map((w) => [w.id, w])) };
+}
+
+/** The personal Overview's registry, in the order a member who has never
+ *  arranged anything sees. The first seven are the page as it stood before
+ *  #251, unchanged and in the same order, which is what makes the default a
+ *  no-op. */
 export const WIDGETS: WidgetMeta[] = [
   {
     id: "score", title: "Juniper Score", home: "/app/score", homeLabel: "Score",
@@ -150,16 +173,71 @@ export const WIDGETS: WidgetMeta[] = [
       { id: "wall", label: "Merchant wall" },
     ],
   },
+  // Four more shelf widgets (issue #290): see overview-widgets.tsx for why
+  // two of these need no fetch of their own.
+  {
+    id: "levers", title: "Score levers", home: "/app/score", homeLabel: "Score", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "benefits", title: "Benefits tracker", home: "/app/credit", homeLabel: "Credit", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "connhealth", title: "Connection health", home: "/app/connections", homeLabel: "Connections", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "together", title: "Together summary", home: "/app/shared", homeLabel: "Shared", defaultOff: true,
+    sizes: DEFAULT_SIZES,
+  },
 ];
 
-export const WIDGET_BY_ID: Record<string, WidgetMeta> =
-  Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
+export const PERSONAL_REGISTRY: WidgetRegistry = createRegistry(WIDGETS);
+
+/** Backward-compatible alias: most of the personal Overview's own code still
+ *  reaches for this directly (a shelf chip's title, a picker label). Equal to
+ *  `PERSONAL_REGISTRY.byId`, never a second source of truth. */
+export const WIDGET_BY_ID: Record<string, WidgetMeta> = PERSONAL_REGISTRY.byId;
+
+/** The shared Overview's registry (issue #290: one partner may now arrange
+ *  the shared page, for themselves). Five widgets, each a section the page
+ *  already draws unconditionally today; none has a page of its own beyond
+ *  this one, the same self-referential `home` net worth already uses on the
+ *  personal board. Order and visibility only, matching the personal board's
+ *  own scope: no resizing, no member-defined widgets. */
+export const SHARED_WIDGETS: WidgetMeta[] = [
+  {
+    id: "together", title: "Together", home: "/app/shared", homeLabel: "this page",
+    sizes: [{ id: "default", label: "Compact", full: true }],
+  },
+  {
+    id: "jointaccounts", title: "Shared accounts", home: "/app/shared", homeLabel: "this page",
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "youraccounts", title: "Your shared accounts", home: "/app/shared", homeLabel: "this page",
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "theiraccounts", title: "Their shared accounts", home: "/app/shared", homeLabel: "this page",
+    sizes: DEFAULT_SIZES,
+  },
+  {
+    id: "goals", title: "Shared goals", home: "/app/shared/goals", homeLabel: "Shared goals",
+    sizes: DEFAULT_SIZES,
+  },
+];
+
+export const SHARED_REGISTRY: WidgetRegistry = createRegistry(SHARED_WIDGETS);
 
 /** The stored shape. `v` is here so a later change of meaning can be told from
  *  this one rather than guessed at from the keys present. `sizes` is optional
  *  rather than a `v: 2`, because adding it does not change what `order` or
  *  `hidden` mean: a layout saved before #259 is simply one with no entries in
- *  it, which is exactly "every widget at its default size". Migration 0050. */
+ *  it, which is exactly "every widget at its default size". Migration 0050.
+ *  The shared board (migration 0060) reuses this exact shape and every
+ *  function below, against its own registry and its own stored column. */
 export interface DashboardLayout {
   v: 1;
   order: string[];
@@ -171,29 +249,32 @@ export interface DashboardLayout {
 
 export const LAYOUT_VERSION = 1 as const;
 
-/** Narrow a stored value, or null for "has not arranged anything".
+/** Narrow a stored value against `registry`, or null for "has not arranged
+ *  anything".
  *
- *  Migration 0049's CHECK already refuses anything that is not this shape, but a
- *  client should not trust a constraint in a database it cannot see: this column
- *  is the one on that table written by a client, and a row written by an older
- *  build, or by anything other than this app, must not reach the renderer as a
- *  layout. Unknown ids are dropped here rather than filtered at every call site.
+ *  The owning migration's CHECK already refuses anything that is not this
+ *  shape, but a client should not trust a constraint in a database it cannot
+ *  see: this column is the one on that table written by a client, and a row
+ *  written by an older build, or by anything other than this app, must not
+ *  reach the renderer as a layout. Unknown ids are dropped here rather than
+ *  filtered at every call site.
  *
- *  `sizes` is narrowed to known widget ids with a string value ONLY here; it is
- *  deliberately NOT checked against that widget's own declared sizes, which is
- *  `sizeFor`'s job, the same split `isShown` already makes between "is this id
- *  real" (here) and "what does the registry say about it" (there). */
-export function asDashboardLayout(v: unknown): DashboardLayout | null {
+ *  `sizes` is narrowed to known widget ids with a string value ONLY here; it
+ *  is deliberately NOT checked against that widget's own declared sizes,
+ *  which is `sizeFor`'s job, the same split `isShown` already makes between
+ *  "is this id real" (here) and "what does the registry say about it"
+ *  (there). */
+export function asDashboardLayout(v: unknown, registry: WidgetRegistry): DashboardLayout | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
   const o = v as Record<string, unknown>;
   if (!Array.isArray(o.order) || !Array.isArray(o.hidden)) return null;
-  const known = (x: unknown): x is string => typeof x === "string" && x in WIDGET_BY_ID;
+  const known = (x: unknown): x is string => typeof x === "string" && x in registry.byId;
   const rawSizes = o.sizes && typeof o.sizes === "object" && !Array.isArray(o.sizes)
     ? (o.sizes as Record<string, unknown>)
     : {};
   const sizes: Record<string, string> = {};
   for (const [id, size] of Object.entries(rawSizes)) {
-    if (id in WIDGET_BY_ID && typeof size === "string") sizes[id] = size;
+    if (id in registry.byId && typeof size === "string") sizes[id] = size;
   }
   return {
     v: LAYOUT_VERSION,
@@ -207,8 +288,8 @@ export function asDashboardLayout(v: unknown): DashboardLayout | null {
  *  it is still one of that widget's declared sizes (a build that removed a
  *  size must not honor a stale choice for it), otherwise the widget's own
  *  default, which is its first declared size. */
-export function sizeFor(layout: DashboardLayout | null, id: string): string {
-  const declared = WIDGET_BY_ID[id]?.sizes ?? DEFAULT_SIZES;
+export function sizeFor(layout: DashboardLayout | null, id: string, registry: WidgetRegistry): string {
+  const declared = registry.byId[id]?.sizes ?? DEFAULT_SIZES;
   const chosen = layout?.sizes[id];
   if (chosen && declared.some((s) => s.id === chosen)) return chosen;
   return declared[0].id;
@@ -216,13 +297,13 @@ export function sizeFor(layout: DashboardLayout | null, id: string): string {
 
 /** Whether a size spans both columns, looked up by id rather than assumed,
  *  since two of a widget's own sizes can share a column width. */
-export function sizeIsFull(id: string, sizeId: string): boolean {
-  return !!WIDGET_BY_ID[id]?.sizes.find((s) => s.id === sizeId)?.full;
+export function sizeIsFull(id: string, sizeId: string, registry: WidgetRegistry): boolean {
+  return !!registry.byId[id]?.sizes.find((s) => s.id === sizeId)?.full;
 }
 
 /** How a size reads in the picker, in the widget's own words. */
-export function sizeLabel(id: string, sizeId: string): string {
-  return WIDGET_BY_ID[id]?.sizes.find((s) => s.id === sizeId)?.label ?? sizeId;
+export function sizeLabel(id: string, sizeId: string, registry: WidgetRegistry): string {
+  return registry.byId[id]?.sizes.find((s) => s.id === sizeId)?.label ?? sizeId;
 }
 
 /**
@@ -233,22 +314,22 @@ export function sizeLabel(id: string, sizeId: string): string {
  * in the middle for a member who arranged the ones around it, which is where
  * they would look for it.
  */
-export function resolveOrder(layout: DashboardLayout | null): string[] {
-  const stored = layout?.order.filter((id) => id in WIDGET_BY_ID) ?? [];
-  if (!stored.length) return WIDGETS.map((w) => w.id);
+export function resolveOrder(layout: DashboardLayout | null, registry: WidgetRegistry): string[] {
+  const stored = layout?.order.filter((id) => id in registry.byId) ?? [];
+  if (!stored.length) return registry.widgets.map((w) => w.id);
   const out = [...stored];
-  WIDGETS.forEach((w, i) => {
+  registry.widgets.forEach((w, i) => {
     if (!out.includes(w.id)) out.splice(Math.min(i, out.length), 0, w.id);
   });
   return out;
 }
 
-/** Whether a widget is on the member's Overview. Absent from the stored layout
+/** Whether a widget is on the member's page. Absent from the stored layout
  *  means the registry decides, which is how a widget ships off. */
-export function isShown(layout: DashboardLayout | null, id: string): boolean {
+export function isShown(layout: DashboardLayout | null, id: string, registry: WidgetRegistry): boolean {
   if (layout?.hidden.includes(id)) return false;
   if (layout?.order.includes(id)) return true;
-  return !WIDGET_BY_ID[id]?.defaultOff;
+  return !registry.byId[id]?.defaultOff;
 }
 
 /** The hidden set as it must be STORED, which is not the same as the set the
@@ -265,24 +346,26 @@ export function layoutFrom(
   order: string[],
   shown: (id: string) => boolean,
   size: (id: string) => string,
+  registry: WidgetRegistry,
 ): DashboardLayout {
   const sizes: Record<string, string> = {};
   for (const id of order) {
-    if (!(id in WIDGET_BY_ID)) continue;
+    if (!(id in registry.byId)) continue;
     const chosen = size(id);
-    if (chosen !== WIDGET_BY_ID[id].sizes[0].id) sizes[id] = chosen;
+    if (chosen !== registry.byId[id].sizes[0].id) sizes[id] = chosen;
   }
   return {
     v: LAYOUT_VERSION,
-    order: order.filter((id) => id in WIDGET_BY_ID),
-    hidden: order.filter((id) => id in WIDGET_BY_ID && !shown(id)),
+    order: order.filter((id) => id in registry.byId),
+    hidden: order.filter((id) => id in registry.byId && !shown(id)),
     sizes,
   };
 }
 
 /** Move `id` so it sits where `target` is, keeping every other widget's relative
  *  order. Returns the same array when the move is a no-op, so a caller can skip
- *  a render on every pointer move that lands on the widget already there. */
+ *  a render on every pointer move that lands on the widget already there.
+ *  Registry-free: it only ever rearranges strings it is handed. */
 export function withMoved(order: string[], id: string, target: string): string[] {
   const from = order.indexOf(id);
   const to = order.indexOf(target);
