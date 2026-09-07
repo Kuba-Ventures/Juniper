@@ -60,10 +60,11 @@ const points = (id: string, base: number, cents: number, fee = 0): R.CardProduct
 const earn = (
   product_id: string, category_id: string, multiplier: number,
   unit: R.EarnUnit = "percent", cap_amount: number | null = null,
-  cap_period: R.CapPeriod | null = null, merchant_key: string | null = null,
+  cap_period: R.CapPeriod | null = null, cap_group: string | null = null,
+  merchant_key: string | null = null,
 ): R.EarnRow => ({
   product_id, category_id, category_label: category_id, multiplier, unit,
-  cap_amount, cap_period, note: null, merchant_key,
+  cap_amount, cap_period, note: null, cap_group, merchant_key,
 });
 const held = (product_id: string, account = product_id + "-acct"): R.MemberCard => ({
   plaid_account_id: account, product_id, institution: "Testbank",
@@ -161,6 +162,59 @@ ok("no bonus row means the base rate applies", () => {
 ok("zero or negative spend earns nothing", () => {
   strictEqual(R.annualEarn(0, null, cash("flat", 2)), 0);
   strictEqual(R.annualEarn(-500, null, cash("flat", 2)), 0);
+});
+
+// ── 2b. Shared caps, issue #289 ──────────────────────────────────────────────
+ok("groupCapAdjustedEarn with one entry agrees with annualEarn exactly", () => {
+  // The whole point of building it as a generalization: a group of one is not
+  // a special case, it is the same formula with share = 1.
+  const p = cash("solo", 1);
+  const row = earn("solo", "c_gas", 2, "percent", 1000, "quarter");
+  const [grouped] = R.groupCapAdjustedEarn([{ annualSpend: 6_000, row }], p);
+  strictEqual(grouped, R.annualEarn(6_000, row, p));
+});
+ok("a combined cap is honored ONCE across the group, not once per row", () => {
+  // Discover it Chrome: 2% on gas and restaurants, base 1%, capped at $1,000
+  // a quarter COMBINED ($4,000/year). $3,000/year gas + $3,000/year dining,
+  // spent evenly, so the group sees $6,000 against a $4,000 cap: $4,000 at 2%
+  // ($80) plus $2,000 at 1% ($20) = $100 total, split 50/50 by spend share.
+  const p = cash("chrome", 1);
+  const gas = earn("chrome", "c_gas", 2, "percent", 1000, "quarter", "gas-dining");
+  const dining = earn("chrome", "c_restaurants_bars", 2, "percent", 1000, "quarter", "gas-dining");
+  const [gasEarn, diningEarn] = R.groupCapAdjustedEarn(
+    [{ annualSpend: 3_000, row: gas }, { annualSpend: 3_000, row: dining }], p,
+  );
+  strictEqual(gasEarn, 50);
+  strictEqual(diningEarn, 50);
+  strictEqual(gasEarn + diningEarn, 100);
+  // The wrong answer this test exists to rule out: treating each row's cap as
+  // its own would let both categories earn 2% on the full $3,000, $60 each,
+  // $120 total, $20 more than the card's combined cap actually allows.
+  assert(gasEarn + diningEarn !== 120, "must not double the combined cap");
+});
+ok("an uneven split shares the capped and overflow dollars proportionally", () => {
+  // $9,000 gas, $3,000 dining, $4,000/year combined cap: gas is 75% of the
+  // group's $12,000, so it gets 75% of the $4,000 capped bonus and 75% of the
+  // $8,000 overflow. 3,000*2% + 6,000*1% = 60+60 = 120 for gas;
+  // 1,000*2% + 2,000*1% = 20+20 = 40 for dining. 160 total.
+  const p = cash("chrome", 1);
+  const gas = earn("chrome", "c_gas", 2, "percent", 1000, "quarter", "gas-dining");
+  const dining = earn("chrome", "c_restaurants_bars", 2, "percent", 1000, "quarter", "gas-dining");
+  const [gasEarn, diningEarn] = R.groupCapAdjustedEarn(
+    [{ annualSpend: 9_000, row: gas }, { annualSpend: 3_000, row: dining }], p,
+  );
+  strictEqual(Math.round(gasEarn), 120);
+  strictEqual(Math.round(diningEarn), 40);
+});
+ok("a zero-spend entry in the group earns nothing and does not skew the split", () => {
+  const p = cash("chrome", 1);
+  const gas = earn("chrome", "c_gas", 2, "percent", 1000, "quarter", "gas-dining");
+  const dining = earn("chrome", "c_restaurants_bars", 2, "percent", 1000, "quarter", "gas-dining");
+  const [gasEarn, diningEarn] = R.groupCapAdjustedEarn(
+    [{ annualSpend: 4_000, row: gas }, { annualSpend: 0, row: dining }], p,
+  );
+  strictEqual(diningEarn, 0);
+  strictEqual(gasEarn, R.annualEarn(4_000, gas, p));
 });
 
 // ── 3. Exact before group ───────────────────────────────────────────────────
@@ -277,7 +331,7 @@ ok("a merchant-scoped row wins over the card's own plain category rate", () => {
   const p = cash("doordash", 1);
   const rows = byProduct([
     earn("doordash", "c_restaurants_bars", 3),
-    earn("doordash", "c_restaurants_bars", 4, "percent", null, null, "doordash"),
+    earn("doordash", "c_restaurants_bars", 4, "percent", null, null, null, "doordash"),
   ]);
   const g = R.merchantEarningGuide({
     cards: [held("doordash")], products: productMap([p]), earnByProduct: rows, parentOf,
@@ -305,12 +359,12 @@ ok("a merchant-scoped row's own cap still applies", () => {
   // annualEarn both read cap_amount/cap_period off the row regardless of
   // whether it also carries a merchant_key.
   const p = cash("instacart", 1);
-  const row = earn("instacart", "c_groceries", 5, "percent", 6000, "year", "instacart");
+  const row = earn("instacart", "c_groceries", 5, "percent", 6000, "year", null, "instacart");
   strictEqual(R.annualEarn(10_000, row, p), 6_000 * 0.05 + 4_000 * 0.01);
 });
 ok("assumesPointValue still travels on a merchant-scoped points rate", () => {
   const p = points("prime", 1, 1.25);
-  const rows = byProduct([earn("prime", "c_shopping", 5, "points", null, null, "amazon")]);
+  const rows = byProduct([earn("prime", "c_shopping", 5, "points", null, null, null, "amazon")]);
   const g = R.merchantEarningGuide({
     cards: [held("prime")], products: productMap([p]), earnByProduct: rows, parentOf,
     merchants: [{ merchantKey: "amazon", merchantLabel: "Amazon", categoryId: "c_shopping", categoryLabel: "Shopping" }],
@@ -489,6 +543,32 @@ ok("candidates are judged against the member's whole category, not one account",
   });
   // $12,000 a year across both accounts, 2 points of rate, so $240.
   strictEqual(Math.round(ideas[0].grossGain), 240);
+});
+ok("a candidate's combined cap is honored once, not once per category it wins", () => {
+  // The regression 0062 exists to catch: a candidate card with a shared cap
+  // across two categories must not have grossGain sum each category's cap
+  // independently. Member's own card earns nothing in either category (0%
+  // base), so grossGain equals the candidate's raw earn exactly. Candidate
+  // earns 2% on gas and dining (1% base), capped at $4,000/year combined;
+  // member spends $3,000/year in each, so the candidate's real edge is $50
+  // (gas) + $50 (dining) = $100, not $60 + $60 = $120 (independent per-row
+  // caps).
+  const products = productMap([cash("mine", 0), cash("chrome", 1)]);
+  const rows = byProduct([
+    earn("chrome", "c_gas", 2, "percent", 1000, "quarter", "gas-dining"),
+    earn("chrome", "c_restaurants_bars", 2, "percent", 1000, "quarter", "gas-dining"),
+  ]);
+  const ideas = R.upgradeIdeas({
+    cards: [held("mine")], products, earnByProduct: rows, parentOf,
+    spend: [
+      spend("mine-acct", "c_gas", 750),
+      spend("mine-acct", "c_restaurants_bars", 750),
+    ],
+    months: 3, minNetGain: 0,
+  });
+  strictEqual(ideas.length, 1);
+  strictEqual(Math.round(ideas[0].grossGain), 100);
+  assert(Math.round(ideas[0].grossGain) !== 120, "must not double the combined cap across categories");
 });
 
 // ── 7. Matching an account to a product ─────────────────────────────────────
