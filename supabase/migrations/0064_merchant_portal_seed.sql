@@ -14,7 +14,7 @@
 -- way the rest of the catalog was: `as_of` says when they were read, and they
 -- carry the same provenance a human can re-check.
 --
--- ── ONE THING THIS MIGRATION DOES NOT CLAIM ─────────────────────────────────
+-- ---- ONE THING THIS MIGRATION DOES NOT CLAIM --------------------------------
 --
 -- `merchant_key` is matched EXACTLY against Plaid's own `merchant_name` field,
 -- the same convention `_category-precedence.ts`'s merchant rules already use
@@ -31,7 +31,7 @@
 -- links their account, the same kind of follow-up ROADMAP already tracks for
 -- "verify the ten seeded products" and "set a limit and confirm the queue".
 --
--- ── WHAT IS STILL LEFT OUT, ON PURPOSE ───────────────────────────────────────
+-- ---- WHAT IS STILL LEFT OUT, ON PURPOSE --------------------------------------
 --
 -- Ink Business Premier's 2.5 percent on any single purchase over $5,000 is
 -- neither merchant- nor portal-scoped, it is TRANSACTION-SIZE-scoped, a third
@@ -51,7 +51,7 @@
 
 BEGIN;
 
--- ── Merchant-scoped earn rows ────────────────────────────────────────────────
+-- ---- Merchant-scoped earn rows ------------------------------------------------
 INSERT INTO public.card_product_earn
   (product_id, category_id, category_label, multiplier, unit, cap_amount, cap_period,
    note, source_url, as_of, merchant_key)
@@ -102,7 +102,7 @@ VALUES
    'instacart')
 ON CONFLICT (product_id, category_id, COALESCE(merchant_key, '')) DO NOTHING;
 
--- ── Portal-scoped (or taxonomy-blocked) rates, as benefits ──────────────────
+-- ---- Portal-scoped (or taxonomy-blocked) rates, as benefits ------------------
 --
 -- Every row below is real, sourced, and cannot be computed into a dollar
 -- total: `value_amount` and `period` are NULL throughout, the same shape "no

@@ -1,7 +1,7 @@
 -- Verify the 10 products 0032 seeded against their own source_url and flip
 -- verified to TRUE. Issue #289, item 1. Idempotent, safe to re-run.
 --
--- ── WHAT THIS DOES AND DOES NOT CLAIM ───────────────────────────────────────
+-- ---- WHAT THIS DOES AND DOES NOT CLAIM -------------------------------------
 --
 -- 0032's own header said no issuer page was fetched while writing it. This
 -- migration is that fetch: every one of the 10 rows below was checked against
@@ -16,7 +16,7 @@
 -- (0040/0042) or out of scope for this pass (0034); this migration only
 -- touches the 10 ids `0032` itself inserted.
 --
--- ── PER-CARD FINDINGS ────────────────────────────────────────────────────────
+-- ---- PER-CARD FINDINGS ------------------------------------------------------
 --
 -- chase-freedom-unlimited: $0 fee, 1.5% base, 3% dining, 3% drugstores. Matches.
 --   (5% Chase Travel is portal-scoped and correctly absent, see 0032's header.)
@@ -54,7 +54,7 @@
 --   tracking-parameter URL that might rot on its own; worth a human
 --   double-check in an actual browser next time this row is touched.
 --
--- ── WHY UPDATE, NOT A SEED EDIT ─────────────────────────────────────────────
+-- ---- WHY UPDATE, NOT A SEED EDIT --------------------------------------------
 --
 -- 0032 is `ON CONFLICT DO NOTHING` and must stay that way, so correcting or
 -- verifying a seeded row is always a later migration that names it, never a
