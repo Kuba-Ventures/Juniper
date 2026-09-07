@@ -14,8 +14,17 @@
 // updatedAt per thread id wins, and any thread that exists only locally (a
 // pre-migration chat, or one made while the endpoint was unreachable) is
 // pushed up as a one-time backfill.
+//
+// BOTH HALVES OF THAT LOCAL CACHE ARE SCOPED TO ONE SIGNED-IN MEMBER, and
+// that is a correctness requirement rather than tidiness (issue #361). The
+// key was global and the store below is module level, so a member's chats
+// survived a sign-out in the same browser and were shown to the next account
+// to sign in, and the backfill above then pushed them UP under that account's
+// own JWT. The server was never the leak: every path in
+// api/planner/threads.ts filters on the uid from the verified token. The
+// client was handing it the wrong member's threads to store.
 import { useCallback, useEffect, useState } from "react";
-import { getAccessToken } from "@/lib/supabase";
+import { getAccessToken, supabase } from "@/lib/supabase";
 import type { PlanShape } from "@/lib/plans";
 
 export type Msg = { role: "user" | "assistant"; content: string };
@@ -42,11 +51,17 @@ export interface Thread {
   report?: PlanReport; // last saved PDF plan (saved by default on generate)
 }
 
-const KEY = "jnpr.planner.threads.v1";
+// Keyed by Supabase user id, the same convention profile.ts keys the profile
+// by and plans.tsx keys example dismissals by ("so a shared browser does not
+// carry the previous member's dismissals over"). Chat history is the one of
+// those three where getting it wrong exposes private content, so it follows
+// the convention rather than inventing a second one.
+const KEY_PREFIX = "jnpr.planner.threads.v1";
+const keyFor = (userId: string) => `${KEY_PREFIX}:${userId}`;
 
-function load(): Thread[] {
+function load(userId: string): Thread[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(keyFor(userId));
     if (!raw) return [];
     const arr = JSON.parse(raw) as Thread[];
     return Array.isArray(arr) ? arr : [];
@@ -54,13 +69,30 @@ function load(): Thread[] {
     return [];
   }
 }
-function save(threads: Thread[]) {
+function save(userId: string, threads: Thread[]) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(threads));
+    localStorage.setItem(keyFor(userId), JSON.stringify(threads));
   } catch {
     /* quota / private mode, threads stay in memory this session */
   }
 }
+
+// The pre-#361 un-keyed blob, DELETED rather than migrated into whichever
+// account signs in next. Adopting it is the bug itself: nothing in it records
+// whose chats it holds, and on a browser two accounts have shared it holds
+// both members' conversations mixed together. Since #263 a thread is written
+// through /api/planner/threads as it is created, so the rightful owner gets
+// their history back from the server on the next hydrate; the only thing that
+// can be lost is a thread that never synced at all, which is the right price
+// for never handing one member's private conversation to another.
+function dropLegacyStore(): void {
+  try {
+    localStorage.removeItem(KEY_PREFIX);
+  } catch {
+    /* ignore */
+  }
+}
+dropLegacyStore();
 
 // The shape /api/planner/threads reads and writes: snake_case columns,
 // timestamps as ISO strings rather than the epoch millis Thread keeps locally.
@@ -176,11 +208,96 @@ export function relativeTime(ts: number): string {
 // subscribe via useThreads().
 type Listener = () => void;
 const listeners = new Set<Listener>();
-let state: Thread[] = load();
-function emit() {
-  save(state);
+
+// Bound to one signed-in member by bindUser() below. `userId === null` means
+// no session has resolved yet: the store starts EMPTY rather than reading a
+// bucket it cannot name, because a thread that cannot be attributed to a
+// member must not be shown to one.
+let userId: string | null = null;
+let state: Thread[] = [];
+// Declared here rather than beside hydrate() below because resetThreadsCache()
+// and bindUser() both clear them, and the auth listener can fire either before
+// this module finishes evaluating.
+let hydrated = false;
+let hydrating = false;
+
+function notify() {
   listeners.forEach((l) => l());
 }
+// Persisting is skipped while unbound rather than queued: bindUser() carries
+// anything made in that window into the member's own bucket the moment it
+// resolves (see the `pending` note there), so nothing is dropped.
+function emit() {
+  if (userId) save(userId, state);
+  notify();
+}
+
+// Called on sign out, the same reason resetPartnerCache() and
+// resetHouseholdCache() exist: this is module state, so it outlives a
+// client-side route change and the next member signing in to this tab would
+// otherwise see the previous one's chats. Unlike those two, what is held here
+// is private conversation content, so this is not about a beat of stale data.
+export function resetThreadsCache(): void {
+  userId = null;
+  state = [];
+  hydrated = false;
+  hydrating = false;
+  notify();
+}
+
+// Drop this member's locally cached threads (Settings' full account reset,
+// which has already erased the server copy). Exported so the storage key has
+// exactly one definition, in this file.
+export function clearThreadsLocal(): void {
+  try {
+    if (userId) localStorage.removeItem(keyFor(userId));
+  } catch {
+    /* ignore */
+  }
+  resetThreadsCache();
+}
+
+// Point the store at whoever is signed in now. The session comes from
+// supabase-js's own persisted copy, so this is a local read and not a round
+// trip: the local-first paint this file's header describes still holds, it
+// just waits for the answer to "whose threads are these" first.
+async function bindUser(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user.id ?? null;
+  if (uid === userId) return uid;
+
+  // Threads created in this tab before the session resolved (ask.tsx can seed
+  // one from a URL param on the tick the page mounts) belong to the member
+  // now binding: nothing else can be in this store, since it starts empty and
+  // sign-out clears it. They are carried over so a seeded thread does not
+  // vanish from the rail a moment after appearing. Going from one real member
+  // to another carries NOTHING, which is the whole point of the change.
+  const pending = userId === null ? state : [];
+  userId = uid;
+  if (uid) {
+    const stored = load(uid);
+    const have = new Set(stored.map((t) => t.id));
+    state = [...pending.filter((t) => !have.has(t.id)), ...stored];
+    save(uid, state);
+  } else {
+    state = [];
+  }
+  hydrated = false;
+  hydrating = false;
+  notify();
+  return uid;
+}
+
+// An account switch inside one tab has to reach this store even when it
+// happens through a path that never calls resetThreadsCache() (the retired
+// shell's own sign-out, a session revoked from another tab), so the store
+// follows Supabase's auth events rather than trusting every caller to
+// remember. A repeat event for the same member is a no-op: bindUser() returns
+// early when the uid has not changed.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") resetThreadsCache();
+  else void bindUser();
+});
 
 // Runs once per page load, across every mounted useThreads() consumer, not
 // once per component: a member can have the rail, a widget, and the app-bar
@@ -188,13 +305,21 @@ function emit() {
 // network. Newest updatedAt per thread id wins; a thread the server has never
 // seen (a pre-#263 localStorage chat, or one made while offline) is kept and
 // pushed up so it survives past this one browser too.
-let hydrated = false;
-let hydrating = false;
+//
+// bindUser() runs FIRST every time, before the hydrated/hydrating guard, so
+// an account switch rebinds the store (and clears those flags) rather than
+// being short-circuited by a hydrate the previous member already did.
 async function hydrate(): Promise<void> {
+  const uid = await bindUser();
+  if (!uid) return; // no session to attribute threads to, and nothing cached
   if (hydrated || hydrating) return;
   hydrating = true;
   try {
     const remote = await fetchThreadsRemote();
+    // A sign-out or an account switch while that request was in flight: the
+    // answer belongs to the member who asked for it, not to whoever is signed
+    // in now, and bindUser() has already replaced the store.
+    if (userId !== uid) return;
     if (remote) {
       const byId = new Map(state.map((t) => [t.id, t]));
       const seen = new Set<string>();
@@ -203,6 +328,10 @@ async function hydrate(): Promise<void> {
         const local = byId.get(r.id);
         return local && local.updatedAt > r.updatedAt ? local : r;
       });
+      // The backfill. Safe now only because `state` is this member's own
+      // bucket: before #361 it was whatever the browser last held, so this
+      // loop is what turned another member's leaked threads into real rows
+      // owned by the account that happened to be signed in.
       for (const t of state) {
         if (seen.has(t.id)) continue;
         merged.push(t);
@@ -212,8 +341,10 @@ async function hydrate(): Promise<void> {
       emit();
     }
   } finally {
-    hydrated = true;
-    hydrating = false;
+    if (userId === uid) {
+      hydrated = true;
+      hydrating = false;
+    }
   }
 }
 
