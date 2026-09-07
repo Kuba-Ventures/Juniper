@@ -8,7 +8,7 @@
 // remote table has no column for onboarding `accounts`/`connections` yet, so
 // those persist locally only (a known gap, tracked in PROJECT.md).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 import {
   loadProfile,
@@ -37,17 +37,22 @@ async function fetchRemoteProfile(): Promise<Record<string, unknown> | null> {
   }
 }
 
-async function postRemoteProfile(body: Record<string, unknown>): Promise<void> {
+// Returns whether the write actually persisted, so a caller that cares (an
+// explicit rename) can tell a real save from one that silently vanished into
+// a dropped request or a server error, rather than the two being
+// indistinguishable the way they used to be.
+async function postRemoteProfile(body: Record<string, unknown>): Promise<boolean> {
   const token = await getAccessToken();
-  if (!token) return;
+  if (!token) return false;
   try {
-    await fetch("/api/profile", {
+    const res = await fetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     });
+    return res.ok;
   } catch {
-    /* non-fatal */
+    return false;
   }
 }
 
@@ -55,7 +60,12 @@ export interface UseProfile {
   profile: UserProfile | null;
   displayName: string;
   ready: boolean; // true once the remote hydration attempt has resolved
-  saveProfile: (p: UserProfile, name?: string) => void;
+  /** Resolves to whether the write actually persisted. Every other field here
+   *  is best-effort (a failed layout or holder-style save just tries again
+   *  next time), but a rename is the one field where the caller (Settings)
+   *  needs to know a failure happened so it can tell the member rather than
+   *  showing a name that was never actually saved. */
+  saveProfile: (p: UserProfile, name?: string) => Promise<boolean>;
   setDisplayName: (n: string) => void;
 }
 
@@ -68,8 +78,19 @@ export function useProfile(email: string, metaName?: string): UseProfile {
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState(initialName);
   const [ready, setReady] = useState(false);
+  // Tracked outside saveProfile's own deps so a rename that fails can restore
+  // whatever name was showing before the attempt, without reintroducing the
+  // bug this hook already carries a scar from: saveProfile deliberately does
+  // NOT depend on displayName, because resending it as `name` on every
+  // unrelated save is exactly how "there" got written to the server in the
+  // first place. This ref is read-only from saveProfile's perspective, for
+  // rollback alone, never sent anywhere.
+  const displayNameRef = useRef(displayName);
 
   useEffect(() => setDisplayName(initialName), [initialName]);
+  useEffect(() => {
+    displayNameRef.current = displayName;
+  }, [displayName]);
 
   // Local hydrate as soon as the email is known.
   useEffect(() => {
@@ -121,10 +142,11 @@ export function useProfile(email: string, metaName?: string): UseProfile {
   }, [email]);
 
   const saveProfile = useCallback(
-    (p: UserProfile, name?: string) => {
+    (p: UserProfile, name?: string): Promise<boolean> => {
       saveProfileLocal(p, email);
       setProfileState(p);
       const trimmedName = name?.trim();
+      const previousName = displayNameRef.current;
       if (trimmedName) setDisplayName(trimmedName);
       // The financial fields and the holder choice have remote columns;
       // accounts/connections stay local. `name` is sent only on an explicit
@@ -148,7 +170,21 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         dashboard_layout: p.dashboardLayout ?? null,
         shared_dashboard_layout: p.sharedDashboardLayout ?? null,
       });
-      if (trimmedName) void promise.then(invalidateHousehold);
+      if (trimmedName) {
+        void promise.then((ok) => {
+          if (ok) {
+            invalidateHousehold();
+          } else {
+            // The rename never reached the server (dropped request, expired
+            // session, a 500): restore whatever name was showing before this
+            // attempt rather than leaving the UI claiming one that was never
+            // actually persisted. The caller (Settings) surfaces the failure
+            // from this same promise so the member knows to retry.
+            setDisplayName(previousName);
+          }
+        });
+      }
+      return promise;
     },
     [email],
   );
