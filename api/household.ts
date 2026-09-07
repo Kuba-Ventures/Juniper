@@ -97,6 +97,37 @@ async function memberPlans(uid: string): Promise<PlanRow[]> {
   return rows<PlanRow>(`plans?user_id=eq.${uid}&select=domain,status,goal,current_state,kpis`);
 }
 
+// Issue #362: clear `goal.household_id` from this member's plans that were
+// created FOR this household. That marker is what keeps such a plan off the
+// member's own individual Plans and Overview (see PlanGoal.household_id in
+// src/lib/plans.ts), so it MUST be cleared the moment the plan stops belonging
+// to the household, or the plan is hidden from its own owner with nowhere left
+// to appear. Three callers, all of them exactly that moment: un-sharing the
+// plan, leaving the household, and being removed from it.
+//
+// `domain` narrows it to one plan; omitted, it releases every plan this member
+// made for this household. The read-modify-write is a JSONB key deletion and
+// PostgREST cannot express one, so the row is read, the key is dropped in JS,
+// and the whole `goal` object is written back, which is the same thing every
+// client write to this column already does (api/plans.ts replaces `goal`).
+// Never widened beyond this member's own rows, the rule stated in 0055's
+// header: the service-role key bypasses RLS, so the user_id filter is the
+// only thing scoping it.
+async function releaseHouseholdPlans(uid: string, householdId: string, domain?: string): Promise<void> {
+  const filter = domain ? `&domain=eq.${encodeURIComponent(domain)}` : "";
+  const owned = await rows<{ id: string; goal: Record<string, unknown> | null }>(
+    `plans?user_id=eq.${uid}${filter}&select=id,goal`,
+  );
+  for (const p of owned) {
+    if (!p.goal || p.goal.household_id !== householdId) continue;
+    const { household_id: _dropped, ...rest } = p.goal;
+    await adminRest(`plans?id=eq.${p.id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ goal: rest }),
+    });
+  }
+}
+
 // The caller's active household membership, if any.
 async function loadMembership(uid: string): Promise<Member | null> {
   const m = await rows<Member>(`household_members?user_id=eq.${uid}&left_at=is.null&select=*&limit=1`);
@@ -254,6 +285,14 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (body.action === "leave") {
+    // Before the membership goes: any plan this member created for this
+    // household becomes theirs again (issue #362), otherwise it would be
+    // hidden from their own Plans and Overview by a household they are no
+    // longer in. Their household_plan_shares rows are deliberately left as
+    // they are, the same posture household_account_shares already has on
+    // leave: overview() only ever loops over members whose `left_at` is null,
+    // so a departed member's shares are already unreachable.
+    await releaseHouseholdPlans(uid, mine.household_id);
     await adminRest(`household_members?id=eq.${mine.id}`, {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ left_at: new Date().toISOString() }),
@@ -283,6 +322,10 @@ export default async function handler(req: Request): Promise<Response> {
       `household_members?household_id=eq.${mine.household_id}&user_id=eq.${targetId}&left_at=is.null&select=id&limit=1`,
     );
     if (!target[0]) return json({ error: "Member not found" }, 404);
+    // Same release as `leave` above (issue #362), for the same reason: a plan
+    // the removed member created for this household must not stay hidden from
+    // their own individual surfaces by a household they are no longer in.
+    await releaseHouseholdPlans(targetId, mine.household_id);
     await adminRest(`household_members?id=eq.${target[0].id}`, {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ left_at: new Date().toISOString() }),
@@ -335,6 +378,11 @@ export default async function handler(req: Request): Promise<Response> {
         `household_plan_shares?household_id=eq.${mine.household_id}&user_id=eq.${uid}&domain=eq.${encodeURIComponent(domain)}`,
         { method: "DELETE", headers: { Prefer: "return=minimal" } },
       );
+      // Issue #362: un-sharing a plan the member created FOR this household
+      // hands it back as an ordinary personal plan, so it reappears on their
+      // own Plans and Overview rather than becoming invisible on both sides.
+      // A no-op for a plan they merely shared, which never carried the marker.
+      await releaseHouseholdPlans(uid, mine.household_id, domain);
     }
     return json({ ok: true });
   }

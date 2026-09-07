@@ -738,7 +738,14 @@ export default function Plans({ profile = null, profileReady = false }: {
   profile?: UserProfile | null;
   profileReady?: boolean;
 }) {
-  const { plans, loading, upsertLocal, removeLocal } = useMemberPlans();
+  // `plans` is the member's own; `allPlans` additionally carries plans they
+  // created for a household, which belong on the household page and not here
+  // (issue #362). Everything on screen reads `plans`; the two things that
+  // reason about what already EXISTS on the account read `allPlans`, because a
+  // domain collision against a hidden plan would have POST /api/plans PATCH
+  // over it, and a household plan should not have its signup goal offered
+  // again. See useMemberPlans in lib/plans.ts.
+  const { plans, allPlans, loading, upsertLocal, removeLocal } = useMemberPlans();
   const [filter, setFilter] = useState<Filter>("active");
   const [modal, setModal] = useState<ModalState>(null);
   const close = () => setModal(null);
@@ -749,7 +756,7 @@ export default function Plans({ profile = null, profileReady = false }: {
   // lib/plans so the two surfaces cannot disagree about whether the member has
   // anything, which is what happened when Plans showed a chip and Overview said
   // "No plans yet".
-  const waitingGoals = useMemo(() => unplannedGoals(profile?.goals, plans), [profile?.goals, plans]);
+  const waitingGoals = useMemo(() => unplannedGoals(profile?.goals, allPlans), [profile?.goals, allPlans]);
 
   // Opening one is the same create path the chip strip used, so a goal turned
   // into a plan keeps the colour, shape, and icon it was shown with. Every
@@ -784,7 +791,7 @@ export default function Plans({ profile = null, profileReady = false }: {
       monthly_contribution: 0,
     };
     if (o.icon) goal.icon = o.icon;
-    const saved = await savePlan({ domain: uniqueDomain(g.goal, plans), status: "in_progress", goal });
+    const saved = await savePlan({ domain: uniqueDomain(g.goal, allPlans), status: "in_progress", goal });
     if (!saved) return false;
     upsertLocal(saved);
     setFilter("active");
@@ -1022,7 +1029,7 @@ export default function Plans({ profile = null, profileReady = false }: {
         <CreateForm
           state={modal}
           prefill={prefillFor(modal.prefill, balances)}
-          existing={plans}
+          existing={allPlans}
           fromGoal={!!modal.fromGoal}
           onBack={() => setModal(modal.fromGoal ? null : { k: "new" })}
           onCreated={(plan) => {
@@ -1046,7 +1053,12 @@ export default function Plans({ profile = null, profileReady = false }: {
   );
 }
 
-function EditForm({
+// Exported for pages/app/household.tsx (issue #362), which mounts this same
+// form on a plan created for the household. That plan is deliberately absent
+// from the individual Plans page now, so without this it would be the one plan
+// in the app with nowhere to be edited, marked complete, or deleted; the
+// household page is where it lives, so the editor has to reach it there.
+export function EditForm({
   plan, owned, onSaved, onDeleted, onClose,
 }: {
   plan: Plan;

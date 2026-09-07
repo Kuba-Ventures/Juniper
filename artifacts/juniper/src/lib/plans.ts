@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
 // The framings a plan can take. A plan's shape decides how its numbers are
@@ -48,6 +48,20 @@ export type PlanGoal = {
   // Unset means "use this plan's shape default" (SHAPE_ICON), which is every
   // plan written before this field existed.
   icon?: string;
+  // The household a plan was created FOR (issue #362), set only by the
+  // household page's own create path and only when its share toggle is left
+  // on. `plans.user_id` is still the member who pressed Create, because
+  // households never own a `plans` row: migration 0056 deliberately left that
+  // table and its owner-plus-one-partner RLS alone and records sharing in
+  // household_plan_shares instead. So this is the ONE thing that tells "a plan
+  // I made for the household" apart from "my own plan that I shared into it",
+  // which is the distinction the personal Plans and Overview surfaces need to
+  // stop claiming the former as personal. Read it through isHouseholdPlan().
+  //
+  // Cleared, rather than left dangling, by /api/household whenever the plan
+  // stops belonging to that household (unshared, or the member leaves or is
+  // removed), so a plan is never hidden from its owner with nowhere else to be.
+  household_id?: string;
   [k: string]: unknown;
 };
 
@@ -306,6 +320,18 @@ export const SHAPE_ICON: Record<PlanShape, string> = {
   income: "income",
 };
 
+/** The household a plan was created for, or null for an ordinary personal one.
+ *  A plan a member created for themselves and later shared to a household is
+ *  NOT this: sharing writes a household_plan_shares row and never touches the
+ *  plan, so it stays personal and keeps showing on their own surfaces, which
+ *  is what sharing has always meant here (issue #362). */
+export function householdPlanId(plan: PlanLike): string | null {
+  const id = plan.goal?.household_id;
+  return typeof id === "string" && id.trim() ? id : null;
+}
+
+export const isHouseholdPlan = (plan: PlanLike): boolean => householdPlanId(plan) !== null;
+
 // The icon a plan actually renders: a template's own mark where the plan was
 // created from one and still carries it (`goal.icon`), else the shape's
 // default. Read through this rather than `SHAPE_ICON[planShape(plan)]`
@@ -471,7 +497,17 @@ export function formatTargetDate(raw: string): string {
  * ------------------------------------------------------------------ */
 
 export type MemberPlans = {
+  /** The member's own plans: what every INDIVIDUAL surface should render. A
+      plan created for a household is not one of these (issue #362). */
   plans: Plan[];
+  /** Every row GET /api/plans returned, household plans included. Use this,
+      never `plans`, for anything that has to reason about what already exists
+      on the account rather than what to show: `uniqueDomain` above all, since
+      POST /api/plans upserts by (user_id, domain) and a "new" plan that
+      collided with a hidden household plan's domain would silently PATCH over
+      it instead of being created. Also the right list for "is this signup goal
+      already planned", so a household plan does not get offered twice. */
+  allPlans: Plan[];
   loading: boolean;
   /** Re-read from the server. */
   refresh: () => void;
@@ -486,8 +522,14 @@ export type MemberPlans = {
 // exists. They are separate routes and never mounted together, so this is a hook
 // rather than a context: the point is a single implementation, not a single
 // fetch in one render pass.
+//
+// It is also the one place the household split is applied, deliberately rather
+// than in api/plans.ts: the endpoint has to keep returning every owned row,
+// because its own POST resolves an upsert by (user_id, domain) against exactly
+// that set, so hiding household plans server-side would let a later personal
+// plan of the same name overwrite one. See `allPlans` above.
 export function useMemberPlans(): MemberPlans {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [allPlans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
 
@@ -520,7 +562,9 @@ export function useMemberPlans(): MemberPlans {
     setPlans((cur) => cur.filter((p) => p.domain !== domain));
   }, []);
 
-  return { plans, loading, refresh, upsertLocal, removeLocal };
+  const plans = useMemo(() => allPlans.filter((p) => !isHouseholdPlan(p)), [allPlans]);
+
+  return { plans, allPlans, loading, refresh, upsertLocal, removeLocal };
 }
 
 /* ------------------------------------------------------------------ *
