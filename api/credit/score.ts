@@ -1,34 +1,38 @@
-// GET /api/credit/score — Stage 10b: a real, sandbox-sourced VantageScore 3.0
-// pull from Spinwheel, standing in for the Credit page's "not tracked yet"
-// panel (src/pages/app/credit.tsx, ScorePending / PLANNED_FACTORS).
+// GET /api/credit/score — a real VantageScore 3.0 pull from Spinwheel for the
+// caller's OWN verified identity, standing in for the Credit page's "not
+// tracked yet" panel (src/pages/app/credit.tsx, ScorePending / PLANNED_FACTORS).
 //
-// SANDBOX ONLY. Every caller sees the same pre-connected Spinwheel sandbox
-// test identity's score (see api/_credit-provider.ts), never their own. There
-// is no per-member Spinwheel connection yet: that needs Stage 10c's identity-
-// match decision plus a consent screen, and Stage 10d's onboarding trigger,
-// neither of which exist. This endpoint proves the wire end to end, a real
-// score, real ordered factors, a real bureau, without pretending it is the
-// caller's own credit file.
+// Stage 10b built this against a single shared Spinwheel sandbox test
+// identity (env var SPINWHEEL_SANDBOX_USER_ID) to prove the wire end to end.
+// Stage 10d replaces that: the caller's own spinwheel_user_id is looked up
+// from credit_consents (written only by api/credit/verify.ts, after a real
+// SMS OTP verification -- see that migration's header), so a member who has
+// not gone through onboarding's credit-pull consent gets an honest
+// "not consented yet" rather than someone else's score.
 //
-// Requires a signed-in member anyway, same JWT gate as every other endpoint,
-// even though the payload isn't member-specific yet: the point is that this
-// never quietly becomes a public unauthenticated read once Stage 10c/10d
-// land real per-member data behind the same route.
+// `sandbox` on the response is computed from creditEnv(), not hardcoded:
+// while SPINWHEEL_ENV stays "sandbox" (no Spinwheel production contract yet),
+// Spinwheel's own sandbox returns the SAME canned test fixture regardless of
+// whose real phone/DOB verified the connection, so every member sees
+// identical test data today even though the consent behind it is real and
+// per-member. That is exactly why the Credit page's "Sandbox test data"
+// disclosure must keep showing until this flips to production; removing it
+// once real consent exists would be the actual misrepresentation risk.
 //
-// No DATABASE storage, by design, ahead of Stage 10d's retention rule (never
-// keep the report payload past the display session): nothing here writes a
-// table. There IS a small in-memory cache below, and it exists for a real
-// reason found live on 2026-09-07: Spinwheel's sandbox rate-limits
-// /debtProfile to ONE request per test identity PER DAY regardless of what's
-// requested (`DAILY_USER_REQUEST_LIMIT_REACHED`, "Credit report orders are
-// limited to one request per user per day"), so a page reloaded twice in the
-// same day 429s without it. This is also just the right shape for production,
-// not only a sandbox workaround: Spinwheel bills per fetch (see Stage 10e),
-// so pulling live on every single page view was always going to be the wrong
-// design, cost aside.
+// No DATABASE storage of the report itself, by design (Stage 10d's retention
+// rule: never keep the report payload past the display session) -- only
+// credit_consents (the grant) is retained; nothing here writes a table. The
+// in-memory caches below are keyed by spinwheel_user_id now, a real map
+// rather than the single slot Stage 10b used, since there is more than one
+// real identity to serve; see that stage's own note on why a plain in-memory
+// cache exists at all (Spinwheel's sandbox rate-limits /debtProfile to one
+// request per identity per day) and its real limits (per warm instance only,
+// not shared across cold starts or regions -- still not a substitute for a
+// real refresh-subscription cadence, Stage 10e).
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
-import { creditConfigured, creditFetch, creditSandboxUserId } from "../_credit-provider";
+import { creditConfigured, creditEnv, creditFetch } from "../_credit-provider";
+import { adminConfigured, adminRest } from "../_supabase-admin";
 
 export const config = { runtime: "edge" };
 
@@ -64,7 +68,7 @@ type SpinwheelDebtProfileResp = {
 
 export type CreditScoreSnapshot = {
   available: true;
-  sandbox: true;
+  sandbox: boolean;
   score: number;
   model: "VANTAGE_SCORE_3_0";
   sourceBureau: string;
@@ -72,38 +76,19 @@ export type CreditScoreSnapshot = {
   factors: SpinwheelFactor[];
 };
 
-// Module-scope, so it only lives for the life of one warm Edge Function
-// instance: it evaporates on a cold start or a redeploy, is never shared
-// across regions, and is not a substitute for a real refresh-subscription
-// cadence (Stage 10e). Kept comfortably under Spinwheel's 24h window so a
-// redeploy or a cold start can't land inside a stale cache and still 429.
 const CACHE_TTL_MS = 20 * 60 * 60 * 1000;
-let cache: { userId: string; snapshot: CreditScoreSnapshot; at: number } | null = null;
+const cache = new Map<string, { snapshot: CreditScoreSnapshot; at: number }>();
+const rateLimitedUntil = new Map<string, number>();
+const inFlight = new Map<string, Promise<CreditScoreSnapshot | { failed: true; status: number }>>();
 
-// A 429 here means "not again today" (Spinwheel's own daily-per-identity
-// limit, not a transient failure), found live 2026-09-07 by two requests
-// racing the plain result cache above within the same warm instance: the
-// first started, hadn't written `cache` yet, and the second saw an empty
-// cache and re-called Spinwheel, burning the SAME day's one allowed pull a
-// second time before the first response could ever be reused. Caching the
-// 429 itself (same TTL as a success) stops that instance from trying again
-// for the rest of the day; caching a genuinely transient failure (502, a
-// timeout) would be wrong, so only 429 is remembered here.
-let rateLimitedUntil: { userId: string; at: number } | null = null;
-
-// De-dupes concurrent callers within one warm instance onto a single Spinwheel
-// request, which is the other half of the race above: two nearly-simultaneous
-// requests must share one in-flight pull rather than each starting their own.
-let inFlight: Promise<CreditScoreSnapshot | { failed: true; status: number }> | null = null;
-
-async function pullFresh(userId: string): Promise<CreditScoreSnapshot | { failed: true; status: number }> {
-  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${userId}/debtProfile`, {
+async function pullFresh(spinwheelUserId: string): Promise<CreditScoreSnapshot | { failed: true; status: number }> {
+  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${spinwheelUserId}/debtProfile`, {
     creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
     creditScore: { model: "VANTAGE_SCORE_3_0", sourceBureau: "Equifax" },
   });
   if (!r.ok) {
     console.error(`[credit] debtProfile failed (${r.status}): ${r.data.status?.messages?.[0]?.desc ?? "unknown"}`);
-    if (r.status === 429) rateLimitedUntil = { userId, at: Date.now() };
+    if (r.status === 429) rateLimitedUntil.set(spinwheelUserId, Date.now());
     return { failed: true, status: r.status };
   }
 
@@ -114,40 +99,52 @@ async function pullFresh(userId: string): Promise<CreditScoreSnapshot | { failed
 
   const snapshot: CreditScoreSnapshot = {
     available: true,
-    sandbox: true,
+    sandbox: creditEnv() !== "production",
     score: detail.creditScore,
     model: "VANTAGE_SCORE_3_0",
     sourceBureau: detail.sourceBureau,
     asOf: detail.reportedDate,
     factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
   };
-  cache = { userId, snapshot, at: Date.now() };
+  cache.set(spinwheelUserId, { snapshot, at: Date.now() });
   return snapshot;
 }
+
+type ConsentRow = { spinwheel_user_id: string };
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
   if (!SUPABASE_URL) return json({ error: "Not configured" }, 503);
   if (!creditConfigured()) return json({ available: false, reason: "Credit provider not configured" }, 503);
+  if (!adminConfigured()) return json({ error: "Not configured" }, 503);
 
   const token = extractBearerToken(req);
   if (!token) return json({ error: "Unauthorized" }, 401);
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
 
-  const userId = creditSandboxUserId();
-  if (!userId) return json({ available: false, reason: "No sandbox identity connected yet" });
+  const consentRes = await adminRest(`credit_consents?user_id=eq.${payload.sub}&select=spinwheel_user_id&limit=1`);
+  if (!consentRes.ok) return json({ error: "Failed to read consent" }, 500);
+  const rows = (await consentRes.json()) as ConsentRow[];
+  const spinwheelUserId = rows[0]?.spinwheel_user_id;
+  if (!spinwheelUserId) return json({ available: false, reason: "Not consented to credit tracking yet" });
 
-  if (cache && cache.userId === userId && Date.now() - cache.at < CACHE_TTL_MS) {
-    return json(cache.snapshot);
+  const cached = cache.get(spinwheelUserId);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return json(cached.snapshot);
   }
-  if (rateLimitedUntil && rateLimitedUntil.userId === userId && Date.now() - rateLimitedUntil.at < CACHE_TTL_MS) {
-    return json({ available: false, reason: "Sandbox identity already pulled today" }, 429);
+  const limitedAt = rateLimitedUntil.get(spinwheelUserId);
+  if (limitedAt && Date.now() - limitedAt < CACHE_TTL_MS) {
+    return json({ available: false, reason: "Already pulled today" }, 429);
   }
 
-  if (!inFlight) inFlight = pullFresh(userId).finally(() => { inFlight = null; });
-  const result = await inFlight;
+  let pull = inFlight.get(spinwheelUserId);
+  if (!pull) {
+    pull = pullFresh(spinwheelUserId).finally(() => { inFlight.delete(spinwheelUserId); });
+    inFlight.set(spinwheelUserId, pull);
+  }
+  const result = await pull;
   if ("failed" in result) return json({ available: false, reason: "Credit provider did not answer" }, 502);
   return json(result);
 }

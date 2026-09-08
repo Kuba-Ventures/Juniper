@@ -4,15 +4,15 @@
 // transport failure comes back as a result rather than a throw so one caller
 // awaiting it can't be left hanging on an unhandled rejection.
 //
-// SANDBOX ONLY as of Stage 10b. Every pull goes through a single, pre-connected
-// Spinwheel SANDBOX test identity (established once via their SMS+OTP connect
-// flow, which needs a human to read a real text — see docs/CREDIT_PROVIDER.md
-// section 5 and PROJECT.md's 2026-09-07 credit-score entries for how that
-// identity was created), never a real member's own phone/DOB. Stage 10c's
-// identity-match decision and consent screen have to land, and Stage 10d's
-// onboarding trigger has to exist, before this module can ever pull a real
-// person's credit file. Do not wire a real per-member connect flow in here
-// without reading those stages first.
+// Real per-member connect as of Stage 10d: api/credit/connect.ts and
+// api/credit/verify.ts run a genuine SMS+OTP round trip against the member's
+// own phone (Stage 10c's identity-match decision: phone + DOB, nothing more),
+// and api/credit/score.ts pulls whichever spinwheel_user_id that verification
+// wrote to credit_consents. SPINWHEEL_ENV still reads "sandbox" until a real
+// Spinwheel production contract exists, though, so every pull today still
+// returns Spinwheel's own canned sandbox fixture regardless of whose real
+// identity verified it — see api/credit/score.ts's header for why that makes
+// the "sandbox" flag on every response load-bearing rather than decorative.
 //
 // Never log a response body: a debt profile carries SSN-last-4 and addresses.
 import { readEnv } from "./_env";
@@ -32,13 +32,6 @@ export function creditBaseUrl(): string {
 
 export function creditConfigured(): boolean {
   return !!readEnv("SPINWHEEL_SECRET_KEY");
-}
-
-// The single sandbox test identity connected once, outside this app, via
-// Spinwheel's SMS+OTP flow. Set on Vercel (Preview/Development only, same
-// scoping convention as PLAID_SECRET) once that connect has been run.
-export function creditSandboxUserId(): string | undefined {
-  return readEnv("SPINWHEEL_SANDBOX_USER_ID");
 }
 
 export type CreditResult<T> = { ok: boolean; status: number; data: T };
