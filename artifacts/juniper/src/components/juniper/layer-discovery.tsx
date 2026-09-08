@@ -37,13 +37,30 @@ import { trackEngagement } from "@/lib/analytics";
 // caller can list them as already-connected in the picker below.
 type OnLinked = (institutions?: string[]) => void;
 
-export function LayerDiscovery({ onLinked }: { onLinked: OnLinked }) {
-  return layerDemo() ? <LayerDemo onLinked={onLinked} /> : <LayerLive onLinked={onLinked} />;
+// `phone`/`onPhoneChange` are optional and only exist so a caller sitting above
+// both Layer and something else that also asks for a phone number (Stage 10c's
+// credit-pull consent, which needs one too) can share a single value instead of
+// making a member type their own number twice in one onboarding screen. Omit
+// both and this behaves exactly as before, uncontrolled, which is what
+// Connections (the only other caller) still does.
+type PhoneControl = { phone?: string; onPhoneChange?: (v: string) => void };
+
+function usePhoneField({ phone, onPhoneChange }: PhoneControl) {
+  const [internal, setInternal] = useState("");
+  const value = phone ?? internal;
+  const setValue = onPhoneChange ?? setInternal;
+  return [value, setValue] as const;
+}
+
+export function LayerDiscovery({ onLinked, phone, onPhoneChange }: { onLinked: OnLinked } & PhoneControl) {
+  return layerDemo()
+    ? <LayerDemo onLinked={onLinked} phone={phone} onPhoneChange={onPhoneChange} />
+    : <LayerLive onLinked={onLinked} phone={phone} onPhoneChange={onPhoneChange} />;
 }
 
 // ── live (real Plaid Layer) ──────────────────────────────────────────────────
-function LayerLive({ onLinked }: { onLinked: OnLinked }) {
-  const [phone, setPhone] = useState("");
+function LayerLive({ onLinked, phone: phoneProp, onPhoneChange }: { onLinked: OnLinked } & PhoneControl) {
+  const [phone, setPhone] = usePhoneField({ phone: phoneProp, onPhoneChange });
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -132,9 +149,9 @@ const DEMO_ACCOUNTS: DemoAcct[] = [
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const catLabel = (key: ManualCategory) => MANUAL_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 
-function LayerDemo({ onLinked }: { onLinked: OnLinked }) {
+function LayerDemo({ onLinked, phone: phoneProp, onPhoneChange }: { onLinked: OnLinked } & PhoneControl) {
   const [phase, setPhase] = useState<"phone" | "loading" | "results" | "done">("phone");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = usePhoneField({ phone: phoneProp, onPhoneChange });
   const [selected, setSelected] = useState<Set<string>>(new Set(DEMO_ACCOUNTS.map((a) => a.id)));
   const [saving, setSaving] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
