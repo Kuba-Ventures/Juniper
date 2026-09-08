@@ -7,6 +7,7 @@ import { useLinkQueue } from "@/lib/use-link-queue";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
+import { connectCredit, verifyCredit } from "@/lib/credit-score";
 import "@/styles/juniper.css";
 
 // Onboarding used to be four blocking steps (name+household, goals, connect,
@@ -303,6 +304,17 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
 // sessions today: layerEnabled() is off unless VITE_PLAID_LAYER is set, so
 // this component always renders its own phone input rather than assuming one
 // exists above it.
+//
+// Stage 10d: checking the box no longer just reveals two fields, it drives a
+// real three-phase flow, because Spinwheel's connect is a genuine SMS OTP
+// round trip and there is no way to "fire it in the background" -- a member
+// has to read a text and type a code somewhere. "form" (phone + DOB, a Send
+// code button) -> "code" (the OTP field, a Verify button, a way back to fix a
+// wrong number) -> "done" (a confirmation, same visual language as the
+// ob-connected banner Plaid linking already uses above, so a member sees one
+// consistent "this worked" pattern on this screen rather than two). Nothing
+// here blocks onboarding from finishing at any phase; this is the one
+// optional step on an already-optional screen.
 function CreditPullConsent({
   phone,
   onPhoneChange,
@@ -318,10 +330,44 @@ function CreditPullConsent({
   dob: string;
   onDobChange: (v: string) => void;
 }) {
+  const [phase, setPhase] = useState<"form" | "code" | "done">("form");
+  const [spinwheelUserId, setSpinwheelUserId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendCode = useCallback(async () => {
+    setError(null);
+    setBusy(true);
+    const r = await connectCredit(phone, dob);
+    setBusy(false);
+    if (r.ok) {
+      setSpinwheelUserId(r.userId);
+      setPhase("code");
+    } else {
+      setError(r.error);
+    }
+  }, [phone, dob]);
+
+  const verify = useCallback(async () => {
+    if (!spinwheelUserId) return;
+    setError(null);
+    setBusy(true);
+    const r = await verifyCredit(spinwheelUserId, code);
+    setBusy(false);
+    if (r.ok) setPhase("done");
+    else setError(r.error);
+  }, [spinwheelUserId, code]);
+
   return (
     <div className="ob-credit-consent">
       <label className="ob-credit-row">
-        <input type="checkbox" checked={consented} onChange={(e) => onConsentChange(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={consented}
+          disabled={phase !== "form"}
+          onChange={(e) => onConsentChange(e.target.checked)}
+        />
         <span className="ob-credit-label">
           <b>Pull my credit history too.</b> By checking this, you're providing "written instructions" to
           Spinwheel Solutions, Inc. authorizing it to obtain your credit profile from Equifax on Juniper's
@@ -332,7 +378,8 @@ function CreditPullConsent({
           .
         </span>
       </label>
-      {consented && (
+
+      {consented && phase === "form" && (
         <div className="ob-credit-fields">
           <input
             className="ob-input"
@@ -347,6 +394,44 @@ function CreditPullConsent({
             value={dob}
             onChange={(e) => onDobChange(e.target.value)}
           />
+          <button
+            className="ob-credit-btn"
+            type="button"
+            disabled={busy || !phone.trim() || !dob.trim()}
+            onClick={() => void sendCode()}
+          >
+            {busy ? "Sending…" : "Send code"}
+          </button>
+        </div>
+      )}
+
+      {phase === "code" && (
+        <div className="ob-credit-fields">
+          <p className="ob-credit-note">
+            We texted a code to {phone}.{" "}
+            <button type="button" className="ob-credit-link" onClick={() => { setPhase("form"); setError(null); }}>
+              Use a different number
+            </button>
+          </p>
+          <input
+            className="ob-input"
+            inputMode="numeric"
+            placeholder="Verification code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <button className="ob-credit-btn" type="button" disabled={busy || !code.trim()} onClick={() => void verify()}>
+            {busy ? "Verifying…" : "Verify"}
+          </button>
+        </div>
+      )}
+
+      {error && <div className="form-error" style={{ marginTop: 8 }}>{error}</div>}
+
+      {phase === "done" && (
+        <div className="ob-connected" style={{ marginTop: 10, marginBottom: 0 }}>
+          <Check size={18} strokeWidth={2.5} /> Credit tracking connected. Your score will show up on the Credit
+          tab.
         </div>
       )}
     </div>

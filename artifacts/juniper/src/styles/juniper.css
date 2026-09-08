@@ -1276,6 +1276,11 @@
 .jnpr .ob-credit-label a{color:var(--jnpr-accent);font-weight:600;text-decoration:none}
 .jnpr .ob-credit-fields{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;margin-left:27px}
 .jnpr .ob-credit-fields .ob-input{flex:1;min-width:150px}
+.jnpr .ob-credit-fields{align-items:center}
+.jnpr .ob-credit-btn{font:inherit;font-size:13.5px;font-weight:650;color:var(--jnpr-on-accent);background:var(--jnpr-accent);border:0;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap}
+.jnpr .ob-credit-btn:disabled{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);cursor:not-allowed}
+.jnpr .ob-credit-note{flex:1 1 100%;font-size:12.5px;color:var(--jnpr-ink-2);margin:0}
+.jnpr .ob-credit-link{font:inherit;font-size:12.5px;font-weight:650;color:var(--jnpr-accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 /* institution picker (connect flow): a Plaid search box, its result rows, and
    the two fallback actions. Rows and not tiles, see institution-picker.tsx: the
    curated multi-select gallery is gone, so there is no grid left to style.
