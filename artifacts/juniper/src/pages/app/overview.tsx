@@ -1108,6 +1108,9 @@ export default function Overview({
   const { netWorth, cashflow, spending, budgets, transactions, accounts, score } = data;
   const first = (name || "there").split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  // Local device hour, not server/UTC: Juniper has members across timezones.
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   // The donut's own total, so the "Where it went" header can never disagree with
   // the wedges under it. On live data it also equals `cashflow.spent` in the
   // strip above: /api/finances defines spent AS the sum of this breakdown, both
@@ -1217,7 +1220,7 @@ export default function Overview({
     <div className="frame">
       <div className="greet dash-greet">
         <div>
-          <h1>Good morning, {first}</h1>
+          <h1>{greeting}, {first}</h1>
           <div className="meta">
             <span>{today}</span>
             <span>·</span>
