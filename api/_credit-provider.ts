@@ -77,3 +77,63 @@ export async function creditFetch<T = Record<string, unknown>>(
     clearTimeout(timer);
   }
 }
+
+// 15 U.S.C. 1681g(f) / Cal. Civ. Code 1785.15.1: at most four adverse key
+// factors, ordered by importance, per model. Matches credit.tsx's
+// PLANNED_FACTORS comment exactly — do not raise this without re-reading it.
+const MAX_FACTORS = 4;
+
+export type CreditScoreFactor = { code: string; description: string };
+export type CreditScoreSnapshot = {
+  available: true;
+  sandbox: boolean;
+  score: number;
+  model: "VANTAGE_SCORE_3_0";
+  sourceBureau: string;
+  asOf: string;
+  factors: CreditScoreFactor[];
+};
+export type PullCreditScoreResult = CreditScoreSnapshot | { failed: true; status: number };
+
+type SpinwheelScoreDetail = {
+  creditScore: number;
+  model: string;
+  sourceBureau: string;
+  reportedDate: string;
+  factors?: CreditScoreFactor[];
+};
+type SpinwheelDebtProfileResp = {
+  data?: { creditReports?: { creditScoreDetails?: SpinwheelScoreDetail[] }[] };
+  status?: { messages?: { desc?: string }[] };
+};
+
+// The one place a debtProfile pull is requested and parsed, shared by
+// api/credit/score.ts (a live, on-demand, cached pull for the Credit page)
+// and api/credit/_score-check.ts (the Stage 10e monthly cron leg that detects
+// a change): one definition of what counts as a valid VantageScore 3.0
+// response, so the two callers cannot come to disagree about it.
+export async function pullCreditScore(spinwheelUserId: string): Promise<PullCreditScoreResult> {
+  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${spinwheelUserId}/debtProfile`, {
+    creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
+    creditScore: { model: "VANTAGE_SCORE_3_0", sourceBureau: "Equifax" },
+  });
+  if (!r.ok) {
+    console.error(`[credit] debtProfile failed (${r.status}): ${r.data.status?.messages?.[0]?.desc ?? "unknown"}`);
+    return { failed: true, status: r.status };
+  }
+
+  const detail = r.data.data?.creditReports?.[0]?.creditScoreDetails?.[0];
+  if (!detail || detail.model !== "VANTAGE_SCORE_3_0") {
+    return { failed: true, status: 200 };
+  }
+
+  return {
+    available: true,
+    sandbox: creditEnv() !== "production",
+    score: detail.creditScore,
+    model: "VANTAGE_SCORE_3_0",
+    sourceBureau: detail.sourceBureau,
+    asOf: detail.reportedDate,
+    factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
+  };
+}

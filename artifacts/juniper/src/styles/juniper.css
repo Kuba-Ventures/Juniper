@@ -89,6 +89,7 @@
 .jnpr .notif-item:hover{background:var(--jnpr-surface-3)}
 .jnpr .notif-item .notif-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex:none;background:var(--jnpr-bad)}
 .jnpr .notif-item.notif-drift .notif-dot{background:var(--jnpr-warn)}
+.jnpr .notif-item.notif-score_change .notif-dot{background:var(--jnpr-accent)}
 .jnpr .notif-item.read .notif-dot{background:var(--jnpr-ink-3);opacity:.6}
 .jnpr .notif-item.read{opacity:.62}
 .jnpr .notif-item.read .notif-text b{font-weight:500}
