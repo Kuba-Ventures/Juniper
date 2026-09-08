@@ -114,7 +114,17 @@ export default async function handler(req: Request): Promise<Response> {
   // institutions, so balances must not queue behind them.
   const hasAccounts = items.length > 0 || manualAccts.length > 0;
   const hasTransactions = txns.length > 0;
-  if (!hasAccounts && !hasTransactions) return json({ linked: false });
+  // isDeveloper travels on this early return too, not just the full payload
+  // below: a member who just used "Reset account & start over" (#350) lands
+  // in exactly this branch, nothing linked yet, and Settings reads
+  // sync?.isDeveloper to decide whether to show the Developer tab at all
+  // (pages/app/settings.tsx). Without it here, resetting your own account
+  // was the one action guaranteed to hide the tools you'd want right after
+  // doing it, since there's nothing to link again until you can reach
+  // "Restart onboarding" from that same tab.
+  if (!hasAccounts && !hasTransactions) {
+    return json({ linked: false, isDeveloper: isDeveloperEmail(payload.email) });
+  }
 
   // Budgets only mean something next to a this-month spend figure, so they're
   // read only when there are transactions to measure them against.
