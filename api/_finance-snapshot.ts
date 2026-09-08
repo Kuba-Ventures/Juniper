@@ -181,6 +181,29 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // assertion. The Credit page counts it and says whose it is.
   const creditUtilization = utilLimit > 0 ? utilBalance / utilLimit : undefined;
 
+  // Stage 10f: the real bureau score, when a member has one. creditFactor()
+  // already prefers creditScore over creditUtilization when both are present
+  // (src/lib/score.ts / api/_score.ts, unchanged by this stage): a real
+  // VantageScore 3.0 is a stronger signal than a utilization ratio guessed
+  // from linked-card limits, so it should win rather than being averaged with
+  // it. last_score is written by both a live Credit-page pull
+  // (api/credit/score.ts) and the Stage 10e monthly cron
+  // (api/credit/_score-check.ts), so this reads whichever is freshest without
+  // caring which wrote it. Null until the member has gone through Stage 10c's
+  // consent and at least one pull has succeeded.
+  //
+  // KNOWN GAP, not fixed here: this whole function returns { linked: false }
+  // above before this lookup is ever reached when the member has no Plaid
+  // item or no transactions yet (line ~94), so a member with real credit
+  // consent but nothing linked still scores as unlinked and gets none of
+  // this. Widening that early return is a bigger, separate change (it also
+  // gates /api/finances's "keep the demo mock" behavior, not just this
+  // factor), so it is left as a follow-up rather than folded into this pass.
+  const consentRows = await rows<{ last_score: number | null }>(
+    `credit_consents?user_id=eq.${uid}&select=last_score&limit=1`,
+  );
+  const creditScore = consentRows[0]?.last_score ?? undefined;
+
   // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
   // a regional bank Plaid can't reach, count toward the score just like linked
   // ones. They carry no transactions, so income/spending above are unaffected.
@@ -203,11 +226,13 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       totalDebt: Math.round(totalDebt),
       totalAssets: Math.round(totalAssets),
       investmentBalance: Math.round(investmentBalance),
-      // Real utilization when the linked cards report their limits. creditScore
-      // stays undefined until a bureau feed exists (Stage 10, see
-      // docs/CREDIT_PROVIDER.md). With neither, the engine drops the credit
-      // factor rather than inventing a number for it.
+      // Real utilization when the linked cards report their limits.
+      // creditScore is Stage 10f's real VantageScore 3.0, when a credit-
+      // consented member has one; creditFactor() prefers it over
+      // creditUtilization when both are present. With neither, the engine
+      // drops the credit factor rather than inventing a number for it.
       creditUtilization,
+      creditScore,
     },
     signals: {
       monthlySpending: Math.round(monthlySpending),
