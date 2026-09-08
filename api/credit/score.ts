@@ -4,7 +4,7 @@
 //
 // Stage 10b built this against a single shared Spinwheel sandbox test
 // identity (env var SPINWHEEL_SANDBOX_USER_ID) to prove the wire end to end.
-// Stage 10d replaces that: the caller's own spinwheel_user_id is looked up
+// Stage 10d replaced that: the caller's own spinwheel_user_id is looked up
 // from credit_consents (written only by api/credit/verify.ts, after a real
 // SMS OTP verification -- see that migration's header), so a member who has
 // not gone through onboarding's credit-pull consent gets an honest
@@ -21,17 +21,23 @@
 //
 // No DATABASE storage of the report itself, by design (Stage 10d's retention
 // rule: never keep the report payload past the display session) -- only
-// credit_consents (the grant) is retained; nothing here writes a table. The
-// in-memory caches below are keyed by spinwheel_user_id now, a real map
-// rather than the single slot Stage 10b used, since there is more than one
-// real identity to serve; see that stage's own note on why a plain in-memory
-// cache exists at all (Spinwheel's sandbox rate-limits /debtProfile to one
-// request per identity per day) and its real limits (per warm instance only,
-// not shared across cold starts or regions -- still not a substitute for a
-// real refresh-subscription cadence, Stage 10e).
+// credit_consents (the grant, plus Stage 10e's last_score/last_score_at
+// baseline for alerting) is retained; nothing here writes the report itself.
+// The debtProfile call and its parsing live in api/_credit-provider.ts's
+// pullCreditScore() now, shared with api/credit/_score-check.ts (the Stage
+// 10e monthly cron leg), so there is one definition of a valid pull; this
+// file keeps only the in-memory caches, which are specific to serving a live
+// page view cheaply and have no reason to exist in the cron path.
+//
+// The caches are keyed by spinwheel_user_id, a real map rather than the
+// single slot Stage 10b used, since there is more than one real identity to
+// serve. See that stage's own note on why a plain in-memory cache exists at
+// all (Spinwheel's sandbox rate-limits /debtProfile to one request per
+// identity per day) and its real limits (per warm instance only, not shared
+// across cold starts or regions).
 import { verifySupabaseJwt, extractBearerToken } from "../_supabase-jwt";
 import { readEnv } from "../_env";
-import { creditConfigured, creditEnv, creditFetch } from "../_credit-provider";
+import { creditConfigured, pullCreditScore, type CreditScoreSnapshot } from "../_credit-provider";
 import { adminConfigured, adminRest } from "../_supabase-admin";
 
 export const config = { runtime: "edge" };
@@ -47,70 +53,12 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-// 15 U.S.C. 1681g(f) / Cal. Civ. Code 1785.15.1: at most four adverse key
-// factors, ordered by importance, per model. Matches credit.tsx's
-// PLANNED_FACTORS comment exactly — do not raise this without re-reading it.
-const MAX_FACTORS = 4;
-
-type SpinwheelFactor = { code: string; description: string };
-type SpinwheelScoreDetail = {
-  creditScore: number;
-  model: string;
-  sourceBureau: string;
-  reportedDate: string;
-  factors?: SpinwheelFactor[];
-};
-type SpinwheelReport = { creditScoreDetails?: SpinwheelScoreDetail[] };
-type SpinwheelDebtProfileResp = {
-  data?: { creditReports?: SpinwheelReport[] };
-  status?: { messages?: { desc?: string }[] };
-};
-
-export type CreditScoreSnapshot = {
-  available: true;
-  sandbox: boolean;
-  score: number;
-  model: "VANTAGE_SCORE_3_0";
-  sourceBureau: string;
-  asOf: string;
-  factors: SpinwheelFactor[];
-};
-
 const CACHE_TTL_MS = 20 * 60 * 60 * 1000;
 const cache = new Map<string, { snapshot: CreditScoreSnapshot; at: number }>();
 const rateLimitedUntil = new Map<string, number>();
-const inFlight = new Map<string, Promise<CreditScoreSnapshot | { failed: true; status: number }>>();
+const inFlight = new Map<string, ReturnType<typeof pullCreditScore>>();
 
-async function pullFresh(spinwheelUserId: string): Promise<CreditScoreSnapshot | { failed: true; status: number }> {
-  const r = await creditFetch<SpinwheelDebtProfileResp>(`/v1/users/${spinwheelUserId}/debtProfile`, {
-    creditReport: { type: "1_BUREAU.FULL", sourceBureau: "Equifax" },
-    creditScore: { model: "VANTAGE_SCORE_3_0", sourceBureau: "Equifax" },
-  });
-  if (!r.ok) {
-    console.error(`[credit] debtProfile failed (${r.status}): ${r.data.status?.messages?.[0]?.desc ?? "unknown"}`);
-    if (r.status === 429) rateLimitedUntil.set(spinwheelUserId, Date.now());
-    return { failed: true, status: r.status };
-  }
-
-  const detail = r.data.data?.creditReports?.[0]?.creditScoreDetails?.[0];
-  if (!detail || detail.model !== "VANTAGE_SCORE_3_0") {
-    return { failed: true, status: 200 };
-  }
-
-  const snapshot: CreditScoreSnapshot = {
-    available: true,
-    sandbox: creditEnv() !== "production",
-    score: detail.creditScore,
-    model: "VANTAGE_SCORE_3_0",
-    sourceBureau: detail.sourceBureau,
-    asOf: detail.reportedDate,
-    factors: (detail.factors ?? []).slice(0, MAX_FACTORS),
-  };
-  cache.set(spinwheelUserId, { snapshot, at: Date.now() });
-  return snapshot;
-}
-
-type ConsentRow = { spinwheel_user_id: string };
+type ConsentRow = { user_id: string; spinwheel_user_id: string };
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -124,7 +72,7 @@ export default async function handler(req: Request): Promise<Response> {
   const payload = await verifySupabaseJwt(token, { supabaseUrl: SUPABASE_URL, legacySecret: SUPABASE_JWT_SECRET });
   if (!payload?.sub) return json({ error: "Unauthorized" }, 401);
 
-  const consentRes = await adminRest(`credit_consents?user_id=eq.${payload.sub}&select=spinwheel_user_id&limit=1`);
+  const consentRes = await adminRest(`credit_consents?user_id=eq.${payload.sub}&select=user_id,spinwheel_user_id&limit=1`);
   if (!consentRes.ok) return json({ error: "Failed to read consent" }, 500);
   const rows = (await consentRes.json()) as ConsentRow[];
   const spinwheelUserId = rows[0]?.spinwheel_user_id;
@@ -141,10 +89,25 @@ export default async function handler(req: Request): Promise<Response> {
 
   let pull = inFlight.get(spinwheelUserId);
   if (!pull) {
-    pull = pullFresh(spinwheelUserId).finally(() => { inFlight.delete(spinwheelUserId); });
+    pull = pullCreditScore(spinwheelUserId).finally(() => { inFlight.delete(spinwheelUserId); });
     inFlight.set(spinwheelUserId, pull);
   }
   const result = await pull;
-  if ("failed" in result) return json({ available: false, reason: "Credit provider did not answer" }, 502);
+  if ("failed" in result) {
+    if (result.status === 429) rateLimitedUntil.set(spinwheelUserId, Date.now());
+    return json({ available: false, reason: "Credit provider did not answer" }, 502);
+  }
+
+  cache.set(spinwheelUserId, { snapshot: result, at: Date.now() });
+  // Best-effort: a live view's whole job is showing the score, and a failure
+  // to record the Stage 10e alerting baseline must not turn that into an
+  // error the member sees. The monthly cron catches this member again either
+  // way, since last_score_at only advances on a successful write here.
+  void adminRest(`credit_consents?user_id=eq.${payload.sub}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ last_score: result.score, last_score_at: new Date().toISOString() }),
+  }).catch(() => {});
+
   return json(result);
 }

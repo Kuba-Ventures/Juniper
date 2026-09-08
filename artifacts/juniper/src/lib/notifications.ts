@@ -19,7 +19,14 @@ import { fetchSubscriptions } from "@/lib/subscriptions";
 import { money } from "@/lib/mock-data";
 import { getAccessToken } from "@/lib/supabase";
 
+// Facts the CLIENT can compute and reconcile on every load (see the header
+// above). 'score_change' is deliberately not here: whether a bureau score
+// changed can only be known by comparing two pulls over time, which is state
+// only the server holds (credit_consents.last_score, Stage 10e), so that kind
+// is inserted directly by api/credit/_score-check.ts rather than reconciled
+// from a client-sent fact. See migration 0066's header for the full reasoning.
 export type NotificationKind = "reconnect" | "budget" | "drift";
+export type StoredNotificationKind = NotificationKind | "score_change";
 
 interface Fact {
   kind: NotificationKind;
@@ -29,10 +36,11 @@ interface Fact {
   href: string;
 }
 
-// The server's own shape (api/notifications.ts's `list`/`reconcile`).
+// The server's own shape (api/notifications.ts's `list`/`reconcile`, plus
+// Stage 10e's directly-inserted 'score_change' rows).
 export interface NotificationRecord {
   id: string;
-  kind: NotificationKind;
+  kind: StoredNotificationKind;
   title: string;
   detail: string;
   href: string;

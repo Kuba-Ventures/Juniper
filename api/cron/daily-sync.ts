@@ -27,6 +27,7 @@ import { runTransactionsSync } from "../plaid/transactions-sync";
 import { runNetworthSnapshot } from "../plaid/networth-snapshot";
 import { runScoreCompute } from "../score/compute";
 import { runMerchantArtBackfill } from "../plaid/merchant-art-backfill";
+import { runCreditScoreCheck } from "../credit/_score-check";
 
 export const config = { runtime: "edge" };
 
@@ -55,7 +56,16 @@ const PER_MEMBER_MS = 6_000;
 // dozen items; the comment in the response says plainly when it is not enough.
 const ITEM_SCAN_LIMIT = 1000;
 
+// Stage 10e: a real cadence decision, not a placeholder. Weekly needs a
+// Spinwheel contract addendum that does not exist; monthly is both the only
+// cadence available today and what Spinwheel's own docs recommend
+// ("creditors typically only report once a month"). 31 rather than 30 so a
+// member checked on the 1st of a 31-day month is not re-pulled a day early.
+const CREDIT_CHECK_DAYS = 31;
+const CREDIT_SCAN_LIMIT = 500;
+
 type ItemRow = { user_id: string; last_synced_at: string | null };
+type CreditConsentRow = { user_id: string; last_score_at: string | null };
 
 // Constant time comparison. The secret is compared on every scheduled request,
 // and a short circuit on the first differing byte is the classic way to let
@@ -143,13 +153,53 @@ export default async function handler(req: Request): Promise<Response> {
     console.warn(`[cron] daily-sync read the full ${ITEM_SCAN_LIMIT} item scan limit, so some members were never considered.`);
   }
 
+  // Stage 10e: a second, independent leg. Keyed by credit_consents, not
+  // plaid_items, since a member can have credit tracking consent with no
+  // Plaid item due at all (already synced recently) and would never appear
+  // in `due` above. Its own cadence (monthly) and its own time budget, run
+  // after the Plaid leg so a slow month of bank syncs is never starved by
+  // this, which is the lower-stakes of the two: a score alert arriving a day
+  // late costs nothing a stale net-worth point does not already cost worse.
+  const creditRes = await adminRest(
+    `credit_consents?select=user_id,last_score_at&order=last_score_at.asc.nullsfirst&limit=${CREDIT_SCAN_LIMIT}`,
+  );
+  const creditRows = creditRes.ok ? ((await creditRes.json().catch(() => [])) as CreditConsentRow[]) : [];
+  if (!creditRes.ok) {
+    console.error(`[cron] daily-sync could not read credit_consents (${creditRes.status})`);
+  }
+
+  const creditCutoff = Date.now() - CREDIT_CHECK_DAYS * 24 * 60 * 60 * 1000;
+  const creditDue = creditRows
+    .filter((r) => !r.last_score_at || Date.parse(r.last_score_at) < creditCutoff)
+    .map((r) => r.user_id);
+
+  const creditResults: { user_id: string; credit_score_check: number }[] = [];
+  let creditSkipped = 0;
+
+  for (const userId of creditDue) {
+    if (left() < PER_MEMBER_MS) { creditSkipped = creditDue.length - creditResults.length; break; }
+    const check = await runCreditScoreCheck(userId);
+    creditResults.push({ user_id: userId, credit_score_check: check.status });
+  }
+
+  if (creditSkipped > 0) {
+    console.warn(`[cron] daily-sync ran out of time with ${creditSkipped} credit-consented member(s) still due.`);
+  }
+  if (creditRows.length === CREDIT_SCAN_LIMIT) {
+    console.warn(`[cron] daily-sync read the full ${CREDIT_SCAN_LIMIT} credit_consents scan limit.`);
+  }
+
   return json({
     members_due: due.length,
     members_synced: results.length,
     members_skipped_for_time: skipped,
     items_scanned: rows.length,
     item_scan_truncated: rows.length === ITEM_SCAN_LIMIT,
+    credit_members_due: creditDue.length,
+    credit_members_checked: creditResults.length,
+    credit_members_skipped_for_time: creditSkipped,
     ms: Date.now() - startedAt,
     results,
+    credit_results: creditResults,
   });
 }
