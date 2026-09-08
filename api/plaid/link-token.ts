@@ -124,7 +124,19 @@ export default async function handler(req: Request): Promise<Response> {
       // reason: it guarded against naming an UNENTITLED product, and the
       // entitlement was in fact granted. The field simply does not accept the
       // value, entitled or not.
-      additional_consented_products: ["investments"],
+      //
+      // `liabilities` joins investments here (2026-09-08), and it is safe the
+      // same way: unlike `recurring_transactions` above, `liabilities` genuinely
+      // IS a real Plaid product-enum value, so this does not risk repeating the
+      // outage. Consenting here means an item linked from now on can call
+      // /liabilities/get without a relink; an item linked before this ships still
+      // refuses it until relinked through update mode, same as investments did
+      // when it was added. The `liabilities` request through Plaid's self-serve
+      // catalog is still pending review as of this write; until Plaid grants it,
+      // api/plaid/liabilities.ts's own entitlement handling (ENTITLEMENT_CODES)
+      // answers `available: false` rather than erroring, so naming it here ahead
+      // of the grant is inert, not risky.
+      additional_consented_products: ["investments", "liabilities"],
       country_codes: plaidCountryCodes(),
       language: "en",
       ...(redirectUri ? { redirect_uri: redirectUri } : {}),
