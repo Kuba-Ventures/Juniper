@@ -130,8 +130,8 @@ export function Settings({
   // is not real yet (Supabase holds it pending confirmation), and the row
   // still showing the OLD email is exactly the moment that note matters most.
   const [emailNote, setEmailNote] = useState<{ text: string; kind: "good" | "bad" } | null>(null);
-  const { sync, syncing, refresh } = useFinances();
-  const isDeveloper = import.meta.env.DEV || !!sync?.isDeveloper;
+  const { sync, syncing, refresh, isDeveloper: financesIsDeveloper } = useFinances();
+  const isDeveloper = import.meta.env.DEV || financesIsDeveloper;
   // The rebuild reports what it did rather than saying "Done", because it is the
   // one control here that deletes rows: a member pressing it deserves to read
   // how many reconstructed days were replaced and how many recorded ones were
