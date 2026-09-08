@@ -208,13 +208,13 @@ export function ConnectionsView() {
   const [notice, setNotice] = useState<string | null>(null);
   // Freshness and breakage come from /api/finances, which every app load already
   // fetches, so this page asks Plaid nothing to answer either question.
-  const { sync, syncing: autoSyncing, refresh: refreshFinances } = useFinances();
+  const { sync, syncing: autoSyncing, refresh: refreshFinances, isDeveloper } = useFinances();
   // The manual control is for a dev build or an admin only. A member is not
   // meant to think about refreshing: the app does it (see lib/auto-sync.ts), and
   // the one failure a button appeared to address, a connection whose login has
   // expired, is not something a refresh can fix. That case gets its own prompt
   // below, pointing at the action that does work.
-  const canForce = import.meta.env.DEV || !!sync?.isDeveloper;
+  const canForce = import.meta.env.DEV || isDeveloper;
   const [syncing, setSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
   // The manual account currently being edited, or null for "adding a new one".

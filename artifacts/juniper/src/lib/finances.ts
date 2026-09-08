@@ -106,6 +106,12 @@ interface RawFinances {
   // How current the data is and what is broken, answered without a Plaid call.
   // Absent on a deploy where migration 0017 has not been applied.
   sync?: SyncState;
+  // Present at the TOP level only on the { linked: false } shape (api/finances.ts),
+  // where there is no sync object to nest it under; the linked shape still
+  // carries the member-facing copy at sync.isDeveloper. Read via
+  // useFinances()'s own top-level `isDeveloper` below, which reads whichever of
+  // the two the response actually sent, rather than from this field directly.
+  isDeveloper?: boolean;
 }
 
 // Merge a live payload over `base`, the layer beneath it: the member's own
@@ -141,17 +147,25 @@ function mergeLive(raw: RawFinances, base: FinanceData): FinanceData {
 // Returns the payload as it arrived, unmerged: the base it belongs on top of can
 // still change (a profile that hydrates from the server after this resolves), so
 // merging is left to render time.
-async function fetchFinances(): Promise<RawFinances | null> {
+//
+// `raw` keeps its exact old contract (null unless the member is genuinely
+// linked): #240 fixed a real score-flash bug that depended on `raw` being
+// truthy meaning "this IS live data, safe to render", and loosening that to
+// smuggle isDeveloper through would risk exactly that bug again. isDeveloper
+// is therefore returned alongside `raw` rather than folded into it, since it
+// has to survive the { linked: false } case, unlike everything else here.
+async function fetchFinances(): Promise<{ raw: RawFinances | null; isDeveloper: boolean }> {
   try {
     const token = await getAccessToken();
-    if (!token) return null;
+    if (!token) return { raw: null, isDeveloper: false };
     const res = await fetch("/api/finances", { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return null;
+    if (!res.ok) return { raw: null, isDeveloper: false };
     const raw = (await res.json()) as RawFinances;
-    if (!raw?.linked) return null;
-    return raw;
+    const isDeveloper = !!(raw?.sync?.isDeveloper || raw?.isDeveloper);
+    if (!raw?.linked) return { raw: null, isDeveloper };
+    return { raw, isDeveloper };
   } catch {
-    return null;
+    return { raw: null, isDeveloper: false };
   }
 }
 
@@ -173,6 +187,13 @@ export interface FinancesValue {
   // How current the data is, and which connections need relinking. Absent on a
   // manual dashboard (nothing to sync) and on a deploy without migration 0017.
   sync?: SyncState;
+  // Whether Settings > Developer (and Connections' manual-refresh control)
+  // should show at all. Deliberately its own top-level field rather than read
+  // off `sync.isDeveloper`: `sync` itself is entirely absent for a member with
+  // nothing linked, which used to mean nobody in exactly that state, most
+  // pointedly right after "Reset account & start over" (#350), could reach
+  // the Developer tab to do anything else, including restart onboarding.
+  isDeveloper: boolean;
   // True while an automatic refresh is running, so a surface can say so rather
   // than leaving the member to guess whether the app is doing anything.
   syncing: boolean;
@@ -227,20 +248,27 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
   const [raw, setRaw] = useState<RawFinances | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  // Independent of `raw`/`linked` on purpose: a member with nothing linked
+  // yet (in particular, right after "Reset account & start over", #350) must
+  // still be able to reach Settings > Developer, which is what this flag
+  // alone gates. See fetchFinances()'s own header for why it travels
+  // alongside `raw` rather than folded into it.
+  const [isDeveloper, setIsDeveloper] = useState(false);
 
   // One place decides whether to refresh, and it is the same fetch every page
   // already waits on. Putting it here rather than in a page component means it
   // runs once per app load no matter which route the member landed on, and a
   // member who never opens Connections still gets current data.
   const load = useCallback(async (opts?: { afterSync?: boolean }) => {
-    const next = await fetchFinances().catch(() => null);
-    if (next) setRaw(next);
+    const next = await fetchFinances().catch(() => ({ raw: null, isDeveloper: false }));
+    if (next.raw) setRaw(next.raw);
+    setIsDeveloper(next.isDeveloper);
     setLoading(false);
     if (opts?.afterSync) return;
     // Fire and forget. The dashboard is already rendering the data we have; the
     // refresh replaces it when it lands, and a failure leaves the member with
     // the slightly older figures rather than an error they cannot act on.
-    if (next && isStale(next.sync)) {
+    if (next.raw && isStale(next.raw.sync)) {
       setSyncing(true);
       void runBackgroundSync().finally(() => {
         setSyncing(false);
@@ -285,6 +313,7 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
         scorePending: false,
         hasTransactions: !!raw.hasTransactions,
         sync: raw.sync,
+        isDeveloper,
         syncing,
         refresh: () => load({ afterSync: true }),
       };
@@ -296,9 +325,9 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
       data: manual ?? EMPTY, source: "manual", loading,
       // Pending only while the server has not answered yet. See the field's note.
       scorePending: loading,
-      hasTransactions: false, syncing, refresh: () => load({ afterSync: true }),
+      hasTransactions: false, isDeveloper, syncing, refresh: () => load({ afterSync: true }),
     };
-  }, [raw, manual, loading, syncing, load]);
+  }, [raw, manual, loading, syncing, load, isDeveloper]);
 
   return createElement(FinancesContext.Provider, { value }, children);
 }
@@ -310,5 +339,5 @@ export function useFinances(): FinancesValue {
   // it has no member to speak for.
   // `syncing` false and `refresh` a no-op: with no provider there is nothing
   // to refresh and nothing running.
-  return ctx ?? { data: EMPTY, source: "manual", loading: false, scorePending: false, hasTransactions: false, syncing: false, refresh: async () => {} };
+  return ctx ?? { data: EMPTY, source: "manual", loading: false, scorePending: false, hasTransactions: false, isDeveloper: false, syncing: false, refresh: async () => {} };
 }
