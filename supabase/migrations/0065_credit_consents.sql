@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.credit_consents (
 CREATE UNIQUE INDEX IF NOT EXISTS credit_consents_user_unique
   ON public.credit_consents (user_id);
 
--- ── Access control ──────────────────────────────────────────────────────────
+-- ---- Access control ------------------------------------------------------
 -- Same lockdown as plaid_items: RLS enabled, no policy for anon/authenticated,
 -- service_role only. A member reads their own consent status through
 -- api/credit/score.ts (which already authenticates them), not by querying this
