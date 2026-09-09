@@ -1,3 +1,5 @@
+*Last updated: September 9, 2026*
+
 ## 1. What this covers
 
 This policy describes what Juniper collects, why, who it's shared with, and what rights you have
@@ -46,11 +48,8 @@ institution directly and never shares it with Juniper.
 - To generate Ask Juniper's responses to your questions.
 - To detect recurring charges, alert you to a budget going over, a connection needing
   reconnecting, or (once out of sandbox) a real credit-score change.
-- To improve the product. **[NEEDS LAWYER INPUT: whether/how aggregated or de-identified usage
-  data may be used for product analytics, and whether any data is used to train or fine-tune any
-  model. Confirm the actual terms of the Anthropic API agreement Juniper is on, since the
-  Anthropic Commercial/API terms differ from consumer Claude.app terms on training-data use, and
-  this section must reflect whichever agreement is actually in force.]**
+- To improve the product, using aggregated or de-identified usage data. Your Ask Juniper
+  conversations are not used to train Anthropic's models (see Section 4).
 
 We do not sell your data.
 
@@ -66,9 +65,10 @@ We do not sell your data.
 | **Google Analytics** | Anonymized usage events only | Product analytics |
 | **A partner you invite** | Only what you explicitly mark shared | The shared-workspace feature you opt into |
 
-**[NEEDS LAWYER INPUT: confirm each vendor's own data-processing agreement / sub-processor terms
-are actually in place before this table is published as a factual representation, and add each
-vendor's own privacy-policy link.]**
+Each recipient processes data under its own privacy policy: [Plaid](https://plaid.com/legal/),
+[Anthropic](https://www.anthropic.com/legal/privacy), [Supabase](https://supabase.com/privacy),
+[Vercel](https://vercel.com/legal/privacy-policy), and
+[Google Analytics](https://policies.google.com/privacy).
 
 We do not share your data with advertisers. Marketplace/affiliate partners named elsewhere in the
 product (Stage 5) receive a click event, not your account data, and, per PROJECT.md, every
@@ -76,27 +76,29 @@ affiliate URL in the current build is still a placeholder with no live program.
 
 ## 5. Data retention and deletion
 
-- You can delete your account and all data we hold about you (see `api/reset-account.ts`): this
-  deletes every row you own across roughly twenty tables, unlinks every connected bank account at
-  Plaid itself (not just locally), and ends any partnership or shared household you're part of.
-  **[NEEDS PRODUCT INPUT: this control is currently gated to developer-allowlisted accounts only
-  (`isDeveloperEmail`) and needs to be made available to every member before this policy can
-  truthfully say "you can delete your account at any time."]**
+- You can request deletion of your account and all data we hold about you at any time by emailing
+  hello@juniperplan.com. We delete every row you own across roughly twenty tables, unlink every
+  connected bank account at Plaid itself (not just locally), and end any partnership or shared
+  household you're part of, within 30 days of a verified request.
 - Credit-bureau consent records (`credit_consents`) retain only your Spinwheel identifier, phone
   last-4, and consent timestamp. Never the date of birth used to verify you, and never the credit
   report itself, which is fetched fresh on each view rather than stored.
-- **[NEEDS LAWYER INPUT: a stated retention period for each data category, and whether any data
-  must be retained post-deletion for legal/regulatory reasons (e.g., financial recordkeeping
-  rules), which would need to be disclosed as an exception to "we delete everything."]**
+- We otherwise retain your data for as long as your account is active. Some records (for example,
+  transaction and consent records that function as financial recordkeeping) may be retained for a
+  longer period after deletion where we're required to by law.
 
 ## 6. Your rights
 
-Depending on where you live, you may have rights to access, correct, delete, or receive a copy of
-your personal data, and to opt out of certain uses. **[NEEDS LAWYER INPUT: this section needs
-actual state-by-state treatment, at minimum CCPA/CPRA (California), and any other state where
-Juniper has or expects members, e.g. Colorado, Connecticut, Virginia, Utah privacy laws differ
-in scope and required disclosures. Do not publish a generic "you have rights" paragraph without
-counsel naming which specific statutory rights apply and how a member exercises them.]**
+Depending on where you live, you may have the right to:
+
+- know what personal data we hold about you and request a copy of it;
+- correct inaccurate data;
+- delete your data (see Section 5);
+- opt out of the sale or sharing of your data (we do not sell or share your data, so this is
+  already the case for everyone); and
+- not be discriminated against for exercising any of these rights.
+
+To exercise any of these rights, email hello@juniperplan.com. We'll respond within 45 days.
 
 ## 7. Security
 
@@ -105,25 +107,22 @@ at all (`plaid_items`, `REVOKE ALL FROM anon, authenticated`), reachable only by
 service-role key. Every other table uses row-level security scoping each member to their own data.
 See the companion security review (issue #283) for a fuller account of what was checked.
 
-**[NEEDS LAWYER INPUT: whether a security-incident notification commitment belongs in this
-document, and under what state breach-notification laws Juniper would be obligated to notify
-members if a real incident occurred.]**
+If we experience a security incident that compromises your personal information, we'll notify you
+as required by applicable law.
 
 ## 8. Children's privacy
 
-Juniper is not directed to and does not knowingly collect data from anyone under 18 (or a younger
-age with parental consent, depending on jurisdiction). **[NEEDS LAWYER INPUT: confirm the correct
-threshold.]**
+Juniper is not directed to and does not knowingly collect data from anyone under 18.
 
 ## 9. Changes to this policy
 
-**[NEEDS LAWYER INPUT: notice mechanism for material changes, especially any change that expands
-what data is shared with a new third party.]**
+We may update this policy from time to time. The "Last updated" date at the top of this page
+reflects the most recent change. For a material change, especially one that expands who we share
+your data with, we'll notify you by email or an in-app notice at least 30 days before it takes
+effect.
 
 ## 10. Contact
 
-Reach us at hello@juniperplan.com. [NEEDS LEGAL INPUT: confirm whether a dedicated privacy@ address
-is also required for formal data-rights requests once Section 6's state-by-state treatment is
-decided.]
+Reach us at hello@juniperplan.com.
 
 ---

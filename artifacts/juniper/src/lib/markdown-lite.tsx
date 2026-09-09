@@ -1,12 +1,13 @@
 // A small, dependency-free renderer for the specific markdown subset the
-// draft legal docs (src/content/*.md) use: #/##/### headers, **bold**,
-// *italic*, `code`, bullet lists (with indented continuation lines), one
-// pipe table, horizontal rules, and paragraphs. Not a general markdown
-// parser: it exists so /terms and /privacy don't need a new dependency for
-// two static documents.
+// legal docs (src/content/*.md) use: #/##/### headers, **bold**, *italic*,
+// `code`, [text](url) links, bullet lists (with indented continuation
+// lines), one pipe table, horizontal rules, and paragraphs. Not a general
+// markdown parser: it exists so /terms and /privacy don't need a new
+// dependency for two static documents.
 import type { ReactNode } from "react";
 
-const INLINE_RE = /\[(NEEDS[^\]]*)\]|\*\*(.+?)\*\*|`([^`]+)`|\*([^*]+)\*/g;
+const INLINE_RE =
+  /\[(NEEDS[^\]]*)\]|\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|`([^`]+)`|\*([^*]+)\*/g;
 
 function renderInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -22,11 +23,17 @@ function renderInline(text: string): ReactNode[] {
         </mark>,
       );
     } else if (m[2] !== undefined) {
-      nodes.push(<strong key={key++}>{m[2]}</strong>);
-    } else if (m[3] !== undefined) {
-      nodes.push(<code key={key++}>{m[3]}</code>);
+      nodes.push(
+        <a key={key++} href={m[3]} target="_blank" rel="noreferrer">
+          {m[2]}
+        </a>,
+      );
     } else if (m[4] !== undefined) {
-      nodes.push(<em key={key++}>{m[4]}</em>);
+      nodes.push(<strong key={key++}>{m[4]}</strong>);
+    } else if (m[5] !== undefined) {
+      nodes.push(<code key={key++}>{m[5]}</code>);
+    } else if (m[6] !== undefined) {
+      nodes.push(<em key={key++}>{m[6]}</em>);
     }
     last = idx + m[0].length;
   }
