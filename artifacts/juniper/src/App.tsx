@@ -11,6 +11,8 @@ import SignIn from "@/pages/auth/sign-in";
 import SignUp from "@/pages/auth/sign-up";
 import Forgot from "@/pages/auth/forgot";
 import Reset from "@/pages/auth/reset";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
 import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
 import JoinPartner from "@/pages/join-partner";
@@ -27,6 +29,11 @@ function Router() {
       <Route path="/auth/sign-up" component={SignUp} />
       <Route path="/auth/forgot" component={Forgot} />
       <Route path="/auth/reset" component={Reset} />
+      {/* Draft, not lawyer-reviewed (see PROJECT.md, issue #283 and the
+          docs/*.md status headers); routed so the landing footer's links
+          stop 404ing rather than because the content is finished. */}
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       {/* Routed again in Stage 4d: /app/shared exists once more, so accepting
           now lands on the shared overview rather than a not-found card, and the
           switcher's Invite mints these links again. */}
