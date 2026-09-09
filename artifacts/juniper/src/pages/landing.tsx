@@ -721,7 +721,7 @@ export default function Landing() {
           <div className="flex flex-wrap items-center gap-6 md:gap-8">
             <a href="/privacy" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>Privacy</a>
             <a href="/terms" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>Terms</a>
-            <a href="mailto:hello@juniper.app" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>hello@juniper.app</a>
+            <a href="mailto:hello@juniperplan.com" style={{ fontSize: 13, color: "#1E3A2A", textDecoration: "none" }}>hello@juniperplan.com</a>
           </div>
         </div>
         <div className="max-w-[1100px] mx-auto" style={{ marginTop: 20 }}>

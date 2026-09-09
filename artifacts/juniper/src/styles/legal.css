@@ -1,0 +1,146 @@
+/* Scoped styles for the draft-legal-doc pages (/terms, /privacy). Kept out of
+   juniper.css deliberately: these are public marketing-adjacent pages, same
+   category as landing.tsx, not part of the signed-in .jnpr app shell, and
+   marketing/auth pages stay light by design (see PROJECT.md, dark-mode QA
+   note). */
+
+.legal-shell {
+  min-height: 100vh;
+  background: #f4f7f3;
+  color: #1e3a2a;
+}
+
+.legal-band {
+  background: #1c4a31;
+  color: #f4f7f3;
+  padding: 28px 24px;
+}
+
+.legal-band-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legal-back {
+  color: #cfe0d3;
+  font-size: 13px;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.legal-back:hover {
+  text-decoration: underline;
+}
+
+.legal-band h1 {
+  font-size: 26px;
+  margin: 0;
+}
+
+.legal-ribbon {
+  max-width: 720px;
+  margin: 20px auto 0;
+  padding: 12px 16px;
+  background: #fbe9c8;
+  border: 1px solid #e8c98a;
+  border-radius: 8px;
+  color: #6b4a12;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.legal-ribbon strong {
+  color: #4a3208;
+}
+
+.legal-doc {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  line-height: 1.65;
+  font-size: 15px;
+}
+
+.legal-doc h2 {
+  font-size: 20px;
+  margin: 32px 0 12px;
+  color: #1c4a31;
+}
+
+.legal-doc h2:first-of-type {
+  margin-top: 8px;
+}
+
+.legal-doc h3 {
+  font-size: 17px;
+  margin: 24px 0 8px;
+  color: #1c4a31;
+}
+
+.legal-doc p {
+  margin: 0 0 14px;
+}
+
+.legal-doc ul {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.legal-doc li {
+  margin-bottom: 6px;
+}
+
+.legal-doc hr {
+  border: none;
+  border-top: 1px solid #d7e2d5;
+  margin: 24px 0;
+}
+
+.legal-doc code {
+  background: #e7efe6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.legal-doc mark.legal-flag {
+  background: #fbe9c8;
+  color: #6b4a12;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-style: normal;
+}
+
+.legal-doc .legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.legal-doc .legal-table th,
+.legal-doc .legal-table td {
+  border: 1px solid #d7e2d5;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.legal-doc .legal-table th {
+  background: #eaf1e8;
+}
+
+.legal-footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+  font-size: 13px;
+  color: #4a5f52;
+}
+
+.legal-footer a {
+  color: #1c4a31;
+}
