@@ -1,8 +1,14 @@
-// Shared shell for /terms and /privacy. Renders a draft `docs/*.md` source
-// (mirrored into src/content/*.md, see that directory's note) with a fixed,
-// always-visible draft ribbon that does not depend on the markdown parser
-// picking up the doc's own status line correctly: the one thing this page
-// must never do is read as a finished, in-effect policy.
+// Shared shell for /terms and /privacy. Renders a `docs/*.md` source
+// (mirrored into src/content/*.md, see that directory's note).
+//
+// The draft ribbon and the doc's own "(DRAFT, NOT FOR PUBLICATION)" framing
+// were removed 2026-09-09 at Finley's explicit direction after asking him to
+// confirm: he chose to strip draft language everywhere, understanding that
+// ~15 inline [NEEDS LAWYER INPUT: ...] placeholders (arbitration clause,
+// liability caps, age threshold, data retention, etc., see PROJECT.md issue
+// #283) still sit in the body, now with no framing explaining what they are.
+// Those are left untouched on purpose: filling them in requires an actual
+// legal decision, not a guess.
 import { Link } from "wouter";
 import { MarkdownLite } from "@/lib/markdown-lite";
 import "@/styles/legal.css";
@@ -25,11 +31,6 @@ export function LegalPage({
           </Link>
           <h1>{title}</h1>
         </div>
-      </div>
-
-      <div className="legal-ribbon">
-        <strong>Draft, first pass.</strong> Not reviewed by a lawyer and not in effect. This page
-        exists so the link works rather than 404s; see the status note below for the full context.
       </div>
 
       <article className="legal-doc">

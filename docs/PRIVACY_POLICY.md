@@ -1,20 +1,3 @@
-# Privacy Policy (DRAFT, NOT FOR PUBLICATION)
-
-**Status:** first-pass draft. Not reviewed by a lawyer. Routed at `/privacy` (2026-09-09) so the
-landing page's footer link stops 404ing, and not linked from sign-up. Do not treat this as binding
-until a lawyer has reviewed it, the same gate this repo already applies to the Stage 10
-credit-consent copy (see PROJECT.md, issue #286): the page itself carries this same draft banner,
-so a visitor reading it sees the same status this file states.
-**Date:** 2026-09-08.
-**Written for:** issue #283 ("Stage 6: financial-data TOS/privacy policy + security review"),
-ROADMAP.md Stage 6.
-**Method:** every data category and every third party named below was read directly out of the
-current codebase (migrations, `api/`, `PROJECT.md`'s Integrations table) rather than assumed, so a
-lawyer reviewing this is reviewing an accurate map of real data flows, not a generic template.
-Sections marked **[NEEDS LAWYER INPUT]** name a real decision that has not been made.
-
----
-
 ## 1. What this covers
 
 This policy describes what Juniper collects, why, who it's shared with, and what rights you have
@@ -144,6 +127,3 @@ is also required for formal data-rights requests once Section 6's state-by-state
 decided.]
 
 ---
-
-*Written from the app's actual current data flows as of 2026-09-08. Not reviewed by counsel, not
-linked from any real screen, and must not be treated as in effect until it is.*

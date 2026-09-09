@@ -1,23 +1,3 @@
-# Terms of Service (DRAFT, NOT FOR PUBLICATION)
-
-**Status:** first-pass draft. Not reviewed by a lawyer. Routed at `/terms` (2026-09-09) so the
-landing page's footer link stops 404ing, and not linked from sign-up. Do not treat this as binding
-until a lawyer has reviewed it, the same gate this repo already applies to the Stage 10
-credit-consent copy (see PROJECT.md, issue #286): the page itself carries this same draft banner,
-so a visitor reading it sees the same status this file states.
-**Date:** 2026-09-08.
-**Written for:** issue #283 ("Stage 6: financial-data TOS/privacy policy + security review"),
-ROADMAP.md Stage 6.
-**Why a draft rather than nothing:** a lawyer reviewing a first pass that names the real data
-flows, the real third parties, and the real disclaimers already live in the product is faster and
-cheaper than a lawyer starting from a blank page. Every bracketed `[NEEDS LAWYER INPUT: ...]` marks
-a real decision this draft does not make on its own.
-
-Sections marked **[NEEDS LAWYER INPUT]** are placeholders naming the decision that has to be made,
-not filled-in defaults. Do not resolve them by guessing.
-
----
-
 ## 1. What Juniper is
 
 Juniper ("Juniper," "we," "us") is a financial planning application that connects to a member's
@@ -145,9 +125,3 @@ is also required, e.g. for formal notices under Section 9's dispute-resolution t
 are decided.]
 
 ---
-
-*This draft was written from the app's actual current behavior (Plaid linking, the Spinwheel
-sandbox credit pull, the Ask Juniper compliance rules in `api/planner/chat.ts`, and the account
-reset control in `api/reset-account.ts`) as of 2026-09-08, so a lawyer reviewing it is reviewing
-what the product actually does rather than a generic template. It has not been reviewed by counsel,
-is not linked from any real screen, and must not be treated as in effect.*
