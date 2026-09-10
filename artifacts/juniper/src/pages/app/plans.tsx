@@ -362,7 +362,7 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
     <div className={`card plan-lg ${v.done ? "done" : ""}`} onClick={() => { if (!editing) onOpen(); }}>
       <div className="ph">
         <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={v.icon} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="ph-title">
           {editing === "title" ? (
             <InlineField
               kind="title"
@@ -539,7 +539,7 @@ function UnstartedCard({ goal, color, onStart, onQuickStart }: {
     <div className="card plan-lg unstarted" onClick={onStart}>
       <div className="ph">
         <div className="track" style={{ background: cssVar(color) }}><PlanIcon name="target" /></div>
-        <div style={{ flex: 1 }}>
+        <div className="ph-title">
           <div className="pt">{goal}</div>
           <div className="pn">From your signup goals</div>
         </div>
