@@ -26,127 +26,39 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.1 } },
 };
 
-// ── Shared input style ─────────────────────────────────────────────────────
-const fieldBase: React.CSSProperties = {
-  height: 52,
-  padding: "0 16px",
-  border: `1px solid #9DBFA0`,
-  borderRadius: 8,
-  background: "#fff",
-  fontFamily: sans,
-  fontSize: 16,
-  color: ink,
-  width: "100%",
-  outline: "none",
-  boxSizing: "border-box",
-  display: "block",
-};
-
-// ── WaitlistForm ───────────────────────────────────────────────────────────
-function WaitlistForm({ id }: { id: string }) {
-  const [email, setEmail] = useState("");
-  const [stage, setStage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !stage) {
-      setError("Please fill in both fields.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    try {
-      await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, journey_stage: stage }),
-      });
-    } catch {
-      // Endpoint not yet wired, show success state anyway
-    }
-    setLoading(false);
-    setSubmitted(true);
-    // GA4 conversion: waitlist sign-up. Mark "sign_up" as a key event in GA4.
-    trackEvent("sign_up", { method: "waitlist", journey_stage: stage });
-  };
-
-  if (submitted) {
-    return (
-      <div
-        style={{
-          background: sagePale,
-          border: `1px solid ${border}`,
-          borderRadius: 12,
-          padding: "24px 28px",
-          width: "100%",
-          maxWidth: 440,
-        }}
-      >
-        <p style={{ fontFamily: serif, fontSize: 20, color: sage, fontWeight: 500, marginBottom: 4, margin: "0 0 4px" }}>
-          Thanks. We'll be in touch.
-        </p>
-        <p style={{ color: muted, fontSize: 14, margin: 0 }}>You're on the early-access list.</p>
-      </div>
-    );
-  }
-
+// ── HeroSignupCta ──────────────────────────────────────────────────────────
+// Signup has been open with no gate since issue #327 (solo accounts). This
+// used to be a waitlist-capture form that never actually created an account,
+// which is exactly the contradiction issue #389 reported: the nav's "Get
+// started" creates an account instantly, this promised to "be in touch."
+// One real signup path, reached from every CTA on the page.
+function HeroSignupCta() {
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", gap: 10 }}
-      aria-label={`Waitlist signup form ${id}`}
+    <Link
+      href="/auth/sign-up"
+      onClick={() => trackEvent("sign_up", { method: "landing_cta" })}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 52,
+        padding: "0 32px",
+        background: sage,
+        color: "#fff",
+        border: "none",
+        borderRadius: 8,
+        fontFamily: sans,
+        fontSize: 16,
+        fontWeight: 500,
+        textDecoration: "none",
+        letterSpacing: "0.01em",
+        width: "100%",
+        maxWidth: 440,
+        boxSizing: "border-box",
+      }}
     >
-      <label htmlFor={`email-${id}`} className="sr-only">Email address</label>
-      <input
-        id={`email-${id}`}
-        type="email"
-        placeholder="your@email.com"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        style={fieldBase}
-      />
-      <label htmlFor={`stage-${id}`} className="sr-only">Where are you in your journey?</label>
-      <select
-        id={`stage-${id}`}
-        value={stage}
-        onChange={e => setStage(e.target.value)}
-        style={{ ...fieldBase, cursor: "pointer", color: stage ? ink : muted }}
-      >
-        <option value="" disabled>Where are you in your journey?</option>
-        <option value="saving_big_purchase">Saving for a big purchase</option>
-        <option value="combining_finances">Combining finances</option>
-        <option value="paying_off_debt">Paying off debt</option>
-        <option value="planning_for_baby">Planning for a baby</option>
-      </select>
-      {error && (
-        <p role="alert" style={{ fontSize: 13, color: "#c0392b", margin: 0 }}>{error}</p>
-      )}
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          height: 52,
-          padding: "0 32px",
-          background: sage,
-          color: "#fff",
-          border: "none",
-          borderRadius: 8,
-          fontFamily: sans,
-          fontSize: 16,
-          fontWeight: 500,
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.75 : 1,
-          transition: "opacity 0.15s",
-          width: "100%",
-          letterSpacing: "0.01em",
-        }}
-      >
-        {loading ? "Sending…" : "Get early access"}
-      </button>
-    </form>
+      Create your free account
+    </Link>
   );
 }
 
@@ -221,7 +133,7 @@ export default function Landing() {
     },
     {
       q: "What does it cost?",
-      a: "Juniper is free during our early access period. We'll share pricing details with waitlist members before launch.",
+      a: "Juniper is free right now, while we're building out the full product. We'll give members advance notice before any pricing changes.",
     },
     {
       q: "Is my financial data private?",
@@ -336,12 +248,12 @@ export default function Landing() {
               Juniper is the financial planning partner for engaged and newly married couples. Helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
             </motion.p>
             <motion.div variants={fadeUp}>
-              <WaitlistForm id="hero" />
+              <HeroSignupCta />
             </motion.div>
             <motion.p variants={fadeUp} style={{ fontSize: 14, color: muted, margin: "16px 0 0" }}>
-              Already have access?{" "}
-              <Link href="/auth/sign-up" style={{ color: sage, fontWeight: 500, textDecoration: "none" }}>
-                Create your account →
+              Already have an account?{" "}
+              <Link href="/auth/sign-in" style={{ color: sage, fontWeight: 500, textDecoration: "none" }}>
+                Log in →
               </Link>
             </motion.p>
           </motion.div>
@@ -699,10 +611,10 @@ export default function Landing() {
               Plan your next chapter with Juniper.
             </motion.h2>
             <motion.p variants={fadeUp} style={{ fontSize: 17, color: muted, lineHeight: 1.65, margin: 0 }}>
-              Join the early-access list. We'll be in touch as we open the door.
+              Create your account, free, in under a minute.
             </motion.p>
             <motion.div variants={fadeUp} className="w-full flex justify-center">
-              <WaitlistForm id="cta" />
+              <HeroSignupCta />
             </motion.div>
           </motion.div>
         </div>
