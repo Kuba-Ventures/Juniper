@@ -60,3 +60,5 @@ Thumbs.db
 .claude/settings.local.json
 
 __pycache__/
+.vercel
+.env*
