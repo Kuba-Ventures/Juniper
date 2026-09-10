@@ -12,18 +12,17 @@ goals you set at signup.
 
 **Linked financial data**, from Plaid, once you connect an account: account and routing
 identifiers (never seen by Juniper, held only by Plaid), balances, transactions, investment
-holdings and flows, and, where you've granted the `liabilities` product, loan/card APRs and
-payment terms. This is real transaction-level data from real banks. Juniper's server-only
-`plaid_items` table stores your Plaid access token (never sent to your browser) and a sanitized
-account snapshot.
+holdings and flows, and, if you've granted access to loan and card account details, loan/card APRs
+and payment terms. This is real transaction-level data from real banks. Juniper stores your Plaid
+access token in a database only our own servers can read (never sent to your browser), along with
+a sanitized snapshot of your account information.
 
 **Credit-bureau data**, only if you separately opt in: your phone number and date of birth are
 sent to Spinwheel, our credit-data provider, solely to verify your identity via a one-time SMS
 passcode and connect your credit file. Once verified, we store only your Spinwheel identifier, the
 last 4 digits of your phone number, and the consent timestamp. **We never store your date of
-birth and never a copy of your credit report** (see `supabase/migrations/0065_credit_consents.sql`'s own
-design comment). The score itself is fetched live on each view and only its most recent value is
-cached for score-change alerts (`credit_consents.last_score`).
+birth, and never a copy of your credit report.** Your score is looked up fresh each time you view
+it; we only keep the most recent value on file so we can alert you if it changes.
 
 **Manually entered data**: any account, balance, or credit limit you type in by hand for
 institutions Plaid can't reach.
@@ -33,8 +32,8 @@ institutions Plaid can't reach.
 response. See Section 4.
 
 **Shared-workspace data**, only if you invite a partner: whichever of your accounts, balances, and
-goals you explicitly mark as shared (private by default, see migration `0020`), plus messages
-you send inside the shared space.
+goals you explicitly mark as shared (private by default), plus messages you send inside the
+shared space.
 
 **Usage analytics**: anonymized/aggregated product-usage events via Google Analytics 4
 (production only), never including account balances or transaction content.
@@ -70,9 +69,9 @@ Each recipient processes data under its own privacy policy: [Plaid](https://plai
 [Vercel](https://vercel.com/legal/privacy-policy), and
 [Google Analytics](https://policies.google.com/privacy).
 
-We do not share your data with advertisers. Marketplace/affiliate partners named elsewhere in the
-product (Stage 5) receive a click event, not your account data, and, per PROJECT.md, every
-affiliate URL in the current build is still a placeholder with no live program.
+We do not share your data with advertisers. Marketplace and affiliate partners shown elsewhere in
+the product receive a click event, not your account data. As of this writing there is no live
+affiliate program: every partner link in the app is a placeholder.
 
 ## 5. Data retention and deletion
 
@@ -80,9 +79,9 @@ affiliate URL in the current build is still a placeholder with no live program.
   hello@juniperplan.com. We delete every row you own across roughly twenty tables, unlink every
   connected bank account at Plaid itself (not just locally), and end any partnership or shared
   household you're part of, within 30 days of a verified request.
-- Credit-bureau consent records (`credit_consents`) retain only your Spinwheel identifier, phone
-  last-4, and consent timestamp. Never the date of birth used to verify you, and never the credit
-  report itself, which is fetched fresh on each view rather than stored.
+- Credit-bureau consent records retain only your Spinwheel identifier, phone last-4, and consent
+  timestamp. Never the date of birth used to verify you, and never the credit report itself, which
+  is fetched fresh on each view rather than stored.
 - We otherwise retain your data for as long as your account is active. Some records (for example,
   transaction and consent records that function as financial recordkeeping) may be retained for a
   longer period after deletion where we're required to by law.
@@ -102,10 +101,10 @@ To exercise any of these rights, email hello@juniperplan.com. We'll respond with
 
 ## 7. Security
 
-Your linked-account access token is stored in a server-only database table with no client access
-at all (`plaid_items`, `REVOKE ALL FROM anon, authenticated`), reachable only by our backend via a
-service-role key. Every other table uses row-level security scoping each member to their own data.
-See the companion security review (issue #283) for a fuller account of what was checked.
+Your linked-account access token is stored in a database table that no app or browser can read
+directly: only our own backend servers can reach it, using a separate, more privileged credential.
+Every other record is restricted so that each member can only reach their own data. These
+protections were checked as part of an internal security review.
 
 If we experience a security incident that compromises your personal information, we'll notify you
 as required by applicable law.
