@@ -18,6 +18,7 @@ import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
 import type { HolderStyle } from "@/lib/holder-style";
 import { useCreditScore, vantageBand, type CreditScoreSnapshot } from "@/lib/credit-score";
+import { CreditPullConsent } from "@/components/juniper/credit-pull-consent";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -166,27 +167,64 @@ const PLANNED_FACTORS = [
   "Inquiries",
 ];
 
-function ScorePending() {
+// Issue #390: a tester consented during onboarding ("authorizing it to
+// obtain your credit profile from Equifax"), then read "Juniper does not
+// read your credit score" on this page. The root cause was two collapsed
+// distinctions: CreditScore() below ignored useCreditScore()'s loading flag,
+// so this rendered as a flash on every page load before the real answer
+// came back, and /api/credit/score's four distinct available:false reasons
+// (never consented, rate-limited, provider error, not configured) all fell
+// through to this one message, which is only true for the first of them.
+// Split into three honest states: ScoreLoading (no claim while in flight),
+// CreditEnroll (genuinely never consented -- offers the real consent flow
+// inline instead of only describing it), and ScoreUnavailable (consented,
+// temporarily can't check). None of the other three claims "Juniper does
+// not read your credit score" for a member who has, in fact, turned it on.
+function ScoreLoading() {
+  return (
+    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+      <div className="eyebrow">Credit score</div>
+      <h3 style={{ fontSize: 15, marginTop: 7 }}>Checking…</h3>
+      <div className="cs-chips">
+        {PLANNED_FACTORS.map((f) => <span key={f} style={{ opacity: 0.5 }}>{f}</span>)}
+      </div>
+    </div>
+  );
+}
+
+// The genuinely-never-consented state. Reusing CreditPullConsent (extracted
+// from onboarding, see components/juniper/credit-pull-consent.tsx) rather
+// than writing a second consent flow: Spinwheel's contract and the FTC
+// "grant, not notification" test both require the same real, unchecked-by-
+// default checkbox gesture here as at onboarding, so a member who skipped it
+// once gets the identical consent action, not a shortcut around it.
+function CreditEnroll({ onEnrolled }: { onEnrolled: () => void }) {
   return (
     <div className="card pad-lg" style={{ marginBottom: 16 }}>
       <div className="eyebrow">Credit score</div>
       <h3 style={{ fontSize: 15, marginTop: 7 }}>Not tracked yet</h3>
-      {/* Deliberately names no score model. An earlier version promised "FICO 8 and
-          VantageScore 3.0" together, and research since (see docs/CREDIT_PROVIDER.md)
-          found that pairing may be barred by FICO's Open Access license, which
-          forbids disclosing any other score to consumers alongside a FICO score in
-          that program. Across eighteen consumer products checked, none showed both.
-          Until a provider agreement settles it in writing, promising both is a
-          promise we may not be able to keep, so the copy commits to a bureau score
-          and to the factors, which are safe either way. */}
       <p className="cs-note">
-        Juniper does not read your credit score, and nothing on this page is one. Score tracking is
-        planned: a real bureau score, alongside the factors that move it. It needs a credit-data
-        provider under contract first, so there is no date to give you.
+        You haven't turned on credit tracking. Juniper does not read your credit score until you do —
+        verify your phone once below and a real bureau score will show up here.
       </p>
-      <div className="cs-chips">
-        {PLANNED_FACTORS.map((f) => <span key={f}>{f}</span>)}
-      </div>
+      <CreditPullConsent onDone={onEnrolled} />
+    </div>
+  );
+}
+
+// Any of: rate-limited today, the provider didn't answer, or not configured
+// in this environment. Deliberately one message for all three: the member's
+// consent is real and unaffected by any of them, so the only fact worth
+// stating is that this is temporary, not a change in what Juniper does.
+function ScoreUnavailable() {
+  return (
+    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+      <div className="eyebrow">Credit score</div>
+      <h3 style={{ fontSize: 15, marginTop: 7 }}>Couldn't check just now</h3>
+      <p className="cs-note">
+        Your credit tracking is on. We couldn't reach your score this time — it'll be back the next
+        time you check.
+      </p>
     </div>
   );
 }
@@ -268,9 +306,12 @@ function CreditScoreLive({ s }: { s: CreditScoreSnapshot }) {
 }
 
 function CreditScore() {
-  const { data } = useCreditScore();
-  if (data && data.available) return <CreditScoreLive s={data} />;
-  return <ScorePending />;
+  const { data, loading, refetch } = useCreditScore();
+  if (loading) return <ScoreLoading />;
+  if (!data) return <ScoreUnavailable />;
+  if (data.available) return <CreditScoreLive s={data} />;
+  if (data.reason === "Not consented to credit tracking yet") return <CreditEnroll onEnrolled={refetch} />;
+  return <ScoreUnavailable />;
 }
 
 function CardsEmpty() {

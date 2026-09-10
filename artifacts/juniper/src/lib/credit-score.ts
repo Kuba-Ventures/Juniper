@@ -6,7 +6,7 @@
 // production contract exists, so every pull today returns Spinwheel's own
 // canned test fixture regardless of whose real identity verified it. See
 // api/_credit-provider.ts and api/credit/score.ts for the full account.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase";
 
 export type CreditScoreFactor = { code: string; description: string };
@@ -66,7 +66,7 @@ export async function fetchCreditScore(): Promise<CreditScoreResult | null> {
   return inFlight;
 }
 
-export function useCreditScore(): { data: CreditScoreResult | null; loading: boolean } {
+export function useCreditScore(): { data: CreditScoreResult | null; loading: boolean; refetch: () => void } {
   const [data, setData] = useState<CreditScoreResult | null>(cached);
   const [loading, setLoading] = useState(!cached);
 
@@ -80,7 +80,21 @@ export function useCreditScore(): { data: CreditScoreResult | null; loading: boo
     return () => { cancelled = true; };
   }, []);
 
-  return { data, loading };
+  // Issue #390: a member who just enrolled inline on the Credit page (rather
+  // than at onboarding) needs the "not consented yet" answer, which the
+  // module cache holds like any other successful response, thrown away and
+  // re-asked, not left stale for the rest of the session.
+  const refetch = useCallback(() => {
+    cached = null;
+    setLoading(true);
+    void (async () => {
+      const next = await fetchCreditScore();
+      setData(next);
+      setLoading(false);
+    })();
+  }, []);
+
+  return { data, loading, refetch };
 }
 
 // Stage 10d's onboarding consent flow: start a real SMS OTP, then verify the
