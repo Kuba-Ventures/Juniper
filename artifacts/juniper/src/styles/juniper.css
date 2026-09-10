@@ -506,10 +506,34 @@
 .jnpr .plan-lg{padding:0;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s}
 .jnpr .plan-lg:hover{border-color:var(--jnpr-accent)}
 .jnpr .plan-lg.done{opacity:.9}
-.jnpr .plan-lg .ph{display:flex;align-items:center;gap:12px;padding:18px 18px 0}
+/* Issue #391: a long title, the icon and the status pill all fought for one
+   row with no wrap handling at all, so the title wrapped mid-word instead of
+   anything giving way. `.ph-title` used to be an inline `flex:1` on the JSX
+   itself; it moved into a real class because the mobile override below needs
+   to change its flex-basis, and a plain stylesheet rule cannot win against an
+   inline style without `!important`. Web default: wrap, and let the pill (not
+   the title) give way, via a zero-content spacer rather than a flex-basis on
+   the pill itself, which stretches it edge to edge instead of keeping its own
+   size. Verified against the real component, see previews/plan-header-mobile-
+   stack-options.html. */
+.jnpr .plan-lg .ph{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:18px 18px 0}
+.jnpr .plan-lg .ph-title{flex:1;min-width:0}
+.jnpr .plan-lg .ph::after{content:"";flex-basis:100%;order:1}
+.jnpr .plan-lg .ph .status{order:2}
 .jnpr .plan-lg .ph .track{width:38px;height:38px;border-radius:10px;font-size:15px}
 .jnpr .plan-lg .pt{font-weight:700;font-size:16px;color:var(--jnpr-ink)}
 .jnpr .plan-lg .pn{font-size:12px;color:var(--jnpr-ink-3);margin-top:1px}
+/* Mobile/tablet only: below the same width `.plan-grid` already goes to one
+   column, give the title the WHOLE first row every time rather than only
+   once it overflows, since the icon and pill sharing a row with it leaves too
+   little room at these widths regardless of title length. Icon and pill
+   share a second row instead, pill pushed to the far right of it. */
+@media(max-width:760px){
+  .jnpr .plan-lg .ph::after{content:none}
+  .jnpr .plan-lg .ph-title{order:1;flex-basis:100%}
+  .jnpr .plan-lg .ph .track{order:2}
+  .jnpr .plan-lg .ph .status{order:3;margin-left:auto}
+}
 .jnpr .plan-lg .body{padding:16px 18px}
 /* `gap` and `nowrap` are what let the inline-edit pencil sit on this line.
    Without them the pencil pushes "/ $60,000" onto a second row on a narrow
