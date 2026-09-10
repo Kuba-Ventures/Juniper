@@ -68,6 +68,10 @@
   margin: 0 0 14px;
 }
 
+.legal-doc a {
+  color: #1c4a31;
+}
+
 .legal-doc ul {
   margin: 0 0 14px;
   padding-left: 22px;

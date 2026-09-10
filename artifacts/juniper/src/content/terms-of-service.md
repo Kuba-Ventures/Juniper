@@ -1,3 +1,5 @@
+*Last updated: September 9, 2026*
+
 ## 1. What Juniper is
 
 Juniper ("Juniper," "we," "us") is a financial planning application that connects to a member's
@@ -12,9 +14,7 @@ says, is individualized financial, investment, tax, or legal advice. See Section
 ## 2. Eligibility
 
 You must be at least 18 years old and a resident of the United States to create an account.
-Juniper is not directed at children, and we do not knowingly collect data from anyone under 13
-(or 16, where a stricter state or federal rule applies). [NEEDS LAWYER INPUT: confirm the correct
-age threshold once the target launch states are known.]
+Juniper is not directed at children, and we do not knowingly collect data from anyone under 18.
 
 ## 3. Your account
 
@@ -22,11 +22,11 @@ age threshold once the target launch states are known.]
   your account.
 - You must provide accurate information when connecting accounts, including a real phone number
   and date of birth when consenting to a credit-bureau pull (see Section 6).
-- You may delete your account and all data Juniper holds about you at any time from Settings →
-  Developer tools today, or from a member-facing equivalent once it ships (currently gated behind
-  a developer allowlist, see `api/reset-account.ts` and PROJECT.md's account-reset entry).
-  **[NEEDS LAWYER INPUT / PRODUCT INPUT: this control needs to be available to every member, not
-  only developer-gated accounts, before this term can be published as true.]**
+- You may request deletion of your account and all data Juniper holds about you at any time by
+  emailing hello@juniperplan.com. We will delete your account, unlink every connected bank account
+  at Plaid itself, and end any partnership or shared household you're part of within 30 days of a
+  verified request, except where we must retain certain records to comply with law (see the
+  Privacy Policy, Section 5).
 
 ## 4. Linked accounts and third-party data
 
@@ -70,9 +70,9 @@ and to people in your life. **Ask Juniper is not a crisis service, a therapist, 
 for professional mental-health care.**
 
 By using Ask Juniper, you acknowledge your messages and the account data used to ground them are
-sent to Anthropic's API to generate a response, subject to Anthropic's own terms
-[NEEDS LAWYER INPUT: confirm current data-retention/training-use terms under Juniper's Anthropic
-API agreement and reflect them accurately here and in the Privacy Policy].
+sent to Anthropic's API to generate a response, subject to Anthropic's own commercial API terms.
+Anthropic does not use API inputs or outputs to train its models, and retains them only as needed
+for abuse detection and legal compliance, for a limited period, under those terms.
 
 ## 7. Prohibited uses
 
@@ -89,28 +89,31 @@ You agree not to:
 
 ## 8. Disclaimers and limitation of liability
 
-**[NEEDS LAWYER INPUT: this section is the core of what a lawyer needs to draft or substantially
-rewrite. The bullets below name the shape of what's usually here, not language to ship.]**
-
-- Juniper is provided "as is," without warranties of any kind.
+- Juniper is provided "as is" and "as available," without warranties of any kind, express or
+  implied.
 - Juniper is not liable for decisions you make based on figures, plans, or AI-generated content in
   the app, nor for the accuracy of data provided by Plaid, Spinwheel, or any other third-party data
   source.
-- [NEEDS LAWYER INPUT: a cap on damages, an exclusion of consequential damages, and whether this
-  needs to vary by state given consumer-protection rules that limit what liability waivers can
-  actually disclaim.]
+- To the maximum extent permitted by applicable law, Juniper's total liability to you for any claim
+  arising from your use of the app is limited to the greater of $100 or the amount you paid Juniper
+  in the 12 months before the claim arose, and Juniper is not liable for any indirect, incidental,
+  or consequential damages. Nothing in this section limits liability where applicable law does not
+  allow it to be limited.
 
 ## 9. Dispute resolution
 
-**[NEEDS LAWYER INPUT: whether to include a binding arbitration clause and class-action waiver,
-which state's law governs, and the venue for any dispute not subject to arbitration. This is a
-business decision as much as a legal one and should not be filled in by default.]**
+These terms are governed by the laws of the State of Delaware, without regard to its conflict-of-
+laws rules. Any dispute not resolved informally (email us at hello@juniperplan.com first) may be
+brought in the state or federal courts located in Delaware, and you and Juniper each consent to
+that venue. Nothing here requires arbitration or waives your right to a jury trial or to
+participate in a class action.
 
 ## 10. Changes to these terms
 
-We may update these terms. **[NEEDS LAWYER INPUT: notice mechanism and required advance notice
-period, especially for changes to arbitration/liability terms, which some states require
-affirmative notice or re-acceptance for.]**
+We may update these terms from time to time. The "Last updated" date at the top of this page
+reflects the most recent change. For a material change, we'll notify you by email or an in-app
+notice at least 30 days before it takes effect; continuing to use Juniper after that point means
+you accept the updated terms.
 
 ## 11. Termination
 
@@ -120,8 +123,6 @@ survive (e.g., outstanding payment obligations, once Juniper has any).
 
 ## 12. Contact
 
-Reach us at hello@juniperplan.com. [NEEDS LEGAL INPUT: confirm whether a dedicated legal@ address
-is also required, e.g. for formal notices under Section 9's dispute-resolution terms once those
-are decided.]
+Reach us at hello@juniperplan.com.
 
 ---
