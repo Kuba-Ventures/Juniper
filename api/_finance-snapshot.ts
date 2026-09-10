@@ -14,6 +14,16 @@ type Txn = { amount: number; date: string; category: string | null; category_id:
 // utilization below is computed only across the cards that report one.
 type Acct = { type: string | null; balance: number | null; limit?: number | null };
 type Item = { accounts: Acct[] };
+// The member's own hand-entered figures, from the onboarding money snapshot and
+// the Overview nudge (both write through /api/profile, columns from migration
+// 0001). Read here because a saved figure is a figure: see the header of
+// `savedInputs` below for the bug that came of ignoring them.
+type ProfileRow = {
+  monthly_income: number | null;
+  monthly_expenses: number | null;
+  total_savings: number | null;
+  total_debt: number | null;
+};
 
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
   try { const r = await adminRest(pathAndQuery); if (!r.ok) return []; return (await r.json()) as T[]; }
@@ -69,8 +79,36 @@ export interface PickSignals {
   annualIncome: number;
 }
 
+// Which figures on `input` came from what the member TYPED rather than from an
+// account or a transaction feed, so a caller that has to say where a number
+// came from (the chat, above all) can say it instead of guessing.
+export type EstimatedField = "monthlyIncome" | "monthlySpending" | "cashReserves" | "totalDebt";
+
 export interface FinanceSnapshot {
+  /** Real linked-account data behind these figures: a Plaid item AND a
+      transaction feed. Unchanged meaning, because /api/recommendations gates
+      its personalized picks on exactly that and nothing here should widen it. */
   linked: boolean;
+  /**
+   * Anything at all behind these figures: a linked item, a hand-entered
+   * account, or the income/expenses the member saved. Use THIS, not `linked`,
+   * to decide whether there is a member's own picture worth answering from.
+   *
+   * ── THE BUG THIS EXISTS TO FIX ────────────────────────────────────────────
+   *
+   * This function used to return zeroes for everything the moment a member had
+   * no Plaid item or no transactions, and /api/finances sends the score it
+   * computes on ALL branches. So a member who typed $7,000 of income and
+   * $4,000 of expenses, saw the dashboard's own "$3,000 saved" read back
+   * correctly from those very figures, and then read a Juniper Score of 24
+   * ("At risk") computed from an all-zero input: savings rate 0 and emergency
+   * fund 0, because nothing here ever looked at what they had told us. 24 is
+   * exactly what `computeScore(emptyInput())` returns, which is how a reported
+   * symptom pinned itself to this line.
+   */
+  hasData: boolean;
+  /** Non-empty when a figure on `input` is the member's own estimate. */
+  estimated: EstimatedField[];
   input: ScoreInput;
   signals: PickSignals;
 }
@@ -83,16 +121,66 @@ export function isoDaysAgo(daysAgo: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// A saved figure, or null when the member never gave one. Zero is a real
+// answer (someone with no debt), so this tests the type rather than falsiness.
+//
+// WHY THIS IS NOT THE THING check-manual-limit-isolation.ts FORBIDS, since the
+// two look alike and are opposites. That rule is about a member-typed CREDIT
+// LIMIT, which is the DENOMINATOR of a ratio Juniper asserts from bank-reported
+// facts: type a generous limit and your utilization, and therefore your score,
+// improves on the strength of nothing. It stays excluded, and the shared
+// manual-accounts select still does not even request the column.
+//
+// Income, expenses, savings and debt are the opposite case. They are the
+// member's own account of their own life, they are the only figures a member
+// with no linked bank has, and the client has ALWAYS scored them: see
+// buildManualFinances in artifacts/juniper/src/lib/manual-finances.ts, which
+// hands exactly these four to the same computeScore. Manual account balances
+// have fed this function since tier 3 shipped, for the same reason. The bug
+// was that the SERVER copy of the score ignored them, so the two engines
+// answered differently about the same member, and the server's answer is the
+// one that reaches the screen.
+const saved = (v: number | null | undefined): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
 export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=accounts`);
   const since = isoDaysAgo(WINDOW_DAYS);
   const txns = await rows<Txn>(
     `transactions?user_id=eq.${uid}&date=gte.${since}&select=amount,date,category,category_id&limit=2000`,
   );
+  // The member's own figures, from onboarding's money snapshot or the Overview
+  // nudge. The dashboard has always read these (src/lib/manual-finances.ts
+  // builds its cashflow card straight off them); this is the one place that
+  // never did, which is the whole of the score bug documented on `hasData`.
+  const profile = (
+    await rows<ProfileRow>(
+      `user_profiles?user_id=eq.${uid}&select=monthly_income,monthly_expenses,total_savings,total_debt&limit=1`,
+    )
+  )[0];
+  const savedInputs = {
+    monthlyIncome: saved(profile?.monthly_income),
+    monthlySpending: saved(profile?.monthly_expenses),
+    cashReserves: saved(profile?.total_savings),
+    totalDebt: saved(profile?.total_debt),
+  };
+  // Read once, up here, because "does this member have anything at all" has to
+  // see manual accounts too. Folded into the balances further down.
+  const manualRows = await fetchManualAccounts(uid);
 
-  // Not enough to score off yet, caller keeps the demo mock.
-  if (!items.length || !txns.length) {
-    return { linked: false, input: emptyInput(), signals: emptySignals() };
+  // Unchanged: `linked` still means a Plaid item AND a transaction feed, which
+  // is what /api/recommendations gates on.
+  const linked = items.length > 0 && txns.length > 0;
+  const hasData =
+    linked ||
+    items.length > 0 ||
+    manualRows.length > 0 ||
+    Object.values(savedInputs).some((v) => v !== null);
+
+  // Genuinely nothing to say. Every caller renders an empty state off this
+  // rather than a score built from zeroes.
+  if (!hasData) {
+    return { linked: false, hasData: false, estimated: [], input: emptyInput(), signals: emptySignals() };
   }
 
   // Plaid convention: positive amount = money out, negative = money in. But the
@@ -108,16 +196,36 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // docs/CUSTOM_CATEGORIES.md: these two numbers drive the score's savings rate
   // and emergency-fund factor, so the classification behind them is now the
   // member's own taxonomy rather than a module-level table.
-  const tax = await taxonomyFor(uid);
+  // Skipped entirely with no feed to classify, which is now a path that gets
+  // this far: resolving a taxonomy to loop over zero rows is a round trip for
+  // nothing.
   let outflow = 0, inflow = 0;
-  for (const t of txns) {
-    const kind = tax.classify(t.category_id, t.category).k;
-    if (kind === "transfer") continue;
-    if (kind === "income") inflow -= t.amount;
-    else outflow += t.amount;
+  if (txns.length) {
+    const tax = await taxonomyFor(uid);
+    for (const t of txns) {
+      const kind = tax.classify(t.category_id, t.category).k;
+      if (kind === "transfer") continue;
+      if (kind === "income") inflow -= t.amount;
+      else outflow += t.amount;
+    }
   }
-  const monthlySpending = Math.max(0, outflow) / months;
-  const monthlyIncome = Math.max(0, inflow) / months;
+  const estimated: EstimatedField[] = [];
+  // Measured beats saved, and saved beats nothing. A zero here means nothing
+  // was OBSERVED (no feed at all, or a feed with no income categorized, which
+  // is ordinary for the self-employed), so it is the case a member's own
+  // figure should answer rather than a case worth reporting as fact. A
+  // measured figure is never overwritten, so linking accounts still replaces
+  // an estimate with the truth, and the precedence matches the dashboard's
+  // own: /api/finances omits `cashflow` entirely with no transactions and the
+  // client falls straight back to these same saved figures.
+  const measure = (observed: number, fallback: number | null, field: EstimatedField): number => {
+    if (observed > 0) return observed;
+    if (fallback == null) return observed;
+    estimated.push(field);
+    return fallback;
+  };
+  const monthlySpending = measure(Math.max(0, outflow) / months, savedInputs.monthlySpending, "monthlySpending");
+  const monthlyIncome = measure(Math.max(0, inflow) / months, savedInputs.monthlyIncome, "monthlyIncome");
 
   let cashReserves = 0, investmentBalance = 0, cardDebt = 0, loanDebt = 0;
   // Numerator and denominator of revolving utilization, accumulated together
@@ -192,13 +300,15 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // caring which wrote it. Null until the member has gone through Stage 10c's
   // consent and at least one pull has succeeded.
   //
-  // KNOWN GAP, not fixed here: this whole function returns { linked: false }
-  // above before this lookup is ever reached when the member has no Plaid
-  // item or no transactions yet (line ~94), so a member with real credit
-  // consent but nothing linked still scores as unlinked and gets none of
-  // this. Widening that early return is a bigger, separate change (it also
-  // gates /api/finances's "keep the demo mock" behavior, not just this
-  // factor), so it is left as a follow-up rather than folded into this pass.
+  // The KNOWN GAP this used to carry is closed. It read: "this whole function
+  // returns { linked: false } above before this lookup is ever reached when
+  // the member has no Plaid item or no transactions yet, so a member with
+  // real credit consent but nothing linked still scores as unlinked and gets
+  // none of this." That early return is now gated on `hasData` instead, so a
+  // credit-consented member reaches this line whether or not they linked a
+  // bank. Nothing about /api/finances's own { linked: false } branch changed;
+  // it has always made that call from its own account and transaction reads
+  // rather than from this function.
   const consentRows = await rows<{ last_score: number | null }>(
     `credit_consents?user_id=eq.${uid}&select=last_score&limit=1`,
   );
@@ -207,18 +317,38 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
   // a regional bank Plaid can't reach, count toward the score just like linked
   // ones. They carry no transactions, so income/spending above are unaffected.
-  const manual = sumManualAccounts(await fetchManualAccounts(uid));
+  const manual = sumManualAccounts(manualRows);
   cashReserves += manual.cash;
   investmentBalance += manual.invest;
   cardDebt += manual.cardDebt;
   loanDebt += manual.loanDebt;
 
-  const totalDebt = cardDebt + loanDebt;
+  // Same precedence as the monthly figures above, and the same reason: a
+  // member who typed "$12,000 saved, $6,000 owed" at onboarding and linked
+  // nothing had both read as zero here, so their emergency fund scored 0 out
+  // of a fund they had told us about. Fallback only, so a real balance is
+  // never doubled up with a figure that was meant to describe it.
+  let totalDebt = cardDebt + loanDebt;
+  if (cashReserves === 0 && savedInputs.cashReserves != null) {
+    cashReserves = savedInputs.cashReserves;
+    estimated.push("cashReserves");
+  }
+  if (totalDebt === 0 && savedInputs.totalDebt != null) {
+    totalDebt = savedInputs.totalDebt;
+    // Attributed to cards rather than split, since the saved figure says
+    // nothing about which kind it is, and `signals` is only read by the
+    // marketplace picks (which stay gated on `linked`, so they never see it).
+    cardDebt = savedInputs.totalDebt;
+    estimated.push("totalDebt");
+  }
+
   const totalAssets = cashReserves + investmentBalance;
   const emergencyMonths = monthlySpending > 0 ? cashReserves / monthlySpending : 0;
 
   return {
-    linked: true,
+    linked,
+    hasData: true,
+    estimated,
     input: {
       monthlyIncome: Math.round(monthlyIncome),
       monthlySpending: Math.round(monthlySpending),

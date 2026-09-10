@@ -40,8 +40,12 @@ export default async function handler(req: Request): Promise<Response> {
 // networth-snapshot.ts: the daily cron scores members who are not there to
 // authenticate, so this half must be reachable without a request.
 export async function runScoreCompute(uid: string): Promise<Response> {
-  const { linked, input } = await fetchScoreInput(uid);
-  if (!linked) return json({ linked: false, message: "No synced data to score yet" });
+  // `hasData`, not `linked`: a member who typed their income and expenses has
+  // a real score (see the header on FinanceSnapshot.hasData), and gating the
+  // history writer on a Plaid feed left exactly those members with an empty
+  // trend and a delta of 0 beside a score that was moving.
+  const { linked, hasData, input } = await fetchScoreInput(uid);
+  if (!hasData) return json({ linked: false, message: "No synced data to score yet" });
 
   const result = computeScore(input);
   const asOf = new Date().toISOString().slice(0, 10); // UTC day
@@ -53,5 +57,5 @@ export async function runScoreCompute(uid: string): Promise<Response> {
   });
   if (!up.ok) return json({ error: "Failed to save score", detail: await up.text().catch(() => "") }, 500);
 
-  return json({ linked: true, as_of: asOf, ...result });
+  return json({ linked, as_of: asOf, ...result });
 }
