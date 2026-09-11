@@ -845,7 +845,16 @@ function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsRead
           No plans yet. Turn a goal into a plan (save for a home, pay off debt, build an emergency fund) and track it here.
           <div style={{ marginTop: 12 }}><Link href="/app/plans" className="btn sm">Start a plan</Link></div>
         </div>
-      ) : null}
+      ) : (
+        // Not a genuine empty state yet: the profile fetch that would confirm
+        // whether this member has goals hasn't resolved. A fresh account
+        // right after onboarding can render here before that round trip
+        // finishes, and rendering nothing (as this used to) left the card with
+        // no CTA at all: only the header's "+ New" link, easy to miss as the
+        // one thing to click. Match the plans-fetch loading copy above rather
+        // than inventing a second style for the same wait.
+        <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13 }}>Loading your plans…</div>
+      )}
     </div>
   );
 }
