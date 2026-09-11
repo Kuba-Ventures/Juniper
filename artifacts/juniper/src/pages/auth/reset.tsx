@@ -28,6 +28,7 @@ export default function Reset() {
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<"checking" | "ready" | "expired">("checking");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,6 +64,10 @@ export default function Reset() {
     // disagree about what a password has to be.
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
       return;
     }
     setSaving(true);
@@ -135,6 +140,18 @@ export default function Reset() {
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setError(null);
+              }}
+              autoComplete="new-password"
+              required
+              className={error ? "err" : undefined}
+            />
             {error && <p className="auth-msg bad">{error}</p>}
             <button type="submit" className="btn" disabled={saving}>
               {saving ? "Saving…" : "Save and sign in"}
