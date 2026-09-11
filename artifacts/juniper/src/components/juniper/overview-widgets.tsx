@@ -27,6 +27,8 @@ import type { PlaidItem } from "@/lib/plaid";
 import { money, type ScoreImprovement } from "@/lib/mock-data";
 import { timeAgo, type SyncState } from "@/lib/auto-sync";
 import { usePartner } from "@/lib/partner";
+import { useMemberPlans, planTitle } from "@/lib/plans";
+import { planForFactor } from "@/lib/score-levers";
 import { cssVar } from "@/components/juniper/primitives";
 
 // ── Cards and rewards ──────────────────────────────────────────────────────
@@ -542,6 +544,14 @@ export function useScoreLeversWidget(improvements: ScoreImprovement[]): ScoreLev
 }
 
 export function ScoreLeversWidget({ data }: { data: ScoreLeversWidgetData }) {
+  // The member's own plans, so a lever the score page would already call
+  // "Work on X" does not read here as still unaddressed (issue #407): the score
+  // itself is a pure function of balances, so a factor the member has a plan
+  // for is expected to keep showing points until the money moves, but the LABEL
+  // has to say the plan already exists rather than repeat the create-one pitch.
+  // Same match `planForFactor` makes on the full Score page, imported rather
+  // than reimplemented so the two surfaces cannot disagree about it.
+  const { plans, loading } = useMemberPlans();
   const top = [...data.improvements].sort((a, b) => b.potentialPts - a.potentialPts).slice(0, 3);
   return (
     <div className="card">
@@ -555,12 +565,15 @@ export function ScoreLeversWidget({ data }: { data: ScoreLeversWidgetData }) {
         </div>
       ) : (
         <div className="cw-guide">
-          {top.map((im) => (
-            <div className="cw-g-row" key={im.factor}>
-              <span className="cat">{im.title}</span>
-              <b style={{ fontSize: 12.5, color: "var(--jnpr-good)" }}>+{im.potentialPts} pts</b>
-            </div>
-          ))}
+          {top.map((im) => {
+            const plan = loading ? null : planForFactor(im.factor, plans);
+            return (
+              <div className="cw-g-row" key={im.factor}>
+                <span className="cat">{plan ? `Work on “${planTitle(plan)}”` : im.title}</span>
+                <b style={{ fontSize: 12.5, color: "var(--jnpr-good)" }}>+{im.potentialPts} pts</b>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
