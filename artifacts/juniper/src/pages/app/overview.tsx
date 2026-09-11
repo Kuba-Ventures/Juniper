@@ -9,7 +9,7 @@ import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from
 import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { fmtDay } from "@/lib/txn-format";
-import { useMemberPlans, unplannedGoals } from "@/lib/plans";
+import { useMemberPlans, unplannedGoals, domainFromName } from "@/lib/plans";
 import { PlanProgressRow, toPlanProgressRow, type PlanProgressRowData } from "@/components/juniper/plan-progress-row";
 import {
   BrandTile, PlanIcon, cssVar, NetWorthChart, SpendingDonut, MiniRing, PlanSpark, SCORE_DASH, paintOf,
@@ -781,11 +781,26 @@ function NetWorthCard({ netWorth, cashflow, size }: { netWorth: FinanceData["net
 // with the household Overview's "Shared plans" section; PlanCompactRow and
 // PlanTile below are this page's own size options and stayed local.
 
+// A row's `key` is the plan's own `domain` for a real plan (see
+// `toPlanProgressRow` below) and the raw signup-goal text for a waiting one
+// (there is no plan row, so no domain, until one is created). `?open=` and
+// `?openGoal=` (issue #403) are two different deep links into Plans for that
+// reason: one finds an existing plan by domain, the other finds a waiting
+// goal by its slug and opens the exact same full create form its own card
+// body already opens on a click, rather than sending the member to the plain
+// list to find the goal themselves and possibly reach for the quick
+// single-field "Start it" input instead.
+function planRowHref(row: PlanProgressRowData): string {
+  return row.waiting
+    ? `/app/plans?openGoal=${encodeURIComponent(domainFromName(row.key))}`
+    : `/app/plans?open=${encodeURIComponent(row.key)}`;
+}
+
 // Compact: a name and a percent, nothing else. For a member with several plans
 // who wants to scan all of them without the progress bar's vertical cost.
 function PlanCompactRow({ row }: { row: PlanProgressRowData }) {
   return (
-    <Link href="/app/plans" className={row.waiting ? "plan-crow waiting" : "plan-crow"}>
+    <Link href={planRowHref(row)} className={row.waiting ? "plan-crow waiting" : "plan-crow"}>
       <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
       <span className="pt">{row.title}</span>
       <span className="pct tnum">{row.target > 0 ? `${row.prog}%` : "—"}</span>
@@ -799,7 +814,7 @@ function PlanCompactRow({ row }: { row: PlanProgressRowData }) {
 // `auto-fill`/`minmax` already answers without a second component.
 function PlanTile({ row }: { row: PlanProgressRowData }) {
   return (
-    <Link href="/app/plans" className={row.waiting ? "plan-tile waiting" : "plan-tile"}>
+    <Link href={planRowHref(row)} className={row.waiting ? "plan-tile waiting" : "plan-tile"}>
       <div className="track" style={{ background: cssVar(row.color) }}><PlanIcon name={row.icon} /></div>
       <span className="pt">{row.title}</span>
       <div className="bar"><i style={{ width: `${row.prog}%`, background: cssVar(row.color) }} /></div>
@@ -838,7 +853,7 @@ function YourPlansCard({ goals, goalsReady, size }: { goals: string[]; goalsRead
         ) : size === "gallery" || size === "grid" ? (
           <div className="plan-tiles">{rows.map((r) => <PlanTile row={r} key={r.key} />)}</div>
         ) : (
-          <div className="plans-col">{rows.map((r) => <PlanProgressRow row={r} href="/app/plans" key={r.key} />)}</div>
+          <div className="plans-col">{rows.map((r) => <PlanProgressRow row={r} href={planRowHref(r)} key={r.key} />)}</div>
         )
       ) : goalsReady ? (
         <div style={{ padding: "8px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, lineHeight: 1.6 }}>
