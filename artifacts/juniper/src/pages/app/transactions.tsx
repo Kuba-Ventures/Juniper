@@ -428,6 +428,14 @@ export default function Transactions() {
               {(t.institution || t.account) && (
                 <span className="td-msub">{[t.institution, t.mask ? `••${t.mask}` : t.account].filter(Boolean).join(" · ")}</span>
               )}
+              {t.betterCard && (
+                <span className="better-pill" title={`${t.betterCard.name} earns ${t.betterCard.rate} in this category; this card earned ${t.betterCard.usedRate}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden>
+                    <path d="M13 2 3 14h7l-1 8 10-12h-7z" />
+                  </svg>
+                  {t.betterCard.name} earns {t.betterCard.rate} here — this earned {t.betterCard.usedRate}
+                </span>
+              )}
             </span>
           </div>
         </td>

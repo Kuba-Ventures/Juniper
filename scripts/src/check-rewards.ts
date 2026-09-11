@@ -323,6 +323,48 @@ ok("guide order follows the caller's category order, which is the member's spend
   deepStrictEqual(g.map((e) => e.categoryId), ["c_groceries", "c_gas"]);
 });
 
+// ── 4a2. betterCardFor, issue #406 ────────────────────────────────────────────
+ok("a strictly better held card is reported, with both rates", () => {
+  const f = R.betterCardFor(
+    cash("used", 1), "c_gas", [cash("used", 1), cash("better", 2)], byProduct([]), parentOf,
+  );
+  strictEqual(f?.used.pct, 1);
+  strictEqual(f?.best.pct, 2);
+  strictEqual(f?.best.product.id, "better");
+});
+ok("the card actually used being the best one is not a finding", () => {
+  const f = R.betterCardFor(
+    cash("used", 3), "c_gas", [cash("used", 3), cash("worse", 1)], byProduct([]), parentOf,
+  );
+  strictEqual(f, null);
+});
+ok("a tie is not a finding: it is not money left on the table", () => {
+  const f = R.betterCardFor(
+    cash("used", 2), "c_gas", [cash("used", 2), cash("tied", 2)], byProduct([]), parentOf,
+  );
+  strictEqual(f, null);
+});
+ok("a single held card (the one used) is never a finding, nothing to compare against", () => {
+  const f = R.betterCardFor(cash("used", 1), "c_gas", [cash("used", 1)], byProduct([]), parentOf);
+  strictEqual(f, null);
+});
+ok("a leaf-level bonus row on the better card is what wins, not just its base rate", () => {
+  const f = R.betterCardFor(
+    cash("used", 1), "c_gas", [cash("used", 1), cash("gas-card", 1)],
+    byProduct([earn("gas-card", "c_gas", 3)]), parentOf,
+  );
+  strictEqual(f?.best.pct, 3);
+  strictEqual(f?.best.product.id, "gas-card");
+});
+ok("the used card's own bonus row is read too, not just its base rate", () => {
+  // The card in hand already earns 3x here; nothing beats that.
+  const f = R.betterCardFor(
+    cash("used", 1), "c_gas", [cash("used", 1), cash("other", 2)],
+    byProduct([earn("used", "c_gas", 4)]), parentOf,
+  );
+  strictEqual(f, null);
+});
+
 // ── 4b. Merchant-scoped rates, issue #289 ────────────────────────────────────
 ok("a merchant-scoped row wins over the card's own plain category rate", () => {
   // The DoorDash card: 3% dining bought direct, 4% DoorDash orders. A member

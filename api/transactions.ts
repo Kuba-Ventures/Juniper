@@ -42,6 +42,11 @@ import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
 import { BUILTIN_GROUPS, type Taxonomy } from "./_categorize";
+import { readCardCatalog } from "./_card-catalog";
+import {
+  betterCardFor, shortCardName,
+  type CapPeriod, type CardProduct, type EarnRow, type EarnUnit, type ParentOf,
+} from "./_rewards";
 
 const BUILTIN_LEAF_IDS = new Set(BUILTIN_GROUPS.flatMap((g) => g.leaves.map((l) => l.id)));
 
@@ -109,6 +114,29 @@ const ROLLUP_COLS = "name,merchant_name,amount,date,category,category_id";
 async function rows<T>(pathAndQuery: string): Promise<T[]> {
   try { const r = await adminRest(pathAndQuery); if (!r.ok) return []; return (await r.json()) as T[]; }
   catch { return []; }
+}
+
+/**
+ * account_id -> confirmed product id, for issue #406's "a different linked
+ * card would have earned more" notice. "Confirmed" is `product_answered`, not
+ * row existence: since #211 a member_cards row can exist purely to hold a
+ * credit limit, and reading existence as an answer would flag a card nobody
+ * has actually identified. Degrades to an empty map on any failure, including
+ * a deploy that runs ahead of migration 0033 (no `product_answered` column
+ * yet): the notice just does not appear, rather than the whole page failing.
+ */
+async function readMemberCardProducts(uid: string): Promise<Map<string, string>> {
+  const base = "plaid_account_id,product_id";
+  let r = await adminRest(`member_cards?user_id=eq.${uid}&select=${base},product_answered`);
+  if (!r.ok) r = await adminRest(`member_cards?user_id=eq.${uid}&select=${base}`);
+  if (!r.ok) return new Map();
+  const raw = (await r.json().catch(() => [])) as
+    { plaid_account_id: string; product_id: string | null; product_answered?: boolean }[];
+  const out = new Map<string, string>();
+  for (const c of Array.isArray(raw) ? raw : []) {
+    if (c.product_id && (c.product_answered ?? true)) out.set(c.plaid_account_id, c.product_id);
+  }
+  return out;
 }
 
 // The page read does NOT use rows(). A soft-failing read returns [] here, and an
@@ -308,7 +336,10 @@ export default async function handler(req: Request): Promise<Response> {
   // carries Plaid's item_id and account_id but no display names, and a full
   // transactions table wants to say "Chase 1234" rather than an opaque id.
   // One read, mapped in memory, rather than a per-row lookup.
-  const items = await rows<Item>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_name,accounts`);
+  const [items, productIdByAccount] = await Promise.all([
+    rows<Item>(`plaid_items?user_id=eq.${uid}&select=item_id,institution_name,accounts`),
+    readMemberCardProducts(uid),
+  ]);
   const institutionOf = new Map<string, string>();
   const accountOf = new Map<string, { name: string; mask: string | null }>();
   for (const it of items) {
@@ -317,6 +348,61 @@ export default async function handler(req: Request): Promise<Response> {
       if (a.account_id) accountOf.set(a.account_id, { name: a.name || "Account", mask: a.mask ?? null });
     }
   }
+
+  // ── Issue #406: did a different linked card earn more here? ────────────
+  //
+  // Nothing to compare unless at least two DISTINCT products are confirmed;
+  // one card, or the same card on every account, has no "instead" to offer,
+  // so the catalog and earn-rate reads below are skipped entirely for the
+  // common case of a member with zero or one identified card.
+  const distinctProductIds = [...new Set(productIdByAccount.values())];
+  let cardProducts = new Map<string, CardProduct>();
+  let earnByProduct = new Map<string, EarnRow[]>();
+  let heldProducts: CardProduct[] = [];
+  if (distinctProductIds.length >= 2) {
+    const [catalogRows, earnRows] = await Promise.all([
+      readCardCatalog(),
+      rows<{ product_id: string; category_id: string; category_label: string; multiplier: number;
+             unit: EarnUnit; cap_amount: number | null; cap_period: CapPeriod | null; note: string | null }>(
+        "card_product_earn?select=product_id,category_id,category_label,multiplier,unit,cap_amount,cap_period,note",
+      ),
+    ]);
+    // Featured only, same as api/card-rewards.ts's own earning guide: a
+    // `listed` row has no researched rate to compare with.
+    cardProducts = new Map(catalogRows.filter((p) => p.tier === "featured").map((p) => [p.id, {
+      ...p,
+      annual_fee: Number(p.annual_fee) || 0,
+      point_value_cents: p.point_value_cents == null ? null : Number(p.point_value_cents),
+      base_multiplier: Number(p.base_multiplier) || 0,
+    }]));
+    for (const r of earnRows) {
+      const row: EarnRow = {
+        product_id: r.product_id, category_id: r.category_id, category_label: r.category_label,
+        multiplier: Number(r.multiplier) || 0, unit: r.unit,
+        cap_amount: r.cap_amount == null ? null : Number(r.cap_amount),
+        cap_period: r.cap_period, note: r.note ?? null,
+        // Neither column is read by rateFor, only by the cap-GROUP and
+        // merchant-scoped maths this notice does not need.
+        merchant_key: null, cap_group: null,
+      };
+      const list = earnByProduct.get(row.product_id);
+      if (list) list.push(row); else earnByProduct.set(row.product_id, [row]);
+    }
+    for (const id of distinctProductIds) {
+      const p = cardProducts.get(id);
+      if (p) heldProducts.push(p);
+    }
+  }
+  // The member's own tree, the same shape api/card-rewards.ts builds from the
+  // same `tax`, so this can never name a different winner for one category
+  // than the Rewards Guide would.
+  const parentOf: ParentOf = (categoryId) => {
+    for (const g of tax.groups) {
+      if (g.id === categoryId) return null;
+      if (g.leaves.some((l) => l.id === categoryId)) return g.id;
+    }
+    return null;
+  };
 
   // Merchant art for the rows on this page. A row carries its own `logo_url`
   // only if it was written after migration 0018, so anything older is filled
@@ -336,6 +422,24 @@ export default async function handler(req: Request): Promise<Response> {
   const transactions = pageRows.map((t) => {
     const acct = t.account_id ? accountOf.get(t.account_id) : undefined;
     const row = tax.classify(t.category_id, t.category);
+    // #406: only a real outflow (`t.amount > 0` is Plaid's own "money out"),
+    // in a spending category, on an account whose card is confirmed, with at
+    // least one other confirmed card to compare against.
+    let betterCard: { name: string; rate: string; usedRate: string } | null = null;
+    if (heldProducts.length >= 2 && t.amount > 0 && row.k === "spend" && t.category_id && t.account_id) {
+      const usedProductId = productIdByAccount.get(t.account_id);
+      const usedProduct = usedProductId ? cardProducts.get(usedProductId) : undefined;
+      if (usedProduct) {
+        const finding = betterCardFor(usedProduct, t.category_id, heldProducts, earnByProduct, parentOf);
+        if (finding) {
+          betterCard = {
+            name: shortCardName(finding.best.product.name, finding.best.product.issuer),
+            rate: finding.best.display,
+            usedRate: finding.used.display,
+          };
+        }
+      }
+    }
     return {
       id: t.id,
       // `m` is the display label and `merchant` the raw Plaid merchant string.
@@ -364,6 +468,7 @@ export default async function handler(req: Request): Promise<Response> {
       account: acct?.name ?? null,
       mask: acct?.mask ?? null,
       institution: t.item_id ? institutionOf.get(t.item_id) ?? null : null,
+      betterCard,
     };
   });
 
