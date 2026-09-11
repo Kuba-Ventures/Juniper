@@ -1718,6 +1718,11 @@
    whole. min-width:0 alone (the flex-shrink fix) does not cover this case. */
 .jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink);overflow-wrap:anywhere}
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Issue #406: a different linked card would have earned more on this charge. */
+.jnpr .better-pill{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:650;
+  color:var(--jnpr-warn);background:var(--jnpr-warn-soft);border-radius:20px;padding:3px 9px 3px 7px;
+  white-space:normal;width:fit-content;max-width:100%}
+.jnpr .better-pill svg{width:11px;height:11px;flex:none}
 /* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed
    out, as though the category were disabled or uncertain rather than simply
    secondary to the merchant. Full ink at 12px and semibold.

@@ -31,6 +31,11 @@ export interface TxnRow {
   // True when the member set this category themselves. The row marks it, so a
   // corrected category is distinguishable from one Plaid guessed.
   userSet?: boolean;
+  // Issue #406: set when a different linked, identified card would have
+  // earned strictly more here. Null covers every reason it might not apply
+  // (income/transfer, an unidentified or single card, no bonus data), so the
+  // row never has to know which.
+  betterCard?: { name: string; rate: string; usedRate: string } | null;
 }
 
 // The category picker's options, shipped with the first page rather than kept

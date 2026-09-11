@@ -468,6 +468,43 @@ export function earningGuide(args: {
   });
 }
 
+// ── Per-transaction: did the card used earn less than another one held? ─────
+//
+// Issue #406, "notify when a transaction could have earned more with a
+// different linked card". Deliberately its own function rather than a lookup
+// into `earningGuide`'s output: the guide is capped to a handful of the
+// member's top-spend categories, in their own spend order (`GUIDE_CATEGORIES`
+// in api/card-rewards.ts), so a single transaction can land in a category the
+// guide never lists at all. This resolves one category on demand instead, the
+// same `rateFor` the guide itself uses, so the two can never name a different
+// winner for the same category.
+export interface BetterCardFinding {
+  /** What the card actually used earned here. */
+  used: ResolvedRate;
+  /** The best a HELD card could have earned here, strictly more than `used`. */
+  best: ResolvedRate;
+}
+
+/**
+ * `null` when the card used was already the best of the member's own cards
+ * here, or tied with it: this is a "you left money on the table" finding, not
+ * a ranking, and a tie is not money left on the table.
+ */
+export function betterCardFor(
+  usedProduct: CardProduct,
+  categoryId: string,
+  heldProducts: CardProduct[],
+  earnByProduct: Map<string, EarnRow[]>,
+  parentOf: ParentOf,
+): BetterCardFinding | null {
+  const used = rateFor(usedProduct, categoryId, earnByProduct, parentOf);
+  const best = heldProducts
+    .map((p) => rateFor(p, categoryId, earnByProduct, parentOf))
+    .sort(byRate)[0];
+  if (!best || best.product.id === usedProduct.id || best.pct <= used.pct) return null;
+  return { used, best };
+}
+
 /** One merchant the member has spend at that some catalog card has a specific
     rate for, e.g. Amazon.com. `categoryId`/`categoryLabel` are the FALLBACK
     category this merchant's spend would otherwise fall under, so a held card
