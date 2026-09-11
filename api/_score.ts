@@ -8,9 +8,13 @@
 // the per-factor breakdown, and a ranked list of "ways to improve", each tagged
 // with the factor it came from. That makes it trivial to unit-test and lets both
 // the read endpoint (/api/finances) and the history writer (/api/score/compute)
-// share one source of truth. Tying a lever to one of the member's plans is a
-// client concern precisely BECAUSE this stays I/O-free: it cannot read their
-// plans, so it does not pretend to know them.
+// share one source of truth. This file still never reads a member's plans
+// itself: `planProgress` below is a plain, already-fetched number the CALLER
+// (api/_finance-snapshot.ts) hands in, the same way it hands in cashReserves or
+// monthlyIncome. Which plan a lever points AT on screen is still a client
+// concern (FACTOR_ROUTES in src/lib/score-levers.ts); this only asks "does the
+// member's own declared progress toward one of their save-shaped goals move
+// this factor," per issue #407.
 
 export interface ScoreInput {
   monthlyIncome: number;      // avg take-home per month
@@ -21,6 +25,20 @@ export interface ScoreInput {
   investmentBalance: number;  // investment / brokerage / retirement balances
   creditScore?: number;       // 300–850, if known
   creditUtilization?: number; // 0–1 revolving utilization, if known
+  /**
+   * The member's own target and saved-so-far on a plan matching a factor
+   * (issue #407), for the two factors where that number can only ever ADD
+   * confidence: "emergency" (cash toward a fund) and "investing" (money toward
+   * a portfolio). Folded in as `max(realFigure, planProgress.current)`, so a
+   * plan can never make the score worse, and used as the WHOLE signal only
+   * when the real denominator (spending, income) is missing entirely, so a
+   * brand-new member isn't stuck at "not counted" the moment they set a real
+   * target. Deliberately absent for "debt"/"credit": a self-reported payoff
+   * plan letting a member claim a smaller balance than a linked account
+   * actually reports is exactly the "member scores themselves" risk this file
+   * has refused elsewhere (see check-manual-limit-isolation.ts).
+   */
+  planProgress?: Partial<Record<FactorKey, { current: number; target: number }>>;
 }
 
 // What the member has against what would score full marks, for one factor. The
@@ -88,6 +106,7 @@ export interface ScoreResult {
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 const round = (n: number) => Math.round(n);
+const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 // Weights sum to 1.0. Savings + emergency fund carry the most weight because
 // they're the most actionable levers for the young-individual audience.
@@ -143,16 +162,38 @@ function savingsFactor(i: ScoreInput): Factor {
 }
 
 // Emergency fund = months of spending covered by liquid cash. 6 months → full.
+// A matching emergency-fund plan's own saved-so-far only ever raises the cash
+// figure (`max`, never overrides it down), and stands in for the whole
+// calculation when there is no spending figure to size six months against,
+// since a plan's own target is a real number even when nothing else is.
 function emergencyFactor(i: ScoreInput): Factor {
-  const months = i.monthlySpending > 0 ? i.cashReserves / i.monthlySpending : 0;
-  const score = clamp((months / 6) * 100);
+  const plan = i.planProgress?.emergency;
+  const cash = plan ? Math.max(i.cashReserves, plan.current) : i.cashReserves;
+  if (i.monthlySpending > 0) {
+    const months = cash / i.monthlySpending;
+    const score = clamp((months / 6) * 100);
+    return {
+      key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
+      status: statusOf(score),
+      gauge: gauge(cash, i.monthlySpending * 6, "in cash", "six months of spending"),
+      detail: `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`,
+    };
+  }
+  if (plan && plan.target > 0) {
+    const pct = plan.current / plan.target;
+    const score = clamp(pct * 100);
+    return {
+      key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
+      status: statusOf(score),
+      gauge: gauge(plan.current, plan.target, "saved", "your plan's target"),
+      detail: `${money(plan.current)} of your ${money(plan.target)} emergency-fund target${pct >= 1 ? ", fully funded" : ""}.`,
+    };
+  }
   return {
-    key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
-    status: statusOf(score),
-    gauge: gauge(i.cashReserves, i.monthlySpending * 6, "in cash", "six months of spending"),
-    detail: i.monthlySpending > 0
-      ? `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`
-      : "Link spending to size your emergency fund.",
+    key: "emergency", label: "Emergency fund", score: 0, weight: WEIGHTS.emergency,
+    status: statusOf(0),
+    gauge: null,
+    detail: "Link spending to size your emergency fund.",
   };
 }
 
@@ -184,17 +225,39 @@ function debtFactor(i: ScoreInput): Factor {
 
 // Investing pace = investment balance relative to annual income. 1× → full.
 // A rough young-saver proxy for retirement pace (no reliable age input yet).
+// Same plan-progress treatment as emergencyFactor above: a matching investing
+// plan's balance only ever raises the figure, and stands in for the whole
+// calculation when there is no income to size a year's worth of it against.
 function investingFactor(i: ScoreInput): Factor {
+  const plan = i.planProgress?.investing;
+  const invested = plan ? Math.max(i.investmentBalance, plan.current) : i.investmentBalance;
   const annualIncome = Math.max(i.monthlyIncome * 12, 0);
-  const ratio = annualIncome > 0 ? i.investmentBalance / annualIncome : (i.investmentBalance > 0 ? 1 : 0);
-  const score = clamp(ratio * 100);
+  if (annualIncome > 0) {
+    const ratio = invested / annualIncome;
+    const score = clamp(ratio * 100);
+    return {
+      key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
+      status: statusOf(score),
+      gauge: gauge(invested, annualIncome, "invested", "one year of income"),
+      detail: `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`,
+    };
+  }
+  if (plan && plan.target > 0) {
+    const pct = plan.current / plan.target;
+    const score = clamp(pct * 100);
+    return {
+      key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
+      status: statusOf(score),
+      gauge: gauge(plan.current, plan.target, "invested", "your plan's target"),
+      detail: `${money(plan.current)} of your ${money(plan.target)} investing target${pct >= 1 ? ", fully funded" : ""}.`,
+    };
+  }
+  const ratio = invested > 0 ? 1 : 0;
   return {
-    key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
-    status: statusOf(score),
-    gauge: gauge(i.investmentBalance, annualIncome, "invested", "one year of income"),
-    detail: annualIncome > 0
-      ? `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`
-      : "Link investments to track your pace.",
+    key: "investing", label: "Investing pace", score: round(clamp(ratio * 100)), weight: WEIGHTS.investing,
+    status: statusOf(clamp(ratio * 100)),
+    gauge: gauge(invested, annualIncome, "invested", "one year of income"),
+    detail: "Link investments to track your pace.",
   };
 }
 

@@ -6,6 +6,7 @@ import { adminRest } from "./_supabase-admin";
 import { fetchManualAccounts, sumManualAccounts } from "./_manual-accounts";
 import { taxonomyFor } from "./_taxonomy";
 import { creditPosition } from "./_credit-balance";
+import { planProgressByFactor, type PlanRow } from "./_plan-progress";
 import type { ScoreInput } from "./_score";
 
 type Txn = { amount: number; date: string; category: string | null; category_id: string | null };
@@ -178,10 +179,20 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
     Object.values(savedInputs).some((v) => v !== null);
 
   // Genuinely nothing to say. Every caller renders an empty state off this
-  // rather than a score built from zeroes.
+  // rather than a score built from zeroes. Plans are deliberately not part of
+  // `hasData`: a plan with no other data behind it is a manual-layer member
+  // (see src/lib/manual-finances.ts, which does fold in plan progress),
+  // untouched by this early return either way.
   if (!hasData) {
     return { linked: false, hasData: false, estimated: [], input: emptyInput(), signals: emptySignals() };
   }
+
+  // The member's own plans (issue #407), so a matching one's declared target
+  // and saved-so-far can fold into the relevant score factor below. Owner-
+  // scoped read, no partner rows: this is the caller's own declared progress,
+  // not a shared plan's.
+  const planRows = await rows<PlanRow>(`plans?user_id=eq.${uid}&select=domain,status,goal`);
+  const planProgress = planProgressByFactor(planRows);
 
   // Plaid convention: positive amount = money out, negative = money in. But the
   // sign alone does not say whether money was CONSUMED, so this applies the same
@@ -363,6 +374,7 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
       // drops the credit factor rather than inventing a number for it.
       creditUtilization,
       creditScore,
+      planProgress,
     },
     signals: {
       monthlySpending: Math.round(monthlySpending),

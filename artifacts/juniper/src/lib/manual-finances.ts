@@ -11,7 +11,9 @@
 import type { FinanceData } from "@/lib/finances";
 import type { Account, SeriesKey } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/profile";
+import type { Plan } from "@/lib/plans";
 import { computeScore } from "@/lib/score";
+import { planProgressByFactor } from "@/lib/score-levers";
 
 const ACCT_CYCLE: SeriesKey[] = ["--jnpr-c1", "--jnpr-c3", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6", "--jnpr-c4"];
 
@@ -53,7 +55,11 @@ export function hasManualFinances(p: UserProfile | null): boolean {
 // Any non-null profile means the member has been through onboarding, so we show
 // THEIR dashboard, even if sparse/zeroed, never the demo household. The demo
 // (mock) is reserved for pre-onboarding sessions with no saved profile at all.
-export function buildManualFinances(p: UserProfile | null): FinanceData | null {
+// `plans` defaults to empty for existing callers (the EMPTY floor below has no
+// plans, and never should): only FinancesProvider, which actually fetches the
+// member's plans, passes a real list, so the Juniper Score can fold in a
+// matching plan's own progress (issue #407).
+export function buildManualFinances(p: UserProfile | null, plans: Plan[] = []): FinanceData | null {
   if (!p) return null;
 
   const list = p.accounts ?? [];
@@ -98,6 +104,7 @@ export function buildManualFinances(p: UserProfile | null): FinanceData | null {
     totalDebt: debtTotal,
     totalAssets: cashTotal + investTotal,
     investmentBalance: investTotal,
+    planProgress: planProgressByFactor(plans),
   });
 
   return {
