@@ -2440,7 +2440,17 @@
    Positioned against the HOLDER rather than the clip, so it is never trimmed by
    the stack's height, and painted above the cover's z-index so it sits on the
    leather rather than under it. */
-.jnpr .cr-holder-stack{position:absolute;inset:0}
+/* ISOLATED, and that is the fix for issue #405 rather than a tidy-up. The cards
+   inside carry `z-index: (i + 1) * 10` from the component, which grows with the
+   number of cards, while the cover (50), the figures panel (60) and the popped
+   card (70) are fixed. Nothing here established a stacking context, so those
+   numbers were all being compared in ONE context: at five cards the stack ties
+   the cover, at seven it passes the panel, and a member with four linked cards
+   and five hand-entered ones had cards painted over the leather and over their
+   own balance. `isolation` keeps the card numbering local to the stack, so a
+   tenth card cannot climb out of it, and the cover (now a sibling rather than a
+   child) is above the whole stack at any count. */
+.jnpr .cr-holder-stack{position:absolute;inset:0;isolation:isolate}
 .jnpr .cr-holder-panel{position:absolute;left:0;right:0;bottom:13px;z-index:60;
   padding:0 5px 4px;color:var(--hp-ink)}
 .jnpr .hp-top{display:flex;align-items:center;gap:8px;margin-bottom:11px}

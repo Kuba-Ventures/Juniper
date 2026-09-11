@@ -44,9 +44,12 @@ import { Info, X } from "lucide-react";
 //   1. IT IS LABELLED. `CardFace`'s `unknown` prop draws the outline and `label`
 //      names it, the same pair the identify prompt itself already uses. A blank
 //      outline would deserve the original objection; "Which card?" does not.
-//   2. IT IS TAPPABLE, straight through to the picker. An outline that does
-//      nothing is what the original comment was rightly afraid of; an outline
-//      that takes you to the answer is not the same object.
+//   2. IT IS TAPPABLE, straight through to the picker, ON THAT CARD. An outline
+//      that does nothing is what the original comment was rightly afraid of; an
+//      outline that takes you to the answer is not the same object. The second
+//      half of that is issue #405: the tap used to carry no card with it, so the
+//      picker opened on whichever card happened to be first in the queue, which
+//      is the same failure in a politer form.
 //
 // The outlines are drawn LAST, after every confirmed card, and it is worth being
 // exact about what that means in this layout, because it is not what "last"
@@ -137,6 +140,18 @@ interface Slot {
   key: string;
   /** The linked card, or null for an outline or a hand-entered one. */
   card: LinkedCard | null;
+  /**
+   * WHICH ACCOUNT TAPPING THIS SLOT ASKS ABOUT, for an outline, and null for
+   * every slot that has nothing to ask.
+   *
+   * The outline used to call `onIdentify()` with nothing at all, so the picker
+   * had no way to know which card had been tapped and always opened on the
+   * first unanswered one. Tapping the Amex outline asked about the Capital One
+   * card, and an answer given there was stored against the Capital One account
+   * (issue #405). The mask on the face and the account the answer is written to
+   * have to be the same card, so the slot carries the id.
+   */
+  identifyId: string | null;
   label: string;
   mask: string | null;
   issuer: string;
@@ -269,9 +284,12 @@ export function CardWallet({
   /** Cards the member entered by hand (migration 0046), drawn last of all. */
   manual: CardRewards["manual"];
   logoFor: (c: LinkedCard) => string | null;
-  /** Opens the identify picker. See the note in the docblock about why an
-      outline that does nothing would be worse than no outline at all. */
-  onIdentify: () => void;
+  /** Opens the identify picker ON THE CARD THAT WAS TAPPED, which is what the
+      argument is for: see `Slot.identifyId`. Null only where the caller has no
+      card to name, which no slot that calls this has. See the note in the
+      docblock about why an outline that does nothing would be worse than no
+      outline at all. */
+  onIdentify: (plaidAccountId: string | null) => void;
   /** Which holder the member chose (migration 0048), or null for the default. */
   holderStyle: HolderStyle | null;
 }) {
@@ -307,7 +325,7 @@ export function CardWallet({
   // header saying three over a stack of two reads as a card having gone missing.
   const slots: Slot[] = [
     ...withProduct.map((c) => ({
-      key: c.plaid_account_id, card: c, issuer: c.institution,
+      key: c.plaid_account_id, card: c, identifyId: null, issuer: c.institution,
       label: c.product?.short_name ?? c.account_name, mask: c.mask, hand: false,
       art: null, brand: null,
       // What the panel prints. Resolved HERE, once, from the same limit
@@ -320,7 +338,8 @@ export function CardWallet({
       // Prefixed: an unidentified card's `plaid_account_id` is in the same
       // namespace as a confirmed one's, and the two lists are disjoint today, but
       // a key collision here would silently drop a face rather than error.
-      key: `unk:${u.plaid_account_id}`, card: null, issuer: u.institution,
+      key: `unk:${u.plaid_account_id}`, card: null,
+      identifyId: u.plaid_account_id, issuer: u.institution,
       label: "Which card?", mask: u.mask, hand: false, art: null, brand: null,
       owed: u.balance, inCredit: 0, limit: u.limit, limitSource: "bank" as LimitSource,
       currency: u.currency,
@@ -330,7 +349,10 @@ export function CardWallet({
     // much Juniper can say about each: identified, then asked-about, then the
     // ones it knows only because the member typed them.
     ...manual.map((m) => ({
-      key: `hand:${m.manual_account_id}`, card: null, issuer: m.institution,
+      key: `hand:${m.manual_account_id}`, card: null,
+      // A hand-entered card has no Plaid account, so it is never in the identify
+      // queue and there is nothing for a tap to ask about.
+      identifyId: null, issuer: m.institution,
       // The product's short name once the member has named it (0047), their own
       // label until then. Theirs is the better fallback: "Freedom Unlimited" is
       // what they typed and what they call it.
@@ -425,7 +447,7 @@ export function CardWallet({
             // toggle, which is what `aria-pressed` claims.
             onClick={(e) => {
               if (known) { cameFrom.current = e.currentTarget; setOpenKey(s.key); }
-              else onIdentify();
+              else onIdentify(s.identifyId);
             }}
           >
             <CardFace
@@ -466,13 +488,25 @@ export function CardWallet({
           style={{ top: (i + 1) * reveal - BAND_H, zIndex: (i + 1) * 10 + 5 }}
         />
       ))}
+      </div>
+
       {/* THE COVER: the wallet's front panel, in front of every card rather than
           behind the last one. It is why each card shows only its top quarter and
           why none of them appears to be resting on top of the holder. Decorative,
           so it must not eat taps meant for the cards it crosses; the figures on
-          top of it are their own layer. */}
+          top of it are their own layer.
+
+          A SIBLING OF THE STACK RATHER THAN A CHILD OF IT, and that is the fix
+          for issue #405. It used to sit inside `.cr-holder-stack` and hold the
+          line on `z-index: 50` against cards numbered `(i + 1) * 10`, which is
+          a comparison that only holds while there are four cards or fewer: the
+          fifth card ties the cover, the seventh passes it AND the figures panel
+          at 60, so a member with a full holder had cards painted over the
+          leather and over their own balance. Outside the stack, with
+          `.cr-holder-stack` isolated in the stylesheet, the cover is above the
+          whole stack whatever it contains, so the count cannot decide the
+          layering. */}
       <div className="cr-holder-cover" aria-hidden="true" style={{ height: COVER_H }} />
-      </div>
 
       {/* THE FIGURES, on the leather. Two states, one shape: the holder's total
           when everything is tucked in, and the card's own the moment one is out.
@@ -549,7 +583,7 @@ export function CardWallet({
       {popped && !popped.card && !popped.hand && (
         <div className="cr-holder-bar">
           <span>Name this card and Juniper can tell you what it earns.</span>
-          <button type="button" className="cr-holder-cta" onClick={onIdentify}>
+          <button type="button" className="cr-holder-cta" onClick={() => onIdentify(popped.identifyId)}>
             Identify
           </button>
         </div>

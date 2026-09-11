@@ -617,6 +617,15 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
   // is a second picker mounted in the hero, which would be a second place the
   // same answer gets written.
   const [identifyRequest, setIdentifyRequest] = useState(0);
+  // WHICH card that request is about. The counter alone said "open the picker"
+  // and nothing else, so it always opened on the first unanswered card: tapping
+  // the Amex outline asked about the Capital One card and wrote the answer to
+  // the Capital One account (issue #405). The two are set together, always.
+  const [identifyFor, setIdentifyFor] = useState<string | null>(null);
+  const openIdentify = useCallback((plaidAccountId: string | null) => {
+    setIdentifyFor(plaidAccountId);
+    setIdentifyRequest((n) => n + 1);
+  }, []);
 
   // account id -> the product the member said it is. Built from the rewards
   // payload rather than fetched again, so the two halves of this page cannot
@@ -722,7 +731,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
     <CardHolderSection
       data={rewards.data}
       brands={brands}
-      onIdentify={() => setIdentifyRequest((n) => n + 1)}
+      onIdentify={openIdentify}
       holderStyle={holderStyle}
     />
   );
@@ -778,6 +787,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
           cards={rewards.data.unidentified}
           catalog={catalog.data}
           openRequest={identifyRequest}
+          openFor={identifyFor}
           onSaved={() => void rewards.refresh()}
         />
       )}
@@ -841,7 +851,8 @@ function CardHolderSection({
 }: {
   data: CardRewards;
   brands: InstitutionBrandMap | null;
-  onIdentify: () => void;
+  /** Takes the account the tapped outline is about: see CardWallet's own prop. */
+  onIdentify: (plaidAccountId: string | null) => void;
   holderStyle: HolderStyle | null;
 }) {
   const confirmed = data.cards.filter((c) => c.product);
