@@ -893,6 +893,27 @@ export default function Plans({ profile = null, profileReady = false }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openHandled, loading, plans, search]);
 
+  // Where Overview's "Your plans" widget lands on an unstarted signup goal
+  // (issue #403): `?openGoal=<slug>` opens the same full create form the
+  // card's own body already opens on a click, directly, rather than sending
+  // the member to the plain list to find that goal and notice "More options"
+  // instead of the quick single-field "Start it" input. Waits on profileReady
+  // rather than `loading`, since `waitingGoals` is derived from
+  // `profile?.goals`, not from `plans`. An unrecognized slug (the goal was
+  // turned into a plan since the link was made, or a stale link) falls
+  // through to the plain list rather than an error.
+  const [openGoalHandled, setOpenGoalHandled] = useState(false);
+  useEffect(() => {
+    if (openGoalHandled || profileReady !== true) return;
+    const want = new URLSearchParams(search).get("openGoal");
+    if (!want) return;
+    const i = waitingGoals.findIndex((g) => domainFromName(g.goal) === want);
+    if (i >= 0) startGoal(waitingGoals[i], i);
+    setOpenGoalHandled(true);
+    navigate("/app/plans", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openGoalHandled, profileReady, waitingGoals, search]);
+
   const { data, source } = useFinances();
   const balances = balancesFromFinances(data);
   const linked = source === "live";
