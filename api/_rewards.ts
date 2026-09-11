@@ -839,6 +839,23 @@ export function normalizeCardName(v: string): string {
     .replace(/\s+/g, " ");
 }
 
+/** Comparison form for an institution or issuer name, for the same-issuer
+    filter below. Deliberately does NOT run normalizeCardName's noise-word
+    strip: that strip treats "amex"/"american express" as marketing filler to
+    remove from a PRODUCT name, which is wrong here, where the issuer's name
+    IS the whole string being compared. Normalizing "American Express" with
+    that strip reduces it to "", so every Amex product failed the same-issuer
+    check and the catalog-wide fallback fired for the one issuer Juniper knows
+    best (issue #404). */
+function normalizeIssuerName(v: string): string {
+  return v
+    .toLowerCase()
+    .replace(/[®™©]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 // Words that carry no identifying signal, so a shared "rewards" does not make
 // two unrelated products look alike.
 const STOP = new Set(["the", "and", "cash", "rewards", "reward", "student", "secured", "preferred", "plus"]);
@@ -863,9 +880,9 @@ export function rankCandidates(
   account: { institution: string; account_name: string },
   products: CardProduct[],
 ): Candidate[] {
-  const inst = normalizeCardName(account.institution);
+  const inst = normalizeIssuerName(account.institution);
   const sameIssuer = products.filter((p) => {
-    const issuer = normalizeCardName(p.issuer);
+    const issuer = normalizeIssuerName(p.issuer);
     return !!inst && !!issuer && (issuer.includes(inst) || inst.includes(issuer));
   });
   const pool = sameIssuer.length ? sameIssuer : products;

@@ -586,6 +586,20 @@ ok("the issuer is a FILTER: a Chase account is never offered a Capital One produ
   assert(cands.every((c) => c.product.issuer === "Chase"), "only Chase products offered");
   strictEqual(cands[0].product.id, "cfu");
 });
+ok("an American Express account is never offered a Capital One or Discover product (#404)", () => {
+  // normalizeCardName strips "amex"/"american express" as product-name noise,
+  // which used to also run on the issuer string itself, reducing "American
+  // Express" to "" and making the same-issuer filter fail open to the whole
+  // catalog. The issuer normalizer must not do that strip.
+  const cands = R.rankCandidates(
+    { institution: "American Express", account_name: "Blue Cash Preferred" },
+    [{ ...cash("cap1", 1), issuer: "Capital One", name: "Quicksilver" },
+     { ...cash("disc", 1), issuer: "Discover", name: "Discover it Chrome" },
+     { ...cash("bcp", 1), issuer: "American Express", name: "Blue Cash Preferred" }],
+  );
+  assert(cands.every((c) => c.product.issuer === "American Express"), "only Amex products offered");
+  strictEqual(cands[0].product.id, "bcp");
+});
 ok("an unknown institution gets the whole catalog rather than nothing", () => {
   // A member whose bank Juniper has never heard of should still be able to find
   // their card by scrolling, rather than being told there is nothing to pick.
