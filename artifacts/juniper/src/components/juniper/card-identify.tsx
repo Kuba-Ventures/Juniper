@@ -204,6 +204,7 @@ export function CardIdentifyPrompt({
   catalog,
   onSaved,
   openRequest = 0,
+  openFor = null,
 }: {
   cards: UnidentifiedCard[];
   catalog: CardCatalogEntry[];
@@ -211,8 +212,8 @@ export function CardIdentifyPrompt({
   /**
    * A counter another surface increments to open the picker from a distance.
    *
-   * The wallet in `rewards-guide.tsx` now draws an outline for each card still to
-   * be identified, and an outline that does nothing is exactly what the wallet's
+   * The wallet in `card-wallet.tsx` draws an outline for each card still to be
+   * identified, and an outline that does nothing is exactly what the wallet's
    * original comment was right to be afraid of. Tapping one has to land on the
    * answer, and the answer is this dialog.
    *
@@ -221,17 +222,38 @@ export function CardIdentifyPrompt({
    * boolean would already be true the second time and nothing would happen.
    */
   openRequest?: number;
+  /**
+   * WHICH card that request is about, by `plaid_account_id`.
+   *
+   * The counter used to be the whole message, so every request opened on the
+   * FIRST unanswered card whatever had been tapped: the member tapped the Amex
+   * outline, was asked about the Capital One card (its account name, its
+   * ····8818), and an answer given there was written against the Capital One
+   * account (issue #405). Null falls back to the head of the queue, which is
+   * what the prompt's own button means.
+   */
+  openFor?: string | null;
 }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // BY ACCOUNT ID, never by position in `cards`. See `onSaved` below for what
+  // walking this queue by index cost.
+  const [openId, setOpenId] = useState<string | null>(null);
   // Zero is the initial value and must not open anything on first render: a
   // dialog nobody asked for, over a page they have just arrived at.
+  //
+  // `cards` is deliberately not a dependency: it is read only to answer "what is
+  // the head of the queue" at the moment a request arrives, and depending on it
+  // would reopen the dialog every time the parent re-fetched.
   useEffect(() => {
-    if (openRequest > 0) setOpenIndex(0);
-  }, [openRequest]);
+    if (openRequest > 0) setOpenId(openFor ?? cards[0]?.plaid_account_id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest, openFor]);
   if (!cards.length) return null;
 
   const first = cards[0];
   const more = cards.length - 1;
+  // Looked up rather than indexed, so a refresh landing underneath an open
+  // dialog can only ever close it, never swap the card it is asking about.
+  const open = openId ? cards.find((c) => c.plaid_account_id === openId) ?? null : null;
 
   return (
     <>
@@ -250,23 +272,32 @@ export function CardIdentifyPrompt({
           </p>
         </div>
         <div className="cr-cc-act">
-          <button type="button" className="btn" onClick={() => setOpenIndex(0)}>
+          <button type="button" className="btn" onClick={() => setOpenId(first.plaid_account_id)}>
             Identify {cards.length === 1 ? "card" : "cards"}
           </button>
         </div>
       </div>
 
-      {openIndex != null && cards[openIndex] && (
+      {open && (
         <CardIdentifyDialog
-          card={cards[openIndex]}
+          card={open}
           catalog={catalog}
-          onClose={() => setOpenIndex(null)}
+          onClose={() => setOpenId(null)}
           onSaved={() => {
             // Move straight to the next card in the queue rather than closing and
-            // making them find the prompt again. `cards` is the list as it was
-            // when the dialog opened, which is what makes walking it by index
-            // safe even though the parent re-fetches underneath.
-            setOpenIndex((i) => (i != null && i + 1 < cards.length ? i + 1 : null));
+            // making them find the prompt again, and name that card by its OWN
+            // account id.
+            //
+            // This used to hold a position and increment it, on a comment
+            // claiming `cards` was frozen at the moment the dialog opened. It is
+            // a prop, so it is not: `onSaved` re-reads the endpoint, the card
+            // just answered leaves the queue, and every remaining card shifts
+            // down one. Position 1 in the old list is position 0 in the new one,
+            // so the queue SKIPPED a card, and worse, the dialog could change
+            // which account it was asking about while the member was reading it
+            // (issue #405). An id survives the list moving underneath it.
+            const i = cards.findIndex((c) => c.plaid_account_id === openId);
+            setOpenId(i >= 0 && i + 1 < cards.length ? cards[i + 1].plaid_account_id : null);
             onSaved();
           }}
         />
