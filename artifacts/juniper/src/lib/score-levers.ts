@@ -32,7 +32,7 @@
 // Either way nothing is fabricated: an unmatched factor borrows no plan's
 // title, color or icon.
 import type { FactorKey } from "@/lib/mock-data";
-import { planShape, planTitle, type Plan, type PlanShape } from "@/lib/plans";
+import { planShape, planTitle, planNumbers, type Plan, type PlanShape } from "@/lib/plans";
 
 export type FactorRoute = {
   shape: PlanShape | null;
@@ -95,4 +95,26 @@ export function planForFactor(factor: FactorKey, plans: Plan[]): Plan | null {
       return route.words.some((w) => hay.includes(w));
     }) ?? null
   );
+}
+
+// The member's own target and saved-so-far, per factor, for the score engine
+// (issue #407): a plan's own numbers are real money the member told us about,
+// so the score should not stay blind to them just because they aren't in a
+// linked account yet. Scoped to "emergency" and "investing" on purpose, the
+// only two factors ScoreInput.planProgress accepts (see api/_score.ts): those
+// are the ones where a plan's own figure can only ever ADD confidence, never
+// let a member claim a smaller balance than a real account reports.
+const SCOREABLE_FACTORS: FactorKey[] = ["emergency", "investing"];
+
+export function planProgressByFactor(
+  plans: Plan[],
+): Partial<Record<FactorKey, { current: number; target: number }>> {
+  const out: Partial<Record<FactorKey, { current: number; target: number }>> = {};
+  for (const factor of SCOREABLE_FACTORS) {
+    const plan = planForFactor(factor, plans);
+    if (!plan) continue;
+    const { current, target } = planNumbers(plan);
+    if (target > 0) out[factor] = { current, target };
+  }
+  return out;
 }

@@ -184,6 +184,7 @@ export async function fetchPlans(): Promise<Plan[]> {
 export async function deleteAllPlans(): Promise<boolean> {
   try {
     const res = await authedFetch("/api/plans", { method: "DELETE" });
+    if (res.ok) emitPlansChanged();
     return res.ok;
   } catch {
     return false;
@@ -194,6 +195,22 @@ export async function fetchPlan(domain: string): Promise<Plan | null> {
   const res = await authedFetch(`/api/plans?domain=${encodeURIComponent(domain)}`);
   if (!res.ok) return null;
   return (await res.json()) as Plan | null;
+}
+
+// Broadcasts "a plan changed" (issue #407), so the one thing outside a page's
+// own `useMemberPlans()` instance that has to know immediately, the Juniper
+// Score, can refetch without the member navigating away and back. Deliberately
+// not a store for `useMemberPlans()` itself: those instances stay independent
+// per their own doc comment (separate routes, never mounted together), this is
+// only a "something changed, go re-read it" signal for FinancesProvider.
+type PlansListener = () => void;
+const plansListeners = new Set<PlansListener>();
+export function onPlansChanged(fn: PlansListener): () => void {
+  plansListeners.add(fn);
+  return () => { plansListeners.delete(fn); };
+}
+function emitPlansChanged(): void {
+  plansListeners.forEach((fn) => fn());
 }
 
 export async function savePlan(body: PlanWriteBody): Promise<Plan | null> {
@@ -219,7 +236,9 @@ export async function savePlan(body: PlanWriteBody): Promise<Plan | null> {
     console.error(`[Juniper] savePlan failed: ${res.status} ${res.statusText}, body:`, text);
     return null;
   }
-  return (await res.json()) as Plan | null;
+  const saved = (await res.json()) as Plan | null;
+  if (saved) emitPlansChanged();
+  return saved;
 }
 
 // Delete a single plan the caller owns, keyed by domain. Returns true on
@@ -230,6 +249,7 @@ export async function deletePlan(domain: string): Promise<boolean> {
     const res = await authedFetch(`/api/plans?domain=${encodeURIComponent(domain)}`, {
       method: "DELETE",
     });
+    if (res.ok) emitPlansChanged();
     return res.ok;
   } catch {
     return false;

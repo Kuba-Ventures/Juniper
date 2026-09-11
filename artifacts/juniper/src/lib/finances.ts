@@ -32,6 +32,7 @@ import { categoryColor } from "@/lib/category-color";
 import type * as M from "@/lib/mock-data";
 import type { Account, SpendCat, Budget, Txn, SeriesKey } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/profile";
+import { fetchPlans, onPlansChanged, type Plan } from "@/lib/plans";
 import { buildManualFinances } from "@/lib/manual-finances";
 import { isStale, runBackgroundSync, type SyncState } from "@/lib/auto-sync";
 
@@ -240,11 +241,23 @@ export interface FinancesValue {
 const FinancesContext = createContext<FinancesValue | null>(null);
 
 export function FinancesProvider({ profile, children }: { profile: UserProfile | null; children: ReactNode }) {
+  // The member's own plans, fetched here (rather than through the per-page
+  // `useMemberPlans()` hook, which stays a plain, independent-per-mount hook
+  // on purpose) for exactly one reason: the Juniper Score needs to fold a
+  // matching plan's own progress into itself (issue #407), and the score lives
+  // here, in the one place every page already reads it from. `onPlansChanged`
+  // (lib/plans.ts) is what makes this immediate: any savePlan/deletePlan call
+  // anywhere in the app re-reads this list without the member navigating away
+  // from wherever they are.
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const loadPlans = useCallback(() => { void fetchPlans().then(setPlans); }, []);
+  useEffect(() => { loadPlans(); }, [loadPlans]);
+
   // The manual dashboard is derived synchronously from the local profile, so a
   // hand-onboarded member sees their own numbers on first paint (no flash of
   // demo data). It's both the baseline until the live fetch resolves and the
   // layer the live payload merges over once it does.
-  const manual = useMemo(() => buildManualFinances(profile), [profile]);
+  const manual = useMemo(() => buildManualFinances(profile, plans), [profile, plans]);
   const [raw, setRaw] = useState<RawFinances | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -278,6 +291,13 @@ export function FinancesProvider({ profile, children }: { profile: UserProfile |
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  // "A plan changed" (issue #407): re-read the member's plans, which flows
+  // into the manual score above, and re-read /api/finances, which recomputes
+  // the live score server-side once it too folds in plan progress. Firing both
+  // unconditionally rather than tracking which layer is active costs one cheap
+  // extra fetch and is simpler than a stale-closure-prone `raw` check.
+  useEffect(() => onPlansChanged(() => { loadPlans(); void load({ afterSync: true }); }), [loadPlans, load]);
 
   // Mount was the only trigger, so a dashboard left open all afternoon kept
   // showing the figures it loaded at breakfast. Coming back to the tab is the

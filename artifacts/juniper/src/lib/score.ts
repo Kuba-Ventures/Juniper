@@ -18,6 +18,13 @@ export interface ScoreInput {
   investmentBalance: number; // investment / brokerage / retirement balances
   creditScore?: number; // 300–850, if known
   creditUtilization?: number; // 0–1 revolving utilization, if known
+  /** Mirrors api/_score.ts: the member's own target/saved-so-far on a matching
+   *  "emergency" or "investing" plan (issue #407), folded in as
+   *  `max(realFigure, planProgress.current)` and used as the whole signal only
+   *  when the real denominator is missing. Left out of "debt"/"credit" for the
+   *  same reason as the server copy: a self-reported figure must never be able
+   *  to claim a smaller balance than a real account does. */
+  planProgress?: Partial<Record<FactorKey, { current: number; target: number }>>;
 }
 
 // What the member has against what would score full marks, for one factor. Kept
@@ -74,6 +81,7 @@ export interface ScoreResult {
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 const round = (n: number) => Math.round(n);
+const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 const WEIGHTS: Record<FactorKey, number> = {
   savings: 0.25,
@@ -121,16 +129,35 @@ function savingsFactor(i: ScoreInput): Factor {
   };
 }
 
+// Mirrors api/_score.ts's plan-progress fold-in: see that file's comment.
 function emergencyFactor(i: ScoreInput): Factor {
-  const months = i.monthlySpending > 0 ? i.cashReserves / i.monthlySpending : 0;
-  const score = clamp((months / 6) * 100);
+  const plan = i.planProgress?.emergency;
+  const cash = plan ? Math.max(i.cashReserves, plan.current) : i.cashReserves;
+  if (i.monthlySpending > 0) {
+    const months = cash / i.monthlySpending;
+    const score = clamp((months / 6) * 100);
+    return {
+      key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
+      status: statusOf(score),
+      gauge: gauge(cash, i.monthlySpending * 6, "in cash", "six months of spending"),
+      detail: `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`,
+    };
+  }
+  if (plan && plan.target > 0) {
+    const pct = plan.current / plan.target;
+    const score = clamp(pct * 100);
+    return {
+      key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
+      status: statusOf(score),
+      gauge: gauge(plan.current, plan.target, "saved", "your plan's target"),
+      detail: `${money(plan.current)} of your ${money(plan.target)} emergency-fund target${pct >= 1 ? ", fully funded" : ""}.`,
+    };
+  }
   return {
-    key: "emergency", label: "Emergency fund", score: round(score), weight: WEIGHTS.emergency,
-    status: statusOf(score),
-    gauge: gauge(i.cashReserves, i.monthlySpending * 6, "in cash", "six months of spending"),
-    detail: i.monthlySpending > 0
-      ? `${months.toFixed(1)} months of expenses saved${months >= 6 ? ", fully covered" : ", target is 6 months"}.`
-      : "Add your expenses to size your emergency fund.",
+    key: "emergency", label: "Emergency fund", score: 0, weight: WEIGHTS.emergency,
+    status: statusOf(0),
+    gauge: null,
+    detail: "Add your expenses to size your emergency fund.",
   };
 }
 
@@ -157,17 +184,37 @@ function debtFactor(i: ScoreInput): Factor {
   };
 }
 
+// Mirrors api/_score.ts's plan-progress fold-in: see that file's comment.
 function investingFactor(i: ScoreInput): Factor {
+  const plan = i.planProgress?.investing;
+  const invested = plan ? Math.max(i.investmentBalance, plan.current) : i.investmentBalance;
   const annualIncome = Math.max(i.monthlyIncome * 12, 0);
-  const ratio = annualIncome > 0 ? i.investmentBalance / annualIncome : (i.investmentBalance > 0 ? 1 : 0);
-  const score = clamp(ratio * 100);
+  if (annualIncome > 0) {
+    const ratio = invested / annualIncome;
+    const score = clamp(ratio * 100);
+    return {
+      key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
+      status: statusOf(score),
+      gauge: gauge(invested, annualIncome, "invested", "one year of income"),
+      detail: `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`,
+    };
+  }
+  if (plan && plan.target > 0) {
+    const pct = plan.current / plan.target;
+    const score = clamp(pct * 100);
+    return {
+      key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
+      status: statusOf(score),
+      gauge: gauge(plan.current, plan.target, "invested", "your plan's target"),
+      detail: `${money(plan.current)} of your ${money(plan.target)} investing target${pct >= 1 ? ", fully funded" : ""}.`,
+    };
+  }
+  const ratio = invested > 0 ? 1 : 0;
   return {
-    key: "investing", label: "Investing pace", score: round(score), weight: WEIGHTS.investing,
-    status: statusOf(score),
-    gauge: gauge(i.investmentBalance, annualIncome, "invested", "one year of income"),
-    detail: annualIncome > 0
-      ? `You've invested about ${ratio.toFixed(1)}× your annual income${ratio >= 1 ? ", ahead of pace" : ", keep contributing"}.`
-      : "Add investments to track your pace.",
+    key: "investing", label: "Investing pace", score: round(clamp(ratio * 100)), weight: WEIGHTS.investing,
+    status: statusOf(clamp(ratio * 100)),
+    gauge: gauge(invested, annualIncome, "invested", "one year of income"),
+    detail: "Add investments to track your pace.",
   };
 }
 
