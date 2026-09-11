@@ -17,6 +17,7 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   // Folded in from the first onboarding step (issue #267), which removes a
   // whole screen: anybody arriving via a partner or household invite has
   // already answered this by the fact of the invite, so the picker only shows
@@ -110,6 +111,12 @@ export default function SignUp() {
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
       setLoading(false);
       return;
     }
@@ -249,6 +256,18 @@ export default function SignUp() {
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setError(null);
+            }}
+            autoComplete="new-password"
+            required
+            className={error ? "err" : undefined}
+          />
           {needsSignupCode && (
             <input
               type="text"
