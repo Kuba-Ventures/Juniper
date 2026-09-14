@@ -42,7 +42,7 @@ function AcctRow({ a, onCycle }: { a: Row; onCycle?: (a: Row) => void }) {
 }
 
 export function SharedAccounts() {
-  const { partner } = useWorkspace();
+  const { partner, refresh: refreshWorkspace } = useWorkspace();
   const { data, refresh } = usePartner();
   const session = useSession();
   const name = partner.name || data?.partner?.name || "your partner";
@@ -55,7 +55,14 @@ export function SharedAccounts() {
   }));
 
   const cycle = (a: Row) => {
-    void setAccountShare(a.account_id, isShared(a.scope) ? "private" : "shared").then(refresh);
+    // Both: WorkspaceProvider derives `holds.accounts` (whether the shared
+    // "Accounts" tab even appears) from its own separate read of the same
+    // data, so sharing the first account needs both copies to move or the tab
+    // won't show up until something else happens to resync the workspace.
+    void setAccountShare(a.account_id, isShared(a.scope) ? "private" : "shared").then(() => {
+      refresh();
+      refreshWorkspace();
+    });
   };
 
   const group = (owner: Owner) => rows.filter((a) => a.owner === owner);

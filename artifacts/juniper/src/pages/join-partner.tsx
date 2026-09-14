@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useSession } from "@/lib/use-session";
-import { acceptInvite, fetchInviteInfo } from "@/lib/partner";
+import { acceptInvite, fetchInviteInfo, invalidatePartner } from "@/lib/partner";
 import "@/styles/juniper.css";
 
 // Landing for /invite/partner/:token, the invited partner accepts here, which
@@ -57,7 +57,15 @@ export default function JoinPartner({ token }: { token: string }) {
     setState("joining");
     acceptInvite(token).then((res) => {
       if (!alive) return;
-      if (res.ok) setLocation("/app/shared");
+      if (res.ok) {
+        // See invalidatePartner's own comment (lib/partner.ts): usually
+        // redundant, since leaving this route remounts WorkspaceProvider, but
+        // usePartner()'s module-level cache survives that remount and stays
+        // stale if anything in this tab warmed it earlier (issue #426's bug
+        // class, on the accept-invite path).
+        invalidatePartner();
+        setLocation("/app/shared");
+      }
       else { setState("error"); setError(res.error ?? "This invite isn't valid anymore."); }
     });
     return () => { alive = false; };
