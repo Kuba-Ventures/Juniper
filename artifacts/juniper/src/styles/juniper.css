@@ -586,6 +586,27 @@
 .jnpr .plan-ask svg{width:14px;height:14px}
 .jnpr .plan-ask .pa-badge{background:var(--jnpr-accent);color:var(--jnpr-on-accent);border-radius:20px;font-size:10px;font-weight:700;padding:0 6px;min-width:16px;text-align:center}
 
+/* Read-only plan view (issue #423): its own small layout, not `.plan-lg`'s.
+   This sits inside a `.modal`, not a grid card, has no inline-edit pencils,
+   and the click-to-open behavior a card has is exactly what this replaces. */
+.jnpr .plan-view-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.jnpr .plan-view-head .track{width:40px;height:40px;border-radius:11px;font-size:16px}
+.jnpr .plan-view-title{flex:1;min-width:0}
+.jnpr .plan-view-title h3{margin:0}
+.jnpr .plan-view-progress{display:flex;align-items:center;gap:22px;margin-bottom:8px}
+.jnpr .plan-ring{position:relative;display:inline-grid;place-items:center;flex:0 0 auto}
+.jnpr .plan-ring .pr-pct{position:absolute;font-size:19px;font-weight:750;color:var(--jnpr-ink)}
+.jnpr .plan-view-nums{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.jnpr .plan-view-nums .big{font-size:24px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
+.jnpr .plan-view-nums .big small{font-size:12.5px;color:var(--jnpr-ink-3);font-weight:550}
+.jnpr .plan-view-note{font-size:12.5px;color:var(--jnpr-ink-3)}
+.jnpr .plan-view-next{font-size:13px;color:var(--jnpr-ink-2);line-height:1.5;margin:0 0 16px}
+.jnpr .plan-view-next b{color:var(--jnpr-ink)}
+.jnpr .plan-view-debts{margin:0 0 18px}
+.jnpr .plan-view-debts .pc-lbl{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:9px}
+.jnpr .plan-view-debt-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--jnpr-ink-2);padding:8px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .plan-view-debt-row:first-child{border-top:0}
+
 /* ---------- modal + forms ---------- */
 .jnpr .modal-bg{position:fixed;inset:0;background:rgba(15,20,15,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
 .jnpr .modal{background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:var(--jnpr-r);max-width:440px;width:100%;padding:24px;box-shadow:var(--jnpr-shadow-lg);max-height:calc(100vh - 40px);overflow-y:auto}
