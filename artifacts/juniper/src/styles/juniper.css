@@ -118,12 +118,13 @@
        "Connections" was one swipe further right rather than simply clipped.
        Two-layer scroll-shadow trick (local + scroll attachment): the shadow
        only shows on the side there is still something to scroll to, with no
-       JS and no scroll listener. */
+       JS and no scroll listener. Linear rather than radial, so the fade reads
+       as a straight edge rather than a rounded glow blob. */
     background:
-      radial-gradient(farthest-side at 0 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat local,
-      radial-gradient(farthest-side at 100% 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat local,
-      radial-gradient(farthest-side at 0 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat scroll,
-      radial-gradient(farthest-side at 100% 50%,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat scroll;
+      linear-gradient(to right,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat local,
+      linear-gradient(to left,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat local,
+      linear-gradient(to right,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat scroll,
+      linear-gradient(to left,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat scroll;
     background-attachment:local,local,scroll,scroll}
   .jnpr .nav::-webkit-scrollbar{display:none}
 }
