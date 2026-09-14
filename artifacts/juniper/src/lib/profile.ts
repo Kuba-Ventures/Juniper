@@ -17,6 +17,16 @@ export type ManualAccount = {
 export type UserProfile = {
   monthlyIncome?: number;
   monthlyExpenses?: number;
+  // Itemized detail behind monthlyIncome/monthlyExpenses, from the paycheck
+  // breakdown nudge (issue #402). The three deduction fields are informational
+  // only, never read by the Score; the three expense fields are what
+  // monthlyExpenses is computed as the sum of. See migration 0068.
+  deduction401k?: number;
+  deductionHealthInsurance?: number;
+  deductionHsaFsa?: number;
+  expenseRent?: number;
+  expenseLoanPayments?: number;
+  expenseOtherEssentials?: number;
   totalSavings?: number;
   totalDebt?: number;
   goals?: string[];
