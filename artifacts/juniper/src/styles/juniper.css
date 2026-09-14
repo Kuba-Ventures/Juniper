@@ -977,6 +977,7 @@
 
 /* tiles, chips, negatives */
 .jnpr .tile.sm{width:30px;height:30px;border-radius:8px;font-size:12px}
+.jnpr .blogo.sm{width:30px;height:30px;border-radius:8px}
 .jnpr .amt .chip{margin-left:8px}
 .jnpr .chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .jnpr button.chip{border:0;cursor:pointer;font-family:inherit}

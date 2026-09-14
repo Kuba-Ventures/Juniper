@@ -2,6 +2,7 @@
 // allows. Live data only: the seeded household this used to fall back to went
 // with Stage 4e, along with the hardcoded "Maya" and "Devin" that named the two
 // sides even on the live branch.
+import { useEffect, useState } from "react";
 import { money } from "@/lib/mock-data";
 import { cssVar } from "@/components/juniper/primitives";
 import { SharedPage } from "@/components/juniper/shared-frame";
@@ -9,6 +10,8 @@ import { useWorkspace } from "@/lib/workspace";
 import { useSession } from "@/lib/use-session";
 import { usePartner, setAccountShare, isShared, type AccountScope } from "@/lib/partner";
 import type { SeriesKey } from "@/lib/mock-data";
+import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from "@/lib/plaid";
+import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 
 type Owner = "shared" | "you" | "partner";
 
@@ -20,11 +23,29 @@ const OWNER_K: Record<Owner, SeriesKey> = { shared: "--jnpr-c1", you: "--jnpr-c3
 
 interface Row { account_id: string; n: string; inst: string; v: number; owner: Owner; scope: AccountScope; k: SeriesKey; mine: boolean }
 
-function AcctRow({ a, onCycle }: { a: Row; onCycle?: (a: Row) => void }) {
+// Widest-first: Plaid's own logo, then our bundled art, then a monogram tinted
+// with the institution's brand color, matching the chain Connections, the
+// Overview rollup and the Credit page's cards already use. Only when none of
+// that resolves does this fall back to a plain letter tile, the same last
+// resort those surfaces reach for.
+function AcctMark({ a, brands }: { a: Row; brands: InstitutionBrandMap | null }) {
+  const mark = resolveInstitutionMark(a.inst, brandForName(brands, a.inst));
+  if (mark.kind === "logo") return <img className="blogo sm" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return (
+      <div className="tile sm" style={{ background: mark.background, color: mark.color }}>
+        {mark.letter}
+      </div>
+    );
+  }
+  return <div className="tile sm" style={{ background: cssVar(a.k) }}>{a.n.charAt(0)}</div>;
+}
+
+function AcctRow({ a, brands, onCycle }: { a: Row; brands: InstitutionBrandMap | null; onCycle?: (a: Row) => void }) {
   const priv = a.scope === "private";
   return (
     <div className="row">
-      <div className="tile sm" style={{ background: cssVar(a.k) }}>{a.n.charAt(0)}</div>
+      <AcctMark a={a} brands={brands} />
       <div><div className="nm">{a.n}</div><div className="mt">{a.inst}</div></div>
       <div className="amt">
         {priv ? <span style={{ color: "var(--jnpr-ink-3)" }}>••••</span> : <span className={a.v < 0 ? "neg tnum" : "tnum"}>{money(a.v)}</span>}
@@ -48,6 +69,20 @@ export function SharedAccounts() {
   const name = partner.name || data?.partner?.name || "your partner";
   const meName =
     (session?.user.user_metadata as { name?: string } | undefined)?.name?.trim().split(/\s+/)[0] || "Your";
+
+  // /api/partner carries each account's institution NAME only, never a Plaid
+  // institution id (unlike the personal Overview's own rollup), so the brand
+  // map here is keyed from this member's own linked items and matched by name
+  // via brandForName, the same bridge Overview already uses for the same gap.
+  const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlaidItems()
+      .then((list) => fetchInstitutionLogos(list.map((it) => it.institution_id)))
+      .then((m) => { if (!cancelled) setBrands(m); })
+      .catch(() => { /* silent — resolver falls back to bundled art / monogram */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const rows: Row[] = (data?.accounts ?? []).map((a) => ({
     account_id: a.account_id, n: a.n, inst: a.inst, v: a.v,
@@ -78,7 +113,7 @@ export function SharedAccounts() {
         {sections.filter((s) => s.arr.length).map((s, i) => (
           <div key={i}>
             <div className="subhead"><span className="dot" style={{ background: s.dot }} /> {s.label}</div>
-            <div className="rows">{s.arr.map((a, j) => <AcctRow a={a} key={j} onCycle={cycle} />)}</div>
+            <div className="rows">{s.arr.map((a, j) => <AcctRow a={a} brands={brands} key={j} onCycle={cycle} />)}</div>
           </div>
         ))}
       </div>
