@@ -28,7 +28,7 @@
 // shared yet yould see. Order and visibility only, matching the personal
 // board's own scope: no per-widget sizes, since none of these five has more
 // than one honest shape to draw at.
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { money, moneyK } from "@/lib/mock-data";
 import { cssVar, planMark } from "@/components/juniper/primitives";
@@ -39,6 +39,8 @@ import { SHARED_REGISTRY, type DashboardLayout } from "@/lib/dashboard-layout";
 import {
   useArrangeBoard, withFullFlags, ArrangeIcon, GripIcon, EmptySlot, NUDGE_KEYS,
 } from "@/components/juniper/arrange-board";
+import { fetchInstitutionLogos, fetchPlaidItems, type InstitutionBrandMap } from "@/lib/plaid";
+import { brandForName, resolveInstitutionMark } from "@/lib/institution-brand";
 
 const GOAL_CYCLE = ["--jnpr-c1", "--jnpr-c5", "--jnpr-c2", "--jnpr-c6"];
 const YOU_COLOR = "--jnpr-c3";
@@ -46,14 +48,32 @@ const THEM_COLOR = "--jnpr-c5";
 
 const scopeChip = { shared: "Shared", balance: "Balance only", private: "Private" } as const;
 
-function AccountRow({ a }: { a: PartnerAccount }) {
+// Widest-first: Plaid's own logo, then our bundled art, then a monogram tinted
+// with the institution's brand color, matching the chain Connections, the
+// personal Overview rollup, the Credit page's cards and the shared Accounts
+// page (#425) already use. Only when none of that resolves does this fall
+// back to a plain letter tile, the same last resort those surfaces reach for.
+function AccountMark({ a, brands }: { a: PartnerAccount; brands: InstitutionBrandMap | null }) {
+  const mark = resolveInstitutionMark(a.inst, brandForName(brands, a.inst));
+  if (mark.kind === "logo") return <img className="blogo sm" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return (
+      <div className="tile sm" style={{ background: mark.background, color: mark.color }}>
+        {mark.letter}
+      </div>
+    );
+  }
+  return <div className="tile sm" style={{ background: cssVar(a.mine ? YOU_COLOR : THEM_COLOR) }}>{a.n.charAt(0)}</div>;
+}
+
+function AccountRow({ a, brands }: { a: PartnerAccount; brands: InstitutionBrandMap | null }) {
   // "Private" here means the other member chose not to share the balance, so
   // there is no number to show rather than a number being withheld from the
   // person looking: /api/partner never sends it.
   const hidden = a.scope === "private";
   return (
     <div className="row">
-      <div className="tile sm" style={{ background: cssVar(a.mine ? YOU_COLOR : THEM_COLOR) }}>{a.n.charAt(0)}</div>
+      <AccountMark a={a} brands={brands} />
       <div><div className="nm">{a.n}</div><div className="mt">{a.inst}</div></div>
       <div className="amt">
         {hidden ? <span style={{ color: "var(--jnpr-ink-3)" }}>••••</span> : <span className={a.v < 0 ? "neg tnum" : "tnum"}>{money(a.v)}</span>}
@@ -75,6 +95,23 @@ export function SharedOverview({
   const { partner } = useWorkspace();
   const { data, loading } = usePartner();
   const name = partner.name || data?.partner?.name || "your partner";
+
+  // /api/partner carries each account's institution NAME only, never a Plaid
+  // institution id, so the brand map here is keyed from this member's own
+  // linked items and matched by name via brandForName, the same bridge the
+  // personal Overview rollup and the shared Accounts page (#425) both use for
+  // the same gap. The partner's own institutions won't be in this member's
+  // items, so their accounts fall back to the plain-letter tile, same as
+  // before this change.
+  const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlaidItems()
+      .then((list) => fetchInstitutionLogos(list.map((it) => it.institution_id)))
+      .then((m) => { if (!cancelled) setBrands(m); })
+      .catch(() => { /* silent — resolver falls back to bundled art / monogram */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const combined = data?.combined;
   const accounts = data?.accounts ?? [];
@@ -122,7 +159,7 @@ export function SharedOverview({
     jointaccounts: (
       <div className="card shared-accts">
         <div className="card-head"><h3><span className="dot" style={{ background: "var(--jnpr-good)" }} /> Shared accounts</h3></div>
-        <div className="rows">{joint.map((a) => <AccountRow a={a} key={a.account_id} />)}</div>
+        <div className="rows">{joint.map((a) => <AccountRow a={a} brands={brands} key={a.account_id} />)}</div>
       </div>
     ),
     youraccounts: (
@@ -131,7 +168,7 @@ export function SharedOverview({
           <span className="oc-ava" style={{ background: cssVar(YOU_COLOR) }}>Y</span>
           <b>You</b><span className="oc-tot tnum">{money(combined?.youShare ?? 0)}</span>
         </div>
-        <div className="rows">{mine.map((a) => <AccountRow a={a} key={a.account_id} />)}</div>
+        <div className="rows">{mine.map((a) => <AccountRow a={a} brands={brands} key={a.account_id} />)}</div>
       </div>
     ),
     theiraccounts: (
@@ -140,7 +177,7 @@ export function SharedOverview({
           <span className="oc-ava" style={{ background: cssVar(THEM_COLOR) }}>{name.charAt(0).toUpperCase()}</span>
           <b>{name}</b><span className="oc-tot tnum">{money(combined?.partnerShare ?? 0)}</span>
         </div>
-        <div className="rows">{theirs.map((a) => <AccountRow a={a} key={a.account_id} />)}</div>
+        <div className="rows">{theirs.map((a) => <AccountRow a={a} brands={brands} key={a.account_id} />)}</div>
       </div>
     ),
     goals: (
