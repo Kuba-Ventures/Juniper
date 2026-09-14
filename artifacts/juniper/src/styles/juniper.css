@@ -121,19 +121,7 @@
   .jnpr .appbar-in{padding:9px 16px 10px;gap:8px}
   .jnpr .plaid-pill{display:none}
   .jnpr .nav{flex-wrap:nowrap;justify-content:flex-start;min-width:0;overflow-x:auto;
-    scrollbar-width:none;-ms-overflow-style:none;
-    /* The native scrollbar is hidden above, and nothing else on this row said
-       "Connections" was one swipe further right rather than simply clipped.
-       Two-layer scroll-shadow trick (local + scroll attachment): the shadow
-       only shows on the side there is still something to scroll to, with no
-       JS and no scroll listener. Linear rather than radial, so the fade reads
-       as a straight edge rather than a rounded glow blob. */
-    background:
-      linear-gradient(to right,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat local,
-      linear-gradient(to left,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat local,
-      linear-gradient(to right,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) left/14px 100% no-repeat scroll,
-      linear-gradient(to left,color-mix(in srgb,var(--jnpr-ink) 22%,transparent),transparent) right/14px 100% no-repeat scroll;
-    background-attachment:local,local,scroll,scroll}
+    scrollbar-width:none;-ms-overflow-style:none}
   .jnpr .nav::-webkit-scrollbar{display:none}
 }
 /* Phones can't fit brand · switcher · account on one line, so the switcher
