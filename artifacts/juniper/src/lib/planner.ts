@@ -181,6 +181,29 @@ export function titleFrom(text: string): string {
   return t.length > 48 ? t.slice(0, 46) + "…" : t || "New chat";
 }
 
+// The real summary titleFrom() can't be (issue #421): a small model call,
+// scoped to just the first exchange, run once by runTurn below after the
+// first reply lands and patched onto the thread in place of the truncated
+// fallback. Best-effort like every other remote write in this file, null on
+// any failure so the caller just keeps titleFrom()'s truncation rather than
+// blocking or retrying.
+async function fetchThreadTitle(question: string, answer: string, planContext?: string): Promise<string | null> {
+  const headers = await authHeaders();
+  if (!headers) return null;
+  try {
+    const res = await fetch("/api/planner/title-thread", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ question, answer, planContext }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { title?: unknown };
+    return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Last assistant line of a thread, trimmed for a one-line preview in lists.
 export function previewOf(t: Thread): string {
   const last = [...t.messages].reverse().find((m) => m.role === "assistant");
@@ -564,6 +587,16 @@ export async function runTurn(
   try {
     const full = await streamTurn(nextMsgs, thread.planContext, onDelta);
     update(thread.id, (x) => ({ ...x, messages: [...nextMsgs, { role: "assistant", content: full }], updatedAt: Date.now() }));
+    // Fire-and-forget, same as the remote writes above: the fallback title is
+    // already on screen, so nothing here should hold up the turn finishing.
+    // Not attempted on the error path below, since summarizing an apology
+    // message would produce a worse label than the truncated question already
+    // showing.
+    if (isFirst) {
+      void fetchThreadTitle(text, full, thread.planContext).then((title) => {
+        if (title) update(thread.id, (x) => ({ ...x, title }));
+      });
+    }
   } catch {
     update(thread.id, (x) => ({
       ...x,
