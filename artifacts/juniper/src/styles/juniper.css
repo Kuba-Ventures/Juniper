@@ -205,6 +205,21 @@
 .jnpr .credit-row{grid-template-columns:320px 1fr}
 @media(max-width:860px){.jnpr .credit-row{grid-template-columns:1fr}}
 
+/* The holder card's own content, centered in whatever height the row's
+   stretch gives it (issue #424). The holder is a fixed-height block (`.cr-holder`
+   is a constant 262px regardless of card count), so when the list beside it
+   is taller, `align-items:stretch` above was leaving all of the extra height
+   as a single gap below the holder, stranding it near the top of its card.
+   Centering the block instead of anchoring it to the top splits that gap
+   evenly above and below, which reads as intentional at any height. Scoped to
+   this one card rather than `.card.pad-lg` generally, since the card list
+   beside it wants its rows to start at the top, not center. Named
+   `cr-holder-section` rather than `cr-holder-card`, which was already taken
+   by the popped-out card button inside `CardWallet` (`position:absolute`) --
+   the first version of this fix reused that name and the collision put both
+   cards on top of each other. */
+.jnpr .cr-holder-section{display:flex;flex-direction:column;justify-content:center}
+
 .jnpr .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
   background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:inline-flex;align-items:center;gap:7px;font-family:inherit}
 .jnpr .btn:hover{filter:brightness(1.08)}.jnpr .btn svg{width:14px;height:14px}
