@@ -396,11 +396,34 @@ function PlanDraftCard({ draft, busy, err, onCreate, onAdjust }: {
   );
 }
 
+// Grows a textarea to fit its content (up to the CSS max-height, where it
+// scrolls instead), so a long message wraps and stays visible rather than
+// scrolling horizontally inside a fixed-height box (issue #420).
+function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: string) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [ref, value]);
+}
+
 function Composer({ value, setValue, onSend, disabled }: { value: string; setValue: (v: string) => void; onSend: (v: string) => void; disabled: boolean }) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(taRef, value);
+  const submit = () => { const v = value.trim(); if (v && !disabled) onSend(v); };
   return (
     <div className="ask-composer-wrap">
-      <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); const v = value.trim(); if (v && !disabled) onSend(v); }}>
-        <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={disabled ? "Juniper is thinking…" : "Reply to Juniper…"} disabled={disabled} />
+      <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <textarea
+          ref={taRef}
+          rows={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+          placeholder={disabled ? "Juniper is thinking…" : "Reply to Juniper…"}
+          disabled={disabled}
+        />
         <button className="btn" type="submit" disabled={disabled || !value.trim()}>Send</button>
       </form>
       {/* Persistent, not just on the empty welcome screen (issue #287): once a
@@ -414,9 +437,19 @@ function Composer({ value, setValue, onSend, disabled }: { value: string; setVal
 // The welcome-screen composer keeps its own input so the rail's state stays clean.
 function ComposerNew({ onSend }: { onSend: (v: string) => void }) {
   const [v, setV] = useState("");
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(taRef, v);
+  const submit = () => { const t = v.trim(); if (t) { setV(""); onSend(t); } };
   return (
-    <form className="ask-composer lg" onSubmit={(e) => { e.preventDefault(); const t = v.trim(); if (t) { setV(""); onSend(t); } }}>
-      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="Ask Juniper anything about your money…" />
+    <form className="ask-composer lg" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <textarea
+        ref={taRef}
+        rows={1}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+        placeholder="Ask Juniper anything about your money…"
+      />
       <button className="btn" type="submit" disabled={!v.trim()}>Ask</button>
     </form>
   );

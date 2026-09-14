@@ -1090,8 +1090,9 @@
 
 .jnpr .ask-composer{display:flex;gap:9px;padding:16px 20px;border-top:1px solid var(--jnpr-line)}
 .jnpr .ask-composer.lg{width:100%;border-top:0;padding:0}
-.jnpr .ask-composer input{flex:1;font:inherit;font-size:14px;border:1.5px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:12px;padding:12px 15px;color:var(--jnpr-ink)}
-.jnpr .ask-composer input:focus{outline:none;border-color:var(--jnpr-accent)}
+.jnpr .ask-composer textarea{flex:1;font:inherit;font-size:14px;line-height:1.4;border:1.5px solid var(--jnpr-line);background:var(--jnpr-surface-2);border-radius:12px;padding:12px 15px;color:var(--jnpr-ink);resize:none;max-height:160px;overflow-y:auto}
+.jnpr .ask-composer textarea:focus{outline:none;border-color:var(--jnpr-accent)}
+.jnpr .ask-composer button{align-self:flex-end}
 .jnpr .ask-composer-wrap .ask-composer{border-top:0}
 .jnpr .ask-composer-wrap{border-top:1px solid var(--jnpr-line)}
 .jnpr .ask-disclaimer{font-size:10.5px;color:var(--jnpr-ink-3);line-height:1.4;text-align:center;padding:0 20px 14px;margin:0}
