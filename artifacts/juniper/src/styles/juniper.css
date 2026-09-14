@@ -479,7 +479,14 @@
 .jnpr .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
 .jnpr .lg .ln{font-size:12.5px;font-weight:600}.jnpr .lg .lv{margin-left:auto;font-size:12.5px;font-weight:650}.jnpr .lg .lp{font-size:11px;color:var(--jnpr-ink-3);width:34px;text-align:right}
 .jnpr .donut-wrap{display:grid;grid-template-columns:170px 1fr;gap:20px;align-items:center}
-@media(max-width:520px){.jnpr .donut-wrap{grid-template-columns:1fr}}
+.jnpr .donut-chart{width:170px}
+.jnpr .donut-svg{display:block;width:100%;height:auto}
+@media(max-width:520px){
+  .jnpr .donut-wrap{grid-template-columns:1fr}
+  .jnpr .donut-chart{width:min(230px,60vw);margin:0 auto}
+  .jnpr .donut-center .dt{font-size:13px}
+  .jnpr .donut-center .dv{font-size:30px}
+}
 .jnpr .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .jnpr .donut-center .dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3)}
 .jnpr .donut-center .dv{font-size:24px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
