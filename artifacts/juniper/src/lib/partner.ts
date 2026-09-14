@@ -179,6 +179,22 @@ export function resetPartnerCache(): void {
   emit();
 }
 
+// Called right after accepting a partner invite (issue #426's bug class:
+// WorkspaceProvider.sync() reads /api/partner through its own raw fetchPartner()
+// call, entirely bypassing this store, so accepting an invite only ever updates
+// the top bar's copy). Usually harmless, since /invite/partner/:token is a
+// separate top-level route from /app/*, so navigating away remounts
+// WorkspaceProvider and this module-level cache looks fresh again on the next
+// mount. But the cache survives that remount, and if anything in this tab
+// already warmed it before acceptance (e.g. SharedPage calls usePartner()
+// unconditionally, even on its "Invite your partner" empty state), `loaded` is
+// already true and nothing refetches: the shared pages would keep rendering
+// pre-connection data while the top bar is correct. Safe to call unconditionally
+// whether or not anything has warmed the cache yet, same as invalidateHousehold.
+export function invalidatePartner(): void {
+  void load(true);
+}
+
 /**
  * `active` defaults to true, so every existing call site (the shared frame,
  * the share sheet, and the Overview/Accounts/Goals pages) is unchanged: they

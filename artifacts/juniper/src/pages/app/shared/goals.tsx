@@ -57,7 +57,7 @@ function GoalCard({ goal, k, name, onContribute }: { goal: PartnerGoal; k: strin
 }
 
 export function SharedGoals() {
-  const { partner } = useWorkspace();
+  const { partner, refresh: refreshWorkspace } = useWorkspace();
   const { data, refresh } = usePartner();
   const [adding, setAdding] = useState(false);
   const [contributing, setContributing] = useState<PartnerGoal | null>(null);
@@ -91,7 +91,12 @@ export function SharedGoals() {
     setTitle("");
     setTarget("");
     setAdding(false);
+    // Both: WorkspaceProvider derives `holds.goals` (whether the shared
+    // "Goals" tab even appears) from its own separate read of the same data,
+    // so the first shared goal needs both copies to move or the tab won't
+    // show up until something else happens to resync the workspace.
     refresh();
+    refreshWorkspace();
   };
 
   const submitContribution = async () => {
