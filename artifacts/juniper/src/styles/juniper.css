@@ -241,7 +241,7 @@
 .jnpr .jnpr-tip{position:absolute;pointer-events:none;background:var(--jnpr-ink);color:var(--jnpr-ground);font-size:11.5px;font-weight:600;padding:6px 9px;border-radius:8px;transform:translate(-50%,-8px);white-space:nowrap;z-index:5;box-shadow:var(--jnpr-shadow)}
 .jnpr .jnpr-tip .tv{font-weight:750;font-size:13px}
 .jnpr .row .nm{font-weight:600;font-size:13.5px}.jnpr .row .mt{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:1px}
-.jnpr .row .amt{margin-left:auto;font-weight:650;font-size:13.5px;text-align:right}.jnpr .row .amt.inc{color:var(--jnpr-good)}
+.jnpr .row .amt{margin-left:auto;font-weight:650;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0}.jnpr .row .amt.inc{color:var(--jnpr-good)}
 
 /* Recent transactions, five more sizes (issue #259). Every one reads the same
    rows the List view does; only the grouping or the shape drawn from them
