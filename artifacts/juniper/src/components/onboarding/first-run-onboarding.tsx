@@ -2,25 +2,46 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, ShieldCheck, Building2 } from "lucide-react";
 import type { UserProfile } from "@/lib/profile";
 import { takePendingHousehold } from "@/lib/profile";
-import { syncFinancesUntilTransactions, layerEnabled, normInstitutionName, fetchConnectionNames } from "@/lib/plaid";
+import {
+  syncFinancesUntilTransactions,
+  layerEnabled,
+  normInstitutionName,
+  fetchConnectionNames,
+  pollCashflowEstimate,
+} from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
+import { usePaycheckForm } from "@/lib/use-paycheck-form";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
 import { CreditPullConsent } from "@/components/juniper/credit-pull-consent";
+import { PaycheckFormFields } from "@/components/juniper/paycheck-form-fields";
 import "@/styles/juniper.css";
 
 // Onboarding used to be four blocking steps (name+household, goals, connect,
 // money snapshot). Issue #267 counted them on a fresh signup and cut three:
 // name and household now live on the sign-up screen itself (stashed via
 // stashPendingHousehold, since there is no session yet to save them through),
-// and goals and the money snapshot are dismissible dashboard nudges
-// (GoalsNudge / SnapshotNudge in components/juniper/) rather than a gate,
-// asked once the member has a real dashboard to plan against instead of
-// before they have seen a single number of their own. Connect is the one
-// step every path still needs, so it is the only one left here.
-type StepKind = "connect";
-const STEPS: StepKind[] = ["connect"];
+// and goals and the money snapshot became dismissible dashboard nudges
+// (GoalsNudge / SnapshotNudge in components/juniper/) asked once the member
+// had a real dashboard to plan against instead of before they had seen a
+// single number of their own.
+//
+// The paycheck half of that came back as a real onboarding step. Without a
+// gallery of institutions to jog memory (issue #418), and without any deduction
+// or rent detail on this screen, a member had nothing on the page prompting
+// them to think through where their paycheck actually goes, so most never
+// filled in SnapshotNudge later at all: the Score's savings-rate and
+// emergency-fund factors ran on default weights for accounts that had linked
+// weeks earlier. Placed right after Connect, not before it, so an income
+// figure can be pre-filled from the live cashflow estimate the same way
+// SnapshotNudge already does, turning "type it in" into "confirm what we
+// found" for anyone who just linked a bank. Still fully skippable: nothing here
+// blocks Finish, and a member who skips it (or under-fills it) still gets
+// SnapshotNudge's one dashboard reminder later, since that nudge gates on the
+// same monthlyIncome/monthlyExpenses fields this step writes.
+type StepKind = "connect" | "paycheck";
+const STEPS: StepKind[] = ["connect", "paycheck"];
 
 export function FirstRunOnboarding({
   email,
@@ -64,11 +85,17 @@ export function FirstRunOnboarding({
   const step = STEPS[i];
   const total = STEPS.length;
 
-  // Accounts + balances now come from linking a bank (Plaid), so onboarding
-  // itself only captures household. Net worth and the score fill in from live
-  // data once an account is connected; income, expenses and goals arrive later
-  // from the dashboard nudges, if the member fills them in at all.
-  const buildProfile = useCallback((): UserProfile => ({ household }), [household]);
+  // Lifted here, above the per-step render, so `finish()` can read whatever the
+  // member typed regardless of which step they're on when they press it (e.g.
+  // "Skip for now" from the connect step, before the paycheck step ever mounts).
+  const paycheck = usePaycheckForm();
+
+  // Accounts + balances come from linking a bank (Plaid); goals arrive later
+  // from the dashboard nudge, if the member fills it in at all.
+  const buildProfile = useCallback(
+    (): UserProfile => ({ household, ...paycheck.fields() }),
+    [household, paycheck],
+  );
 
   const finish = useCallback(() => {
     setDone(true);
@@ -107,12 +134,13 @@ export function FirstRunOnboarding({
             {step === "connect" && (
               <ConnectStep already={already} onLinked={() => setLinked(true)} />
             )}
+            {step === "paycheck" && <PaycheckStep form={paycheck} linked={linked} />}
 
             <div className="ob-nav">
               <button className="btn" onClick={next}>
                 {i + 1 >= total ? "Finish" : "Continue"} <ArrowRight />
               </button>
-              {step === "connect" && !linked && (
+              {((step === "connect" && !linked) || (step === "paycheck" && paycheck.income == null)) && (
                 <button className="ob-ghostskip" onClick={next}>
                   I'll do this later
                 </button>
@@ -274,6 +302,39 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
         Juniper connects through Plaid with bank-grade encryption and read-only access. Your bank credentials
         are entered with Plaid and never touch Juniper's servers.
       </p>
+    </>
+  );
+}
+
+function PaycheckStep({ form, linked }: { form: ReturnType<typeof usePaycheckForm>; linked: boolean }) {
+  // If the member just linked a bank, poll for a real cashflow estimate and
+  // pre-fill income from it, same source as SnapshotNudge, so this reads as
+  // "confirm what we found" instead of "type it in again." A member who
+  // skipped Connect entirely, or whose sync hasn't produced anything yet,
+  // just gets a blank field, same as before Connect existed.
+  useEffect(() => {
+    if (!linked || form.income != null) return;
+    let live = true;
+    void pollCashflowEstimate().then((est) => {
+      if (!live || !est) return;
+      if (est.income > 0) form.setIncome(est.income);
+    });
+    return () => {
+      live = false;
+    };
+    // Runs once when the step becomes reachable with a fresh link; the member's
+    // own typing afterward must not be overwritten by a later poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked]);
+
+  return (
+    <>
+      <h2>What happens to your paycheck?</h2>
+      <p className="ob-help">
+        Rough numbers are fine, you can refine them anytime. Take-home pay powers your Juniper Score, and the
+        breakdown below helps it understand what's already spoken for before you plan around it.
+      </p>
+      <PaycheckFormFields form={form} autoFocusIncome />
     </>
   );
 }
