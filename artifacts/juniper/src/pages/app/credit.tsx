@@ -865,7 +865,12 @@ function CardHolderSection({
     // align-items:stretch already do the job. A margin here would eat into
     // the stretch and put this card's border a few pixels short of its
     // sibling's, exactly the mismatch the row was just asked to fix.
-    <div className="card pad-lg">
+    //
+    // `cr-holder-section` (issue #424) centers the eyebrow + holder + subtitle
+    // block within whatever extra height the row's stretch gives this card,
+    // so a taller card list beside it leaves balanced space above and below
+    // the holder instead of all of it collecting under a top-aligned block.
+    <div className="card pad-lg cr-holder-section">
       <div className="eyebrow">Your cards</div>
       {/* "N of M identified" used to describe the whole stack. It cannot any
           more: a hand-entered card can never be identified, so counting it in M
