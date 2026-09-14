@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { createHousehold, inviteToHousehold, type HouseholdRole } from "@/lib/household";
+import { createHousehold, inviteToHousehold, invalidateHousehold, type HouseholdRole } from "@/lib/household";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 
 // Two jobs, one modal, chosen by whether the caller already has a household:
@@ -26,7 +26,16 @@ export function CreateHouseholdModal({ onDone, onClose }: { onDone: () => void; 
     setBusy(true); setError(null);
     const res = await createHousehold(trimmed);
     setBusy(false);
-    if (res.ok) { onDone(); onClose(); }
+    if (res.ok) {
+      // `onDone` is WorkspaceProvider's sync(), which refreshes its own copy
+      // (the top-bar pill) but reads /api/household raw, bypassing
+      // household.ts's shared module-store cache. Without this, useHousehold()
+      // — what the Household page itself reads — keeps serving whatever it
+      // cached before this household existed (issue #426).
+      invalidateHousehold();
+      onDone();
+      onClose();
+    }
     else setError(res.error || "We couldn't create that yet, please try again.");
   };
 
