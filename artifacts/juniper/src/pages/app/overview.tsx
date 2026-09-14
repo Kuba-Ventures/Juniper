@@ -1293,9 +1293,7 @@ export default function Overview({
           <SnapshotNudge
             email={email}
             profile={profile}
-            onSave={(income, expenses) =>
-              onSaveProfile({ ...(profile ?? {}), monthlyIncome: income, monthlyExpenses: expenses })
-            }
+            onSave={(fields) => onSaveProfile({ ...(profile ?? {}), ...fields })}
           />
         </>
       )}

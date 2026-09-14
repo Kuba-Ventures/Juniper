@@ -1268,6 +1268,25 @@
 .jnpr .ob-other input:focus{border-color:var(--jnpr-accent)}
 .jnpr .ob-other .btn{flex:0 0 auto}
 .jnpr .ob-fieldgroup{display:flex;flex-direction:column;gap:14px}
+
+/* Paycheck breakdown nudge (issue #402): a proportion bar plus a checked
+   itemized legend, reusing the app's own chart palette (--jnpr-c1..c7). */
+.jnpr .snap-divider{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3);margin:14px 0 6px}
+.jnpr .snap-bar{display:flex;height:26px;border-radius:8px;overflow:hidden;background:var(--jnpr-surface-3);margin:4px 0 4px;box-shadow:inset 0 0 0 1px var(--jnpr-line)}
+.jnpr .snap-seg{transition:flex-basis .18s ease;min-width:0}
+.jnpr .snap-legend{display:flex;flex-direction:column}
+.jnpr .snap-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--jnpr-line-2)}
+.jnpr .snap-item:first-child{border-top:0}
+.jnpr .snap-item .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.jnpr .snap-item .snap-lab{flex:1;display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer}
+.jnpr .snap-item .snap-lab input[type=checkbox]{width:15px;height:15px;accent-color:var(--jnpr-accent);cursor:pointer;flex:0 0 auto}
+.jnpr .snap-item .snap-lab span{font-size:13px;color:var(--jnpr-ink);font-weight:600}
+.jnpr .snap-amt{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
+.jnpr .snap-amt span{font-size:13px;color:var(--jnpr-ink-3)}
+.jnpr .snap-amt input{width:70px;text-align:right;font:inherit;font-size:13.5px;font-weight:650;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1.5px solid var(--jnpr-line);border-radius:8px;padding:6px 8px;outline:none}
+.jnpr .snap-amt input:disabled{color:var(--jnpr-ink-3);background:transparent;border-color:transparent}
+.jnpr .snap-amt input:focus{border-color:var(--jnpr-accent)}
+
 /* accounts & loans builder */
 .jnpr .ob-acct{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:8px;align-items:center}
 .jnpr .ob-acct.debt{grid-template-columns:1fr 1.4fr 1fr .7fr auto}

@@ -110,6 +110,15 @@ export function useProfile(email: string, metaName?: string): UseProfile {
             ...prev,
             monthlyIncome: (data.monthly_income as number | undefined) ?? prev?.monthlyIncome,
             monthlyExpenses: (data.monthly_expenses as number | undefined) ?? prev?.monthlyExpenses,
+            deduction401k: (data.deduction_401k as number | undefined) ?? prev?.deduction401k,
+            deductionHealthInsurance:
+              (data.deduction_health_insurance as number | undefined) ?? prev?.deductionHealthInsurance,
+            deductionHsaFsa: (data.deduction_hsa_fsa as number | undefined) ?? prev?.deductionHsaFsa,
+            expenseRent: (data.expense_rent as number | undefined) ?? prev?.expenseRent,
+            expenseLoanPayments:
+              (data.expense_loan_payments as number | undefined) ?? prev?.expenseLoanPayments,
+            expenseOtherEssentials:
+              (data.expense_other_essentials as number | undefined) ?? prev?.expenseOtherEssentials,
             totalSavings: (data.total_savings as number | undefined) ?? prev?.totalSavings,
             totalDebt: (data.total_debt as number | undefined) ?? prev?.totalDebt,
             goals: (data.goals as string[] | undefined) ?? prev?.goals,
@@ -161,6 +170,12 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         ...(trimmedName ? { name: trimmedName } : {}),
         monthly_income: p.monthlyIncome ?? null,
         monthly_expenses: p.monthlyExpenses ?? null,
+        deduction_401k: p.deduction401k ?? null,
+        deduction_health_insurance: p.deductionHealthInsurance ?? null,
+        deduction_hsa_fsa: p.deductionHsaFsa ?? null,
+        expense_rent: p.expenseRent ?? null,
+        expense_loan_payments: p.expenseLoanPayments ?? null,
+        expense_other_essentials: p.expenseOtherEssentials ?? null,
         total_savings: p.totalSavings ?? null,
         total_debt: p.totalDebt ?? null,
         goals: p.goals ?? null,
