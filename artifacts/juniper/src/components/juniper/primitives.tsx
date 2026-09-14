@@ -188,8 +188,8 @@ export function SpendingDonut({ data }: { data: { c: string; v: number; k: Serie
   const [hi, setHi] = useState<number | null>(null);
   return (
     <div className="donut-wrap">
-      <div className="chart" style={{ position: "relative" }}>
-        <svg viewBox={`0 0 ${S} ${S}`} width={170} height={170} style={{ display: "block" }}>
+      <div className="chart donut-chart" style={{ position: "relative" }}>
+        <svg viewBox={`0 0 ${S} ${S}`} className="donut-svg">
           {slices.map((s, i) => (
             <path key={i} className="slice" d={s.path} fill={paintOf(s.d)}
               style={{ opacity: hi == null || hi === i ? 1 : 0.4 }}
