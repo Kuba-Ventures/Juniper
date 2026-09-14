@@ -193,10 +193,17 @@ export const SHAPE_COPY: Record<PlanShape, {
 
 export const SHAPES: PlanShape[] = ["save", "buy", "payoff", "income"];
 
-export function Backdrop({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+export function Backdrop({ children, onClose, wide = false }: {
+  children: ReactNode;
+  onClose: () => void;
+  /** Widens the panel to 560px (`.modal.wide`), for content with more to it
+      than a paragraph and two buttons, e.g. issue #423's read-only plan view
+      (a ring, a debt list, an Ask Juniper section). */
+  wide?: boolean;
+}) {
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
+      <div className={wide ? "modal wide" : "modal"} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   );
 }

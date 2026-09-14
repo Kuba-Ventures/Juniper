@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
 import { useFinances } from "@/lib/finances";
-import { useThreads, previewOf, relativeTime, takePendingChatDraft, type PlanDraftFromChat } from "@/lib/planner";
+import { useThreads, previewOf, relativeTime, takePendingChatDraft, type PlanDraftFromChat, type Thread } from "@/lib/planner";
 import { useSession } from "@/lib/use-session";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
 import {
@@ -64,6 +64,7 @@ type ModalState =
       k: "form"; label: string; shape: PlanShape; color: PlanColor; prefill: PrefillKey; icon?: string;
       fromGoal?: boolean; seed?: Seed; chatDraft?: PlanDraftFromChat;
     }
+  | { k: "view"; domain: string }
   | { k: "edit"; domain: string };
 
 // `icon` overrides the shape's default mark (SHAPE_ICON) for this template
@@ -413,11 +414,11 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
           <button
             className="edit-hint"
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
-            // Named for the plan, because a list of these all reading "View and
-            // edit" tells a screen reader user nothing about which one.
-            aria-label={`View and edit ${v.title}`}
+            // Named for the plan, because a list of these all reading "View
+            // plan" tells a screen reader user nothing about which one.
+            aria-label={`View ${v.title}`}
           >
-            View and edit
+            View plan
           </button>
           <button className="plan-ask" onClick={(e) => { e.stopPropagation(); onAsk(); }}>
             <ChatIcon />Ask Juniper{chatCount > 0 && <span className="pa-badge">{chatCount}</span>}
@@ -425,6 +426,135 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Read-only plan view (issue #423).
+ *
+ * A click on a plan card used to drop straight into the edit form, so
+ * glancing at a plan's own progress meant opening the same modal used to
+ * rename it, change its target, or delete it. This is what the card opens
+ * first now: a summary and a progress ring, in the spirit of the report Ask
+ * Juniper already generates for a plan (PlanReportView / api/planner/report.ts),
+ * but built from the plan's own live numbers rather than a generated
+ * narrative. Editing (name, target, icon, color, shape, goals) moves behind
+ * the explicit Edit button in the top right, the only way from here into
+ * EditForm below, so "look at my plan" and "change my plan" are two
+ * different, clearly labeled actions instead of one click doing both.
+ *
+ * Deliberately does not touch EditForm itself: EditForm is shared with
+ * pages/app/household.tsx (issue #338), which opens it directly from its own
+ * "Edit" button with no view step of its own, so its Ask-Juniper CTA and
+ * conversation list stay put there. This view renders its own copy of that
+ * section rather than moving it, so household's edit flow is unaffected.
+ * ------------------------------------------------------------------ */
+
+// A per-plan progress ring, colored like the card's own bar and icon tile
+// rather than MiniRing's fixed accent-green stroke (primitives.tsx): this
+// dial is progress toward THIS plan's own target, not a score, and every
+// other plan surface on this page already color-codes by the plan's color.
+function PlanRing({ pct, color, d = 104 }: { pct: number; color: PlanColor; d?: number }) {
+  const r = (d - 12) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100), cx = d / 2;
+  return (
+    <div className="plan-ring" style={{ width: d, height: d }}>
+      <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--jnpr-surface-3)" strokeWidth={10} />
+        <circle
+          cx={cx} cy={cx} r={r} fill="none" stroke={cssVar(color)} strokeWidth={10} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${cx} ${cx})`}
+        />
+      </svg>
+      <span className="pr-pct tnum">{pct}%</span>
+    </div>
+  );
+}
+
+function PlanDetailView({ plan, threads, onEdit, onClose }: {
+  plan: Plan;
+  threads: Thread[];
+  onEdit: () => void;
+  onClose: () => void;
+}) {
+  const v = viewOf(plan);
+  const copy = SHAPE_COPY[v.shape];
+  const [, navigate] = useLocation();
+  // Same shape as EditForm's own debts read, and the same reason: current_state
+  // carries other things besides `debts` (a legacy dialogue plan's `collected`),
+  // so this reads the one key it cares about rather than assuming the shape.
+  const debts = Array.isArray(plan.current_state?.debts) ? (plan.current_state!.debts as DebtItem[]) : [];
+  const chats = threads.filter((t) => t.planTitle === v.title);
+  const ask = (q: string) => navigate(`/app/ask?q=${encodeURIComponent(q)}&plan=${encodeURIComponent(v.title)}`);
+  const newChat = () => navigate(`/app/ask?plan=${encodeURIComponent(v.title)}`);
+  const openChat = (id: string) => navigate(`/app/ask?thread=${encodeURIComponent(id)}`);
+
+  return (
+    <Backdrop onClose={onClose} wide>
+      <div className="plan-view-head">
+        <div className="track" style={{ background: cssVar(v.color) }}><PlanIcon name={v.icon} /></div>
+        <div className="plan-view-title">
+          <h3>{v.title}</h3>
+        </div>
+        <span className={`status ${v.statusClass}`}>{v.statusLabel}</span>
+        <button className="btn ghost sm" onClick={onEdit}><PencilIcon />Edit</button>
+      </div>
+
+      <div className="plan-view-progress">
+        <PlanRing pct={v.pct} color={v.color} />
+        <div className="plan-view-nums">
+          <div className="big tnum">
+            {v.target > 0 ? money(v.current) : "Not set"}
+            {v.target > 0 && <small> / {money(v.target)} {copy.progressWord}</small>}
+          </div>
+          <div className="plan-view-note">{v.note}</div>
+          {copy.contribVerb && (
+            <div className="plan-meta"><span>{copy.contribVerb} <b>{v.monthly ? `${money(v.monthly)}/mo` : "not set"}</b></span></div>
+          )}
+          {v.dateLabel && <div className="plan-meta"><span className="pm-date">{v.dateLabel}</span></div>}
+        </div>
+      </div>
+
+      <p className="plan-view-next"><b>{v.done ? "Outcome:" : "Next:"}</b> {v.next}</p>
+
+      {debts.length > 0 && (
+        <div className="plan-view-debts">
+          <div className="pc-lbl">Debts in this plan</div>
+          {debts.map((d, i) => (
+            <div className="plan-view-debt-row" key={i}>
+              <span>{d.name || "Debt"}</span>
+              <span className="tnum">{money(d.balance || 0)}{d.apr ? ` · ${d.apr}% APR` : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="ask-plan-cta">
+        <div className="ask-plan-head">
+          <div><b>Ask Juniper about this plan</b><small>Grounded in your real numbers</small></div>
+          <button className="btn sm" onClick={newChat}>New chat</button>
+        </div>
+        <div className="ask-faqs">
+          {FAQS[v.shape].map((q) => <button key={q} className="ask-faq" onClick={() => ask(q)}>{q}</button>)}
+        </div>
+      </div>
+
+      {chats.length > 0 && (
+        <div className="plan-chats">
+          <div className="pc-lbl">Conversations about this plan</div>
+          {chats.map((t) => (
+            <button className="pc-item" key={t.id} onClick={() => openChat(t.id)}>
+              <span className="pc-berry"><PlanIcon name="target" /></span>
+              <span className="pc-main">
+                <span className="pc-t">{t.title}</span>
+                {previewOf(t) && <span className="pc-p">{previewOf(t)}</span>}
+              </span>
+              <span className="pc-w">{relativeTime(t.updatedAt)}</span>
+              <span className="pc-arr">›</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Backdrop>
   );
 }
 
@@ -887,7 +1017,9 @@ export default function Plans({ profile = null, profileReady = false }: {
     const want = new URLSearchParams(search).get("open");
     if (!want) return;
     const hit = plans.find((p) => p.domain === want);
-    if (hit) setModal({ k: "edit", domain: hit.domain });
+    // The view, not the edit form (issue #423): an accepted invite should land
+    // where every other click on a plan card now lands, a look before a change.
+    if (hit) setModal({ k: "view", domain: hit.domain });
     setOpenHandled(true);
     navigate("/app/plans", { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -923,6 +1055,7 @@ export default function Plans({ profile = null, profileReady = false }: {
   // built from without threading the row through PlanView.
   const byDomain = useMemo(() => new Map(plans.map((p) => [p.domain, p])), [plans]);
   const shown = views.filter((v) => (filter === "all" ? true : filter === "completed" ? v.done : !v.done));
+  const viewing = modal?.k === "view" ? plans.find((p) => p.domain === modal.domain) ?? null : null;
   const editing = modal?.k === "edit" ? plans.find((p) => p.domain === modal.domain) ?? null : null;
 
   return (
@@ -982,7 +1115,7 @@ export default function Plans({ profile = null, profileReady = false }: {
                 key={v.domain}
                 v={v}
                 chatCount={chatCountFor(v.title)}
-                onOpen={() => setModal({ k: "edit", domain: v.domain })}
+                onOpen={() => setModal({ k: "view", domain: v.domain })}
                 onAsk={() => navigate(`/app/ask?plan=${encodeURIComponent(v.title)}`)}
                 onPatch={async (patch) => {
                   const p = byDomain.get(v.domain);
@@ -1061,13 +1194,26 @@ export default function Plans({ profile = null, profileReady = false }: {
         />
       )}
 
+      {viewing && (
+        <PlanDetailView
+          plan={viewing}
+          threads={threads}
+          onEdit={() => setModal({ k: "edit", domain: viewing.domain })}
+          onClose={close}
+        />
+      )}
+
       {editing && (
         <EditForm
           plan={editing}
           owned={editing.user_id === session?.user.id}
-          onSaved={(plan) => { upsertLocal(plan); close(); }}
+          // Back to the view rather than fully closed, on a save or a cancel
+          // alike: Edit was opened FROM the view (issue #423), so "done editing"
+          // means "back to looking at it," with its updated numbers on screen.
+          // A delete has nothing left to go back to, so that one closes outright.
+          onSaved={(plan) => { upsertLocal(plan); setModal({ k: "view", domain: plan.domain }); }}
           onDeleted={(domain) => { removeLocal(domain); close(); }}
-          onClose={close}
+          onClose={() => setModal({ k: "view", domain: editing.domain })}
         />
       )}
     </div>
