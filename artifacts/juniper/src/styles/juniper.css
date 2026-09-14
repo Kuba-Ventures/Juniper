@@ -19,6 +19,14 @@
 
   background:var(--jnpr-ground); color:var(--jnpr-ink); font-family:var(--jnpr-ff);
   min-height:100dvh; -webkit-font-smoothing:antialiased; line-height:1.5; font-size:15px;
+  /* A block formatting context, so a child's margin (e.g. `.frame`'s own
+     margin:24px auto 40px) can never collapse through this wrapper's top or
+     bottom edge. Without it, `.frame`'s 40px bottom margin escaped `.jnpr`
+     entirely on any page taller than one viewport, landing outside its
+     background and exposing the retired shadcn `body{background:var(--background)}`
+     (index.css) underneath: a faint color seam right below the last card on
+     every page, issue #433. */
+  display:flow-root;
 }
 .dark .jnpr {
   --jnpr-ground:#0F140F; --jnpr-surface:#171E17; --jnpr-surface-2:#1D251D; --jnpr-surface-3:#242D24;
