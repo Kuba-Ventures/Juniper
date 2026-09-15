@@ -1783,7 +1783,7 @@
      under one another the way the amount already was. */
   .jnpr .tx-table tr{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(64px,38%);
     grid-template-areas:"gut merchant date" "gut category amount";
-    column-gap:10px;row-gap:5px;padding:12px 0;border-bottom:1px solid var(--jnpr-line-2);
+    column-gap:10px;row-gap:3px;padding:8px 0;border-bottom:1px solid var(--jnpr-line-2);
     align-items:center}
   .jnpr .tx-table tr:last-child{border-bottom:0}
   .jnpr .tx-table td{padding:0;border-bottom:0}
@@ -1807,6 +1807,10 @@
   .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{
     max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .jnpr .tx-table .td-a{grid-area:amount;justify-self:end}
+  /* Desktop's -3px vertical-align (tuned for the wider row's own font
+     metrics) sat the badge about 2px below the merchant name's centerline
+     here, so it read as dangling off the text instead of sitting on it. */
+  .jnpr .tx-table .better-badge{vertical-align:0}
   /* The grouped-by-category header row has only two cells (the category tag
      plus its running total) and keeps its own simple row rather than the
      five-area grid above, which has nothing to put in "date" or "gut". */
