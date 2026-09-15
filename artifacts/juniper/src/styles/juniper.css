@@ -1777,32 +1777,35 @@
   .jnpr .tx-tablewrap{overflow-x:visible}
   .jnpr .tx-table thead{display:none}
   .jnpr .tx-table,.jnpr .tx-table tbody{display:block;width:100%}
+  /* Date and category swapped places (were "merchant category" / "date
+     amount"): the merchant now pairs with the date on the top line, the
+     category pairs with the amount on the bottom line, both right-aligned
+     under one another the way the amount already was. */
   .jnpr .tx-table tr{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(64px,38%);
-    grid-template-areas:"gut merchant category" "gut date amount";
+    grid-template-areas:"gut merchant date" "gut category amount";
     column-gap:10px;row-gap:5px;padding:12px 0;border-bottom:1px solid var(--jnpr-line-2);
     align-items:center}
   .jnpr .tx-table tr:last-child{border-bottom:0}
   .jnpr .tx-table td{padding:0;border-bottom:0}
   .jnpr .tx-table .td-gut{grid-area:gut;grid-row:1 / span 2;align-self:center}
-  .jnpr .tx-table .td-d{grid-area:date}
+  .jnpr .tx-table .td-d{grid-area:date;justify-self:end;text-align:right}
   .jnpr .tx-table .td-merch{grid-area:merchant;min-width:0}
   .jnpr .tx-table .cat-cell{grid-area:category;min-width:0}
-  /* Every row is exactly two lines tall now (merchant + category on top,
-     date + amount below), never more, which is what makes the list read as
-     one uniform column of rows instead of a jumble of different heights.
+  /* Every row is exactly two lines tall now (merchant + date on top,
+     category + amount below), never more, which is what makes the list read
+     as one uniform column of rows instead of a jumble of different heights.
      A 2-line wrap or clamp let a long merchant string or category name
      dictate its own row's height (and, with a "+N more" pill inline, could
      even mis-render an ellipsis on a line that already fit); a single line
      with an ellipsis is the only way to guarantee every row matches. */
   .jnpr .tx-table .td-mn>span:first-child{display:block;white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis}
-  /* The pill fills its grid column rather than shrink-wrapping its own text,
-     so "Other income" and "Restaurants & bars" render as the same size and
-     shape pill, truncated to fit, instead of two differently-sized chips
-     sitting at two different heights beside each other. */
-  .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{display:block;
-    width:100%;box-sizing:border-box;text-align:right;white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis}
+  /* The category pill now sits in the wide merchant-width column rather
+     than the narrow one on the right, so it goes back to shrink-wrapping
+     its own text (like the desktop pill) instead of stretching to fill the
+     column, which would read as an oversized bar next to a short amount. */
+  .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{
+    max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .jnpr .tx-table .td-a{grid-area:amount;justify-self:end}
   /* The grouped-by-category header row has only two cells (the category tag
      plus its running total) and keeps its own simple row rather than the
