@@ -1747,6 +1747,12 @@
    rather than leaving them bunched under one heading. */
 .jnpr .tx-head-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 .jnpr .tx-menu-wrap{position:relative}
+.jnpr .tx-range-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* The selected preset's actual calendar span, beside its dropdown rather than
+   inside it (see the comment at the call site). nowrap so the string itself
+   never breaks mid-date; the whole span drops to its own line on a narrow
+   screen instead, same as `.tx-head-row`'s own wrap. */
+.jnpr .tx-range-span{font-size:11.5px;color:var(--jnpr-ink-3);white-space:nowrap}
 .jnpr .tx-range-menu{left:0;top:40px;min-width:180px}
 .jnpr .tx-view-menu{right:0;top:40px;min-width:190px}
 

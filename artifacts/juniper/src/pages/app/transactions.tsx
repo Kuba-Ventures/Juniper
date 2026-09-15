@@ -639,28 +639,33 @@ export default function Transactions() {
              heading. Each reuses the exact button-and-popover Sort and the
              category filter already use further down this page. */}
           <div className="tx-head-row">
-            <div className="tx-menu-wrap">
+            <div className="tx-menu-wrap tx-range-wrap">
               <button type="button" className="tx-sort" aria-haspopup="menu" aria-expanded={rangeMenuOpen}
                 onClick={() => setRangeMenuOpen((v) => !v)}>
                 <span>Range</span> {range}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
               </button>
+              {/* The calendar span the selected preset resolves to, beside the
+                 dropdown rather than inside it: it names what's ALREADY chosen,
+                 so it belongs next to the closed control, visible without
+                 opening the menu, not repeated on every option inside it. */}
+              {(() => {
+                const span = rangeSpan(range, head?.available?.from);
+                return span ? <span className="tx-range-span">{fmtRangeSpan(span.from, span.to)}</span> : null;
+              })()}
               {rangeMenuOpen && (
                 <>
                   <div className="pop-scrim" onClick={() => setRangeMenuOpen(false)} />
                   <div className="pop tx-range-menu" role="menu">
                     <div className="pop-lbl">Range</div>
-                    {RANGES.map((r) => {
-                      const span = rangeSpan(r, head?.available?.from);
-                      return (
-                        <button key={r} type="button" role="menuitemradio" aria-checked={r === range}
-                          className={`pop-i${r === range ? " on" : ""}`}
-                          onClick={() => { setRange(r); setRangeMenuOpen(false); }}>
-                          <span><b>{RANGE_LABEL[r]}</b>{span && <small>{fmtRangeSpan(span.from, span.to)}</small>}</span>
-                          {r === range && <span className="ck" aria-hidden>✓</span>}
-                        </button>
-                      );
-                    })}
+                    {RANGES.map((r) => (
+                      <button key={r} type="button" role="menuitemradio" aria-checked={r === range}
+                        className={`pop-i${r === range ? " on" : ""}`}
+                        onClick={() => { setRange(r); setRangeMenuOpen(false); }}>
+                        {RANGE_LABEL[r]}
+                        {r === range && <span className="ck" aria-hidden>✓</span>}
+                      </button>
+                    ))}
                   </div>
                 </>
               )}
