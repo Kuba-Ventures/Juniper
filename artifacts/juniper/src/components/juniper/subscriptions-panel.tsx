@@ -34,7 +34,7 @@ import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { localBrandLogo } from "@/lib/institution-brand";
 import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money2 } from "@/lib/txn-format";
-import { CADENCES, addManualSubscription, fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
+import { CADENCES, addManualSubscription, fetchSubscriptions, setSubscription, type SubItem, type SubOrigin, type SubPayload, type SubAction } from "@/lib/subscriptions";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { fetchCancellationRequests, requestCancellation, type CancellationRequest } from "@/lib/cancellations";
 
@@ -42,6 +42,16 @@ const CONFIDENCE_NOTE: Record<string, string> = {
   established: "Charged regularly",
   possible: "Possible, not enough history yet",
   missed: "Expected charge has not arrived",
+};
+
+// One shared badge for both non-Plaid origins (same mark, tap reveals which
+// kind it is), the same mechanics as `.better-badge` on Transactions, just
+// answering a different question: not "a different card would earn more"
+// but "your bank didn't tell us this, someone did."
+const ORIGIN_NOTE: Record<SubOrigin, string> = {
+  plaid: "",
+  juniper: "Juniper noticed this in your transactions; your bank didn't flag it",
+  manual: "You typed this in yourself; there's no charge history behind it",
 };
 
 export function SubscriptionsPanel() {
@@ -236,11 +246,13 @@ export function SubscriptionsPanel() {
                     >
                       {openId === i.id ? "Close" : "Edit"}
                     </button>
-                    <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>
-                      {/* A manual entry has no bank-reported baseline to fall back to, so
-                         "Undo" would be misleading: this removes it outright. */}
-                      {i.origin === "manual" ? "Remove" : "Undo"}
-                    </button>
+                    {/* A manual entry has no bank-reported baseline to fall back to and no
+                       other way to be deleted, so it keeps a control; a real Plaid stream
+                       or a Juniper suggestion can be un-confirmed by correcting or dismissing
+                       it instead, so Undo was dropped here to give the row less to carry. */}
+                    {i.origin === "manual" && (
+                      <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>Remove</button>
+                    )}
                     {/* Only a real Plaid stream: api/cancellation-requests.ts looks the
                        stream up in `recurring_streams` itself, which a Juniper suggestion
                        or a manual entry never has a row in, so the request would 404.
@@ -440,6 +452,14 @@ function AddSubscriptionModal({ onClose, onAdded }: { onClose: () => void; onAdd
 }
 
 function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy: boolean; muted?: boolean }) {
+  // Only once confirmed: a still-pending Juniper suggestion is a question
+  // Juniper is asking, not yet something the member added. One shared badge
+  // for both non-Plaid origins, same mechanics as the transactions list's
+  // "a different card would earn more" mark: a small icon beside the name,
+  // tapped open onto its own line, rather than a text tag that has to compete
+  // with the name for space.
+  const showOrigin = i.origin !== "plaid" && i.review === "confirmed";
+  const [originOpen, setOriginOpen] = useState(false);
   return (
     <div className={`sub-row${muted ? " muted" : ""}${busy ? " busy" : ""}`}>
       {/* Plaid's merchant logo first, then the bank behind the stream, then the
@@ -458,15 +478,20 @@ function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy
           {/* Same signal the transactions list uses for a corrected category: a
              figure the member set should be distinguishable from Plaid's. */}
           {i.edited && <span className="sub-dot" title="You edited this" />}
-          {/* Only once confirmed: a still-pending Juniper suggestion is a question
-             Juniper is asking, not yet something the member added. */}
-          {i.origin !== "plaid" && i.review === "confirmed" && (
-            <span
-              className="conn-tag"
-              title={i.origin === "manual" ? "You typed this in yourself" : "Juniper's own guess, which you confirmed"}
+          {showOrigin && (
+            <button
+              type="button"
+              className="origin-badge"
+              onClick={() => setOriginOpen((v) => !v)}
+              title={ORIGIN_NOTE[i.origin]}
+              aria-label={`Not from your bank: ${ORIGIN_NOTE[i.origin]}`}
+              aria-expanded={originOpen}
             >
-              Added by you
-            </span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </button>
           )}
         </span>
         <span className="sub-sub">
@@ -484,6 +509,7 @@ function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy
             ? ` · ${i.overdue ? "was due" : "next"} ${fmtDay(i.nextDate)}`
             : i.lastDate ? ` · last charged ${fmtDay(i.lastDate)}` : ""}
         </span>
+        {showOrigin && originOpen && <span className="origin-detail">{ORIGIN_NOTE[i.origin]}</span>}
       </div>
       <div className="sub-amt">
         <span className="tnum">{i.expected != null ? money2(i.expected) : "Amount varies"}</span>

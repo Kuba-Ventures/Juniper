@@ -2251,6 +2251,16 @@
    transactions list gives a corrected category. */
 .jnpr .sub-dot{display:inline-block;width:5px;height:5px;border-radius:50%;
   background:var(--jnpr-accent);margin-left:6px;vertical-align:middle}
+/* A Juniper suggestion or a manual entry, told apart from a real Plaid stream.
+   Same mechanics as `.better-badge` on Transactions (a 16px icon beside the
+   name, tapped open onto its own line), reusing the shape rather than a text
+   tag competing with the name for space, and accent- rather than warn-colored
+   since this isn't flagging a problem, just where the charge came from. */
+.jnpr .origin-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+  border-radius:999px;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);margin-left:5px;
+  vertical-align:-3px;flex:none;border:none;padding:0;cursor:pointer}
+.jnpr .origin-badge svg{width:9px;height:9px}
+.jnpr .origin-detail{display:block;font-size:11px;color:var(--jnpr-ink-2);margin-top:4px;line-height:1.4}
 .jnpr .sub-panel{padding:2px 0 14px}
 .jnpr .sub-fields{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
 .jnpr .sub-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:650;
