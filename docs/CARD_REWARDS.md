@@ -77,9 +77,16 @@ survives the fallback is still true at any higher valuation.
 
 ## Card art
 
-**Juniper does not ship issuer card art, and will not.** Those images are trademarked and licensed;
-Credit Karma pays for the ones in the screenshots on #168. A card face is synthesized from two things
-Juniper legitimately has:
+**Corrected 2026-09-15 (issue #249): this no longer holds and has not since migration `0035`.** At the
+time #168 shipped, no card art existed anywhere in the app and the claim below was accurate: those
+images are trademarked and licensed, Credit Karma pays for the ones in the screenshots on #168, and
+Juniper had no route to any of its own. That changed starting `0035` (see "Real card art, and bigger
+faces" further down, and `0037`'s own header for the full licensing position): Juniper now ships
+rehosted, retouched renders of the issuers' own marketing art, unlicensed and knowingly so, sourced from
+each issuer's own site rather than a generic image search, kept until an affiliate brand pack or a
+licensed vendor replaces them. What is still true, and remains the fallback whenever a product carries
+no `art_url`, is the synthesized face built from two things Juniper legitimately has without anyone's
+permission:
 
 - the product's stored `brand_color`, which is a colour rather than a mark, and
 - the institution's own logo as served by Plaid, which this app is already licensed for through its
@@ -313,11 +320,13 @@ it is the fact, and theirs was a stand-in for its absence.
 **Design record:** `design/card-wallet-variants.html`, one face proposal and three wallet treatments,
 A chosen (a vertical pocket).
 
-**Still no issuer card art, and that has not changed.** Those renders are licensed brand assets and
-Juniper has no relationship with any card issuer, which is the same gate holding the marketplace. A face
-is the product's stored `brand_color` plus the issuer's own logo as served by Plaid. What changed is the
-care in the drawing: two gradient stops derived in CSS from the one stored colour, an EMV chip with
-contact lines, a generic contactless glyph, and the product name letter-spaced as embossing.
+**True when #224 shipped; corrected 2026-09-15, see "Card art" above and "Real card art, and bigger
+faces" below.** At this point in the arc there was still no issuer card art anywhere in the app. A face
+is the product's stored `brand_color` plus the issuer's own logo as served by Plaid whenever no
+`art_url` is set, which is still the synthesized face's exact composition today; it is the fallback now
+rather than the only option. What changed here was the care in the drawing: two gradient stops derived
+in CSS from the one stored colour, an EMV chip with contact lines, a generic contactless glyph, and the
+product name letter-spaced as embossing.
 
 **The network is set in plain type, never as its own logo.** "Visa" as a word states a fact about the
 card the member holds. Reproducing Visa's mark and colours would be using their brand asset, which is
