@@ -57,6 +57,15 @@ export type UserProfile = {
       never read or written from the partnership's own data, only from this
       member's own profile row. */
   sharedDashboardLayout?: DashboardLayout;
+  /** A self-reported credit score (migration 0069), from Credit Karma or a
+      bank app since no free API returns a real bureau score. Never read by
+      the Juniper Score, the same rule 0033/0046's member-typed credit limit
+      and 0068's paycheck fields already follow. */
+  creditScoreSelf?: number;
+  creditScoreSelfSource?: string;
+  /** ISO date (YYYY-MM-DD) the member says they last checked, not a write
+      timestamp. */
+  creditScoreSelfAsOf?: string;
 };
 
 function profileKey(email?: string) {

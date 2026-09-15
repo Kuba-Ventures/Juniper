@@ -136,6 +136,9 @@ export function useProfile(email: string, metaName?: string): UseProfile {
             // Same narrowing, same reasoning, the shared board's own registry:
             // migration 0060's CHECK constrains the shape only, not the ids.
             sharedDashboardLayout: asDashboardLayout(data.shared_dashboard_layout, SHARED_REGISTRY) ?? prev?.sharedDashboardLayout,
+            creditScoreSelf: (data.credit_score_self as number | undefined) ?? prev?.creditScoreSelf,
+            creditScoreSelfSource: (data.credit_score_source as string | undefined) ?? prev?.creditScoreSelfSource,
+            creditScoreSelfAsOf: (data.credit_score_as_of as string | undefined) ?? prev?.creditScoreSelfAsOf,
           };
           saveProfileLocal(next, email);
           return next;
@@ -184,6 +187,9 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         holder_style: p.holderStyle ?? null,
         dashboard_layout: p.dashboardLayout ?? null,
         shared_dashboard_layout: p.sharedDashboardLayout ?? null,
+        credit_score_self: p.creditScoreSelf ?? null,
+        credit_score_source: p.creditScoreSelfSource ?? null,
+        credit_score_as_of: p.creditScoreSelfAsOf ?? null,
       });
       if (trimmedName) {
         void promise.then((ok) => {

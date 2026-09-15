@@ -300,30 +300,17 @@ export async function fetchScoreInput(uid: string): Promise<FinanceSnapshot> {
   // assertion. The Credit page counts it and says whose it is.
   const creditUtilization = utilLimit > 0 ? utilBalance / utilLimit : undefined;
 
-  // Stage 10f: the real bureau score, when a member has one. creditFactor()
-  // already prefers creditScore over creditUtilization when both are present
-  // (src/lib/score.ts / api/_score.ts, unchanged by this stage): a real
-  // VantageScore 3.0 is a stronger signal than a utilization ratio guessed
-  // from linked-card limits, so it should win rather than being averaged with
-  // it. last_score is written by both a live Credit-page pull
-  // (api/credit/score.ts) and the Stage 10e monthly cron
-  // (api/credit/_score-check.ts), so this reads whichever is freshest without
-  // caring which wrote it. Null until the member has gone through Stage 10c's
-  // consent and at least one pull has succeeded.
-  //
-  // The KNOWN GAP this used to carry is closed. It read: "this whole function
-  // returns { linked: false } above before this lookup is ever reached when
-  // the member has no Plaid item or no transactions yet, so a member with
-  // real credit consent but nothing linked still scores as unlinked and gets
-  // none of this." That early return is now gated on `hasData` instead, so a
-  // credit-consented member reaches this line whether or not they linked a
-  // bank. Nothing about /api/finances's own { linked: false } branch changed;
-  // it has always made that call from its own account and transaction reads
-  // rather than from this function.
-  const consentRows = await rows<{ last_score: number | null }>(
-    `credit_consents?user_id=eq.${uid}&select=last_score&limit=1`,
-  );
-  const creditScore = consentRows[0]?.last_score ?? undefined;
+  // No credit-bureau provider is integrated: migration 0069 removed the
+  // Spinwheel sandbox pull (no free API returns a real bureau score, see
+  // docs/CREDIT_PROVIDER.md and that migration's header), and a
+  // self-reported score (user_profiles.credit_score_self) is deliberately
+  // never read here, the same rule 0033/0046's member-typed credit limit and
+  // 0068's paycheck fields already follow: a number the member typed must
+  // never move a score Juniper asserts about them, or they are scoring
+  // themselves. creditFactor() drops the credit factor and renormalizes the
+  // remaining weights when creditScore is undefined and creditUtilization
+  // has no reliable limit to divide by (#146), rather than inventing one.
+  const creditScore: number | undefined = undefined;
 
   // Fold in manually-added accounts (tier 3) so hand-entered balances, a 401(k),
   // a regional bank Plaid can't reach, count toward the score just like linked
