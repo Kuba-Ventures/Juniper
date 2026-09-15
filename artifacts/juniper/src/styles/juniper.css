@@ -1821,12 +1821,18 @@
    whole. min-width:0 alone (the flex-shrink fix) does not cover this case. */
 .jnpr .td-mn{display:flex;flex-direction:column;min-width:0;font-weight:650;color:var(--jnpr-ink);overflow-wrap:anywhere}
 .jnpr .td-msub{font-size:11px;font-weight:500;color:var(--jnpr-ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Issue #406: a different linked card would have earned more on this charge. */
-.jnpr .better-pill{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:650;
-  color:var(--jnpr-warn);background:var(--jnpr-warn-soft);border-radius:20px;padding:3px 9px 3px 7px;
-  max-width:100%}
-.jnpr .better-pill svg{width:11px;height:11px;flex:none}
-.jnpr .better-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Issue #406: a different linked card would have earned more on this charge.
+   An inline icon beside the merchant name rather than a pill under it: a pill
+   either wrapped a long card name across several lines or, truncated, cut a
+   real name down to nothing ("Quicksilver..."). Tapping the icon reveals the
+   full comparison as its own line (.better-detail), so the row never grows
+   until the member asks it to. */
+.jnpr .better-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+  border-radius:999px;background:var(--jnpr-warn-soft);color:var(--jnpr-warn);margin-left:5px;
+  vertical-align:-3px;flex:none;border:none;padding:0;cursor:pointer}
+.jnpr .better-badge svg{width:9px;height:9px}
+.jnpr .better-detail{display:block;font-size:11px;color:var(--jnpr-ink-2);margin-top:4px;line-height:1.4}
+.jnpr .better-detail b{color:var(--jnpr-warn);font-weight:650}
 /* Category tag. Was ink-2 at 11.5px, which on the dark surface read as greyed
    out, as though the category were disabled or uncertain rather than simply
    secondary to the merchant. Full ink at 12px and semibold.
