@@ -2534,11 +2534,6 @@
 .jnpr .hp-k{font-size:12px;font-weight:600;color:var(--hp-dim)}
 .jnpr .hp-v{font-size:31px;font-weight:800;letter-spacing:-.025em;line-height:1.05;margin-top:1px;
   color:var(--hp-strong)}
-.jnpr .hp-u{margin-top:5px;font-size:11.5px;color:var(--hp-dim);line-height:1.45}
-.jnpr .hp-u b{color:var(--hp-good);font-weight:750}
-.jnpr .hp-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
-  border-radius:50%;background:var(--hp-chip-bg);border:1px solid var(--hp-line);color:var(--hp-ink);
-  vertical-align:-3px;cursor:help}
 /* THE ACTION BAR. Full width of the holder, which means out through its padding
    and over its border, so it reads as the base of the object rather than a
    button tray sitting inside it. */
@@ -2587,9 +2582,7 @@
 /* THE INK EACH FINISH PRINTS ITS FIGURES IN, extending the one colour the count
    already carried. Six finishes times light and dark is the real cost of the
    feature, and the figures are the part that has to survive it: metal is a LIGHT
-   surface and takes dark ink, the other five take light. The green is picked per
-   finish for the same reason - `--jnpr-good` is a dark pine that disappears into
-   cognac, so leather gets a mint and metal keeps the pine. */
+   surface and takes dark ink, the other five take light. */
 /* ── cognac leather ── */
 .jnpr .hold-cognac{background:radial-gradient(120% 80% at 30% 0%,#a4643a,#8d5330 55%,#74421f);
   border:1px solid #6b3d1d;
@@ -2597,7 +2590,6 @@
   --hp-ink:#f3dfc8;
   --hp-dim:#e0c4a5;
   --hp-strong:#fff6ea;
-  --hp-good:#8FD8A6;
   --hp-chip-bg:rgba(255,236,214,.14);
   --hp-chip-hi:rgba(255,236,214,.24);
   --hp-line:rgba(255,236,214,.28)}
@@ -2615,7 +2607,6 @@
   --hp-ink:#c8d0bf;
   --hp-dim:#98a08e;
   --hp-strong:#EDF3EA;
-  --hp-good:#8FD8A6;
   --hp-chip-bg:rgba(232,239,230,.10);
   --hp-chip-hi:rgba(232,239,230,.19);
   --hp-line:rgba(232,239,230,.20)}
@@ -2633,7 +2624,6 @@
   --hp-ink:#c9cfdb;
   --hp-dim:#a2a9b8;
   --hp-strong:#F1F4FA;
-  --hp-good:#8FD8A6;
   --hp-chip-bg:rgba(240,244,252,.11);
   --hp-chip-hi:rgba(240,244,252,.20);
   --hp-line:rgba(240,244,252,.22)}
@@ -2650,7 +2640,6 @@
   --hp-ink:#e6e9da;
   --hp-dim:#c6cbb6;
   --hp-strong:#FBFCF4;
-  --hp-good:#A9E4BC;
   --hp-chip-bg:rgba(250,252,244,.13);
   --hp-chip-hi:rgba(250,252,244,.22);
   --hp-line:rgba(250,252,244,.26)}
@@ -2668,7 +2657,6 @@
   --hp-ink:#2a2d31;
   --hp-dim:#4a4f56;
   --hp-strong:#15181b;
-  --hp-good:#1E7A4A;
   --hp-chip-bg:rgba(255,255,255,.34);
   --hp-chip-hi:rgba(255,255,255,.52);
   --hp-line:rgba(0,0,0,.16)}
@@ -2687,7 +2675,6 @@
   --hp-ink:var(--jnpr-ink-2);
   --hp-dim:var(--jnpr-ink-3);
   --hp-strong:var(--jnpr-ink);
-  --hp-good:var(--jnpr-good);
   --hp-chip-bg:var(--jnpr-surface-3);
   --hp-chip-hi:var(--jnpr-line);
   --hp-line:var(--jnpr-line)}
