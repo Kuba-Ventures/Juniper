@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, MessageSquare, Clock } from "lucide-react";
@@ -125,6 +125,14 @@ function Photo({
 // ── Landing page ───────────────────────────────────────────────────────────
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [navScrolled, setNavScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const faqs = [
     {
@@ -154,13 +162,14 @@ export default function Landing() {
 
       {/* ── 1. NAV ─────────────────────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12"
         style={{
           height: 68,
-          background: "#FAF7F2",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${border}`,
+          background: navScrolled ? "#FAF7F2" : "transparent",
+          borderBottom: navScrolled ? `1px solid ${border}` : "1px solid transparent",
+          backdropFilter: navScrolled ? "blur(12px)" : "none",
+          WebkitBackdropFilter: navScrolled ? "blur(12px)" : "none",
+          transition: "background 0.25s ease, border-color 0.25s ease",
         }}
       >
         <div className="flex items-center gap-2.5">
@@ -170,7 +179,7 @@ export default function Landing() {
           </span>
         </div>
         <div className="flex items-center gap-4 md:gap-5">
-          <Link href="/auth/sign-in" style={{ fontSize: 14, color: muted, textDecoration: "none" }}>
+          <Link href="/auth/sign-in" style={{ fontSize: 14, fontWeight: 500, color: ink, textDecoration: "none" }}>
             Log in
           </Link>
           <Link
@@ -209,6 +218,18 @@ export default function Landing() {
             display: "block",
           }}
         />
+        {/* Soft scrim behind the nav, so the bar blends into the art instead of sitting on a hard edge */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 168,
+            background: "linear-gradient(to bottom, rgba(208,232,210,0.92) 0%, rgba(208,232,210,0.78) 42%, rgba(208,232,210,0) 100%)",
+          }}
+        />
         {/* Left gradient overlay for text legibility */}
         <div
           aria-hidden="true"
@@ -219,7 +240,10 @@ export default function Landing() {
           }}
         />
         {/* Content */}
-        <div className="relative px-6 md:px-16 py-14 md:py-40" style={{ width: "100%", zIndex: 1 }}>
+        <div
+          className="relative px-6 md:px-16 pb-14 md:pb-40"
+          style={{ width: "100%", zIndex: 1, paddingTop: "clamp(104px, 14vw, 176px)" }}
+        >
           <motion.div
             initial="hidden"
             animate="visible"
@@ -227,9 +251,6 @@ export default function Landing() {
             className="flex flex-col"
             style={{ maxWidth: 540 }}
           >
-            <motion.div variants={fadeUp}>
-              <Eyebrow>Not just another budgeting app</Eyebrow>
-            </motion.div>
             <motion.h1
               variants={fadeUp}
               style={{
