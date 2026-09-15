@@ -409,7 +409,7 @@ export default function Transactions() {
           />
         </td>
         <td className="td-d">{fmtDay(t.d)}{t.pending && <span className="td-pend">Pending</span>}</td>
-        <td>
+        <td className="td-merch">
           <div className="td-m">
             <MerchantMark logo={t.logo} merchant={t.merchant} name={t.m} k={colorOf(t.g)} paint={paint(t.g, t.hue)} />
             <span className="td-mn">
