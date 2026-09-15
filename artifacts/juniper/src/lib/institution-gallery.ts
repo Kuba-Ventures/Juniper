@@ -43,12 +43,27 @@ export const GALLERY_GROUPS: readonly InstitutionGalleryGroup[] = [
   {
     label: "Credit cards",
     manualCategory: "credit",
-    institutions: ["Capital One", "American Express", "Discover"],
+    // Capital One, American Express, and Discover are the big issuers whose
+    // whole identity is cards, distinct from the Banking row above, whose
+    // members (Chase, Citi, Bank of America, Wells Fargo, U.S. Bank) also
+    // issue plenty of cards but already have their own tile there. Synchrony
+    // (the largest private-label/store-card issuer, e.g. most retail store
+    // cards) and Barclays (issues Uber, JetBlue, and other co-brand cards) are
+    // the next two big-enough-to-name issuers, added on request. Neither has
+    // bundled brand art (see institution-brand.ts's LOGOS/BRAND_ALIASES), so
+    // their tiles draw the generic building glyph rather than a real mark
+    // until bundled art is added for them; still fully functional, since the
+    // real logo Plaid holds is what shows everywhere else once connected.
+    institutions: ["Capital One", "American Express", "Discover", "Synchrony Bank", "Barclays"],
   },
   {
     label: "Investing",
     manualCategory: "investing",
-    institutions: ["Charles Schwab", "Fidelity", "Vanguard", "SoFi"],
+    // Robinhood, E*TRADE, and Merrill Edge added on request: all three
+    // already have bundled brand art (see BRAND_ALIASES for the Merrill Edge
+    // -> "merrill" alias, since it doesn't slugify to the bundled asset's key
+    // on its own), so they draw a real mark like the rest of this row.
+    institutions: ["Charles Schwab", "Fidelity", "Vanguard", "SoFi", "Robinhood", "E*TRADE", "Merrill Edge"],
   },
   {
     label: "Payments",

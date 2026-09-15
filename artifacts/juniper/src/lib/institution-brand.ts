@@ -27,6 +27,8 @@ const BRAND_ALIASES: Record<string, string> = {
   "citibank online": "citi",
   "discover bank": "discover",
   "marcus by goldman sachs": "marcus",
+  "merrill edge": "merrill",
+  "merrill lynch": "merrill",
 };
 
 // The bundled brand mark for an institution, from its display name alone, which
