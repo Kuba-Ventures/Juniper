@@ -229,6 +229,19 @@
    is only ever "whatever is left". */
 .jnpr .cr-holder-fill{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
 
+/* Below 860px `.credit-row` (above) drops to one column, so this card goes
+   from a narrow 320px sidebar -- where left-aligned text and a 262px holder
+   fill the width anyway -- to a full-width card with a lot of bare leather
+   to the right of both. Centered only at this width: at 320px there is
+   nothing to center against, and every other card on this page keeps its
+   header left-aligned, so this stays a phone-width exception rather than the
+   new rule. */
+@media(max-width:860px){
+  .jnpr .cr-holder-section{align-items:center}
+  .jnpr .cr-holder-section .eyebrow,
+  .jnpr .cr-holder-section .cr-hero-sub{text-align:center}
+}
+
 /* The list beside the holder stops growing past a screenful and scrolls
    internally instead (issue #424 follow-up), rather than the row's stretch
    handing the holder an ever-larger block of empty space to center something
