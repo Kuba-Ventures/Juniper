@@ -140,6 +140,15 @@ export default function Transactions() {
   // single-row states above because they belong to the bar, not to a row: a
   // failed bulk write marks the bar and leaves every row as it was.
   const [sel, setSel] = useState<Set<string>>(() => new Set());
+  // Issue #406 follow-up: the pill used to sit under the merchant name and either
+  // wrapped across several lines or, truncated, cut a real card name down to
+  // nothing ("Quicksilver..."). It's now a small inline badge beside the name;
+  // tapping it reveals the full comparison on its own line, so the row never
+  // grows until the member asks it to.
+  const [betterOpen, setBetterOpen] = useState<Set<string>>(() => new Set());
+  const toggleBetter = (id: string) => {
+    setBetterOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  };
   const [bulkAnchor, setBulkAnchor] = useState<HTMLElement | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkFailed, setBulkFailed] = useState(false);
@@ -442,16 +451,23 @@ export default function Transactions() {
                     +{twins} more
                   </button>
                 )}
+                {t.betterCard && (
+                  <button type="button" className="better-badge" onClick={() => toggleBetter(t.id)}
+                    title={`${t.betterCard.name} earns ${t.betterCard.rate} in this category; this card earned ${t.betterCard.usedRate}`}
+                    aria-label={`A different card would have earned more here: ${t.betterCard.name} earns ${t.betterCard.rate}, this earned ${t.betterCard.usedRate}`}
+                    aria-expanded={betterOpen.has(t.id)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} aria-hidden>
+                      <path d="M13 2 3 14h7l-1 8 10-12h-7z" />
+                    </svg>
+                  </button>
+                )}
               </span>
               {(t.institution || t.account) && (
                 <span className="td-msub">{[t.institution, t.mask ? `••${t.mask}` : t.account].filter(Boolean).join(" · ")}</span>
               )}
-              {t.betterCard && (
-                <span className="better-pill" title={`${t.betterCard.name} earns ${t.betterCard.rate} in this category; this card earned ${t.betterCard.usedRate}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden>
-                    <path d="M13 2 3 14h7l-1 8 10-12h-7z" />
-                  </svg>
-                  <span>{t.betterCard.name} earns {t.betterCard.rate} here, this earned {t.betterCard.usedRate}</span>
+              {t.betterCard && betterOpen.has(t.id) && (
+                <span className="better-detail">
+                  <b>{t.betterCard.name}</b> earns {t.betterCard.rate} here — this earned {t.betterCard.usedRate}
                 </span>
               )}
             </span>
