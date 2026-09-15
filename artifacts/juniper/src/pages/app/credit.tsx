@@ -534,13 +534,19 @@ function CardRow({
               there is no bank reporting anything, and blaming the absence on a
               report the member never expected reads as a fault rather than as a
               field they have not filled in. */}
-          {card.inCredit > 0
-            ? <><b>{money(card.inCredit, card.currency)} in credit</b>{limit != null
-                ? <> of a {money(limit, card.currency)} limit</>
-                : card.origin === "manual" ? <>, no limit added</> : <>, limit not reported</>}</>
-            : <>{money(card.balance, card.currency)}{limit != null
-                ? <> of {money(limit, card.currency)} limit</>
-                : card.origin === "manual" ? <> owed, no limit added</> : <> owed, limit not reported</>}</>}
+          {/* Wrapped so "$X of $Y limit" (or its "in credit" / "owed" siblings)
+              never splits mid-phrase on a narrow screen (issue #432): the phrase
+              wraps as a unit against the mask and the badge/link around it,
+              rather than each word wrapping on its own. */}
+          <span className="csub-amt">
+            {card.inCredit > 0
+              ? <><b>{money(card.inCredit, card.currency)} in credit</b>{limit != null
+                  ? <> of a {money(limit, card.currency)} limit</>
+                  : card.origin === "manual" ? <>, no limit added</> : <>, limit not reported</>}</>
+              : <>{money(card.balance, card.currency)}{limit != null
+                  ? <> of {money(limit, card.currency)} limit</>
+                  : card.origin === "manual" ? <> owed, no limit added</> : <> owed, limit not reported</>}</>}
+          </span>
           {/* THE BADGE IS NOT DECORATION. A number the member typed must never be
               indistinguishable from one their bank reported: the first is a claim
               and the second is a fact, and a utilization built on a mix of them is
@@ -581,7 +587,14 @@ function CardRow({
         )}
         {identified && (
           <div className="cr-row-id">
-            {identified}
+            {/* Hidden below 640px (issue #432): the row's own heading (`.cn`,
+                above) already names the card, "Capital One · Quicksilver", so
+                repeating the full catalog name a second time is pure
+                repetition on a screen where every line is precious. Desktop
+                keeps it, since the fuller name (e.g. "...Student Cash
+                Rewards...") is more specific than the heading and there is
+                room to say so. */}
+            <span className="cr-row-id-name">{identified}</span>
             <button type="button" className="cr-row-change" onClick={onChange}>Change</button>
           </div>
         )}

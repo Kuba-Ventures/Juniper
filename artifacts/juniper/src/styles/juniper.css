@@ -898,6 +898,11 @@
 .jnpr .card-row .ci{flex:1;min-width:0}.jnpr .card-row .cn{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}.jnpr .card-row .csub{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
 .jnpr .card-row .util{width:150px;flex:0 0 auto}
 .jnpr .card-row .util .ut{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px;color:var(--jnpr-ink-2)}.jnpr .card-row .util .ut .hi{color:var(--jnpr-warn)}
+/* "$X of $Y limit" (and its "in credit" / "owed" siblings) as one unit that
+   wraps against its neighbors rather than splitting itself in half (issue
+   #432): everything else on the line, the mask, the badge, the change link,
+   still wraps normally around it. */
+.jnpr .card-row .csub-amt{white-space:nowrap}
 @media(max-width:560px){.jnpr .card-row .util{width:110px}}
 
 /* ---------- recommended (marketplace) ---------- */
@@ -2803,15 +2808,29 @@
 @media(max-width:640px){
   .jnpr .cr-rg-spend{display:none}
   .jnpr .cr-hero{gap:16px}
-  /* At this width the icon, a real card photo and the rate's own column no
-     longer fit beside a card name on one line -- unlike the old caption-sized
-     rate, the photo eats real width. The identity block takes the full row and
-     the rate drops to a second line under it, rather than squeezing the name
-     into the ~50px that was left. */
-  .jnpr .cr-rg-row{flex-wrap:wrap}
-  .jnpr .cr-rg-id{flex:1 1 100%}
-  .jnpr .cr-rg-rate-col{flex:0 0 auto;text-align:left;min-width:0;padding:0;
-    margin-left:54px}
+  /* Reversal (issue #432): this used to drop the rate to a second row under
+     the identity block, because the icon, the photo and the rate's column no
+     longer fit beside the card name on one line. But a rate on its own row
+     needs to know the identity block's real rendered width to line up under
+     it, and the `margin-left:54px` that stood in for that was a guess that
+     never tracked it, landing at a different spot than the name above it.
+     Staying on one line and truncating the winner's name instead needs no
+     such number: the rate is still just the row's last flex child, so it
+     lands in the same column, at the same size, on every row, with nothing
+     to keep in sync as the icon or photo size ever changes. */
+  .jnpr .cr-rg-winner{flex-wrap:nowrap;min-width:0}
+  .jnpr .cr-rg-winner-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  /* A FIXED width, not a minimum: "CASH BACK" is real text and wider than
+     "POINTS" or "MILES", so a column that merely floors at some width still
+     grows with whichever label happens to be longest, landing a different
+     amount short of the row's right edge from category to category, the same
+     shape of drift as the margin this reversal replaces. The label is dropped
+     here rather than shrunk further, since there is no width both textual
+     units share cleanly: the number alone is what stays the same size and
+     the same distance from the edge on every row. */
+  .jnpr .cr-rg-rate-col{flex:0 0 44px;width:44px;min-width:0;padding:0}
+  .jnpr .cr-rg-rate-num{font-size:17px}
+  .jnpr .cr-rg-rate-lab{display:none}
 }
 
 /* Worth switching, and cards that would beat yours */
@@ -2947,6 +2966,12 @@
    this the wrong rates would sit on their spending permanently. */
 .jnpr .cr-row-id{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:650;
   color:var(--jnpr-accent);margin-top:4px}
+/* Hidden below 640px (issue #432): the row's own heading a few lines above
+   already names the card ("Capital One · Quicksilver"), so the full catalog
+   name here ("Capital One Quicksilver Student Cash Rewards Credit Card") is
+   pure repetition on a screen where every line is precious. Desktop keeps it,
+   since it is more specific than the heading and there is room to say so. */
+@media(max-width:640px){.jnpr .cr-row-id-name{display:none}}
 .jnpr .cr-row-change{font:inherit;font-size:11px;font-weight:650;color:var(--jnpr-ink-3);
   background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
   text-underline-offset:2px}
