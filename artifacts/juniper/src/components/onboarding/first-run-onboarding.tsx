@@ -14,7 +14,6 @@ import { usePaycheckForm } from "@/lib/use-paycheck-form";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
-import { CreditPullConsent } from "@/components/juniper/credit-pull-consent";
 import { PaycheckFormFields } from "@/components/juniper/paycheck-form-fields";
 import "@/styles/juniper.css";
 
@@ -168,20 +167,7 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
   // typing in a real balance had no way to tell it took.
   const [manualAdded, setManualAdded] = useState<string[]>([]);
 
-  // Shared with the Stage 10c credit-pull consent block below: Layer and
-  // Spinwheel both need a phone number, and a member should type it once per
-  // screen, not once per feature that happens to want it. Lifted here rather
-  // than into LayerDiscovery itself, since ConnectStep is the first ancestor
-  // both consumers share. Layer is disabled in most environments today
-  // (layerEnabled() needs VITE_PLAID_LAYER set), so CreditPullConsent below
-  // always renders its own phone field regardless -- this state is what makes
-  // that field arrive pre-filled on the sessions where Layer already asked.
   const [phone, setPhone] = useState("");
-  // Stage 10c only drafts this consent (see CreditPullConsent below); nothing
-  // reads `creditConsented`/`creditDob` yet. Stage 10d is where a real submit
-  // path is wired to actually trigger a pull with them.
-  const [creditConsented, setCreditConsented] = useState(false);
-  const [creditDob, setCreditDob] = useState("");
 
   // What the picker sees: this session's links on top of the ones the member
   // already had. The picker lists these as Connected and drops them out of its
@@ -287,15 +273,6 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
       ) : (
         <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} connected={known} />
       )}
-
-      <CreditPullConsent
-        phone={phone}
-        onPhoneChange={setPhone}
-        consented={creditConsented}
-        onConsentChange={setCreditConsented}
-        dob={creditDob}
-        onDobChange={setCreditDob}
-      />
 
       <p className="ob-secure">
         <ShieldCheck />

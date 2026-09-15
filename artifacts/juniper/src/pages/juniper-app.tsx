@@ -176,12 +176,28 @@ export default function JuniperApp() {
             {() => <Plans profile={profile} profileReady={ready} />}
           </Route>
           <Route path="/app/ask" component={Ask} />
-          {/* The holder style is a member preference (migration 0048), so it is
-              threaded from here where the profile already lives rather than
-              given its own provider. One prop is cheaper than a context for a
-              value exactly one page reads. */}
+          {/* The holder style and the self-reported credit score (migration
+              0069) are both member preferences, so they are threaded from
+              here where the profile already lives rather than given their
+              own provider. Props are cheaper than a context for values
+              exactly one page reads. */}
           <Route path="/app/credit">
-            {() => <Credit holderStyle={profile?.holderStyle ?? null} />}
+            {() => (
+              <Credit
+                holderStyle={profile?.holderStyle ?? null}
+                creditScoreSelf={profile?.creditScoreSelf ?? null}
+                creditScoreSelfSource={profile?.creditScoreSelfSource ?? null}
+                creditScoreSelfAsOf={profile?.creditScoreSelfAsOf ?? null}
+                onSaveCreditScore={(score, source, asOf) =>
+                  saveProfile({
+                    ...(profile ?? {}),
+                    creditScoreSelf: score ?? undefined,
+                    creditScoreSelfSource: source ?? undefined,
+                    creditScoreSelfAsOf: asOf ?? undefined,
+                  })
+                }
+              />
+            )}
           </Route>
           <Route path="/app/connections" component={ConnectionsView} />
           {/* Same reasoning as Credit above: the holder style is threaded from

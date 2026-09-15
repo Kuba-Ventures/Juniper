@@ -1409,19 +1409,6 @@
 
 /* Stage 10c: credit-pull consent, one checkbox rather than a separate card
    (see CreditPullConsent in first-run-onboarding.tsx for why). */
-.jnpr .ob-credit-consent{margin:16px 0}
-.jnpr .ob-credit-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
-.jnpr .ob-credit-row input[type=checkbox]{margin-top:3px;width:17px;height:17px;flex:0 0 auto;accent-color:var(--jnpr-accent);cursor:pointer}
-.jnpr .ob-credit-label{font-size:13px;color:var(--jnpr-ink-2);line-height:1.55}
-.jnpr .ob-credit-label b{color:var(--jnpr-ink);font-weight:650}
-.jnpr .ob-credit-label a{color:var(--jnpr-accent);font-weight:600;text-decoration:none}
-.jnpr .ob-credit-fields{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;margin-left:27px}
-.jnpr .ob-credit-fields .ob-input{flex:1;min-width:150px}
-.jnpr .ob-credit-fields{align-items:center}
-.jnpr .ob-credit-btn{font:inherit;font-size:13.5px;font-weight:650;color:var(--jnpr-on-accent);background:var(--jnpr-accent);border:0;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap}
-.jnpr .ob-credit-btn:disabled{background:var(--jnpr-surface-3);color:var(--jnpr-ink-3);cursor:not-allowed}
-.jnpr .ob-credit-note{flex:1 1 100%;font-size:12.5px;color:var(--jnpr-ink-2);margin:0}
-.jnpr .ob-credit-link{font:inherit;font-size:12.5px;font-weight:650;color:var(--jnpr-accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 /* institution picker (connect flow): a Plaid search box, its result rows, and
    the two fallback actions. Rows and not tiles, see institution-picker.tsx: the
    curated multi-select gallery is gone, so there is no grid left to style.
@@ -1714,27 +1701,22 @@
    same rows the page has always drawn. */
 .jnpr .conn-detail{margin-top:14px}
 
-/* credit: the score panel is a not-live notice, not a number. Copy width is
-   capped so the paragraph stays readable next to the wide card list below it. */
+/* credit: the score panel. Copy width is capped so the paragraph stays
+   readable next to the wide card list below it. */
 .jnpr .cs-note{font-size:13px;color:var(--jnpr-ink-2);line-height:1.6;margin:8px 0 0;max-width:66ch}
-.jnpr .cs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
-.jnpr .cs-chips span{font-size:11px;font-weight:650;color:var(--jnpr-ink-2);background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:7px;padding:3px 9px}
-
-/* Stage 10b: the live sandbox-sourced score panel. Sits beside .cs-note/.cs-chips
-   above (the not-tracked-yet fallback) since both render in the same slot. */
-.jnpr .sandbox-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;
-  letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-warn);
-  background:var(--jnpr-warn-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}
 .jnpr .cs-ring-row{display:flex;align-items:center;gap:20px;margin-bottom:18px}
 .jnpr .cs-meta{display:flex;flex-direction:column;gap:2px}
 .jnpr .cs-band{font-size:16px;font-weight:650;color:var(--jnpr-good)}
 .jnpr .cs-sub{font-size:12px;color:var(--jnpr-ink-2)}
-.jnpr .cs-factors{display:flex;flex-direction:column}
-.jnpr .cs-factor{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--jnpr-line-2)}
-.jnpr .cs-factor:first-child{border-top:0}
-.jnpr .cs-fnum{flex:0 0 auto;width:18px;height:18px;border-radius:999px;background:var(--jnpr-surface-3);
-  color:var(--jnpr-ink-2);font-size:10.5px;font-weight:700;display:grid;place-items:center;margin-top:1px}
-.jnpr .cs-fdesc{font-size:12.5px;color:var(--jnpr-ink);line-height:1.45}
+
+/* Self-reported credit score (migration 0069): the empty-state copy pointing
+   at a free real source (Credit Karma, a bank app), and the inline edit
+   form. Reuses .field/.btn for the inputs themselves. */
+.jnpr .ss-source{font-size:13px;color:var(--jnpr-ink-2);line-height:1.6;margin:8px 0 0;max-width:66ch}
+.jnpr .ss-source a{color:var(--jnpr-accent);font-weight:600;text-decoration:none}
+.jnpr .ss-form{margin-top:4px}
+.jnpr .ss-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.jnpr .ss-row .field{margin-bottom:0;flex:1 1 130px}
 
 /* ---------- transactions tab (/app/transactions) ---------- */
 /* Spending breakdown and Recurring side by side (issue #422), instead of a

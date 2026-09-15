@@ -18,8 +18,6 @@ import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
 import { CardSwitches } from "@/components/juniper/card-switches";
 import type { HolderStyle } from "@/lib/holder-style";
-import { useCreditScore, vantageBand, type CreditScoreSnapshot } from "@/lib/credit-score";
-import { CreditPullConsent } from "@/components/juniper/credit-pull-consent";
 
 // The Credit tab shows only what Juniper actually holds: the credit-card accounts
 // the member linked through Plaid, their balances, and their limits. Everything
@@ -149,102 +147,47 @@ const limitBadge = (c: LinkedCard, source: string): string | null => {
 // the null-for-no-limit rule live in one place. See lib/credit-balance.ts.
 const pct = (owed: number, limit: number) => utilizationPct(owed, limit) ?? 0;
 
-// The factors a real score is built from, named so the not-live panel is specific
-// about what is coming rather than vaguely promising "credit features". Only
-// rendered now when /api/credit/score itself has nothing to say (not
-// configured, or the sandbox pull failed) -- see CreditScore below for the
-// live path, which since Stage 10b renders the provider's own real, ordered
-// factors instead of this placeholder list.
+// Self-reported credit score. No free API returns a real bureau score --
+// every provider researched in docs/CREDIT_PROVIDER.md (Equifax, Spinwheel,
+// CRS, Method) gates production access behind a sales contract, which is why
+// Stage 10's Spinwheel integration never left SPINWHEEL_ENV=sandbox and every
+// pull it ever showed, even behind a real per-member SMS-OTP-verified
+// consent, returned Spinwheel's own canned test fixture rather than a real
+// score. A member already has a free real number from Credit Karma or their
+// own bank's app, so this lets them type it in instead of showing a fake one.
 //
-// FOUR, not five, and that is a statutory cap rather than a layout choice.
-// 15 U.S.C. 1681g(f) and Cal. Civ. Code 1785.15.1 both require that a disclosed
-// score come with AT MOST FOUR adverse key factors, ordered by importance, per
-// model. Do not grow this array; the live path enforces the same cap server-side
-// (api/credit/score.ts's MAX_FACTORS).
-const PLANNED_FACTORS = [
-  "Utilization",
-  "On-time payments",
-  "Age of credit",
-  "Inquiries",
-];
+// Badged "You added this" (migration 0069), the same provenance-honesty rule
+// a member-typed credit limit already uses ("You set this" / "You added
+// this", migration 0046) -- a number that isn't Juniper's own pull must
+// never be indistinguishable from one that is. Never fed into the Juniper
+// Score: see api/_finance-snapshot.ts and 0069's header for why.
+const CREDIT_KARMA_URL = "https://www.creditkarma.com/";
 
-// Issue #390: a tester consented during onboarding ("authorizing it to
-// obtain your credit profile from Equifax"), then read "Juniper does not
-// read your credit score" on this page. The root cause was two collapsed
-// distinctions: CreditScore() below ignored useCreditScore()'s loading flag,
-// so this rendered as a flash on every page load before the real answer
-// came back, and /api/credit/score's four distinct available:false reasons
-// (never consented, rate-limited, provider error, not configured) all fell
-// through to this one message, which is only true for the first of them.
-// Split into three honest states: ScoreLoading (no claim while in flight),
-// CreditEnroll (genuinely never consented -- offers the real consent flow
-// inline instead of only describing it), and ScoreUnavailable (consented,
-// temporarily can't check). None of the other three claims "Juniper does
-// not read your credit score" for a member who has, in fact, turned it on.
-function ScoreLoading() {
-  return (
-    <div className="card pad-lg" style={{ marginBottom: 16 }}>
-      <div className="eyebrow">Credit score</div>
-      <h3 style={{ fontSize: 15, marginTop: 7 }}>Checking…</h3>
-      <div className="cs-chips">
-        {PLANNED_FACTORS.map((f) => <span key={f} style={{ opacity: 0.5 }}>{f}</span>)}
-      </div>
-    </div>
-  );
-}
-
-// The genuinely-never-consented state. Reusing CreditPullConsent (extracted
-// from onboarding, see components/juniper/credit-pull-consent.tsx) rather
-// than writing a second consent flow: Spinwheel's contract and the FTC
-// "grant, not notification" test both require the same real, unchecked-by-
-// default checkbox gesture here as at onboarding, so a member who skipped it
-// once gets the identical consent action, not a shortcut around it.
-function CreditEnroll({ onEnrolled }: { onEnrolled: () => void }) {
-  return (
-    <div className="card pad-lg" style={{ marginBottom: 16 }}>
-      <div className="eyebrow">Credit score</div>
-      <h3 style={{ fontSize: 15, marginTop: 7 }}>Not tracked yet</h3>
-      <p className="cs-note">
-        You haven't turned on credit tracking. Juniper does not read your credit score until you do —
-        verify your phone once below and a real bureau score will show up here.
-      </p>
-      <CreditPullConsent onDone={onEnrolled} />
-    </div>
-  );
-}
-
-// Any of: rate-limited today, the provider didn't answer, or not configured
-// in this environment. Deliberately one message for all three: the member's
-// consent is real and unaffected by any of them, so the only fact worth
-// stating is that this is temporary, not a change in what Juniper does.
-function ScoreUnavailable() {
-  return (
-    <div className="card pad-lg" style={{ marginBottom: 16 }}>
-      <div className="eyebrow">Credit score</div>
-      <h3 style={{ fontSize: 15, marginTop: 7 }}>Couldn't check just now</h3>
-      <p className="cs-note">
-        Your credit tracking is on. We couldn't reach your score this time — it'll be back the next
-        time you check.
-      </p>
-    </div>
-  );
-}
-
-// Ring diameter and geometry match previews/credit-score-panel-options.html's
-// option A exactly (the treatment Finley picked, dial enlarged once from the
-// first render). A dedicated ring rather than reusing MiniRing
-// (components/juniper/primitives.tsx): MiniRing's fill fraction and its
-// displayed text are the SAME number (a 0-100 Juniper Score), and a bureau
-// score needs those to differ -- the arc fills by position in the 300-850
-// range while the number shown in the middle is the real score, not a
-// percentage.
+// Ring diameter and geometry match design/credit-score-selfreport-variants.html's
+// option A (the treatment Finley picked). A dedicated ring rather than reusing
+// MiniRing (components/juniper/primitives.tsx): MiniRing's fill fraction and
+// its displayed text are the SAME number (a 0-100 Juniper Score), and this
+// number needs those to differ -- the arc fills by position in the 300-850
+// range while the number shown in the middle is the score itself.
 const SCORE_RING_D = 148;
 const SCORE_RING_R = 66;
 const SCORE_RING_STROKE = 11;
 
+// A common, generic 300-850 band scale rather than a named model's published
+// bands (the old VantageScore-specific vantageBand() this replaced): a
+// self-reported number's actual source is whatever the member's own bureau
+// or bank app used, which this page has no way to know and should not guess.
+function scoreBand(score: number): string {
+  if (score >= 781) return "Excellent";
+  if (score >= 661) return "Good";
+  if (score >= 601) return "Fair";
+  if (score >= 500) return "Poor";
+  return "Very poor";
+}
+
 // Parsed and formatted in UTC on purpose: `new Date("2024-03-04")` is midnight
 // UTC, and formatting that in a US-local timezone (anything behind UTC) prints
-// the day before. This is a calendar date the bureau reported, not an instant,
+// the day before. This is a calendar date the member picked, not an instant,
 // so the viewer's own timezone must never shift it.
 function scoreDateLabel(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
@@ -254,21 +197,99 @@ function scoreDateLabel(iso: string): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-function CreditScoreLive({ s }: { s: CreditScoreSnapshot }) {
-  const frac = Math.max(0, Math.min(1, (s.score - 300) / 550));
+type CreditScoreProps = {
+  score: number | null;
+  source: string | null;
+  asOf: string | null;
+  onSave?: (score: number | null, source: string | null, asOf: string | null) => void;
+};
+
+function CreditScoreForm({
+  initialScore, initialSource, initialAsOf, onCancel, onSave,
+}: {
+  initialScore: number | null;
+  initialSource: string | null;
+  initialAsOf: string | null;
+  onCancel: () => void;
+  onSave: (score: number | null, source: string | null, asOf: string | null) => void;
+}) {
+  const [score, setScore] = useState(initialScore != null ? String(initialScore) : "");
+  const [source, setSource] = useState(initialSource ?? "");
+  const [asOf, setAsOf] = useState(initialAsOf ?? new Date().toISOString().slice(0, 10));
+
+  const n = Number(score);
+  const valid = score.trim() !== "" && Number.isFinite(n) && n >= 300 && n <= 850;
+
+  return (
+    <div className="ss-form">
+      <div className="ss-row">
+        <div className="field">
+          <label>Score</label>
+          <input
+            type="number" min={300} max={850} value={score} placeholder="300–850"
+            onChange={(e) => setScore(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label>As of</label>
+          <input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+        </div>
+      </div>
+      <div className="field" style={{ marginTop: 10 }}>
+        <label>Source (optional)</label>
+        <input
+          type="text" value={source} placeholder="Credit Karma, my bank app…"
+          onChange={(e) => setSource(e.target.value)}
+        />
+      </div>
+      <div className="ss-row" style={{ marginTop: 12 }}>
+        <button className="btn sm" disabled={!valid} onClick={() => onSave(Math.round(n), source.trim() || null, asOf || null)}>
+          Save
+        </button>
+        <button className="btn ghost sm" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// Leads with where to actually get a free real score, since most members
+// won't have one handy: two free routes (Credit Karma, or a bank/card
+// issuer's app) rather than a bare "add your score" prompt with nothing to
+// go on.
+function CreditScoreEmpty({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="card pad-lg" style={{ marginBottom: 16 }}>
+      <div className="eyebrow">Credit score</div>
+      <h3 style={{ fontSize: 15, marginTop: 7 }}>Not added yet</h3>
+      <p className="ss-source">
+        Juniper doesn't have a way to pull your real score for free right now — you can get one free
+        from <a href={CREDIT_KARMA_URL} target="_blank" rel="noreferrer">Credit Karma</a> or your bank's
+        app, then add it here.
+      </p>
+      <button className="btn sm" style={{ marginTop: 10 }} onClick={onAdd}>Add my score</button>
+    </div>
+  );
+}
+
+function CreditScoreLive({
+  score, source, asOf, onEdit,
+}: {
+  score: number;
+  source: string | null;
+  asOf: string | null;
+  onEdit: () => void;
+}) {
+  const frac = Math.max(0, Math.min(1, (score - 300) / 550));
   const c = 2 * Math.PI * SCORE_RING_R;
   const cx = SCORE_RING_D / 2;
   return (
     <div className="card pad-lg" style={{ marginBottom: 16 }}>
       <div className="card-head">
         <div className="eyebrow">Credit score</div>
-        {/* SANDBOX badge is load-bearing, not decoration: this pull is a single
-            pre-connected Spinwheel test identity (Stage 10b), never the
-            member's own credit file. Same provenance-honesty rule this page
-            already applies to a member-typed credit limit ("You set this" /
-            "You added this") -- a number that isn't the member's own must
-            never be indistinguishable from one that is. */}
-        {s.sandbox && <span className="sandbox-tag">Sandbox</span>}
+        {/* Same badge a member-typed credit limit already carries (#211/0046):
+            a number that isn't Juniper's own pull must never be
+            indistinguishable from one that is. */}
+        <span className="cl-mine">You added this</span>
       </div>
       <div className="cs-ring-row">
         <div className="mini-ring" style={{ width: SCORE_RING_D, height: SCORE_RING_D }}>
@@ -279,40 +300,45 @@ function CreditScoreLive({ s }: { s: CreditScoreSnapshot }) {
               strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - frac)} transform={`rotate(-90 ${cx} ${cx})`}
             />
           </svg>
-          <span className="rv tnum" style={{ fontSize: 38 }}>{s.score}</span>
+          <span className="rv tnum" style={{ fontSize: 38 }}>{score}</span>
         </div>
         <div className="cs-meta">
-          <span className="cs-band">{vantageBand(s.score)}</span>
-          <span className="cs-sub">VantageScore 3.0 &middot; range 300&ndash;850</span>
-          <span className="cs-sub">{s.sourceBureau} &middot; as of {scoreDateLabel(s.asOf)}</span>
+          <span className="cs-band">{scoreBand(score)}</span>
+          <span className="cs-sub">300&ndash;850 scale{source ? ` · ${source}` : ""}</span>
+          {asOf && <span className="cs-sub">You entered this on {scoreDateLabel(asOf)}</span>}
         </div>
       </div>
-      {/* Ordered, not a bag of chips: 1681g(f) requires these ranked by
-          importance, and a numbered row is what actually shows that, where
-          the old PLANNED_FACTORS chip row above only implied it. */}
-      <div className="cs-factors">
-        {s.factors.map((f, i) => (
-          <div className="cs-factor" key={f.code}>
-            <span className="cs-fnum">{i + 1}</span>
-            <span className="cs-fdesc">{f.description}</span>
-          </div>
-        ))}
-      </div>
       <p className="cs-note" style={{ marginTop: 12 }}>
-        {s.sandbox && "Sandbox test data (Stage 10b), not your own credit file. "}
-        A lender may use a different score when making a decision about you.
+        This is a number you told Juniper, not one pulled from a bureau — it doesn't come with factors,
+        and it isn't used in your Juniper Score.{" "}
+        <a className="link" href="#" onClick={(e) => { e.preventDefault(); onEdit(); }}>Update it</a>
       </p>
     </div>
   );
 }
 
-function CreditScore() {
-  const { data, loading, refetch } = useCreditScore();
-  if (loading) return <ScoreLoading />;
-  if (!data) return <ScoreUnavailable />;
-  if (data.available) return <CreditScoreLive s={data} />;
-  if (data.reason === "Not consented to credit tracking yet") return <CreditEnroll onEnrolled={refetch} />;
-  return <ScoreUnavailable />;
+function CreditScore({ score, source, asOf, onSave }: CreditScoreProps) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <div className="card pad-lg" style={{ marginBottom: 16 }}>
+        <div className="eyebrow">Credit score</div>
+        <CreditScoreForm
+          initialScore={score}
+          initialSource={source}
+          initialAsOf={asOf}
+          onCancel={() => setEditing(false)}
+          onSave={(nextScore, nextSource, nextAsOf) => {
+            onSave?.(nextScore, nextSource, nextAsOf);
+            setEditing(false);
+          }}
+        />
+      </div>
+    );
+  }
+  if (score == null) return <CreditScoreEmpty onAdd={() => setEditing(true)} />;
+  return <CreditScoreLive score={score} source={source} asOf={asOf} onEdit={() => setEditing(true)} />;
 }
 
 function CardsEmpty() {
@@ -679,7 +705,19 @@ function CardRow({
   );
 }
 
-export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | null }) {
+export function Credit({
+  holderStyle = null,
+  creditScoreSelf = null,
+  creditScoreSelfSource = null,
+  creditScoreSelfAsOf = null,
+  onSaveCreditScore,
+}: {
+  holderStyle?: HolderStyle | null;
+  creditScoreSelf?: number | null;
+  creditScoreSelfSource?: string | null;
+  creditScoreSelfAsOf?: string | null;
+  onSaveCreditScore?: (score: number | null, source: string | null, asOf: string | null) => void;
+}) {
   const [cards, setCards] = useState<LinkedCard[] | null>(null);
   const [brands, setBrands] = useState<InstitutionBrandMap | null>(null);
   const rewards = useCardRewards();
@@ -865,12 +903,17 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
         sub="Every credit card you have linked, what you owe on it, and how much of the limit you are using."
       />
 
-      {/* 1. Credit score. Stage 10b: a real, sandbox-sourced VantageScore 3.0 pull
-          when /api/credit/score has one, the honest "not tracked yet" panel
-          otherwise (CreditScore picks between them). Stays first because it is
-          what the page is named after. Issue #264 orders the rest of the page
-          below it: the holder, then the card list, then benefits and credits. */}
-      <CreditScore />
+      {/* 1. Credit score, self-reported (Spinwheel's sandbox-only integration was
+          removed, see migration 0069's header: no free API returns a real
+          bureau score). Stays first because it is what the page is named
+          after. Issue #264 orders the rest of the page below it: the holder,
+          then the card list, then benefits and credits. */}
+      <CreditScore
+        score={creditScoreSelf}
+        source={creditScoreSelfSource}
+        asOf={creditScoreSelfAsOf}
+        onSave={onSaveCreditScore}
+      />
 
       {/* Above the holder, because it is the one thing on this page with something
           for the member to DO, and because the holder and everything below it is
