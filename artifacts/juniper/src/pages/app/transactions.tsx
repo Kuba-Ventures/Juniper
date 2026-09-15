@@ -107,6 +107,12 @@ export default function Transactions() {
   const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set());
   const [catMenuOpen, setCatMenuOpen] = useState(false);
   const [catShowHidden, setCatShowHidden] = useState(false);
+  // Search inside the category menu, a follow-up to #427's filter: the
+  // list is the member's own taxonomy, which can run to several dozen leaves,
+  // and there was no way to jump to one by name. Cleared on close rather than
+  // carried across opens, so the menu never reopens mid-search on a filter the
+  // member forgot they typed.
+  const [catQ, setCatQ] = useState("");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("date");
   const [dir, setDir] = useState<Dir>("desc");
@@ -350,6 +356,37 @@ export default function Transactions() {
     return m;
   }, [breakdown, head?.incomeBreakdown]);
 
+  // The category menu's own list, narrowed by catQ. A group name match keeps
+  // every category in it (typing "fun" finds the whole of Fun & travel), the
+  // same rule the category picker already uses, so the two searches behave
+  // alike. Hidden categories are folded in automatically once there is a
+  // search, rather than staying behind the separate "show hidden" toggle: a
+  // member searching by name already knows what they are looking for, and
+  // making them find and flip a second control first would be the friction
+  // this menu exists to remove. With no search, hidden stays exactly as
+  // catShowHidden already had it.
+  const catNeedle = catQ.trim().toLowerCase();
+  const catGroups = useMemo(() => {
+    return (head?.taxonomy ?? []).map((g) => {
+      const groupMatch = !!catNeedle && g.g.toLowerCase().includes(catNeedle);
+      const cats = !catNeedle || groupMatch ? g.cats : g.cats.filter((c) => c.label.toLowerCase().includes(catNeedle));
+      const hiddenAll = g.hidden ?? [];
+      const hidden = catNeedle
+        ? (groupMatch ? hiddenAll : hiddenAll.filter((c) => c.label.toLowerCase().includes(catNeedle)))
+        : (catShowHidden ? hiddenAll : []);
+      return { ...g, cats, hidden };
+    }).filter((g) => g.cats.length || g.hidden.length || !catNeedle);
+  }, [head?.taxonomy, catNeedle, catShowHidden]);
+  const catNoMatch = !!catNeedle && !catGroups.some((g) => g.cats.length || g.hidden.length);
+  // A category's own total for the range, beside its name in the menu, so
+  // checking it is already the answer rather than the first step toward one.
+  // Reuses the same rollup the group header total reads; absent means no
+  // activity in this range, shown as nothing rather than as a misleading $0.
+  const catAmt = (label: string) => {
+    const rt = rangeTotals.get(label);
+    return rt ? money0(Math.abs(rt.v)) : null;
+  };
+
   // How many loaded rows share each merchant, for "+2 more". Counted over the
   // rows that pass the filter and the search, so the press selects only rows
   // the member can see.
@@ -381,6 +418,10 @@ export default function Transactions() {
     });
   };
   const clearCatFilter = () => setCatFilter(new Set());
+  // The search text belongs to one visit to the menu, not to the filter it
+  // built: clearing it on close is what stops the menu reopening on a query
+  // the member has already forgotten typing.
+  const closeCatMenu = () => { setCatMenuOpen(false); setCatQ(""); };
 
   // Escape clears the selection, when nothing else is open to claim it. The
   // picker and the modal handle their own.
@@ -672,16 +713,21 @@ export default function Transactions() {
                 pills below rather than replacing them (#427): "Spending" plus
                 two checked categories shows only rows that are both. Options
                 come from the same taxonomy the category picker uses, shipped
-                on the first page, so there is no second copy of the list here. */}
+                on the first page, so there is no second copy of the list here.
+                A search box narrows the list itself, and each row
+                carries its own range total from the rollup already in
+                `rangeTotals`, so checking a category already shows what it
+                answers rather than requiring "Group by category" as a second
+                step. */}
             <div className="tx-cat-wrap">
               <button type="button" className={`tx-sort${catFilter.size ? " on" : ""}`} aria-haspopup="menu" aria-expanded={catMenuOpen}
-                onClick={() => setCatMenuOpen((v) => !v)}>
+                onClick={() => (catMenuOpen ? closeCatMenu() : setCatMenuOpen(true))}>
                 <span>Categories</span> {catFilter.size ? `${catFilter.size} selected` : "All"}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
               </button>
               {catMenuOpen && (
                 <>
-                  <div className="pop-scrim" onClick={() => setCatMenuOpen(false)} />
+                  <div className="pop-scrim" onClick={closeCatMenu} />
                   <div className="pop tx-cat-menu" role="menu">
                     <div className="tx-catf-head">
                       <span className="pop-lbl">Categories</span>
@@ -689,8 +735,12 @@ export default function Transactions() {
                         <button type="button" className="tx-catf-clear" onClick={clearCatFilter}>Clear</button>
                       )}
                     </div>
+                    <input
+                      className="cp-q" autoFocus placeholder="Search categories"
+                      value={catQ} onChange={(e) => setCatQ(e.target.value)}
+                    />
                     <div className="cp-list">
-                      {(head?.taxonomy ?? []).map((g) => (
+                      {catGroups.map((g) => (
                         <div key={g.id}>
                           <div className="cp-g">
                             <span className="cat-em" aria-hidden>{g.emoji}</span>{g.g}
@@ -698,24 +748,33 @@ export default function Transactions() {
                               <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>
                             )}
                           </div>
-                          {g.cats.map((c) => (
-                            <label key={c.id} className="tx-catf-i">
-                              <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
-                              <span className="cat-em" aria-hidden>{c.emoji}</span>
-                              <span>{c.label}</span>
-                            </label>
-                          ))}
-                          {catShowHidden && (g.hidden ?? []).map((c) => (
-                            <label key={c.id} className="tx-catf-i tx-catf-hidden">
-                              <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
-                              <span className="cat-em" aria-hidden>{c.emoji}</span>
-                              <span>{c.label}</span>
-                            </label>
-                          ))}
+                          {g.cats.map((c) => {
+                            const amt = catAmt(c.label);
+                            return (
+                              <label key={c.id} className="tx-catf-i">
+                                <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
+                                <span className="cat-em" aria-hidden>{c.emoji}</span>
+                                <span className="tx-catf-n">{c.label}</span>
+                                {amt && <span className="tx-catf-amt tnum">{amt}</span>}
+                              </label>
+                            );
+                          })}
+                          {g.hidden.map((c) => {
+                            const amt = catAmt(c.label);
+                            return (
+                              <label key={c.id} className="tx-catf-i tx-catf-hidden">
+                                <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
+                                <span className="cat-em" aria-hidden>{c.emoji}</span>
+                                <span className="tx-catf-n">{c.label}</span>
+                                {amt && <span className="tx-catf-amt tnum">{amt}</span>}
+                              </label>
+                            );
+                          })}
                         </div>
                       ))}
+                      {catNoMatch && <div className="cp-none">No categories match &ldquo;{catQ.trim()}&rdquo;.</div>}
                     </div>
-                    {(head?.taxonomy ?? []).some((g) => (g.hidden ?? []).length > 0) && (
+                    {!catNeedle && (head?.taxonomy ?? []).some((g) => (g.hidden ?? []).length > 0) && (
                       <button type="button" className="cp-hidden-t" onClick={() => setCatShowHidden((v) => !v)}>
                         {catShowHidden ? "Hide hidden categories" : "Show hidden categories"}
                       </button>
