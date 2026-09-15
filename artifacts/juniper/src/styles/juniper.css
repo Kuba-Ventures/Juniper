@@ -699,6 +699,16 @@
 .jnpr .modal-danger{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--jnpr-line-2);font-size:12.5px;color:var(--jnpr-ink-3)}
 .jnpr .modal-danger span{margin-right:auto}
 .jnpr .btn.ghost.danger{color:var(--jnpr-bad);border-color:color-mix(in srgb,var(--jnpr-bad) 40%,transparent)}
+/* A labelled sub-section inside a modal that edits more than one thing at
+   once (EditCardModal, credit.tsx: a credit limit and a card's identity).
+   Divider-separated rather than each in its own nested card, since a modal is
+   already the "one object" boundary and a card inside a card reads as a
+   second decision the member has to parse. */
+.jnpr .modal-sec{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--jnpr-line-2)}
+.jnpr .modal-sec:last-of-type{border-bottom:0;padding-bottom:0;margin-bottom:0}
+.jnpr .modal-sec-lbl{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:8px}
+.jnpr .modal-cur{display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:650;color:var(--jnpr-ink);background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:10px;padding:8px 10px}
+.jnpr .modal-cur small{display:block;font-size:11px;color:var(--jnpr-ink-3);font-weight:500;margin-top:1px}
 
 /* ---------- plans: goals from signup, not plans yet ----
    A chip strip on purpose, not a card grid. A signup goal has no target, no
@@ -930,9 +940,15 @@
 .jnpr .util-hero{display:flex;align-items:center;gap:22px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--jnpr-line-2);flex-wrap:wrap}
 .jnpr .util-hero .big{font-size:32px;font-weight:750;letter-spacing:-.02em;color:var(--jnpr-ink)}
 .jnpr .util-hero .ub{flex:1;min-width:220px}
-.jnpr .card-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .card-row:first-child{border-top:0}
+/* align-items:flex-start (not center, issue #432 follow-up): a member-set
+   limit and an identified card can each add a line under the card name (the
+   "Change" control, the full catalog name on desktop), and centering .util
+   against that variable height put "Used / N%" wherever the middle of the
+   tallest row happened to land, reading as crowded against whichever line
+   sat there. Top-aligned, it always sits with the card name instead. */
+.jnpr .card-row{display:flex;align-items:flex-start;gap:13px;padding:13px 0;border-top:1px solid var(--jnpr-line-2)}.jnpr .card-row:first-child{border-top:0}
 .jnpr .card-row .ci{flex:1;min-width:0}.jnpr .card-row .cn{font-weight:650;font-size:13.5px;color:var(--jnpr-ink)}.jnpr .card-row .csub{font-size:11.5px;color:var(--jnpr-ink-3);margin-top:3px}
-.jnpr .card-row .util{width:150px;flex:0 0 auto}
+.jnpr .card-row .util{width:150px;flex:0 0 auto;padding-top:2px}
 .jnpr .card-row .util .ut{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px;color:var(--jnpr-ink-2)}.jnpr .card-row .util .ut .hi{color:var(--jnpr-warn)}
 /* "$X of $Y limit" (and its "in credit" / "owed" siblings) as one unit that
    wraps against its neighbors rather than splitting itself in half (issue
@@ -3102,22 +3118,18 @@
 .jnpr .cr-pk-empty{font-size:12px;color:var(--jnpr-ink-3);line-height:1.6;padding:10px 2px}
 .jnpr .cr-pk-err{font-size:12px;font-weight:600;color:var(--jnpr-bad);
   background:var(--jnpr-bad-soft);border-radius:var(--jnpr-r-sm);padding:9px 12px;margin-top:12px}
-/* The product a member said a card is, on the Credit cards row, with the way
-   back. "Change" forgets the answer and returns the card to the identify queue:
-   the picker is a member's answer and a member can get it wrong, and without
-   this the wrong rates would sit on their spending permanently. */
-.jnpr .cr-row-id{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:650;
-  color:var(--jnpr-accent);margin-top:4px}
+/* The full catalog product name a member said a card is, on the Credit cards
+   row. The way back to change it moved into EditCardModal's own "Not this
+   card?" link (#432 follow-up), so this is display only now; what forgets the
+   answer and returns the card to the identify queue lives in credit.tsx's
+   `reidentify`. */
+.jnpr .cr-row-id{font-size:11.5px;font-weight:650;color:var(--jnpr-accent);margin-top:4px}
 /* Hidden below 640px (issue #432): the row's own heading a few lines above
    already names the card ("Capital One · Quicksilver"), so the full catalog
    name here ("Capital One Quicksilver Student Cash Rewards Credit Card") is
    pure repetition on a screen where every line is precious. Desktop keeps it,
    since it is more specific than the heading and there is room to say so. */
-@media(max-width:640px){.jnpr .cr-row-id-name{display:none}}
-.jnpr .cr-row-change{font:inherit;font-size:11px;font-weight:650;color:var(--jnpr-ink-3);
-  background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
-  text-underline-offset:2px}
-.jnpr .cr-row-change:hover{color:var(--jnpr-ink)}
+@media(max-width:640px){.jnpr .cr-row-id{display:none}}
 
 /* ── Setting a credit limit your bank does not report (issue #211) ───────────
    Treatment A of three, rendered in design/credit-limit-variants.html: the
@@ -3128,9 +3140,12 @@
    written, which is the habit #168 earned the hard way when `.sw` and `.hero`
    turned out to be taken. */
 
-/* A plain text button, not a filled one. There can be three of these in one card
-   list, and three filled buttons under the Identify prompt would make the page
-   read as a list of chores rather than a view of the member's money. */
+/* A plain text button, not a filled one. There can be several of these in one
+   card list, and filled buttons under the Identify prompt would make the page
+   read as a list of chores rather than a view of the member's money. Reused
+   as the row's single "Change" trigger and, inside EditCardModal, its "Not
+   this card?" and "Remove the limit you set" links: one look for every
+   low-stakes text action on this page rather than a shade per control. */
 .jnpr .cl-set{font:inherit;font-size:11.5px;font-weight:650;color:var(--jnpr-accent);
   background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
   text-underline-offset:2px}
