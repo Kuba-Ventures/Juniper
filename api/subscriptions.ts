@@ -1,6 +1,6 @@
 // /api/subscriptions
 //   GET                                          -> the member's recurring streams, with their own decisions applied
-//   POST { stream_id, action, name?, expected_amount? }
+//   POST { stream_id, action, name?, expected_amount?, frequency? }
 //        action: confirm | dismiss | revert       -> write (or clear) their decision
 //
 // Reads the Plaid cache in `recurring_streams` and lays the member's own
@@ -16,12 +16,35 @@
 // "Inactive" after one missed month with no documented way to dismiss one, and
 // the reported result is a member surprised by a bill that was never flagged.
 // Monarch quarantines detections behind a review step. This follows Monarch.
+//
+// TWO KINDS OF STREAM PLAID NEVER GENERATES, ADDED HERE ALONGSIDE ITS OWN:
+//
+//   1. A JUNIPER SUGGESTION (`juniper:<merchantKey>`, api/_recurring-suggestions.ts).
+//      Found live: a member's Ancestry and Apple subscriptions both clear
+//      through a PayPal account rather than a direct card charge, and Plaid's
+//      own detection never clustered either into a stream despite four clean
+//      monthly charges sitting in `transactions`. Recomputed fresh on every
+//      GET from the member's own transaction history (never stored itself),
+//      merged into the same map() every real stream goes through, and laid
+//      over `recurring_overrides` exactly like a Plaid stream: no decision
+//      yet reads as a pending suggestion, confirmed or dismissed persists the
+//      same way. A merchant Plaid already tracks is never re-proposed.
+//   2. A MANUAL ENTRY (`manual:<uuid>`, minted by the client). For a charge
+//      with no transaction pattern to find at all (paid in cash, or too new
+//      to have repeated yet). Lives ONLY in `recurring_overrides`, since
+//      `recurring_streams` is a cache Plaid's own sync overwrites wholesale
+//      on every run and would delete a synthetic row it never returned.
+//
+// Both are told apart from a real Plaid stream by `origin`, computed from the
+// id's prefix, which the client uses to badge either "Added by you" the same
+// way a manual credit account already is elsewhere in this app.
 import { verifySupabaseJwt, extractBearerToken } from "./_supabase-jwt";
 import { readEnv } from "./_env";
 import { adminConfigured, adminRest } from "./_supabase-admin";
 import { taxonomyFor } from "./_taxonomy";
 import { isMeaningfulDrift } from "./_recurring-drift";
 import { PER_YEAR, monthlyAmount } from "./_recurring-monthly";
+import { findRecurringSuggestions, type SuggestionTxn } from "./_recurring-suggestions";
 
 export const config = { runtime: "edge" };
 
@@ -94,12 +117,20 @@ export default async function handler(req: Request): Promise<Response> {
       return json({ error: "action must be confirm, dismiss, or revert" }, 400);
     }
 
-    // The stream has to be the caller's own. The service-role key bypasses RLS,
-    // so this check is the access control, not a nicety: without it any
+    // A manual entry or a Juniper suggestion has no row in `recurring_streams`
+    // to own: a manual one never did (it lives only in `recurring_overrides`),
+    // and a suggestion is recomputed fresh from transactions on every GET
+    // rather than stored. Both are still scoped to THIS caller regardless,
+    // because the row written below always carries `user_id: uid` from the
+    // verified JWT, never from anything the client sent. For a real Plaid
+    // stream the ownership check stays load-bearing: without it, any
     // stream_id could be written an override row under this user.
-    const owned = await adminRest(`recurring_streams?user_id=eq.${uid}&stream_id=eq.${encodeURIComponent(streamId)}&select=stream_id&limit=1`);
-    const ownedRows = owned.ok ? ((await owned.json()) as unknown[]) : [];
-    if (!ownedRows.length) return json({ error: "Unknown stream" }, 404);
+    const isSynthetic = streamId.startsWith("manual:") || streamId.startsWith("juniper:");
+    if (!isSynthetic) {
+      const owned = await adminRest(`recurring_streams?user_id=eq.${uid}&stream_id=eq.${encodeURIComponent(streamId)}&select=stream_id&limit=1`);
+      const ownedRows = owned.ok ? ((await owned.json()) as unknown[]) : [];
+      if (!ownedRows.length) return json({ error: "Unknown stream" }, 404);
+    }
 
     if (action === "revert") {
       // Deleted, not flagged. Reverting has to restore the not-yet-reviewed
@@ -126,6 +157,17 @@ export default async function handler(req: Request): Promise<Response> {
         return json({ error: `frequency must be one of ${[...SETTABLE_FREQUENCY].join(", ")}` }, 400);
       }
       frequency = f;
+    }
+    // A manual entry has no Plaid-side name, amount, or cadence to fall back
+    // on if the member's own is missing, unlike confirming a real stream or a
+    // Juniper suggestion, both of which already carry a guess from the data
+    // behind them. So creating one (the only manual action there is) requires
+    // all three explicitly, rather than accepting nulls the way confirming an
+    // existing stream can.
+    if (streamId.startsWith("manual:") && action === "confirm") {
+      if (!body.name?.trim() || expected == null || !frequency) {
+        return json({ error: "A manual subscription needs a name, an amount, and a cadence" }, 400);
+      }
     }
     // WHOLE ROW, EVERY TIME. `resolution=merge-duplicates` replaces the row it
     // conflicts with rather than patching it, so a caller sending only the field
@@ -156,7 +198,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
 
-  const [sRes, oRes, iRes, hRes] = await Promise.all([
+  const [sRes, oRes, iRes, hRes, tRes] = await Promise.all([
     adminRest(`recurring_streams?user_id=eq.${uid}&select=*&order=average_amount.desc`),
     adminRest(`recurring_overrides?user_id=eq.${uid}&select=stream_id,state,name,expected_amount,frequency`),
     // For the mark on a stream Plaid gave no merchant for. A fee charged by the
@@ -169,6 +211,11 @@ export default async function handler(req: Request): Promise<Response> {
     // Migration 0058. Ordered oldest first per stream so the client can render
     // it directly as a left-to-right timeline with no client-side sort.
     adminRest(`recurring_amount_history?user_id=eq.${uid}&select=stream_id,amount,observed_on&order=observed_on.asc`),
+    // The member's own outflow history, for the Juniper-suggestion fallback
+    // (_recurring-suggestions.ts). Outflow-only (`amount=gt.0`, Plaid's own
+    // sign convention) and merchant-named, the same scope Plaid's own detector
+    // works over; a blank-merchant fee or transfer is out of scope for either.
+    adminRest(`transactions?user_id=eq.${uid}&amount=gt.0&merchant_name=not.is.null&select=id,merchant_name,amount,date`),
   ]);
   // A missing table reads as "nothing detected yet" rather than an error, so the
   // panel renders its empty state on a deploy where migration 0016 has not been
@@ -176,6 +223,50 @@ export default async function handler(req: Request): Promise<Response> {
   const streams: StreamRow[] = sRes.ok ? await sRes.json() : [];
   const overrides: OverrideRow[] = oRes.ok ? await oRes.json() : [];
   const byStream = new Map(overrides.map((o) => [o.stream_id, o]));
+
+  // Juniper's own fallback candidates, excluding any merchant Plaid already
+  // clustered into a real stream so the two can never propose the same charge
+  // twice. Recomputed fresh every request rather than stored: the source of
+  // truth is `transactions`, which the member's own decision (an override row
+  // keyed by the same `juniper:<merchantKey>` id) then lays over, same as a
+  // real Plaid stream.
+  const txnRows: { id: string; merchant_name: string; amount: number; date: string }[] = tRes.ok ? await tRes.json() : [];
+  const plaidMerchantKeys = new Set(
+    streams.map((s) => (s.merchant_name || "").trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean),
+  );
+  const suggestionTxns: SuggestionTxn[] = txnRows.map((t) => ({ id: t.id, merchantName: t.merchant_name, amount: t.amount, date: t.date }));
+  const suggestions = findRecurringSuggestions(suggestionTxns, plaidMerchantKeys);
+  const suggestionStreams: StreamRow[] = suggestions.map((sug) => ({
+    stream_id: `juniper:${sug.merchantKey}`,
+    item_id: null, account_id: null, description: null, merchant_name: sug.merchantName,
+    category: null, category_id: null,
+    // Never MATURE: this is Juniper's own guess, not Plaid's, and the client
+    // routes on `origin` rather than this status anyway, but a suggestion that
+    // has not yet been confirmed should still read as a possibility if it
+    // somehow reaches anywhere that does look at confidence.
+    plaid_status: "EARLY_DETECTION",
+    frequency: "MONTHLY", direction: "outflow",
+    average_amount: sug.averageAmount, last_amount: sug.lastAmount,
+    last_date: sug.lastDate, predicted_next_date: null,
+    is_active: true, transaction_ids: sug.transactionIds,
+  }));
+
+  // A manual entry has no backing stream at all; it exists purely because an
+  // override row under a `manual:` id does. Reconstructed here, from that row
+  // alone, so it flows through the exact same map() as everything else below.
+  const manualStreams: StreamRow[] = overrides
+    .filter((o) => o.stream_id.startsWith("manual:"))
+    .map((o) => ({
+      stream_id: o.stream_id,
+      item_id: null, account_id: null, description: null, merchant_name: null,
+      category: null, category_id: null,
+      plaid_status: "MATURE", frequency: o.frequency, direction: "outflow",
+      average_amount: o.expected_amount, last_amount: o.expected_amount,
+      last_date: null, predicted_next_date: null,
+      is_active: true, transaction_ids: [],
+    }));
+
+  const allStreams = [...streams, ...suggestionStreams, ...manualStreams];
   // A failed read costs a logo and nothing else, so it degrades rather than 500s.
   const instRows: { item_id: string; institution_name: string | null }[] = iRes.ok ? await iRes.json() : [];
   const instOf = new Map(instRows.filter((r) => r.institution_name).map((r) => [r.item_id, r.institution_name as string]));
@@ -193,7 +284,7 @@ export default async function handler(req: Request): Promise<Response> {
   // charges behind it show the same mark. Plaid's recurring streams carry a
   // merchant name but no logo, so the cache filled by the transactions sync is
   // the only source, and it is the right one: they are the same merchants.
-  const wanted = [...new Set(streams.map((x) => x.merchant_name).filter((m): m is string => !!m && m.length > 0))];
+  const wanted = [...new Set(allStreams.map((x) => x.merchant_name).filter((m): m is string => !!m && m.length > 0))];
   const logoOf = new Map<string, string>();
   if (wanted.length) {
     const list = wanted.map((m) => `"${m.replace(/["\\]/g, "")}"`).join(",");
@@ -210,7 +301,7 @@ export default async function handler(req: Request): Promise<Response> {
   // docs/CUSTOM_CATEGORIES.md.
   const tax = await taxonomyFor(uid);
   const hueOfGroup = new Map(tax.groups.map((g) => [g.label, g.hue]));
-  const items = streams.map((s) => {
+  const items = allStreams.map((s) => {
     const o = byStream.get(s.stream_id);
     const review: "confirmed" | "dismissed" | "unreviewed" =
       o?.state === "confirmed" ? "confirmed" : o?.state === "dismissed" ? "dismissed" : "unreviewed";
@@ -247,8 +338,14 @@ export default async function handler(req: Request): Promise<Response> {
     // charges behind it name the category the same way after a rename.
     const cat = tax.classify(s.category_id, s.category);
     const bankName = s.merchant_name || (s.description ? unshout(s.description) : null) || "Recurring charge";
+    const origin: "plaid" | "juniper" | "manual" = s.stream_id.startsWith("manual:")
+      ? "manual"
+      : s.stream_id.startsWith("juniper:")
+        ? "juniper"
+        : "plaid";
     return {
       id: s.stream_id,
+      origin,
       name: o?.name || bankName,
       merchant: s.merchant_name,
       logo: s.merchant_name ? logoOf.get(s.merchant_name) ?? null : null,

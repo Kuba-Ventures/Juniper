@@ -25,8 +25,18 @@ export const CADENCES: { key: string; label: string }[] = [
 export type Confidence = "established" | "possible" | "missed";
 export type Health = "on_track" | "amount_changed" | "missed" | null;
 
+/** Where this item came from. "plaid" is a real detected stream; "juniper" is
+ *  Juniper's own fallback guess from the member's own transaction history
+ *  (api/_recurring-suggestions.ts, for a charge routed through an
+ *  intermediary like PayPal that Plaid never clustered); "manual" is a
+ *  subscription the member typed in with no transaction pattern behind it at
+ *  all. Both non-Plaid origins live only in `recurring_overrides`, never
+ *  `recurring_streams`, so a Plaid sync can never delete or overwrite one. */
+export type SubOrigin = "plaid" | "juniper" | "manual";
+
 export interface SubItem {
   id: string;
+  origin: SubOrigin;
   name: string;
   merchant: string | null;
   logo: string | null;
@@ -120,4 +130,20 @@ export async function setSubscription(
   } catch {
     return false;
   }
+}
+
+/** A subscription with no transaction pattern behind it at all: paid in cash,
+ *  or too new to have repeated yet. Mints its own `manual:<uuid>` id client
+ *  side, the one thing that makes this a create rather than a confirm of
+ *  something the server already knew about; the server refuses this id
+ *  prefix unless all three fields are present, since there is no Plaid-side
+ *  guess to fall back on the way confirming a real (or Juniper-suggested)
+ *  stream has. */
+export async function addManualSubscription(
+  name: string,
+  expectedAmount: number,
+  frequency: string,
+): Promise<boolean> {
+  const streamId = `manual:${crypto.randomUUID()}`;
+  return setSubscription(streamId, "confirm", { name, expectedAmount, frequency });
 }
