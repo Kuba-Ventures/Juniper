@@ -760,21 +760,28 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
           {withLimits.length} {withLimits.length === 1 ? "card" : "cards"}
         </span>
       </div>
-      <OverallUtilization cards={withLimits} />
-      {withLimits.map((c) => (
-        <CardRow
-          card={c}
-          brands={brands}
-          // A hand-entered card has no product and cannot be identified, so
-          // there is nothing to name and nothing to undo. Both are held to
-          // null explicitly rather than left to the map missing the key,
-          // because that would be the right answer by accident.
-          identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
-          onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
-          onLimitChanged={() => void afterLimitChange()}
-          key={c.key}
-        />
-      ))}
+      {/* Capped and scrolled only beside the holder (issue #424 follow-up):
+          that's the one place a long list used to force `.credit-row`'s
+          stretch to hand the holder card a huge, centered-in-a-void block. A
+          member with no holder sees this card full length like every other
+          one on the page, since there's nothing beside it to stretch against. */}
+      <div className={hasHolder ? "cr-list-cap" : undefined}>
+        <OverallUtilization cards={withLimits} />
+        {withLimits.map((c) => (
+          <CardRow
+            card={c}
+            brands={brands}
+            // A hand-entered card has no product and cannot be identified, so
+            // there is nothing to name and nothing to undo. Both are held to
+            // null explicitly rather than left to the map missing the key,
+            // because that would be the right answer by accident.
+            identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
+            onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
+            onLimitChanged={() => void afterLimitChange()}
+            key={c.key}
+          />
+        ))}
+      </div>
     </div>
   );
 
@@ -879,10 +886,14 @@ function CardHolderSection({
     // the stretch and put this card's border a few pixels short of its
     // sibling's, exactly the mismatch the row was just asked to fix.
     //
-    // `cr-holder-section` (issue #424) centers the eyebrow + holder + subtitle
-    // block within whatever extra height the row's stretch gives this card,
-    // so a taller card list beside it leaves balanced space above and below
-    // the holder instead of all of it collecting under a top-aligned block.
+    // `cr-holder-section` (issue #424) used to center the WHOLE block (eyebrow,
+    // subtitle, holder) in the row's stretch, which fixed the "one big gap
+    // below a top-aligned block" complaint but traded it for a new one: with a
+    // tall card list beside it, the eyebrow itself drifted a long way down the
+    // card, reading as unanchored rather than as a header. The title now stays
+    // pinned to the top like every other card on this page, and `cr-holder-fill`
+    // is the part that centers: only the holder, in whatever space is left
+    // under the title once the row's stretch is applied.
     <div className="card pad-lg cr-holder-section">
       <div className="eyebrow">Your cards</div>
       {/* "N of M identified" used to describe the whole stack. It cannot any
@@ -896,14 +907,16 @@ function CardHolderSection({
         {data.unidentified.length > 0 && <>, {data.unidentified.length} still to go</>}
         {handCount > 0 && <> · {handCount} added by hand</>}
       </div>
-      <CardWallet
-        cards={confirmed}
-        unidentified={data.unidentified}
-        manual={data.manual ?? []}
-        logoFor={rewardsLogo(brands)}
-        onIdentify={onIdentify}
-        holderStyle={holderStyle}
-      />
+      <div className="cr-holder-fill">
+        <CardWallet
+          cards={confirmed}
+          unidentified={data.unidentified}
+          manual={data.manual ?? []}
+          logoFor={rewardsLogo(brands)}
+          onIdentify={onIdentify}
+          holderStyle={holderStyle}
+        />
+      </div>
     </div>
   );
 }

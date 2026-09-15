@@ -205,20 +205,41 @@
 .jnpr .credit-row{grid-template-columns:320px 1fr}
 @media(max-width:860px){.jnpr .credit-row{grid-template-columns:1fr}}
 
-/* The holder card's own content, centered in whatever height the row's
-   stretch gives it (issue #424). The holder is a fixed-height block (`.cr-holder`
-   is a constant 262px regardless of card count), so when the list beside it
-   is taller, `align-items:stretch` above was leaving all of the extra height
-   as a single gap below the holder, stranding it near the top of its card.
-   Centering the block instead of anchoring it to the top splits that gap
-   evenly above and below, which reads as intentional at any height. Scoped to
-   this one card rather than `.card.pad-lg` generally, since the card list
-   beside it wants its rows to start at the top, not center. Named
-   `cr-holder-section` rather than `cr-holder-card`, which was already taken
-   by the popped-out card button inside `CardWallet` (`position:absolute`) --
-   the first version of this fix reused that name and the collision put both
-   cards on top of each other. */
-.jnpr .cr-holder-section{display:flex;flex-direction:column;justify-content:center}
+/* The holder card's own content, against whatever extra height the row's
+   stretch gives it (issue #424, revised as a follow-up). The holder is a
+   fixed-height block (`.cr-holder` is a constant height set by its own card
+   count, not by this card), so when the list beside it is taller,
+   `align-items:stretch` above hands this card slack that has to go somewhere.
+   The first fix (centering the whole block: eyebrow, subtitle, holder) traded
+   one complaint for another -- with a tall list beside it, the title itself
+   drifted a long way down the card, reading as unanchored rather than as a
+   header. So only `display:flex;flex-direction:column` lives here now: the
+   eyebrow and subtitle stay in normal top-of-card flow like every other card
+   on this page, and `cr-holder-fill` below is what actually centers, scoped to
+   the holder alone. Named `cr-holder-section` rather than `cr-holder-card`,
+   which was already taken by the popped-out card button inside `CardWallet`
+   (`position:absolute`) -- the first version of the original fix reused that
+   name and the collision put both cards on top of each other. */
+.jnpr .cr-holder-section{display:flex;flex-direction:column}
+/* Takes the space `cr-holder-section`'s flex column has left once the eyebrow
+   and subtitle above it are laid out, and centers `.cr-holder` (a fixed-size
+   child) inside exactly that space -- not the whole card, just the part below
+   the title. `flex:1 1 auto` rather than a fixed height because the amount of
+   slack changes with how tall the card list beside it is; this element's job
+   is only ever "whatever is left". */
+.jnpr .cr-holder-fill{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
+
+/* The list beside the holder stops growing past a screenful and scrolls
+   internally instead (issue #424 follow-up), rather than the row's stretch
+   handing the holder an ever-larger block of empty space to center something
+   in. Applied only when the holder is actually present -- see the `hasHolder`
+   check at the call site -- since a member with no holder card has nothing
+   beside this one to stretch against, and a scroll box would be a new limit
+   with no problem behind it. The height is a plain guess at a typical
+   holder's own height (title + a several-card stack), not a measurement: the
+   two cards are not trying to match exactly, only to stop diverging by
+   hundreds of pixels. */
+.jnpr .cr-list-cap{max-height:420px;overflow-y:auto;padding-right:4px;margin-right:-4px}
 
 .jnpr .btn{border:0;font-weight:650;font-size:13px;padding:9px 15px;border-radius:9px;cursor:pointer;
   background:var(--jnpr-accent);color:var(--jnpr-on-accent);display:inline-flex;align-items:center;gap:7px;font-family:inherit}
