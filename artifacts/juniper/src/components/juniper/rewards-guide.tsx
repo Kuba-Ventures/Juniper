@@ -89,7 +89,9 @@ function GuideRow({
               just the instruction: which card. */}
           <div className="cr-rg-best">Best {entry.categoryLabel}</div>
           <div className="cr-rg-winner">
-            {best.productName}
+            {/* Own span so mobile can truncate just the name with an ellipsis
+                (issue #432) without also clipping the badge beside it. */}
+            <span className="cr-rg-winner-name">{best.productName}</span>
             {best.assumesPointValue && <AssumesPointValue cents={centsFor(best.productId)} />}
           </div>
           {(best.note || best.cap) && (
