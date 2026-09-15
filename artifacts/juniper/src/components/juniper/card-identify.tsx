@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { CardFace } from "@/components/juniper/card-rewards-bits";
 import { confirmCard, money0, type Candidate, type CardCatalogEntry, type UnidentifiedCard } from "@/lib/cards";
+import { trackEvent } from "@/lib/analytics";
 
 // "Which card is this?" Issue #168.
 //
@@ -176,8 +177,27 @@ export function CardIdentifyDialog({
 
         {/* Stored as an answer, not as a dismissal. `product_id: null` means "not
             in your catalog", which is different from never having been asked, so
-            the member is not prompted again. */}
-        <button type="button" className="cr-pk-none" onClick={() => void save(null)} disabled={busy}>
+            the member is not prompted again.
+
+            Also the one place a catalog gap becomes visible outside this
+            member's own account: `member_cards.product_id IS NULL` already
+            records the miss, but nothing durable records WHICH card it was,
+            since the account name only ever lived in this component's props.
+            Firing it here, at the moment of the answer, is what lets a catalog
+            addition be prioritized by real misses instead of by guessing which
+            of the ~400 cards NerdWallet lists to add next. Institution and
+            account name only, both already shown on screen to this member;
+            no balance, no mask, no account id. Prod-only, matches every other
+            trackEvent() call site in this app. */}
+        <button
+          type="button"
+          className="cr-pk-none"
+          onClick={() => {
+            trackEvent("card_not_listed", { institution: card.institution, account_name: card.account_name });
+            void save(null);
+          }}
+          disabled={busy}
+        >
           My card is not listed
         </button>
       </div>
