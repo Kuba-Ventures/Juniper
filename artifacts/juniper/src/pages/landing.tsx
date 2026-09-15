@@ -227,6 +227,9 @@ export default function Landing() {
             className="flex flex-col"
             style={{ maxWidth: 540 }}
           >
+            <motion.div variants={fadeUp}>
+              <Eyebrow>Not just another budgeting app</Eyebrow>
+            </motion.div>
             <motion.h1
               variants={fadeUp}
               style={{
@@ -239,13 +242,13 @@ export default function Landing() {
                 margin: "0 0 24px 0",
               }}
             >
-              Build your financial future, together.
+              Track less. Plan more.
             </motion.h1>
             <motion.p
               variants={fadeUp}
               style={{ fontSize: 18, color: muted, lineHeight: 1.65, maxWidth: 480, margin: "0 0 40px 0" }}
             >
-              Juniper is the financial planning partner for engaged and newly married couples. Helping you tackle debt, save for a home, and make big decisions without the awkward money talks.
+              Real net worth and budgets from your linked accounts, and an AI agent that turns a goal into a trackable plan — built for you alone, you and a partner or friend, or your whole household.
             </motion.p>
             <motion.div variants={fadeUp}>
               <HeroSignupCta />
