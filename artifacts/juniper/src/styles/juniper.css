@@ -1790,8 +1790,22 @@
   /* The pill's own white-space:nowrap (fine in a table cell with room to
      spread) would otherwise force this narrow column wide enough to fit the
      longest category name on one line, squeezing the merchant column down to
-     almost nothing. Letting it wrap keeps the column's own width in charge. */
-  .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{white-space:normal;max-width:100%}
+     almost nothing. Letting it wrap keeps the column's own width in charge,
+     and the 2-line clamp below stops "Restaurants & bars" from wrapping any
+     further than that, so the pill's height stays predictable next to the
+     merchant column beside it. */
+  .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{white-space:normal;max-width:100%;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  /* Issue: a raw or unusually long merchant string (a bank transfer
+     description, easily 40+ chars, no natural line break) wrapped to 4+
+     lines with nothing to stop it, ballooning that row's height far past its
+     neighbours and pushing the amount well below the merchant it belonged
+     to. Two lines is enough to read a merchant name; past that it truncates
+     rather than dictating the row's height. Scoped to mobile only: the
+     desktop table has the width to spare and #406's better-card badge
+     already depends on the name staying on one line there. */
+  .jnpr .tx-table .td-mn>span:first-child{display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden}
   .jnpr .tx-table .td-a{grid-area:amount;justify-self:end}
   /* The grouped-by-category header row has only two cells (the category tag
      plus its running total) and keeps its own simple row rather than the
