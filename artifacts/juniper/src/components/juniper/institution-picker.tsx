@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Building2, Check, Loader2, PencilLine, Plus, Search } from "lucide-react";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
-import { COMMON_INSTITUTIONS } from "@/lib/institution-gallery";
+import { GALLERY_GROUPS } from "@/lib/institution-gallery";
 import {
   normInstitutionName,
   searchInstitutions,
@@ -34,12 +34,16 @@ import {
 // A curated gallery used to live here and was deleted on 2026-08-26: roughly
 // 60 hardcoded institutions, each carrying its own institution_id, which had
 // to be right for both Sandbox and Production and went stale as Plaid's own
-// ids changed. This gallery does not repeat that mistake. COMMON_INSTITUTIONS
-// (institution-gallery.ts) holds plain display names only; resolveGalleryPick
-// below turns a selected name into a real institution the same way a typed
-// search already does, one Plaid lookup per name, at connect time rather than
-// baked into the list. So the gallery can go stale in only one way, a bank
-// falling out of fashion, never in the way that broke last time.
+// ids changed. This gallery does not repeat that mistake. GALLERY_GROUPS
+// (institution-gallery.ts) holds plain display names, grouped into labeled
+// sections (Banking, Credit cards, Investing, Payments) the way the old
+// gallery was, purely for scanability; resolveGalleryPick below turns a
+// selected name into a real institution the same way a typed search already
+// does, one Plaid lookup per name, at connect time rather than baked into the
+// list. So the gallery can go stale in only one way, a bank falling out of
+// fashion, never in the way that broke last time. Unlike the old gallery,
+// there is no per-group "select all": selection is one flat set across every
+// group, since sixteen names is too few for a select-all to earn its keep.
 //
 // Search results stay rows, because a row is a result: someone who typed a
 // name is done choosing and wants one tap, not a checkbox and a submit button.
@@ -194,12 +198,19 @@ export function InstitutionPicker({
         ? `Everything matching "${trimmed}" is already connected.`
         : `No institution matching "${trimmed}". Check the spelling, search all banks below, or enter it by hand.`;
 
-  // The curated list minus anything already on file, same rule as the search
+  // Each group's list minus anything already on file, same rule as the search
   // results above: nobody is offered a tile for a bank they've already linked.
-  const galleryVisible = useMemo(
-    () => COMMON_INSTITUTIONS.filter((name) => !connected?.has(normInstitutionName(name))),
+  // Groups that end up empty (every name in them already connected) are
+  // dropped entirely rather than rendered as a bare, tile-less heading.
+  const galleryGroups = useMemo(
+    () =>
+      GALLERY_GROUPS.map((group) => ({
+        label: group.label,
+        institutions: group.institutions.filter((name) => !connected?.has(normInstitutionName(name))),
+      })).filter((group) => group.institutions.length > 0),
     [connected],
   );
+  const galleryVisible = useMemo(() => galleryGroups.flatMap((g) => g.institutions), [galleryGroups]);
 
   function toggleGallery(name: string) {
     setGallerySelected((prev) => {
@@ -314,28 +325,33 @@ export function InstitutionPicker({
       {!trimmed && galleryVisible.length > 0 && (
         <div className="inst-gallery">
           <div className="inst-divider">or pick a few common ones</div>
-          <div className="inst-gal-grid">
-            {galleryVisible.map((name) => {
-              const on = gallerySelected.has(name);
-              return (
-                <button
-                  key={name}
-                  type="button"
-                  className={`inst-gal-tile${on ? " on" : ""}`}
-                  onClick={() => toggleGallery(name)}
-                  disabled={busy || resolvingGallery}
-                  aria-pressed={on}
-                  aria-label={`${on ? "Deselect" : "Select"} ${name}`}
-                >
-                  <span className="inst-gal-check">
-                    <Check size={10} strokeWidth={3} />
-                  </span>
-                  <RowMark name={name} />
-                  <span className="inst-gal-name">{name}</span>
-                </button>
-              );
-            })}
-          </div>
+          {galleryGroups.map((group) => (
+            <div className="inst-gal-group" key={group.label}>
+              <div className="inst-cat-h">{group.label}</div>
+              <div className="inst-gal-grid">
+                {group.institutions.map((name) => {
+                  const on = gallerySelected.has(name);
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      className={`inst-gal-tile${on ? " on" : ""}`}
+                      onClick={() => toggleGallery(name)}
+                      disabled={busy || resolvingGallery}
+                      aria-pressed={on}
+                      aria-label={`${on ? "Deselect" : "Select"} ${name}`}
+                    >
+                      <span className="inst-gal-check">
+                        <Check size={10} strokeWidth={3} />
+                      </span>
+                      <RowMark name={name} />
+                      <span className="inst-gal-name">{name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
           {gallerySelected.size > 0 && (
             <button
               className="btn inst-gal-connect"

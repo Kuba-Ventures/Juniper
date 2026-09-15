@@ -12,25 +12,33 @@
 // localBrandLogo() chain in institution-brand.ts with no changes there: every
 // name below already slugifies (or is aliased) to a key in mock-logos.ts.
 //
-// Chosen for recognizability over completeness: the large retail/national
-// banks, the brokerages already bundled for the Credit/Connections surfaces,
-// and the two payment apps most often linked alongside a bank. Not an attempt
-// at "top N by Plaid volume", which Juniper has no data source for.
-export const COMMON_INSTITUTIONS: readonly string[] = [
-  "Chase",
-  "Bank of America",
-  "Wells Fargo",
-  "Capital One",
-  "Citi",
-  "American Express",
-  "Discover",
-  "U.S. Bank",
-  "PNC",
-  "Truist",
-  "Charles Schwab",
-  "Fidelity",
-  "Vanguard",
-  "SoFi",
-  "Ally",
-  "PayPal",
+// Grouped the way the old, deleted gallery was (banking / credit cards /
+// investing / payment apps), on request, purely as section labels: unlike
+// that gallery there is no per-category "select all" here, since with 16
+// names total there is nothing a group-level select-all would meaningfully
+// save over ticking a couple of tiles by hand, and it is exactly the kind of
+// per-category state machine that made the old ~60-entry version heavy.
+// Selection itself stays one flat set across every group.
+export type InstitutionGalleryGroup = {
+  label: string;
+  institutions: readonly string[];
+};
+
+export const GALLERY_GROUPS: readonly InstitutionGalleryGroup[] = [
+  {
+    label: "Banking",
+    institutions: ["Chase", "Bank of America", "Wells Fargo", "Citi", "U.S. Bank", "PNC", "Truist", "Ally"],
+  },
+  {
+    label: "Credit cards",
+    institutions: ["Capital One", "American Express", "Discover"],
+  },
+  {
+    label: "Investing",
+    institutions: ["Charles Schwab", "Fidelity", "Vanguard", "SoFi"],
+  },
+  {
+    label: "Payments",
+    institutions: ["PayPal"],
+  },
 ];
