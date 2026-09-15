@@ -2027,11 +2027,20 @@
 .jnpr .tx-catf-clear{border:0;background:transparent;color:var(--jnpr-accent);font:inherit;font-size:11px;
   font-weight:650;cursor:pointer;padding:4px 6px}
 .jnpr .tx-catf-clear:hover{text-decoration:underline}
+/* Sits between the head row and the list, reusing .cp-q's own look; the menu
+   is narrower than the picker's 264px, so a touch less breathing room above
+   and below reads right at this width. */
+.jnpr .tx-cat-menu .cp-q{margin:6px 0 7px}
 .jnpr .tx-catf-i{display:flex;align-items:center;gap:7px;width:100%;padding:6px 9px;border-radius:8px;
   font-size:12.5px;color:var(--jnpr-ink-2);cursor:pointer}
 .jnpr .tx-catf-i:hover{background:var(--jnpr-surface-3)}
 .jnpr .tx-catf-i input{margin:0}
 .jnpr .tx-catf-hidden{color:var(--jnpr-ink-3)}
+/* The label can be as long as a member's own custom category name, and the
+   total beside it must never be what wraps or gets pushed off; the name
+   truncates instead. */
+.jnpr .tx-catf-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jnpr .tx-catf-amt{flex:0 0 auto;font-size:11px;color:var(--jnpr-ink-3)}
 
 /* The selection gutter. The checkbox is there on every row and drawn only when
    it could matter: on hover, on focus, while anything is selected, and always
