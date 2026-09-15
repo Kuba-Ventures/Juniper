@@ -36,7 +36,7 @@ import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money2 } from "@/lib/txn-format";
 import { CADENCES, addManualSubscription, fetchSubscriptions, setSubscription, type SubItem, type SubOrigin, type SubPayload, type SubAction } from "@/lib/subscriptions";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
-import { fetchCancellationRequests, requestCancellation, type CancellationRequest } from "@/lib/cancellations";
+import { fetchCancellationRequests, type CancellationRequest } from "@/lib/cancellations";
 
 const CONFIDENCE_NOTE: Record<string, string> = {
   established: "Charged regularly",
@@ -62,11 +62,11 @@ export function SubscriptionsPanel() {
   // One open at a time. Two panels of fields open at once turns the card into a
   // form, and the member is editing one charge.
   const [openId, setOpenId] = useState<string | null>(null);
-  // The member's own cancellation requests (issue #285), loaded alongside the
-  // streams so a row whose request is still open renders "Cancellation
-  // requested" rather than offering Cancel a second time.
+  // The member's own PAST cancellation requests (issue #285), kept only for
+  // the "you've saved $X/yr" note below: the request-a-cancellation trigger
+  // itself was removed from this row's actions, so nothing here ever creates
+  // a new one, but a confirmed one already on file still counts.
   const [cancellations, setCancellations] = useState<CancellationRequest[]>([]);
-  const [cancelTarget, setCancelTarget] = useState<SubItem | null>(null);
   // A member typing in something Juniper has no transaction pattern for at
   // all (paid in cash, or through an account never linked), the third leg
   // alongside a real Plaid stream and a Juniper-guessed one.
@@ -79,12 +79,6 @@ export function SubscriptionsPanel() {
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
-  // The API returns these newest-first, so the first match per stream is its
-  // most recent request; a stream can have more than one over time (a failed
-  // attempt is exactly the case where trying again is the point, migration
-  // 0059's own header).
-  const latestRequestByStream = new Map<string, CancellationRequest>();
-  for (const c of cancellations) if (!latestRequestByStream.has(c.stream_id)) latestRequestByStream.set(c.stream_id, c);
   const confirmedCancellations = cancellations.filter((c) => c.status === "confirmed");
   // A projection at the moment the member asked, not a verified fact: this is
   // a stated total on the panel, deliberately not fed into the Juniper Score.
@@ -253,13 +247,6 @@ export function SubscriptionsPanel() {
                     {i.origin === "manual" && (
                       <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>Remove</button>
                     )}
-                    {/* Only a real Plaid stream: api/cancellation-requests.ts looks the
-                       stream up in `recurring_streams` itself, which a Juniper suggestion
-                       or a manual entry never has a row in, so the request would 404.
-                       Offering a button that quietly fails is worse than not offering it. */}
-                    {i.origin === "plaid" && (
-                      <CancelControl request={latestRequestByStream.get(i.id)} busy={busy === i.id} onCancel={() => setCancelTarget(i)} />
-                    )}
                   </>
                 } />
               {openId === i.id && (
@@ -299,77 +286,10 @@ export function SubscriptionsPanel() {
         </div>
       )}
 
-      {cancelTarget && (
-        <CancelModal
-          i={cancelTarget}
-          onClose={() => setCancelTarget(null)}
-          onRequested={() => { setCancelTarget(null); void load(); }}
-        />
-      )}
-
       {adding && (
         <AddSubscriptionModal onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void load(); }} />
       )}
     </div>
-  );
-}
-
-// The consent line is the product-level disclosure this feature can actually
-// ship: Juniper acting as a member's agent to cancel something, plainly
-// stated at the moment it is asked for. A real Terms of Service covering that
-// is a legal document gated on counsel (ROADMAP.md Stage 6) and is not this.
-// Three states beyond plain Cancel, matching the request's own status: open
-// (requested or contacted, so Cancel is disabled rather than offered twice),
-// a prior attempt that failed (Cancel stays offered, since trying again is
-// exactly the point, with a small note so the member isn't asking again blind),
-// and nothing on file (a plain Cancel).
-const OPEN_LABEL: Record<string, string> = { requested: "Cancellation requested", contacted: "Being canceled…" };
-function CancelControl({ request, busy, onCancel }: { request: CancellationRequest | undefined; busy: boolean; onCancel: () => void }) {
-  if (request && (request.status === "requested" || request.status === "contacted")) {
-    return <button className="btn ghost sm" disabled>{OPEN_LABEL[request.status]}</button>;
-  }
-  return (
-    <>
-      {/* A sibling of the buttons in .sub-act, not a nested wrapper: .sub-act's
-         own mobile rule (juniper.css) drops each direct child to its own
-         full-width line, which a wrapper span would have blocked. */}
-      {request?.status === "failed" && <span className="sub-cancel-note">Last attempt didn&apos;t work</span>}
-      <button className="btn ghost sm" disabled={busy} onClick={onCancel}>
-        {request?.status === "failed" ? "Try again" : "Cancel"}
-      </button>
-    </>
-  );
-}
-
-function CancelModal({ i, onClose, onRequested }: { i: SubItem; onClose: () => void; onRequested: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async () => {
-    setBusy(true);
-    setErr(null);
-    const r = await requestCancellation(i.id);
-    setBusy(false);
-    if (!r.ok) { setErr(r.error ?? "Couldn't queue the request."); return; }
-    onRequested();
-  };
-
-  return (
-    <ModalBackdrop onClose={onClose}>
-      <h3>Cancel {i.name}?</h3>
-      <p>
-        Juniper will reach out on your behalf to cancel this. Nothing is canceled until you approve
-        here, and we can&apos;t promise a specific timeline.
-        {i.perMonth != null && <> Estimated savings: <b>{money2(i.perMonth * 12)}/yr</b>.</>}
-      </p>
-      {err && <p className="sub-bad">{err}</p>}
-      <div className="modal-actions">
-        <button className="btn" disabled={busy} onClick={() => void submit()}>
-          {busy ? "Requesting…" : "Request cancellation"}
-        </button>
-        <button className="btn ghost" disabled={busy} onClick={onClose}>Keep it</button>
-      </div>
-    </ModalBackdrop>
   );
 }
 
@@ -530,7 +450,12 @@ function Chip({ i }: { i: SubItem }) {
       </span>
     );
   }
-  return <span className="sub-chip good">On track</span>;
+  // Nothing shown when a confirmed charge is simply behaving as expected: a
+  // chip here is only worth the member's attention when something deviates
+  // (missed, or a different amount), and a row with nothing wrong is quieter
+  // with no chip at all rather than a permanent "On track" restating the row
+  // above it already not being flagged.
+  return null;
 }
 
 // The expansion under a confirmed row. Everything here already existed in
