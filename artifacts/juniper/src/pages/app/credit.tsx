@@ -12,6 +12,7 @@ import {
 } from "@/lib/credit-cards";
 import { creditPosition, utilizationPct } from "@/lib/credit-balance";
 import { CardIdentifyPrompt } from "@/components/juniper/card-identify";
+import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { CardWallet } from "@/components/juniper/card-wallet";
 import { RewardsGuide } from "@/components/juniper/rewards-guide";
 import { BenefitsTracker } from "@/components/juniper/benefits-tracker";
@@ -418,24 +419,52 @@ function CardMark({ card, brands }: { card: LinkedCard; brands: InstitutionBrand
 }
 
 /**
- * The inline "what is the limit on this card?" editor (#211, treatment A of
- * three, rendered in design/credit-limit-variants.html).
+ * Edit a linked card: its member-set credit limit (#211), and which catalog
+ * product it is. One modal for both, treatment B of three rendered in
+ * previews/credit-change-consolidation-options.html, replacing what used to
+ * be two separate controls stacked as extra lines under the card name
+ * ("Change limit" and a second, unrelated "Change" for the card's identity).
  *
- * It sits on the row that states the gap, which is the point of treatment A: the
- * member is looking at this card's name and mask while they type, and that is
- * what stops them entering the Chase limit against the Capital One row.
+ * `.card-row` centers its short `.util` column against however tall `.ci`
+ * happens to be, so two controls read as two extra lines the utilization
+ * tracker had to center itself against, which is what crowded it against the
+ * limit line on a phone-width row. One control removes the extra lines; the
+ * row's own `align-items:flex-start` (juniper.css) is what stops it happening
+ * again the next time a badge or a longer phrase adds one back.
  *
- * Uncontrolled-ish on purpose: the field holds a raw string, commas and dollar
- * sign included, because that is what somebody reads off a statement. Parsing
- * happens server-side so there is ONE definition of what counts as a number
- * rather than a client regex and a server regex free to drift.
+ * The limit field is unchanged from the original inline editor (#211): an
+ * uncontrolled-ish raw string, commas and dollar sign included, because that
+ * is what somebody reads off a statement, parsed server-side so there is ONE
+ * definition of what counts as a number.
  */
-function LimitForm({
-  card, onSaved, onCancel,
+function EditCardModal({
+  card, brands, identified, canEditLimit, onClose, onSaved, onReidentify,
 }: {
   card: LinkedCard;
+  brands: InstitutionBrandMap | null;
+  /** Null when nobody has identified this card yet, in which case there is
+      nothing to show here: the identify prompt at the top of the page is
+      already asking, and this modal only ever offers to REPLACE an answer
+      that exists. */
+  identified: string | null;
+  /** OFFERED ONLY WHERE THERE IS SOMETHING TO ANSWER (#211): a card whose bank
+      reports its limit gets no limit section, because `limitOf` gives the
+      bank's number precedence and a member limit set on such a card would be
+      stored and change nothing on screen. */
+  canEditLimit: boolean;
+  onClose: () => void;
+  /** A limit was set, cleared or changed, so the page needs to re-read. */
   onSaved: () => void;
-  onCancel: () => void;
+  /** Forgets the current answer and reopens the picker for this card, the
+      same `unidentify` + `openIdentify` flow the wallet's own unidentified
+      outline already uses. This closes the modal and lets that flow run
+      rather than swapping this modal's own body to a second, in-place picker:
+      the real candidate list (`CardIdentifyDialog`) is confidence-ranked by
+      the server and only computed once an account is genuinely back in the
+      unidentified queue, so a second list living inside this modal would
+      either duplicate that computation or have nothing to show. Two
+      mechanisms for "what is this card" is worse than either (#250). */
+  onReidentify: () => void;
 }) {
   const [value, setValue] = useState(card.memberLimit != null ? String(card.memberLimit) : "");
   const [busy, setBusy] = useState(false);
@@ -448,57 +477,96 @@ function LimitForm({
     setBusy(false);
     if (!ok) { setError("Could not save that. Check the number and try again."); return; }
     onSaved();
+    onClose();
+  };
+
+  // The honest inverse of setting one: the member is saying they no longer
+  // stand behind the number, so the card goes back to being excluded from
+  // utilization rather than keeping a figure nobody vouches for.
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    const ok = await setCardLimit(card.key, null);
+    setBusy(false);
+    if (!ok) { setError("Could not remove that."); return; }
+    onSaved();
+    onClose();
   };
 
   return (
-    <>
-      <div className="cl-form">
-        <span className="cl-cur">$</span>
-        <input
-          className="cl-in"
-          type="text"
-          inputMode="numeric"
-          value={value}
-          placeholder="8,000"
-          aria-label={`Credit limit for ${card.institution} ${card.name}`}
-          disabled={busy}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") onCancel(); }}
-          autoFocus
-        />
-        <button type="button" className="cl-btn" disabled={busy} onClick={() => void save()}>Save</button>
-        <button type="button" className="cl-btn ghost" disabled={busy} onClick={onCancel}>Cancel</button>
-        {/* Clearing is offered only once there is something to clear, and it is
-            the honest inverse of setting one: the member is saying they no longer
-            stand behind the number, so the card goes back to being excluded from
-            utilization rather than keeping a figure nobody vouches for. */}
-        {card.memberLimit != null && (
+    <ModalBackdrop onClose={onClose}>
+      <h3 style={{ fontSize: 16, marginBottom: card.mask ? 2 : 4 }}>
+        Edit {card.institution} · {card.name}
+      </h3>
+      {card.mask && <p style={{ fontSize: 12, color: "var(--jnpr-ink-3)", margin: "0 0 15px" }}>····{card.mask}</p>}
+
+      {canEditLimit && (
+        <div className="modal-sec">
+          <div className="modal-sec-lbl">Credit limit</div>
+          <div className="cl-form" style={{ marginTop: 0 }}>
+            <span className="cl-cur">$</span>
+            <input
+              className="cl-in"
+              type="text"
+              inputMode="numeric"
+              value={value}
+              placeholder="8,000"
+              aria-label={`Credit limit for ${card.institution} ${card.name}`}
+              disabled={busy}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") onClose(); }}
+              autoFocus
+            />
+          </div>
+          <div className="cl-hint">
+            The limit printed on your statement or in your issuer's app. Juniper cannot read it, so this
+            is your number and it is labelled as yours wherever it appears. It does not affect your
+            Juniper Score.
+          </div>
+          {card.memberLimit != null && (
+            <button type="button" className="cl-set" style={{ marginTop: 8 }} disabled={busy} onClick={() => void remove()}>
+              Remove the limit you set
+            </button>
+          )}
+        </div>
+      )}
+
+      {identified && (
+        <div className="modal-sec">
+          <div className="modal-sec-lbl">Which card is this</div>
+          <div className="modal-cur">
+            <CardMark card={card} brands={brands} />
+            <div>
+              {identified}
+              <small>Juniper uses this to show what it earns and what it comes with.</small>
+            </div>
+          </div>
           <button
             type="button"
-            className="cl-btn ghost"
+            className="cl-set"
+            style={{ marginTop: 8 }}
             disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              const ok = await setCardLimit(card.key, null);
-              setBusy(false);
-              if (ok) onSaved(); else setError("Could not remove that.");
-            }}
+            onClick={() => { onClose(); onReidentify(); }}
           >
-            Remove
+            Not this card? Change it →
           </button>
+        </div>
+      )}
+
+      {error && <div className="cl-err">{error}</div>}
+
+      <div className="modal-actions">
+        <button type="button" className="btn ghost" disabled={busy} onClick={onClose}>Cancel</button>
+        {canEditLimit && (
+          <button type="button" className="btn" disabled={busy} onClick={() => void save()}>Save</button>
         )}
       </div>
-      <div className="cl-hint">
-        The limit printed on your statement or in your issuer's app. Juniper cannot read it, so this is
-        your number and it is labelled as yours wherever it appears. It does not affect your Juniper Score.
-      </div>
-      {error && <div className="cl-err">{error}</div>}
-    </>
+    </ModalBackdrop>
   );
 }
 
 function CardRow({
-  card, brands, identified, onChange, onLimitChanged,
+  card, brands, identified, onReidentify, onLimitChanged,
 }: {
   card: LinkedCard;
   brands: InstitutionBrandMap | null;
@@ -507,12 +575,12 @@ function CardRow({
       identify prompt above already distinguishes; on this row the only useful
       thing to draw is a product name or nothing. */
   identified: string | null;
-  /** Undo the identification, which puts the card back in the identify queue.
-      This exists because the picker is a member's answer and a member can get it
-      wrong: two Chase cards with the same mask-less "CREDIT CARD" name are easy
-      to mix up, and without a way back the wrong rates would sit on their
+  /** Undo the identification and reopen the picker for this card. This exists
+      because the picker is a member's answer and a member can get it wrong:
+      two Chase cards with the same mask-less "CREDIT CARD" name are easy to
+      mix up, and without a way back the wrong rates would sit on their
       spending permanently, quoting confident figures off the wrong product. */
-  onChange: () => void;
+  onReidentify: () => void;
   /** A limit was set, cleared or changed, so the page needs to re-read. */
   onLimitChanged: () => void;
 }) {
@@ -520,6 +588,12 @@ function CardRow({
   const { limit, source } = limitFor(card);
   const badge = limitBadge(card, source);
   const used = limit != null ? pct(card.balance, limit) : null;
+  const canEditLimit = source !== "bank";
+  // ONE trigger for both the limit control #211 offered and the identify
+  // "Change" that used to live on its own line: a card can need either, both,
+  // or neither, and it is EditCardModal's job to show only the sections that
+  // apply, not this row's.
+  const canChange = card.origin === "linked" && (canEditLimit || !!identified);
   return (
     <div className="card-row">
       <CardMark card={card} brands={brands} />
@@ -553,38 +627,18 @@ function CardRow({
               only as good as the claim. Two member-supplied cases, two labels: see
               `limitBadge`. */}
           {badge && <span className="cl-mine">{badge}</span>}
-          {/* OFFERED ONLY WHERE THERE IS SOMETHING TO ANSWER. A card whose bank
-              reports a limit gets no control, because `limitOf` gives the bank's
-              number precedence: a member limit set on such a card would be stored
-              and change nothing on screen, which is worse than an absent control.
-              The bank's figure is the fact, and there is nothing here for the
-              member to improve on.
-              A hand-entered card gets no INLINE control either, and that is not an
-              oversight: its limit is one field of an account record that also holds
-              a name, an institution, a category and a balance, and those are
-              edited together by the Edit control on the Connections row. Two
-              editors for one number would be two places for it to be changed and
-              one of them would go stale.
-              It now says "Edit" rather than "Manage". The earlier wording was
-              honest about a real gap, Connections offered add and remove only, so
-              promising an editor would have sent the member looking for a control
-              that was not there. That editor exists, so the link says what it
-              does. */}
+          {/* A hand-entered card gets no modal either, and that is not an
+              oversight: its limit is one field of an account record that also
+              holds a name, an institution, a category and a balance, and those
+              are edited together by the Edit control on the Connections row.
+              Two editors for one number would be two places for it to be
+              changed and one of them would go stale. */}
           {card.origin === "manual" ? (
             <> · <Link href="/app/connections" className="cl-set">Edit on Connections</Link></>
-          ) : !editing && source !== "bank" ? (
-            <> · <button type="button" className="cl-set" onClick={() => setEditing(true)}>
-              {source === "member" ? "Change limit" : "Set limit"}
-            </button></>
+          ) : canChange ? (
+            <> · <button type="button" className="cl-set" onClick={() => setEditing(true)}>Change</button></>
           ) : null}
         </div>
-        {editing && card.origin === "linked" && (
-          <LimitForm
-            card={card}
-            onCancel={() => setEditing(false)}
-            onSaved={() => { setEditing(false); onLimitChanged(); }}
-          />
-        )}
         {identified && (
           <div className="cr-row-id">
             {/* Hidden below 640px (issue #432): the row's own heading (`.cn`,
@@ -595,7 +649,6 @@ function CardRow({
                 Rewards...") is more specific than the heading and there is
                 room to say so. */}
             <span className="cr-row-id-name">{identified}</span>
-            <button type="button" className="cr-row-change" onClick={onChange}>Change</button>
           </div>
         )}
       </div>
@@ -611,6 +664,17 @@ function CardRow({
           <div className="ut"><span>Used</span><span>Unknown</span></div>
         )}
       </div>
+      {editing && card.origin === "linked" && (
+        <EditCardModal
+          card={card}
+          brands={brands}
+          identified={identified}
+          canEditLimit={canEditLimit}
+          onClose={() => setEditing(false)}
+          onSaved={onLimitChanged}
+          onReidentify={onReidentify}
+        />
+      )}
     </div>
   );
 }
@@ -705,6 +769,15 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
     if (await forgetCard(accountId)) await rewards.refresh();
   };
 
+  // Forgets the current answer AND opens the picker on it, rather than leaving
+  // the member to notice the identify banner at the top of the page on their
+  // own. Awaits the refresh first: `openIdentify` only finds the card once
+  // `rewards.data.unidentified` genuinely contains it.
+  const reidentify = async (accountId: string) => {
+    await unidentify(accountId);
+    openIdentify(accountId);
+  };
+
   const reloadCards = useCallback(async () => {
     const items = await fetchPlaidItems();
     setCards(linkedCards(items));
@@ -776,7 +849,7 @@ export function Credit({ holderStyle = null }: { holderStyle?: HolderStyle | nul
             // null explicitly rather than left to the map missing the key,
             // because that would be the right answer by accident.
             identified={c.origin === "manual" ? null : identifiedNames.get(c.key) ?? null}
-            onChange={() => { if (c.origin === "linked") void unidentify(c.key); }}
+            onReidentify={() => { if (c.origin === "linked") void reidentify(c.key); }}
             onLimitChanged={() => void afterLimitChange()}
             key={c.key}
           />
