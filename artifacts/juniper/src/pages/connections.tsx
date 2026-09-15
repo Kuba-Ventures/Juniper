@@ -25,6 +25,7 @@ import {
   removeManualAccount,
   MANUAL_CATEGORIES,
   type ManualAccount,
+  type ManualCategory,
 } from "@/lib/manual-accounts";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { useFinances } from "@/lib/finances";
@@ -222,6 +223,10 @@ export function ConnectionsView() {
   // cannot go stale mid-edit: a refresh landing underneath would otherwise swap
   // the fields out from under the member's cursor.
   const [editingManual, setEditingManual] = useState<ManualAccount | null>(null);
+  // Which category a gallery section's own "Add account" tile was tapped from,
+  // if any, so the form opens already scoped to it. Ignored on an edit: the
+  // account being edited already carries its own category.
+  const [manualCategory, setManualCategory] = useState<ManualCategory | undefined>(undefined);
   // Whether the add-an-account panel is open. The search used to sit in a card
   // below every linked institution, which put it past the fold for anyone with
   // more than three connections and gave it the same visual weight as the rows
@@ -448,9 +453,11 @@ export function ConnectionsView() {
           // writes a credit limit is the wrong thing to be clever about.
           key={editingManual?.id ?? "new"}
           account={editingManual ?? undefined}
+          initialCategory={manualCategory}
           onSaved={async () => {
             setShowManual(false);
             setEditingManual(null);
+            setManualCategory(undefined);
             setAddOpen(false);
             await refresh();
             // This page's own `refresh()` only re-reads Plaid items and manual
@@ -473,6 +480,7 @@ export function ConnectionsView() {
             setShowManual(false);
             if (editingManual) setAddOpen(false);
             setEditingManual(null);
+            setManualCategory(undefined);
           }}
         />
       ) : (
@@ -481,7 +489,10 @@ export function ConnectionsView() {
         // the picker's Connected section would say the same thing twice.
         <InstitutionPicker
           onConnect={handleConnect}
-          onManual={() => setShowManual(true)}
+          onManual={(category?: ManualCategory) => {
+            setManualCategory(category);
+            setShowManual(true);
+          }}
           busy={connecting}
           connected={connected}
           showConnected={false}

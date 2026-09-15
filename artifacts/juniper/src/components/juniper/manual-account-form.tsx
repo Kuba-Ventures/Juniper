@@ -46,6 +46,7 @@ export function ManualAccountForm({
   onSaved,
   onCancel,
   account,
+  initialCategory,
 }: {
   onSaved: (acct: ManualAccount) => void;
   onCancel: () => void;
@@ -63,6 +64,15 @@ export function ManualAccountForm({
    * the limit blank had to delete the card and enter it again.
    */
   account?: ManualAccount;
+  /**
+   * The category to seed a NEW account with, when it wasn't opened blank. The
+   * gallery's per-section "Add account" tile (institution-picker.tsx) passes its
+   * own section's category, so tapping it under "Credit cards" opens the form
+   * already on Credit cards rather than the generic default, since the member
+   * already told us that much by which tile they tapped. Ignored on an edit:
+   * `account.category` is the one true answer there.
+   */
+  initialCategory?: ManualCategory;
 }) {
   const editing = account != null;
   // Seeded from the account ONCE, as initial state rather than synced in an
@@ -71,7 +81,7 @@ export function ManualAccountForm({
   // back would fight the member's own typing.
   const [name, setName] = useState(account?.name ?? "");
   const [institution, setInstitution] = useState(account?.institution ?? "");
-  const [category, setCategory] = useState<ManualCategory>(account?.category ?? "banking");
+  const [category, setCategory] = useState<ManualCategory>(account?.category ?? initialCategory ?? "banking");
   // Stored as a positive magnitude with the sign carried by `kind`, so the field
   // shows the magnitude. `String(0)` is "0" and not "", which matters: a $0
   // balance is a real answer and blanking it would read as unknown.

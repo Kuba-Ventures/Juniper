@@ -11,6 +11,7 @@ import {
 } from "@/lib/plaid";
 import { useLinkQueue } from "@/lib/use-link-queue";
 import { usePaycheckForm } from "@/lib/use-paycheck-form";
+import type { ManualCategory } from "@/lib/manual-accounts";
 import { InstitutionPicker } from "@/components/juniper/institution-picker";
 import { ManualAccountForm } from "@/components/juniper/manual-account-form";
 import { LayerDiscovery } from "@/components/juniper/layer-discovery";
@@ -154,6 +155,11 @@ export function FirstRunOnboarding({
 
 function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () => void }) {
   const [manual, setManual] = useState(false);
+  // Which gallery section's own "Add account" tile opened the manual form, if
+  // any, so the form seeds already scoped to that category rather than the
+  // generic default. Undefined when opened from the bottom bar's "enter it by
+  // hand" instead, which isn't scoped to any one kind of account.
+  const [manualCategory, setManualCategory] = useState<ManualCategory | undefined>(undefined);
   // Institutions connected this session (via instant discovery, the Plaid link
   // queue, or manual add), normalized for matching. Passed to the picker, which
   // both drops them out of its search results and lists them as Connected. That
@@ -263,15 +269,28 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
 
       {manual ? (
         <ManualAccountForm
+          initialCategory={manualCategory}
           onSaved={(acct) => {
             setManualAdded((prev) => [...prev, acct.name]);
             setManual(false);
+            setManualCategory(undefined);
             onLinked();
           }}
-          onCancel={() => setManual(false)}
+          onCancel={() => {
+            setManual(false);
+            setManualCategory(undefined);
+          }}
         />
       ) : (
-        <InstitutionPicker onConnect={connect} onManual={() => setManual(true)} busy={busy} connected={known} />
+        <InstitutionPicker
+          onConnect={connect}
+          onManual={(category?: ManualCategory) => {
+            setManualCategory(category);
+            setManual(true);
+          }}
+          busy={busy}
+          connected={known}
+        />
       )}
 
       <p className="ob-secure">
