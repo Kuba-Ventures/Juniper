@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Building2, Check, Loader2, PencilLine, Plus, Search } from "lucide-react";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
 import { GALLERY_GROUPS } from "@/lib/institution-gallery";
+import type { ManualCategory } from "@/lib/manual-accounts";
 import {
   normInstitutionName,
   searchInstitutions,
@@ -23,7 +24,11 @@ import {
 //      same use-link-queue.ts mechanism Search all banks and a single search
 //      tap already use (Link still authenticates one institution per session;
 //      the queue just opens it again for the next tick, same as it already
-//      does on an OAuth-bank return).
+//      does on an OAuth-bank return). Each section also ends in its own
+//      "Add account" tile, opening the manual form (tier 3) pre-scoped to that
+//      section's category, for the institution that will never be in any
+//      gallery, common or not, and doesn't need a full trip to the bottom bar
+//      to say so.
 //   3. "Search all banks", which opens Plaid Link with no preselection, for
 //      someone who would rather browse Plaid directly.
 //   4. "Enter it by hand (no live balance)", last on purpose: a hand-typed
@@ -85,7 +90,13 @@ export function InstitutionPicker({
   showConnected = true,
 }: {
   onConnect: (institutions: LinkInstitution[]) => void;
-  onManual?: () => void;
+  // Optional `ManualCategory` argument: the bottom bar's "Enter it by hand" calls
+  // this with nothing, since it isn't scoped to any one kind of account, while
+  // each gallery section's own "Add account" tile passes its section's category
+  // (see GALLERY_GROUPS in institution-gallery.ts), so the manual form opens
+  // already set to Credit cards / Investing / etc. rather than the generic
+  // default.
+  onManual?: (category?: ManualCategory) => void;
   busy?: boolean;
   // Institutions already connected, keyed by normalized name so matching is
   // case-insensitive, valued by the display name Plaid (or the manual form)
@@ -206,6 +217,7 @@ export function InstitutionPicker({
     () =>
       GALLERY_GROUPS.map((group) => ({
         label: group.label,
+        manualCategory: group.manualCategory,
         institutions: group.institutions.filter((name) => !connected?.has(normInstitutionName(name))),
       })).filter((group) => group.institutions.length > 0),
     [connected],
@@ -349,6 +361,25 @@ export function InstitutionPicker({
                     </button>
                   );
                 })}
+                {/* The section's own quick-add: not in the gallery at all, so
+                    scoped straight to this section's category rather than the
+                    manual form's generic default. Sits at the end of the grid
+                    like one more tile, since that's exactly what it is standing
+                    in for. */}
+                {onManual && (
+                  <button
+                    type="button"
+                    className="inst-gal-tile inst-gal-add"
+                    onClick={() => onManual(group.manualCategory)}
+                    disabled={busy || resolvingGallery}
+                    aria-label={`Add a ${group.label.toLowerCase()} account by hand`}
+                  >
+                    <span className="inst-gal-add-icon">
+                      <Plus size={14} strokeWidth={2.5} />
+                    </span>
+                    <span className="inst-gal-name">Add account</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -379,7 +410,12 @@ export function InstitutionPicker({
             // The label states the tradeoff inline. "Add manually" read as the
             // obvious choice to someone who couldn't find their bank, so people
             // hand-typed a static balance for institutions Plaid links live.
-            <button className="inst-otherbtn" onClick={onManual} disabled={busy}>
+            // Called with no category, unlike a section's own quick-add tile
+            // above: this button isn't scoped to any one kind of account, so the
+            // form opens on its generic default. Wrapped in an arrow rather than
+            // passed directly, since onManual now takes an optional category and
+            // a bare onClick={onManual} would hand it the click event instead.
+            <button className="inst-otherbtn" onClick={() => onManual()} disabled={busy}>
               <PencilLine size={15} /> Enter it by hand (no live balance)
             </button>
           )}

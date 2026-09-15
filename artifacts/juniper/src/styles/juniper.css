@@ -1470,6 +1470,11 @@
 .jnpr .inst-gal-tile.on .inst-gal-check svg{opacity:1}
 .jnpr .inst-gal-name{font-size:11px;font-weight:600;color:var(--jnpr-ink);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .jnpr .inst-gal-connect{width:100%;justify-content:center;margin-top:12px}
+/* the per-section "Add account" tile: dashed rather than solid, so it reads as
+   an open slot in the grid rather than one more institution to tick */
+.jnpr .inst-gal-add{border-style:dashed;color:var(--jnpr-ink-3)}
+.jnpr .inst-gal-add:hover{color:var(--jnpr-accent)}
+.jnpr .inst-gal-add-icon{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--jnpr-accent-soft);color:var(--jnpr-accent);flex:0 0 auto}
 /* manual-account form */
 .jnpr .man-form{display:flex;flex-direction:column;gap:12px}
 .jnpr .man-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
