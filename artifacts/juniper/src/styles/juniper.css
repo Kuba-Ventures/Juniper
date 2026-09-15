@@ -1996,7 +1996,14 @@
 .jnpr .tx-sort:hover{border-color:var(--jnpr-ink-3)}
 .jnpr .tx-sort span{color:var(--jnpr-ink-3);font-weight:500}
 .jnpr .tx-sort svg{width:12px;height:12px;color:var(--jnpr-ink-3)}
-.jnpr .tx-sort-menu{right:0;top:40px;min-width:220px}
+.jnpr .tx-sort-menu{right:0;top:40px;min-width:220px;max-width:calc(100vw - 32px)}
+/* Below 640px the header wraps and the Sort button can land away from the
+   card's right edge, so a menu hung off the button's own right edge (correct
+   when the button sits near the right, as it does above this width) runs
+   past the left edge of the screen instead. Anchoring from the button's LEFT
+   edge here means it grows into the room the wrap already gave it, rather
+   than assuming room that may not exist to its left. */
+@media(max-width:640px){.jnpr .tx-sort-menu{left:0;right:auto}}
 .jnpr .tx-sort-menu .pop-i{gap:8px}
 .jnpr .tx-sort-menu .pop-i b{font-weight:600}
 /* The selection gutter. The checkbox is there on every row and drawn only when
