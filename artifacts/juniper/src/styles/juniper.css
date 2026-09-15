@@ -1762,6 +1762,43 @@
 /* The table */
 .jnpr .tx-tablewrap{overflow-x:auto;margin-top:14px}
 .jnpr .tx-table{width:100%;border-collapse:collapse;font-size:13px}
+/* Issue #431: a real <table> gives each column (checkbox, date, merchant,
+   category, amount) its own intrinsic min-content width, and on a phone that
+   total exceeds the screen, so .tx-tablewrap's overflow-x:auto falls back to
+   horizontal scroll just to see the amount column, and a category pill or a
+   PENDING badge routinely clips at the right edge instead. Below this width
+   each row becomes two stacked lines rather than five table cells in a row:
+   merchant + category on top, date + amount below, with the checkbox
+   vertically centered against both. Same rows, same cells, only their layout
+   changes: the checkbox and the category picker are unaffected, since the
+   picker already portals to <body> and positions itself from the anchor
+   button's own bounding rect rather than from this cell's layout. */
+@media(max-width:640px){
+  .jnpr .tx-tablewrap{overflow-x:visible}
+  .jnpr .tx-table thead{display:none}
+  .jnpr .tx-table,.jnpr .tx-table tbody{display:block;width:100%}
+  .jnpr .tx-table tr{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(64px,38%);
+    grid-template-areas:"gut merchant category" "gut date amount";
+    column-gap:10px;row-gap:5px;padding:12px 0;border-bottom:1px solid var(--jnpr-line-2);
+    align-items:start}
+  .jnpr .tx-table tr:last-child{border-bottom:0}
+  .jnpr .tx-table td{padding:0;border-bottom:0}
+  .jnpr .tx-table .td-gut{grid-area:gut;grid-row:1 / span 2;align-self:center}
+  .jnpr .tx-table .td-d{grid-area:date}
+  .jnpr .tx-table .td-merch{grid-area:merchant;min-width:0}
+  .jnpr .tx-table .cat-cell{grid-area:category;justify-self:end;text-align:right;min-width:0}
+  /* The pill's own white-space:nowrap (fine in a table cell with room to
+     spread) would otherwise force this narrow column wide enough to fit the
+     longest category name on one line, squeezing the merchant column down to
+     almost nothing. Letting it wrap keeps the column's own width in charge. */
+  .jnpr .tx-table .cat-cell .ctag,.jnpr .tx-table .cat-cell .ctag-btn{white-space:normal;max-width:100%}
+  .jnpr .tx-table .td-a{grid-area:amount;justify-self:end}
+  /* The grouped-by-category header row has only two cells (the category tag
+     plus its running total) and keeps its own simple row rather than the
+     five-area grid above, which has nothing to put in "date" or "gut". */
+  .jnpr .tx-table tr.tx-grp{display:flex;justify-content:space-between;
+    align-items:baseline;gap:10px;padding:9px 0}
+}
 .jnpr .tx-table th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--jnpr-ink-3);padding:0 10px 9px 0;border-bottom:1px solid var(--jnpr-line)}
 .jnpr .tx-table td{padding:9px 10px 9px 0;border-bottom:1px solid var(--jnpr-line-2);vertical-align:middle}
