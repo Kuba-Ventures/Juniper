@@ -239,10 +239,10 @@ function ConnectStep({ already, onLinked }: { already: string[]; onLinked: () =>
     <>
       <h2>Connect your accounts for live balances.</h2>
       <p className="ob-help">
-        Optional, but it's the magic: search for your bank and tap it to connect, and Juniper keeps your net
-        worth, spending, and score up to date automatically. Plaid links one institution per session, so search
-        again for each account you want. Use <b>enter it by hand</b> for anything Plaid can't reach. You can
-        always do this later.
+        Optional, but it's the magic: search for your bank, or tap a few common ones below, and Juniper keeps
+        your net worth, spending, and score up to date automatically. Pick several at once and we'll walk you
+        through each one. Use <b>enter it by hand</b> for anything Plaid can't reach. You can always do this
+        later.
       </p>
 
       {linkedThisSession && (

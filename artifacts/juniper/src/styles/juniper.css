@@ -1465,6 +1465,22 @@
 .jnpr .inst-otherbtn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--jnpr-ink-2);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:9px;padding:7px 11px;cursor:pointer}
 .jnpr .inst-otherbtn:hover{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
 .jnpr .inst-otherbtn:disabled{opacity:.55;cursor:default}
+/* common-institution gallery (issue #418), sits below the search results */
+.jnpr .inst-gallery{margin-top:14px;padding-top:14px;border-top:1px solid var(--jnpr-line)}
+.jnpr .inst-divider{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:10px}
+.jnpr .inst-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+.jnpr .inst-gal-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 9px;
+  border:1.5px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);cursor:pointer;font:inherit;text-align:center}
+.jnpr .inst-gal-tile:hover{border-color:var(--jnpr-accent)}
+.jnpr .inst-gal-tile:disabled{opacity:.55;cursor:default}
+.jnpr .inst-gal-tile.on{border-color:var(--jnpr-accent);background:var(--jnpr-accent-soft)}
+.jnpr .inst-gal-check{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;
+  border:1.5px solid var(--jnpr-line);background:var(--jnpr-surface);display:grid;place-items:center;color:var(--jnpr-on-accent)}
+.jnpr .inst-gal-check svg{opacity:0}
+.jnpr .inst-gal-tile.on .inst-gal-check{background:var(--jnpr-accent);border-color:var(--jnpr-accent)}
+.jnpr .inst-gal-tile.on .inst-gal-check svg{opacity:1}
+.jnpr .inst-gal-name{font-size:11px;font-weight:600;color:var(--jnpr-ink);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.jnpr .inst-gal-connect{width:100%;justify-content:center;margin-top:12px}
 /* manual-account form */
 .jnpr .man-form{display:flex;flex-direction:column;gap:12px}
 .jnpr .man-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}

@@ -4,14 +4,17 @@ import { createLinkToken, exchangePublicToken, type LinkInstitution } from "@/li
 import { trackEngagement } from "@/lib/analytics";
 
 // Sequential Plaid Link queue: one link_token per institution, opened one at a
-// time, advancing on success or exit. Callers hand it a single institution today,
-// because Plaid Link authenticates exactly one per session and the multi-select
-// gallery that used to queue several was removed for exactly that reason (see
-// institution-picker.tsx). The queue shape stays because the OAuth return path
-// below needs it: a bank that redirects the whole tab has to rehydrate "what was
-// I linking, and what is left" from localStorage either way. (The true
-// one-tap-for-many experience needs Plaid Layer, tier 1, gated on Production;
-// this is the tier-2 path that works today on Sandbox.)
+// time, advancing on success or exit. Plaid Link authenticates exactly one
+// institution per session, so this is what stands in for "connect several at
+// once": a single search tap hands it one institution, and the common-institution
+// gallery (issue #418, institution-picker.tsx) can hand it several, resolved by
+// name through Plaid's own search at connect time. Either way this queue is what
+// walks through them one open at a time. The queue shape also carries the OAuth
+// return path below: a bank that redirects the whole tab has to rehydrate "what
+// was I linking, and what is left" from localStorage either way. (The true
+// one-tap-for-many experience, no separate Link open per bank at all, needs Plaid
+// Layer, tier 1, gated on Production; this is the tier-2 path that works today on
+// Sandbox.)
 //
 // Queue position is kept in refs so the Plaid callbacks always read the current
 // item, never a stale closure.

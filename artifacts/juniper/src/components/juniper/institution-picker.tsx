@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Building2, Check, Loader2, PencilLine, Plus, Search } from "lucide-react";
 import { resolveInstitutionMark } from "@/lib/institution-brand";
+import { COMMON_INSTITUTIONS } from "@/lib/institution-gallery";
 import {
   normInstitutionName,
   searchInstitutions,
@@ -9,32 +10,41 @@ import {
   type PlaidInstitutionMatch,
 } from "@/lib/plaid";
 
-// The "connect an account" surface (account discovery, tier 2). Three paths, in
-// the order they are offered:
+// The "connect an account" surface (account discovery, tier 2). In order:
 //
 //   1. Search Plaid's real institution list. One tap on a result links that
 //      institution, carrying its institution_id and routing_number through so
 //      Link opens on the right bank instead of its own front page.
-//   2. "Search all banks", which opens Plaid Link with no preselection, for
+//   2. A gallery of common institutions below the search bar (issue #418), for
+//      the recall problem search alone doesn't solve: someone with 5-10
+//      accounts often doesn't remember all of them until a logo jogs their
+//      memory ("oh right, I have a Chase card too"). Tick several, then one
+//      "Connect N selected" queues them through Plaid Link sequentially, the
+//      same use-link-queue.ts mechanism Search all banks and a single search
+//      tap already use (Link still authenticates one institution per session;
+//      the queue just opens it again for the next tick, same as it already
+//      does on an OAuth-bank return).
+//   3. "Search all banks", which opens Plaid Link with no preselection, for
 //      someone who would rather browse Plaid directly.
-//   3. "Enter it by hand (no live balance)", last on purpose: a hand-typed
+//   4. "Enter it by hand (no live balance)", last on purpose: a hand-typed
 //      balance is a static snapshot that never refreshes, so it should be a
 //      deliberate choice for accounts Plaid cannot reach at all, not the first
 //      door someone finds.
 //
-// This used to be a curated gallery: roughly 60 hardcoded institutions in five
-// categories, tick several, "Connect N selected". It is gone, and it should not
-// come back, because Plaid Link authenticates exactly one institution per
-// session and there is no API to hand it a list. So multi-select promised
-// something Plaid cannot deliver: tick two banks, hit connect, and Link makes
-// you choose again, one at a time, from its own search. The gallery also carried
-// its own maintenance debt (60 names and logos going stale) and its own dead end
-// (a bank Plaid supports but we never listed read as "not supported"). Plaid's
-// list is the real one, live, and already searchable, so it is now the primary
-// path rather than a supplement to a shortlist.
+// A curated gallery used to live here and was deleted on 2026-08-26: roughly
+// 60 hardcoded institutions, each carrying its own institution_id, which had
+// to be right for both Sandbox and Production and went stale as Plaid's own
+// ids changed. This gallery does not repeat that mistake. COMMON_INSTITUTIONS
+// (institution-gallery.ts) holds plain display names only; resolveGalleryPick
+// below turns a selected name into a real institution the same way a typed
+// search already does, one Plaid lookup per name, at connect time rather than
+// baked into the list. So the gallery can go stale in only one way, a bank
+// falling out of fashion, never in the way that broke last time.
 //
-// Results are rows and not tiles because a row is a result: someone who typed a
+// Search results stay rows, because a row is a result: someone who typed a
 // name is done choosing and wants one tap, not a checkbox and a submit button.
+// Gallery entries are tiles with a checkmark, because picking several before
+// connecting is the whole point of a memory-jogging grid.
 
 // One row's brand mark, resolved through lib/institution-brand so a row here
 // looks like the same institution does in the Connections list: Plaid's own
@@ -90,6 +100,12 @@ export function InstitutionPicker({
   const [plaidHits, setPlaidHits] = useState<PlaidInstitutionMatch[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Gallery selection (issue #418). Ticked names, not yet resolved to a real
+  // Plaid institution: that lookup only happens once "Connect" is pressed, so
+  // ticking a few tiles to compare costs nothing.
+  const [gallerySelected, setGallerySelected] = useState<Set<string>>(new Set());
+  const [resolvingGallery, setResolvingGallery] = useState(false);
+
   const q = query.trim().toLowerCase();
   const trimmed = query.trim();
 
@@ -111,7 +127,10 @@ export function InstitutionPicker({
     const size = connected?.size ?? 0;
     const grew = size > prevConnectedRef.current;
     prevConnectedRef.current = size;
-    if (grew) setQuery("");
+    if (grew) {
+      setQuery("");
+      setGallerySelected(new Set());
+    }
   }, [connected]);
 
   useEffect(() => {
@@ -174,6 +193,51 @@ export function InstitutionPicker({
       : plaidHits.length > 0
         ? `Everything matching "${trimmed}" is already connected.`
         : `No institution matching "${trimmed}". Check the spelling, search all banks below, or enter it by hand.`;
+
+  // The curated list minus anything already on file, same rule as the search
+  // results above: nobody is offered a tile for a bank they've already linked.
+  const galleryVisible = useMemo(
+    () => COMMON_INSTITUTIONS.filter((name) => !connected?.has(normInstitutionName(name))),
+    [connected],
+  );
+
+  function toggleGallery(name: string) {
+    setGallerySelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  // Turn one ticked gallery name into a real Plaid institution, the same way a
+  // typed search result already carries its institution_id and routing_number
+  // through to Link. Prefers an exact (case-insensitive) name match over
+  // Plaid's top relevance hit, since "Citi" should resolve to Citibank itself
+  // rather than whichever Citi-branded card product search ranks first. Falls
+  // back to the bare name, with no institution_id, when Plaid's search turns up
+  // nothing at all: that still opens Link for that queue slot (same shape as
+  // "Search all banks"), rather than silently dropping the tile from what was
+  // promised as "Connect N selected".
+  async function resolveGalleryPick(name: string): Promise<LinkInstitution> {
+    const hits = await searchInstitutions(name);
+    const exact = hits.find((h) => normInstitutionName(h.name) === normInstitutionName(name));
+    const hit = exact ?? hits[0];
+    return hit
+      ? { institution_id: hit.institution_id, name: hit.name, routing_number: hit.routing_number }
+      : { name };
+  }
+
+  async function handleGalleryConnect() {
+    if (gallerySelected.size === 0 || resolvingGallery) return;
+    setResolvingGallery(true);
+    try {
+      const institutions = await Promise.all([...gallerySelected].map(resolveGalleryPick));
+      onConnect(institutions);
+    } finally {
+      setResolvingGallery(false);
+    }
+  }
 
   return (
     <div className="inst-pick">
@@ -240,6 +304,53 @@ export function InstitutionPicker({
       ) : (
         <div className="inst-empty" aria-live="polite">
           {status}
+        </div>
+      )}
+
+      {/* Hidden once someone starts typing: a query already answers the recall
+          question for that one bank, and showing 16 tiles under a results list
+          just adds scroll. Reappears the moment the box is empty, at rest or
+          after a search is cleared. */}
+      {!trimmed && galleryVisible.length > 0 && (
+        <div className="inst-gallery">
+          <div className="inst-divider">or pick a few common ones</div>
+          <div className="inst-gal-grid">
+            {galleryVisible.map((name) => {
+              const on = gallerySelected.has(name);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  className={`inst-gal-tile${on ? " on" : ""}`}
+                  onClick={() => toggleGallery(name)}
+                  disabled={busy || resolvingGallery}
+                  aria-pressed={on}
+                  aria-label={`${on ? "Deselect" : "Select"} ${name}`}
+                >
+                  <span className="inst-gal-check">
+                    <Check size={10} strokeWidth={3} />
+                  </span>
+                  <RowMark name={name} />
+                  <span className="inst-gal-name">{name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {gallerySelected.size > 0 && (
+            <button
+              className="btn inst-gal-connect"
+              onClick={() => void handleGalleryConnect()}
+              disabled={busy || resolvingGallery}
+            >
+              {resolvingGallery ? (
+                <>
+                  <Loader2 size={15} className="inst-spin" /> Finding your banks…
+                </>
+              ) : (
+                `Connect ${gallerySelected.size} selected`
+              )}
+            </button>
+          )}
         </div>
       )}
 
