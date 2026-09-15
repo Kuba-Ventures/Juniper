@@ -47,10 +47,10 @@ import { CategoryPicker } from "@/components/juniper/category-picker";
 import { createMerchantRule, fetchMerchantRules } from "@/lib/merchant-rules";
 import { RulesModal } from "@/components/juniper/rules-modal";
 import { colorOf, paint } from "@/lib/category-color";
-import { fmtDay, money0, money2 } from "@/lib/txn-format";
+import { fmtDay, fmtRangeSpan, money0, money2 } from "@/lib/txn-format";
 import {
   fetchTransactions, setTransactionCategory, setTransactionsCategory,
-  RANGES, rangeFrom, rangeIsClipped, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
+  RANGES, rangeFrom, rangeIsClipped, rangeSpan, type RangeKey, type TxnPage, type TxnRow, type BreakdownRow, type TxnSummary,
 } from "@/lib/transactions";
 import { useFinances } from "@/lib/finances";
 
@@ -650,14 +650,17 @@ export default function Transactions() {
                   <div className="pop-scrim" onClick={() => setRangeMenuOpen(false)} />
                   <div className="pop tx-range-menu" role="menu">
                     <div className="pop-lbl">Range</div>
-                    {RANGES.map((r) => (
-                      <button key={r} type="button" role="menuitemradio" aria-checked={r === range}
-                        className={`pop-i${r === range ? " on" : ""}`}
-                        onClick={() => { setRange(r); setRangeMenuOpen(false); }}>
-                        {RANGE_LABEL[r]}
-                        {r === range && <span className="ck" aria-hidden>✓</span>}
-                      </button>
-                    ))}
+                    {RANGES.map((r) => {
+                      const span = rangeSpan(r, head?.available?.from);
+                      return (
+                        <button key={r} type="button" role="menuitemradio" aria-checked={r === range}
+                          className={`pop-i${r === range ? " on" : ""}`}
+                          onClick={() => { setRange(r); setRangeMenuOpen(false); }}>
+                          <span><b>{RANGE_LABEL[r]}</b>{span && <small>{fmtRangeSpan(span.from, span.to)}</small>}</span>
+                          {r === range && <span className="ck" aria-hidden>✓</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}

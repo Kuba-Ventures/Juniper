@@ -121,6 +121,25 @@ export function rangeIsClipped(key: RangeKey, availableFrom: string | null | und
   return !!preset && !!availableFrom && preset < availableFrom;
 }
 
+// The concrete calendar span a range key covers, so a member choosing between
+// presets can see what each actually means rather than decoding "6M" by hand.
+// Clamped to the same `available.from` `rangeIsClipped` checks against: a
+// preset's nominal start is not shown past where the member's real history
+// begins, for the same reason the clipped-history note exists. "All" has no
+// nominal start at all, so it returns null until the server has said how far
+// back real history goes, rather than guessing one.
+export function rangeSpan(
+  key: RangeKey,
+  availableFrom: string | null | undefined,
+  today = new Date(),
+): { from: string; to: string } | null {
+  const to = iso(today);
+  if (key === "All") return availableFrom ? { from: availableFrom, to } : null;
+  const preset = rangeFrom(key, today) as string;
+  const from = availableFrom && availableFrom > preset ? availableFrom : preset;
+  return { from, to };
+}
+
 // ── Merchant art ────────────────────────────────────────────────────────────
 //
 // The source is the bundled merchant art already in lib/mock-logos.ts, reached
