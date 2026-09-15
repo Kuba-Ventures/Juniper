@@ -80,10 +80,21 @@ export default function JuniperApp() {
     (p: UserProfile, name: string) => {
       setOnboardingDone(true);
       markOnboarded(email);
-      saveProfile(p, name);
+      // Onboarding only builds household + paycheck fields (`buildProfile` in
+      // `first-run-onboarding.tsx`), so `p` carries nothing for `holderStyle`,
+      // `dashboardLayout`, `sharedDashboardLayout`, etc. Onboarding can run
+      // again for an already-onboarded member (a fresh device, cleared
+      // storage, or a slow/failed remote profile fetch all make
+      // `shouldShowOnboarding` fire), and saving `p` on its own sent
+      // `holder_style: null` and wiped a member's chosen holder back to the
+      // default every time. Spread over the CURRENT profile first, the same
+      // rule every other `saveProfile` call site in this file already
+      // follows, so onboarding's own answers still win for the fields it
+      // collects and nothing else gets blanked.
+      saveProfile({ ...(profile ?? {}), ...p }, name);
       setShowWelcome(true); // greet them on the freshly built dashboard
     },
-    [email, saveProfile],
+    [email, profile, saveProfile],
   );
 
   // Show the one-time welcome tip for returning users who haven't seen it.
