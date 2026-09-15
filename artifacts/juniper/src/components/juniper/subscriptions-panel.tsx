@@ -94,7 +94,7 @@ export function SubscriptionsPanel() {
 
   if (loading) {
     return (
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card">
         <div className="card-head"><h3>Recurring</h3></div>
         <div className="sc-empty">Looking for recurring charges…</div>
       </div>
@@ -110,7 +110,7 @@ export function SubscriptionsPanel() {
   // has to happen next rather than showing an empty total.
   if (!out.length) {
     return (
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card">
         <div className="card-head"><h3>Recurring</h3></div>
         <div className="sc-empty">
           No recurring charges spotted yet. Your bank needs to have shared a few months of transactions before a
@@ -126,7 +126,7 @@ export function SubscriptionsPanel() {
   const incoming = items.filter((i) => i.direction === "inflow");
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card">
       <div className="card-head">
         <h3>Recurring</h3>
         {s && s.confirmed > 0 && (

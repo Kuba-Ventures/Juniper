@@ -1669,21 +1669,31 @@
 .jnpr .cs-fdesc{font-size:12.5px;color:var(--jnpr-ink);line-height:1.45}
 
 /* ---------- transactions tab (/app/transactions) ---------- */
-/* The chart switcher. Sits in the card head beside the range, so choosing a view
-   never moves the card's title or the figures under it. */
-.jnpr .sc-switch{display:inline-flex;flex-wrap:wrap;background:var(--jnpr-surface-3);border:1px solid var(--jnpr-line);border-radius:10px;padding:4px;gap:3px}
-.jnpr .sc-switch button{border:0;background:transparent;color:var(--jnpr-ink-2);font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
-.jnpr .sc-switch button.on{background:var(--jnpr-surface);color:var(--jnpr-accent);box-shadow:var(--jnpr-shadow)}
+/* Spending breakdown and Recurring side by side (issue #422), instead of a
+   full scroll apart. Equal columns, stretched to equal height by grid's own
+   default alignment, no extra rule needed for that half. Below 900px, the
+   same width the card's own internal chart+rail layout already collapses at
+   (see .sc-row below), the row goes back to one column and each card takes
+   the full page width it always had. */
+.jnpr .tx-top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:900px){.jnpr .tx-top-row{grid-template-columns:1fr}}
+/* The card now reports its OWN rendered width to the @container rule below,
+   not only the viewport's. It has to: at half the page width it is often
+   narrower than 900px even when the whole page is not, which a media query
+   alone could never see. */
+.jnpr .tx-spend-card{container-type:inline-size}
 
-/* Title and range on one row, the view switcher under it, both hard left. The
-   switcher used to sit at the far right of the card head, which put the control
-   and the label it acts on at opposite ends of a wide card. */
-/* align-items:flex-start, not the flex default of stretch: the switcher is an
-   inline-flex pill bar and a column parent would otherwise stretch its
-   background across the whole card. */
-.jnpr .tx-head{display:flex;flex-direction:column;align-items:flex-start;gap:11px;margin-bottom:16px}
-.jnpr .tx-head-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.jnpr .tx-head-row h3{margin:0}
+/* Range on the left, chart kind on the right (issue #422): these used to be
+   two rows of pill buttons, five wide each, which fit the card's old full
+   page width and stopped fitting the moment it shares a row with Recurring.
+   Two dropdowns reuse the exact button-and-popover Sort and the category
+   filter already use further down this page, so nothing new is being taught,
+   and space-between is what actually spreads them to the card's two edges
+   rather than leaving them bunched under one heading. */
+.jnpr .tx-head-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.jnpr .tx-menu-wrap{position:relative}
+.jnpr .tx-range-menu{left:0;top:40px;min-width:180px}
+.jnpr .tx-view-menu{right:0;top:40px;min-width:190px}
 
 /* Chart on the left, legend or summary on the right. Option 1 from the agreed
    mock: the chart owns its width and the list runs full width underneath.
@@ -1698,6 +1708,17 @@
 .jnpr .sc-side{min-width:0}
 .jnpr .sc-toggle{display:flex;width:100%;margin-bottom:10px}
 .jnpr .sc-toggle button{flex:1}
+/* Same fallback the page already uses at <=900px of VIEWPORT width, now also
+   keyed to the CARD's own width: beside Recurring the card is capped at about
+   half the page, which is narrower than 900px on almost any screen, so this
+   is effectively always-on in the two-up row and never fires when the card is
+   alone at full width. `.tx-spend-card` on both selectors outranks the plain
+   `.sc-row`/`.sc-row.wide` rules above on specificity, not just source order,
+   which is the thing that actually makes `.wide` collapse too. */
+@container (max-width:600px){
+  .jnpr .tx-spend-card .sc-row.wide{grid-template-columns:1fr;gap:18px;align-items:stretch}
+  .jnpr .tx-spend-card .sc-row{grid-template-columns:1fr;gap:18px}
+}
 /* height:auto on a viewBox-only SVG collapses to zero height in Chrome, so each
    wide view sets its own aspect-ratio inline from the same W/H that build its
    viewBox. The pie carries explicit width/height attributes and does not need it. */

@@ -98,6 +98,14 @@ export default function Transactions() {
   const [panel, setPanel] = useState<"categories" | "summary" | "budgets">(
     () => (new URLSearchParams(window.location.search).get("panel") === "budgets" ? "budgets" : "categories"),
   );
+  // Range and chart-kind used to be two rows of pill buttons (ten targets in
+  // all) sitting above the chart. That was fine at the card's old full page
+  // width; once it shares a row with Recurring (issue #422) the card is never
+  // wider than about half the page, and ten buttons stopped fitting. Two
+  // dropdowns, reusing the same button-and-popover already built for Sort and
+  // the category filter below, say the same thing in the width of two.
+  const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   // Category filter (#427): narrows the list to specific leaf categories, on
   // top of the kind toggle rather than instead of it, so "Spending" plus
@@ -618,62 +626,108 @@ export default function Transactions() {
 
       {failed && <div className="card" style={{ marginBottom: 16 }}>Could not load your transactions just now. Refresh to try again.</div>}
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        {/* Both control groups hang off the left edge, under the label they act
-           on, rather than one being pushed to the far right of a wide card.
-           Reading order matches cause and effect: which range, then which view
-           of it, then the view. */}
-        <div className="tx-head">
+      {/* Spending breakdown and Recurring side by side (issue #422): a
+         two-column row on a wide screen, collapsing to stacked below 900px,
+         the same width the spending card's own internal chart+rail layout
+         already collapses at. Below that width the card sits alone at full
+         page width again, same as it always has. */}
+      <div className="tx-top-row">
+        <div className="card tx-spend-card">
+          {/* Range on the left, chart kind on the right: the two dropdowns are
+             the only things naming which range and which view are showing, so
+             they carry that job alone rather than sitting beside a redundant
+             heading. Each reuses the exact button-and-popover Sort and the
+             category filter already use further down this page. */}
           <div className="tx-head-row">
-            <h3>{RANGE_LABEL[range]}</h3>
-            <div className="pills">
-              {RANGES.map((r) => (
-                <button key={r} className={r === range ? "on" : undefined} onClick={() => setRange(r)}>{r}</button>
-              ))}
+            <div className="tx-menu-wrap">
+              <button type="button" className="tx-sort" aria-haspopup="menu" aria-expanded={rangeMenuOpen}
+                onClick={() => setRangeMenuOpen((v) => !v)}>
+                <span>Range</span> {range}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {rangeMenuOpen && (
+                <>
+                  <div className="pop-scrim" onClick={() => setRangeMenuOpen(false)} />
+                  <div className="pop tx-range-menu" role="menu">
+                    <div className="pop-lbl">Range</div>
+                    {RANGES.map((r) => (
+                      <button key={r} type="button" role="menuitemradio" aria-checked={r === range}
+                        className={`pop-i${r === range ? " on" : ""}`}
+                        onClick={() => { setRange(r); setRangeMenuOpen(false); }}>
+                        {RANGE_LABEL[r]}
+                        {r === range && <span className="ck" aria-hidden>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="tx-menu-wrap">
+              <button type="button" className="tx-sort" aria-haspopup="menu" aria-expanded={viewMenuOpen}
+                onClick={() => setViewMenuOpen((v) => !v)}>
+                <span>View</span> {CHART_KINDS.find((c) => c.k === chart)?.label}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {viewMenuOpen && (
+                <>
+                  <div className="pop-scrim" onClick={() => setViewMenuOpen(false)} />
+                  <div className="pop tx-view-menu" role="menu">
+                    <div className="pop-lbl">View</div>
+                    {CHART_KINDS.map((c) => (
+                      <button key={c.k} type="button" role="menuitemradio" aria-checked={c.k === chart}
+                        className={`pop-i${c.k === chart ? " on" : ""}`} title={c.hint}
+                        onClick={() => { setChart(c.k); setViewMenuOpen(false); }}>
+                        {c.label}
+                        {c.k === chart && <span className="ck" aria-hidden>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-          <div className="sc-switch">
-            {CHART_KINDS.map((c) => (
-              <button key={c.k} className={c.k === chart ? "on" : undefined} title={c.hint}
-                onClick={() => setChart(c.k)}>{c.label}</button>
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="sc-empty">Reading your history…</div>
+          ) : !breakdown.length && !summary?.count ? (
+            <div className="sc-empty">No transactions in this range.</div>
+          ) : (
+            <>
+              {/* Trend and flow are whole-width views: one is a time axis and the
+                 other is a two-sided diagram, and squeezing either next to a
+                 legend makes both unreadable. The three category views keep the
+                 side panel, which is where the legend/summary toggle lives. */}
+              <div className={`sc-row${chart === "trend" || chart === "flow" ? " wide" : ""}`}>
+                <div className="sc-chart">
+                  {chart === "pie" && <PieView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                  {chart === "bars" && <BarsView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                  {chart === "treemap" && <TreemapView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                  {chart === "trend" && <TrendView trend={head?.trend ?? []} />}
+                  {chart === "flow" && <FlowView rows={breakdown} total={spent} income={summary?.income ?? 0} incomeRows={head?.incomeBreakdown ?? []} />}
+                </div>
+                <div className="sc-side">
+                  <div className="pills sc-toggle">
+                    <button className={panel === "categories" ? "on" : undefined} onClick={() => setPanel("categories")}>Categories</button>
+                    <button className={panel === "summary" ? "on" : undefined} onClick={() => setPanel("summary")}>Summary</button>
+                    <button className={panel === "budgets" ? "on" : undefined} onClick={() => setPanel("budgets")}>Budgets</button>
+                  </div>
+                  {panel === "categories" && <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
+                  {panel === "summary" && <Summary s={summary} range={range} clipped={clipped} />}
+                  {panel === "budgets" && <BudgetsPanel />}
+                </div>
+              </div>
+              {head?.truncated && (
+                <p className="sc-note">This range holds more transactions than Juniper totals in one pass, so the figures above cover the most recent 20,000.</p>
+              )}
+            </>
+          )}
         </div>
 
-        {loading ? (
-          <div className="sc-empty">Reading your history…</div>
-        ) : !breakdown.length && !summary?.count ? (
-          <div className="sc-empty">No transactions in this range.</div>
-        ) : (
-          <>
-            {/* Trend and flow are whole-width views: one is a time axis and the
-               other is a two-sided diagram, and squeezing either next to a
-               legend makes both unreadable. The three category views keep the
-               side panel, which is where the legend/summary toggle lives. */}
-            <div className={`sc-row${chart === "trend" || chart === "flow" ? " wide" : ""}`}>
-              <div className="sc-chart">
-                {chart === "pie" && <PieView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                {chart === "bars" && <BarsView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                {chart === "treemap" && <TreemapView rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                {chart === "trend" && <TrendView trend={head?.trend ?? []} />}
-                {chart === "flow" && <FlowView rows={breakdown} total={spent} income={summary?.income ?? 0} incomeRows={head?.incomeBreakdown ?? []} />}
-              </div>
-              <div className="sc-side">
-                <div className="pills sc-toggle">
-                  <button className={panel === "categories" ? "on" : undefined} onClick={() => setPanel("categories")}>Categories</button>
-                  <button className={panel === "summary" ? "on" : undefined} onClick={() => setPanel("summary")}>Summary</button>
-                  <button className={panel === "budgets" ? "on" : undefined} onClick={() => setPanel("budgets")}>Budgets</button>
-                </div>
-                {panel === "categories" && <Legend rows={breakdown} total={spent} hi={hi} onHi={setHi} />}
-                {panel === "summary" && <Summary s={summary} range={range} clipped={clipped} />}
-                {panel === "budgets" && <BudgetsPanel />}
-              </div>
-            </div>
-            {head?.truncated && (
-              <p className="sc-note">This range holds more transactions than Juniper totals in one pass, so the figures above cover the most recent 20,000.</p>
-            )}
-          </>
-        )}
+        {/* Beside the spending card rather than a full scroll below it (issue
+           #422): a recurring charge is a conclusion drawn from the same rows
+           the table lists, so it reads as a summary of them, and the two now
+           sit in the same eyeline instead of a page apart. */}
+        <SubscriptionsPanel />
       </div>
 
       {rulesOpen && (
@@ -690,11 +744,6 @@ export default function Transactions() {
           }}
         />
       )}
-
-      {/* Between the chart and the table on purpose. A recurring charge is a
-         conclusion drawn from the same rows the table lists, so it reads as a
-         summary of them rather than as a separate feature. */}
-      <SubscriptionsPanel />
 
       <div className="card">
         <div className="card-head">
