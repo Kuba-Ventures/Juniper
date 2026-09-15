@@ -99,6 +99,14 @@ export default function Transactions() {
     () => (new URLSearchParams(window.location.search).get("panel") === "budgets" ? "budgets" : "categories"),
   );
   const [filter, setFilter] = useState<Filter>("all");
+  // Category filter (#427): narrows the list to specific leaf categories, on
+  // top of the kind toggle rather than instead of it, so "Spending" plus
+  // "Groceries" reads as both together. Held as the LABEL a row carries
+  // (`t.c`), the same value `catOrder` and the sort already key on, and empty
+  // means no filter, the same convention the search box uses.
+  const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set());
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [catShowHidden, setCatShowHidden] = useState(false);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("date");
   const [dir, setDir] = useState<Dir>("desc");
@@ -288,6 +296,7 @@ export default function Transactions() {
     const needle = q.trim().toLowerCase();
     const list = rows.filter((t) => {
       if (filter !== "all" && t.k !== filter) return false;
+      if (catFilter.size && !catFilter.has(t.c)) return false;
       if (!needle) return true;
       return `${t.m} ${t.c} ${t.institution ?? ""} ${t.account ?? ""}`.toLowerCase().includes(needle);
     });
@@ -307,7 +316,7 @@ export default function Transactions() {
     const out = list.slice().sort(cmp[sort]);
     if (dir === "asc") out.reverse();
     return out;
-  }, [rows, filter, q, sort, dir, catOrder]);
+  }, [rows, filter, catFilter, q, sort, dir, catOrder]);
 
   // The grouped view: shown rows bucketed by category, groups in taxonomy order
   // whatever the row sort is, so the page reads top to bottom the way the legend
@@ -354,6 +363,15 @@ export default function Transactions() {
     setBulkOffer(null); setBulkRuleDone(null); setBulkFailed(false);
   };
   const clearSel = () => { setSel(new Set()); setBulkAnchor(null); setBulkOffer(null); setBulkRuleDone(null); setBulkFailed(false); };
+
+  const toggleCat = (label: string) => {
+    setCatFilter((s) => {
+      const n = new Set(s);
+      if (n.has(label)) n.delete(label); else n.add(label);
+      return n;
+    });
+  };
+  const clearCatFilter = () => setCatFilter(new Set());
 
   // Escape clears the selection, when nothing else is open to claim it. The
   // picker and the modal handle their own.
@@ -634,6 +652,62 @@ export default function Transactions() {
             </button>
           )}
           <div className="tx-tools">
+            {/* Narrows to specific leaf categories, composed with the kind
+                pills below rather than replacing them (#427): "Spending" plus
+                two checked categories shows only rows that are both. Options
+                come from the same taxonomy the category picker uses, shipped
+                on the first page, so there is no second copy of the list here. */}
+            <div className="tx-cat-wrap">
+              <button type="button" className={`tx-sort${catFilter.size ? " on" : ""}`} aria-haspopup="menu" aria-expanded={catMenuOpen}
+                onClick={() => setCatMenuOpen((v) => !v)}>
+                <span>Categories</span> {catFilter.size ? `${catFilter.size} selected` : "All"}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {catMenuOpen && (
+                <>
+                  <div className="pop-scrim" onClick={() => setCatMenuOpen(false)} />
+                  <div className="pop tx-cat-menu" role="menu">
+                    <div className="tx-catf-head">
+                      <span className="pop-lbl">Categories</span>
+                      {catFilter.size > 0 && (
+                        <button type="button" className="tx-catf-clear" onClick={clearCatFilter}>Clear</button>
+                      )}
+                    </div>
+                    <div className="cp-list">
+                      {(head?.taxonomy ?? []).map((g) => (
+                        <div key={g.id}>
+                          <div className="cp-g">
+                            <span className="cat-em" aria-hidden>{g.emoji}</span>{g.g}
+                            {g.kind !== "spend" && (
+                              <span className="cp-kind">{g.kind === "income" ? "income" : "not spending"}</span>
+                            )}
+                          </div>
+                          {g.cats.map((c) => (
+                            <label key={c.id} className="tx-catf-i">
+                              <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
+                              <span className="cat-em" aria-hidden>{c.emoji}</span>
+                              <span>{c.label}</span>
+                            </label>
+                          ))}
+                          {catShowHidden && (g.hidden ?? []).map((c) => (
+                            <label key={c.id} className="tx-catf-i tx-catf-hidden">
+                              <input type="checkbox" checked={catFilter.has(c.label)} onChange={() => toggleCat(c.label)} />
+                              <span className="cat-em" aria-hidden>{c.emoji}</span>
+                              <span>{c.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    {(head?.taxonomy ?? []).some((g) => (g.hidden ?? []).length > 0) && (
+                      <button type="button" className="cp-hidden-t" onClick={() => setCatShowHidden((v) => !v)}>
+                        {catShowHidden ? "Hide hidden categories" : "Show hidden categories"}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
             {/* One menu for the four orders and the group switch. Pressing the
                 order already chosen flips it, and the button says which order
                 and which way, so the table never has to be read to find out. */}
