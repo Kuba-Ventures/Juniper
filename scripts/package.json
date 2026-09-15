@@ -15,6 +15,7 @@
     "check-member-categories": "tsx ./src/check-member-categories.ts",
     "check-category-emoji": "tsx ./src/check-category-emoji.ts",
     "check-category-precedence": "tsx ./src/check-category-precedence.ts",
+    "check-recurring-suggestions": "tsx ./src/check-recurring-suggestions.ts",
     "gen-emoji-data": "tsx ./src/gen-emoji-data.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

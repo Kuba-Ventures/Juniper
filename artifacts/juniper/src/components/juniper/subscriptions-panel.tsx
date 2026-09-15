@@ -34,7 +34,7 @@ import { MerchantMark } from "@/components/juniper/merchant-mark";
 import { localBrandLogo } from "@/lib/institution-brand";
 import { colorOf, paint } from "@/lib/category-color";
 import { fmtDay, money2 } from "@/lib/txn-format";
-import { CADENCES, fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
+import { CADENCES, addManualSubscription, fetchSubscriptions, setSubscription, type SubItem, type SubPayload, type SubAction } from "@/lib/subscriptions";
 import { ModalBackdrop } from "@/components/juniper/modal-portal";
 import { fetchCancellationRequests, requestCancellation, type CancellationRequest } from "@/lib/cancellations";
 
@@ -57,6 +57,10 @@ export function SubscriptionsPanel() {
   // requested" rather than offering Cancel a second time.
   const [cancellations, setCancellations] = useState<CancellationRequest[]>([]);
   const [cancelTarget, setCancelTarget] = useState<SubItem | null>(null);
+  // A member typing in something Juniper has no transaction pattern for at
+  // all (paid in cash, or through an account never linked), the third leg
+  // alongside a real Plaid stream and a Juniper-guessed one.
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     const [d, c] = await Promise.all([fetchSubscriptions(), fetchCancellationRequests()]);
@@ -111,17 +115,31 @@ export function SubscriptionsPanel() {
   if (!out.length) {
     return (
       <div className="card">
-        <div className="card-head"><h3>Recurring</h3></div>
+        <div className="card-head">
+          <h3>Recurring</h3>
+          <button className="btn ghost sm" onClick={() => setAdding(true)}>+ Add a subscription</button>
+        </div>
         <div className="sc-empty">
           No recurring charges spotted yet. Your bank needs to have shared a few months of transactions before a
           subscription can be told apart from a one-off.
         </div>
+        {adding && (
+          <AddSubscriptionModal onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void load(); }} />
+        )}
       </div>
     );
   }
 
   const confirmed = out.filter((i) => i.review === "confirmed");
   const pending = out.filter((i) => i.review === "unreviewed");
+  // Plaid's own detections and Juniper's own fallback guesses are kept in two
+  // separate boxes rather than one merged list, for the same reason the
+  // confirmed list is kept apart from either: they are different kinds of
+  // claim (a real detected stream vs. a pattern Juniper noticed itself in a
+  // merchant Plaid never clustered, see api/_recurring-suggestions.ts), and a
+  // member deciding whether to trust one should be able to tell which it is.
+  const plaidPending = pending.filter((i) => i.origin !== "juniper");
+  const juniperSuggestions = pending.filter((i) => i.origin === "juniper");
   const dismissed = out.filter((i) => i.review === "dismissed");
   const incoming = items.filter((i) => i.direction === "inflow");
 
@@ -129,17 +147,20 @@ export function SubscriptionsPanel() {
     <div className="card">
       <div className="card-head">
         <h3>Recurring</h3>
-        {s && s.confirmed > 0 && (
-          <span className="sub-total">
-            <b className="tnum">{money2(s.monthly)}</b> a month
-            <span className="sub-total-s">
-              {" "}from {s.confirmed} confirmed
-              {/* Stated, not hidden. A list that does not add up to its own
-                 total with no explanation is worse than the gap itself. */}
-              {s.unknownCadence > 0 && `, ${s.unknownCadence} with no set schedule not counted`}
+        <div className="sub-head-r">
+          {s && s.confirmed > 0 && (
+            <span className="sub-total">
+              <b className="tnum">{money2(s.monthly)}</b> a month
+              <span className="sub-total-s">
+                {" "}from {s.confirmed} confirmed
+                {/* Stated, not hidden. A list that does not add up to its own
+                   total with no explanation is worse than the gap itself. */}
+                {s.unknownCadence > 0 && `, ${s.unknownCadence} with no set schedule not counted`}
+              </span>
             </span>
-          </span>
-        )}
+          )}
+          <button className="btn ghost sm" onClick={() => setAdding(true)}>+ Add a subscription</button>
+        </div>
       </div>
 
       {confirmedCancellations.length > 0 && (
@@ -149,15 +170,44 @@ export function SubscriptionsPanel() {
         </p>
       )}
 
-      {pending.length > 0 && (
+      {plaidPending.length > 0 && (
         <div className="sub-review">
           <div className="sub-review-h">
             <span className="sub-review-t">
-              {pending.length} possible recurring {pending.length === 1 ? "charge" : "charges"} to review
+              {plaidPending.length} possible recurring {plaidPending.length === 1 ? "charge" : "charges"} to review
             </span>
             <span className="sub-review-s">Nothing here counts toward your total until you confirm it.</span>
           </div>
-          {pending.map((i) => (
+          {plaidPending.map((i) => (
+            <Row key={i.id} i={i} busy={busy === i.id}
+              actions={
+                <>
+                  <button className="btn sm" disabled={busy === i.id} onClick={() => void act(i.id, "confirm")}>Confirm</button>
+                  <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "dismiss")}>Not recurring</button>
+                </>
+              } />
+          ))}
+        </div>
+      )}
+
+      {/* Juniper's own guess, from api/_recurring-suggestions.ts: a merchant
+         paid through an intermediary like PayPal, which Plaid's own detector
+         never clustered into a stream. Same review-queue shape as Plaid's box
+         above, tinted rather than styled identically, so "Juniper noticed
+         this" and "your bank detected this" read as different claims. */}
+      {juniperSuggestions.length > 0 && (
+        <div className="sub-review sub-suggest">
+          <div className="sub-review-h">
+            <span className="sub-review-t">
+              Juniper noticed {juniperSuggestions.length} more
+            </span>
+            <span className="sub-review-s">
+              Paid through an account like PayPal, which your bank doesn&apos;t report as recurring on its own. This
+              is our own guess from the pattern, not your bank&apos;s. Nothing here counts toward your total until
+              you confirm it.
+            </span>
+          </div>
+          {juniperSuggestions.map((i) => (
             <Row key={i.id} i={i} busy={busy === i.id}
               actions={
                 <>
@@ -186,8 +236,18 @@ export function SubscriptionsPanel() {
                     >
                       {openId === i.id ? "Close" : "Edit"}
                     </button>
-                    <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>Undo</button>
-                    <CancelControl request={latestRequestByStream.get(i.id)} busy={busy === i.id} onCancel={() => setCancelTarget(i)} />
+                    <button className="btn ghost sm" disabled={busy === i.id} onClick={() => void act(i.id, "revert")}>
+                      {/* A manual entry has no bank-reported baseline to fall back to, so
+                         "Undo" would be misleading: this removes it outright. */}
+                      {i.origin === "manual" ? "Remove" : "Undo"}
+                    </button>
+                    {/* Only a real Plaid stream: api/cancellation-requests.ts looks the
+                       stream up in `recurring_streams` itself, which a Juniper suggestion
+                       or a manual entry never has a row in, so the request would 404.
+                       Offering a button that quietly fails is worse than not offering it. */}
+                    {i.origin === "plaid" && (
+                      <CancelControl request={latestRequestByStream.get(i.id)} busy={busy === i.id} onCancel={() => setCancelTarget(i)} />
+                    )}
                   </>
                 } />
               {openId === i.id && (
@@ -233,6 +293,10 @@ export function SubscriptionsPanel() {
           onClose={() => setCancelTarget(null)}
           onRequested={() => { setCancelTarget(null); void load(); }}
         />
+      )}
+
+      {adding && (
+        <AddSubscriptionModal onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void load(); }} />
       )}
     </div>
   );
@@ -297,6 +361,84 @@ function CancelModal({ i, onClose, onRequested }: { i: SubItem; onClose: () => v
   );
 }
 
+// For a subscription Juniper has no transaction pattern for at all: paid in
+// cash, or through an account that has never been linked. Unlike a Plaid
+// stream or a Juniper suggestion, there is nothing to check this against, so
+// it starts counting toward the total the moment it is saved rather than
+// sitting in a review queue first, the same way a member typing in a manual
+// account balance is trusted at face value (see lib/manual-accounts.ts).
+function AddSubscriptionModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [freq, setFreq] = useState("MONTHLY");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const trimmedName = name.trim();
+  const trimmedAmount = amount.trim();
+  const parsed = trimmedAmount === "" ? NaN : Number(trimmedAmount);
+  const amountBad = trimmedAmount === "" || !Number.isFinite(parsed) || parsed <= 0;
+
+  const submit = async () => {
+    if (!trimmedName || amountBad) return;
+    setBusy(true);
+    setErr(null);
+    const ok = await addManualSubscription(trimmedName, parsed, freq);
+    setBusy(false);
+    if (!ok) { setErr("Couldn't save that. Try again."); return; }
+    onAdded();
+  };
+
+  return (
+    <ModalBackdrop onClose={onClose}>
+      <h3>Add a subscription</h3>
+      <p className="sub-help">
+        For something Juniper can&apos;t see in your transaction history at all, paid in cash or through an
+        account you haven&apos;t linked. This counts toward your total right away; there is no charge history
+        behind it to check it against, so it will never show a price change.
+      </p>
+      <div className="sub-fields">
+        <label className="sub-lbl sub-lbl-grow">
+          Name
+          <input
+            className="sub-in"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Gym membership"
+            autoFocus
+          />
+        </label>
+        <label className="sub-lbl">
+          Amount
+          <span className="sub-money">
+            <span aria-hidden="true">$</span>
+            <input
+              className="sub-in sub-in-amt tnum"
+              value={amount}
+              inputMode="decimal"
+              aria-label="Amount"
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </span>
+        </label>
+        <label className="sub-lbl">
+          Every
+          <select className="sub-in sub-in-cad" value={freq} onChange={(e) => setFreq(e.target.value)}>
+            {CADENCES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </label>
+      </div>
+      {err && <p className="sub-bad">{err}</p>}
+      <div className="modal-actions">
+        <button className="btn" disabled={busy || !trimmedName || amountBad} onClick={() => void submit()}>
+          {busy ? "Adding…" : "Add"}
+        </button>
+        <button className="btn ghost" disabled={busy} onClick={onClose}>Cancel</button>
+      </div>
+    </ModalBackdrop>
+  );
+}
+
 function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy: boolean; muted?: boolean }) {
   return (
     <div className={`sub-row${muted ? " muted" : ""}${busy ? " busy" : ""}`}>
@@ -316,6 +458,16 @@ function Row({ i, actions, busy, muted }: { i: SubItem; actions: ReactNode; busy
           {/* Same signal the transactions list uses for a corrected category: a
              figure the member set should be distinguishable from Plaid's. */}
           {i.edited && <span className="sub-dot" title="You edited this" />}
+          {/* Only once confirmed: a still-pending Juniper suggestion is a question
+             Juniper is asking, not yet something the member added. */}
+          {i.origin !== "plaid" && i.review === "confirmed" && (
+            <span
+              className="conn-tag"
+              title={i.origin === "manual" ? "You typed this in yourself" : "Juniper's own guess, which you confirmed"}
+            >
+              Added by you
+            </span>
+          )}
         </span>
         <span className="sub-sub">
           {i.institution ? `${i.institution} · ` : ""}

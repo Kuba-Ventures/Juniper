@@ -2193,6 +2193,7 @@
 }
 
 /* ---------- recurring / subscriptions panel ---------- */
+.jnpr .sub-head-r{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .jnpr .sub-total{font-size:12.5px;color:var(--jnpr-ink-3)}
 .jnpr .sub-total b{color:var(--jnpr-ink);font-size:15px}
 .jnpr .sub-total-s{color:var(--jnpr-ink-3)}
@@ -2205,6 +2206,12 @@
 .jnpr .sub-review-h{margin-bottom:4px}
 .jnpr .sub-review-t{display:block;font-size:13px;font-weight:650;color:var(--jnpr-ink)}
 .jnpr .sub-review-s{display:block;font-size:11.5px;color:var(--jnpr-ink-3);margin-top:2px}
+
+/* Juniper's own fallback guess (api/_recurring-suggestions.ts), same shape as
+   Plaid's review box above, tinted with the accent rather than the neutral
+   surface so "we noticed this ourselves" never reads as "your bank detected
+   this". */
+.jnpr .sub-suggest{border-color:var(--jnpr-accent-soft);background:var(--jnpr-accent-soft)}
 
 .jnpr .sub-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--jnpr-line-2)}
 .jnpr .sub-row:first-child{border-top:0}
