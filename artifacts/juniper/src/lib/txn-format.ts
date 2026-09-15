@@ -18,6 +18,15 @@ export const fmtMonth = (ym: string) => {
   const [y, m] = ym.split("-");
   return `${MONTH_ABBR[+m - 1]} ${y.slice(2)}`;
 };
+// The year is dropped from the common case (both ends in the same year) and
+// kept only where it disambiguates, which is why a range starting last year
+// ("1Y") reads "Sep 16, 2025 – Sep 15, 2026" instead of the reversed-looking
+// "Sep 16 – Sep 15".
+export const fmtRangeSpan = (fromIso: string, toIso: string) => {
+  const fy = fromIso.slice(0, 4), ty = toIso.slice(0, 4);
+  const from = fy === ty ? fmtDay(fromIso) : `${fmtDay(fromIso)}, ${fy}`;
+  return `${from} – ${fmtDay(toIso)}, ${ty}`;
+};
 export const money2 = (n: number) =>
   (n < 0 ? "-" : "") + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const money0 = (n: number) =>
