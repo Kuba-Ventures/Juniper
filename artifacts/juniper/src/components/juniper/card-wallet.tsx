@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CardFace } from "@/components/juniper/card-rewards-bits";
-import { limitOf, money0, type CardRewards, type LimitSource, type LinkedCard } from "@/lib/cards";
+import { money0, type CardRewards, type LinkedCard } from "@/lib/cards";
 import { holderClass, type HolderStyle } from "@/lib/holder-style";
-import { utilizationBand, utilizationPct } from "@/lib/credit-balance";
-import { Info, X } from "lucide-react";
+import { X } from "lucide-react";
 
 // The card holder: cards stacked in a pocket, each revealing a strip of itself.
 // Split out of rewards-guide.tsx for issue #264, which asks for the holder to sit
@@ -108,15 +107,17 @@ const REVEAL_OPEN = Math.round(FACE_H * 0.56);
  * The front panel's height, matching `.cr-holder-cover`.
  *
  * Deep rather than thin, and the depth is now load-bearing: the panel CARRIES THE
- * FIGURES. It states the count, the total reported balance and the utilization
- * sentence, which is what Credit Karma's Cards Optimizer puts on the same surface
- * and what 120px of blank leather was quietly asking for.
+ * FIGURES. It states the count and the total reported balance, which is what
+ * Credit Karma's Cards Optimizer puts on the same surface and what 120px of
+ * blank leather was quietly asking for.
  *
- * 84 read as a strip laid under the cards; 120 read as a panel with nothing on
- * it. 168 is the block plus the stitch above it plus the margin the numbers need
- * from the bottom edge, measured rather than guessed.
+ * Shrunk from 168 after the utilization sentence came off the cover (issue
+ * #427: it repeated the Credit page's own "Overall utilization" card one
+ * scroll down). Re-measured rather than left at the old constant, which would
+ * have reopened blank leather at the top of the panel, between the stitch and
+ * the chip row, exactly what 168 was picked to avoid in the first place.
  */
-const COVER_H = 168;
+const COVER_H = 128;
 /**
  * How much wider the popped card is than the holder, per side.
  *
@@ -132,9 +133,10 @@ const BAND_H = 7;
 /**
  * One place in the holder, and everything the panel needs to describe it.
  *
- * The figures are resolved when the slot is built rather than where they print,
- * because the limit precedence (`limitOf`) already has one definition and a
- * second reader would be a second answer to "what is this card's limit".
+ * No `limit` field: a card's limit fed the cover's own utilization sentence,
+ * which is gone (see `CoverFigures`), and nothing else in this component reads
+ * one. The limit still belongs to `api/card-rewards.ts` and `credit.tsx`'s own
+ * `limitOf` precedence, which this file no longer needs a second copy of.
  */
 interface Slot {
   key: string;
@@ -160,60 +162,36 @@ interface Slot {
   brand: string | null;
   owed: number;
   inCredit: number;
-  limit: number | null;
-  limitSource: LimitSource;
   currency: string | null;
 }
 
 /**
- * The figures the holder's front panel carries.
+ * The figures the holder's front panel carries: a count (drawn by the caller)
+ * plus a balance. Not a percentage.
  *
- * WHY THEY LIVE ON THE LEATHER. This is Credit Karma's Cards Optimizer move and
- * it is the right one: the panel crossing the cards is the most-looked-at surface
- * in the component, and it was carrying a two-word count. The figures are the
- * reason somebody looks at a wallet.
+ * IT USED TO ALSO STATE UTILIZATION, band, percentage, limit and all, and that
+ * was the wrong amount of completeness: the Credit page's own "Overall
+ * utilization" card sits directly below the holder, so a member scrolling a
+ * narrow screen read the same balance and the same percentage twice, back to
+ * back, before a single individual card came into view. Utilization already
+ * has an owner, with its bar and its scoring context; the cover's job is
+ * narrower than that card's, not a second copy of it.
  *
- * WHAT THIS MUST NOT DO is disagree with the Credit page's own utilization card,
- * which was the stated reason the wallet showed no money at all. It cannot now:
- * the balance is a plain sum of the same `Slot` figures the list above is built
- * from, the percentage uses the same `utilizationPct`, and the scope is said out
- * loud whenever a card has no limit to be measured against. Two surfaces reading
- * one set of rows can be redundant. They cannot contradict.
+ * The balance stays because it is not the duplicate: it is a plain sum of the
+ * same `Slot` figures the list below is built from, so it cannot disagree
+ * with that list, only restate one number from it rather than three.
  */
 function CoverFigures({
-  label, amount, currency, used, limit, scope, fallback,
+  label, amount, currency,
 }: {
   label: string;
   amount: number;
   currency: string | null;
-  /** Null where no limit is known, which is not the same as zero. */
-  used: number | null;
-  limit: number | null;
-  /** "across 3 of 4 cards", where some card has no limit to be counted in. */
-  scope?: string;
-  /** What the sentence says instead when there is no percentage to state. */
-  fallback: string;
 }) {
-  const band = utilizationBand(used);
   return (
     <>
       <div className="hp-k">{label}</div>
       <div className="hp-v tnum">{money0(amount, currency)}</div>
-      <div className="hp-u">
-        {band && used != null && limit != null ? (
-          <>
-            <b>{band}</b> {used}% used of {money0(limit, currency)} limit{scope}{" "}
-            <span
-              className="hp-i"
-              title="Utilization is what you owe divided by your limit. Under 10% is the band scoring models reward."
-            >
-              <Info size={11} aria-hidden="true" />
-            </span>
-          </>
-        ) : (
-          fallback
-        )}
-      </div>
     </>
   );
 }
@@ -328,11 +306,7 @@ export function CardWallet({
       key: c.plaid_account_id, card: c, identifyId: null, issuer: c.institution,
       label: c.product?.short_name ?? c.account_name, mask: c.mask, hand: false,
       art: null, brand: null,
-      // What the panel prints. Resolved HERE, once, from the same limit
-      // precedence `limitOf` defines, rather than recomputed where it prints: two
-      // places deciding which limit a card uses is two answers to one question.
-      owed: c.balance, inCredit: c.inCredit,
-      limit: limitOf(c).limit, limitSource: limitOf(c).source, currency: c.currency,
+      owed: c.balance, inCredit: c.inCredit, currency: c.currency,
     })),
     ...unidentified.map((u) => ({
       // Prefixed: an unidentified card's `plaid_account_id` is in the same
@@ -341,8 +315,7 @@ export function CardWallet({
       key: `unk:${u.plaid_account_id}`, card: null,
       identifyId: u.plaid_account_id, issuer: u.institution,
       label: "Which card?", mask: u.mask, hand: false, art: null, brand: null,
-      owed: u.balance, inCredit: 0, limit: u.limit, limitSource: "bank" as LimitSource,
-      currency: u.currency,
+      owed: u.balance, inCredit: 0, currency: u.currency,
     })),
     // Hand-entered cards LAST OF ALL, after even the outlines. The pocket then
     // holds every credit card the page knows about, in descending order of how
@@ -362,11 +335,7 @@ export function CardWallet({
       // looking like the one thing in the pocket Juniper could not draw.
       art: m.product?.art_url ?? null,
       brand: m.product?.brand_color ?? null,
-      owed: m.balance, inCredit: m.inCredit, limit: m.limit,
-      // A hand-entered limit is the member's own, always. There is no bank
-      // behind it, which is the reason the account exists.
-      limitSource: (m.limit != null ? "member" : "none") as LimitSource,
-      currency: m.currency,
+      owed: m.balance, inCredit: m.inCredit, currency: m.currency,
     })),
   ];
 
@@ -403,25 +372,16 @@ export function CardWallet({
 
   // WHAT THE PANEL SAYS WHEN NOTHING IS OUT: every card, one figure.
   //
-  // The balance is a plain sum over every card, because "total reported balance"
-  // is a sum and a card without a limit still has one. The PERCENTAGE is not: it
-  // can only include cards with a limit to be measured against, exactly as the
-  // Credit page's utilization card does, and it says so out loud when the two
-  // sets differ rather than quietly describing three cards as four.
+  // A plain sum over every card, because "total reported balance" is a sum and
+  // a card without a limit still has one. No percentage: that number, and the
+  // cards excluded from it for having no limit, is `OverallUtilization`'s to
+  // state, not this panel's to restate.
   const currency = slots.find((s) => s.currency)?.currency ?? null;
   const owedAll = slots.reduce((a, s) => a + s.owed, 0);
   const creditAll = slots.reduce((a, s) => a + s.inCredit, 0);
-  const measurable = slots.filter((s) => s.limit != null && s.limit > 0);
-  const limitAll = measurable.reduce((a, s) => a + (s.limit ?? 0), 0);
-  const usedAll = utilizationPct(measurable.reduce((a, s) => a + s.owed, 0), limitAll);
-  const scope = measurable.length !== slots.length
-    ? ` across ${measurable.length} of ${slots.length} cards`
-    : "";
   // A card in credit is never drawn as debt. Same rule as the Credit list, and
   // the reason `Slot` carries the two halves separately.
   const netCredit = owedAll === 0 && creditAll > 0;
-
-  const poppedUsed = popped ? utilizationPct(popped.owed, popped.limit) : null;
 
   return (
     <div className={`cr-holder ${holderClass(holderStyle)}`}>
@@ -524,13 +484,6 @@ export function CardWallet({
             label={popped.inCredit > 0 ? "Card in credit" : "Card reported balance"}
             amount={popped.inCredit > 0 ? popped.inCredit : popped.owed}
             currency={popped.currency}
-            used={poppedUsed}
-            limit={popped.limit}
-            fallback={
-              popped.limitSource === "none"
-                ? "No limit reported for this card, so there is nothing to measure the balance against."
-                : "No limit known for this card yet."
-            }
           />
         ) : (
           <>
@@ -554,10 +507,6 @@ export function CardWallet({
               label={netCredit ? "Total in credit" : "Total reported balance"}
               amount={netCredit ? creditAll : owedAll}
               currency={currency}
-              used={usedAll}
-              limit={limitAll > 0 ? limitAll : null}
-              scope={scope}
-              fallback="None of your cards reports a limit yet, so there is nothing to measure these balances against."
             />
           </>
         )}
