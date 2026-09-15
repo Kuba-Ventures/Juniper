@@ -2006,6 +2006,26 @@
 @media(max-width:640px){.jnpr .tx-sort-menu{left:0;right:auto}}
 .jnpr .tx-sort-menu .pop-i{gap:8px}
 .jnpr .tx-sort-menu .pop-i b{font-weight:600}
+
+/* Category filter (#427). The trigger reuses .tx-sort's look (same row of
+   buttons, same weight), with an .on modifier so a member can tell at a
+   glance whether anything is narrowed. The menu reuses the category picker's
+   own list/group styles (.cp-list/.cp-g/.cp-kind/.cat-em) rather than a
+   second copy of them, since it is the same taxonomy either way. */
+.jnpr .tx-cat-wrap{position:relative}
+.jnpr .tx-sort.on{border-color:var(--jnpr-accent);color:var(--jnpr-accent)}
+.jnpr .tx-sort.on span{color:var(--jnpr-accent)}
+.jnpr .tx-cat-menu{left:0;top:40px;min-width:250px;max-width:calc(100vw - 32px)}
+.jnpr .tx-catf-head{display:flex;align-items:center;justify-content:space-between;padding-right:4px}
+.jnpr .tx-catf-clear{border:0;background:transparent;color:var(--jnpr-accent);font:inherit;font-size:11px;
+  font-weight:650;cursor:pointer;padding:4px 6px}
+.jnpr .tx-catf-clear:hover{text-decoration:underline}
+.jnpr .tx-catf-i{display:flex;align-items:center;gap:7px;width:100%;padding:6px 9px;border-radius:8px;
+  font-size:12.5px;color:var(--jnpr-ink-2);cursor:pointer}
+.jnpr .tx-catf-i:hover{background:var(--jnpr-surface-3)}
+.jnpr .tx-catf-i input{margin:0}
+.jnpr .tx-catf-hidden{color:var(--jnpr-ink-3)}
+
 /* The selection gutter. The checkbox is there on every row and drawn only when
    it could matter: on hover, on focus, while anything is selected, and always
    on a device with no hover, where a control that appears on hover is a control
