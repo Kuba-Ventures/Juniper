@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initAnalytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/lib/theme";
@@ -48,6 +48,14 @@ function Router() {
       </Route>
       <Route path="/invite/:token">
         {(params) => <InviteLanding token={params.token} />}
+      </Route>
+      {/* juniperplan.com/admin, a shorter alias the member types directly
+          rather than reaching by clicking. Redirects rather than duplicating
+          the route: /app/admin already carries the app shell and its own
+          ADMIN_EMAILS gate, and this is deliberately just the shorter door
+          into it. */}
+      <Route path="/admin">
+        <Redirect to="/app/admin" />
       </Route>
       <Route path="/app/*?">
         {() => (
