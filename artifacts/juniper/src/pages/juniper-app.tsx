@@ -11,7 +11,6 @@ import Overview from "@/pages/app/overview";
 import Transactions from "@/pages/app/transactions";
 import { Credit } from "@/pages/app/credit";
 import { Score } from "@/pages/app/score";
-import { Admin } from "@/pages/app/admin";
 import Plans from "@/pages/app/plans";
 import Ask from "@/pages/app/ask";
 import { ConnectionsView } from "@/pages/connections";
@@ -166,7 +165,11 @@ export default function JuniperApp() {
           </Route>
           <Route path="/app/transactions" component={Transactions} />
           <Route path="/app/score" component={Score} />
-          <Route path="/app/admin" component={Admin} />
+          {/* Admin (moderation + sign-ups roster) deliberately lives only at
+              /admin now (admin-sign-in.tsx), its own sign-in and its own bare
+              shell, with none of this app's chrome, its onboarding gate, or
+              its per-member providers below. It never routed here again on
+              purpose; see that file's header for why. */}
           {/* Plans reads the profile's signup goals to offer the ones with no
               plan yet, so it gets this component's already-hydrated profile
               rather than calling useProfile() a second time. `ready` travels

@@ -1,24 +1,31 @@
-// juniperplan.com/admin's own front door (issue: "admin sign-in should be
-// separate from the member dashboard sign-in"). Before this, /admin simply
-// redirected to /app/admin, which RequireAuth then bounced, when signed out,
-// to the exact same "Welcome back / Sign in to your dashboard" page every
-// member sees. There is no separate admin credential system to sign in
-// against — admins are members whose email is on the ADMIN_EMAILS allowlist,
-// checked server-side once a request carries a real session (see
-// api/_admin.ts) — so this deliberately calls the same
-// supabase.auth.signInWithPassword() the member sign-in page does. What
-// changes is only the door: distinct copy, no "Create an account" (admins
-// don't self-register), and a landing spot that is never the consumer app.
+// juniperplan.com/admin: its own sign-in AND its own shell, entirely apart
+// from the member dashboard. This used to redirect to /app/admin, which
+// mounted the moderation queues INSIDE JuniperApp: the full consumer app bar
+// (workspace switcher, nav to Overview/Transactions/Plans/Credit/
+// Connections, notification bell), FinancesProvider/WorkspaceProvider, and
+// even the first-run-onboarding gate a brand new admin account would hit
+// before ever reaching it. None of that has anything to do with moderating
+// submissions or reading the sign-up roster, and it made the page read as
+// "a tab in my dashboard" rather than a tool every admin shares. /app/admin
+// is gone; this route is the only way in.
 //
-// Once signed in, this hands off to /app/admin exactly like before: if the
-// signed-in email isn't on the allowlist, each queue on that page already
-// renders its own "You don't have access" state (see admin.tsx), rather than
-// this page trying to duplicate that check ahead of time.
+// There is still no separate admin credential system: an admin is a member
+// whose email is on the ADMIN_EMAILS allowlist, checked server-side once a
+// request carries a real session (see api/_admin.ts), so this calls the same
+// supabase.auth.signInWithPassword() the member sign-in page does. What's
+// different is the door (distinct copy, no "Create an account") and the
+// room on the other side of it: a bare header with just the product name and
+// a sign-out control, then the Admin page directly, with no member-facing
+// chrome and nothing scoped to whichever member happens to be signed in.
+// A signed-in non-admin still lands here and sees each queue's own "You
+// don't have access" state (admin.tsx), rather than this page duplicating
+// that check ahead of time.
 import { useState } from "react";
-import { Link, Redirect } from "wouter";
+import { Link } from "wouter";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/use-session";
+import { Admin } from "@/pages/app/admin";
 import "@/styles/juniper.css";
 
 function AdminSignInForm() {
@@ -105,6 +112,34 @@ function AdminSignInForm() {
   );
 }
 
+// The entire chrome around the Admin page: a product name, the signed-in
+// email so an admin can tell which of several team accounts they're on, and
+// a sign-out control. Deliberately not AppBar: no nav, no workspace
+// switcher, no notification bell, nothing that implies this is a personal
+// dashboard rather than a shared tool.
+function AdminShell({ email }: { email: string }) {
+  return (
+    <div className="jnpr" style={{ minHeight: "100dvh" }}>
+      <div
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "14px 22px", borderBottom: "1px solid var(--jnpr-line)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/logo.png" alt="" style={{ width: 24, height: 24 }} />
+          <span style={{ fontWeight: 700, color: "var(--jnpr-head)", fontSize: 15 }}>Juniper Admin</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 12.5, color: "var(--jnpr-ink-3)" }}>{email}</span>
+          <button className="btn ghost sm" onClick={() => void supabase.auth.signOut()}>Sign out</button>
+        </div>
+      </div>
+      <Admin />
+    </div>
+  );
+}
+
 export default function AdminGate() {
   const session = useSession();
 
@@ -117,8 +152,5 @@ export default function AdminGate() {
     );
   }
   if (session === null) return <AdminSignInForm />;
-  // Signed in: hand off to the real page, which owns the ADMIN_EMAILS gate
-  // and the app shell. Not RequireAuth-wrapped again here since a session
-  // already exists.
-  return <Redirect to="/app/admin" />;
+  return <AdminShell email={session.user.email ?? ""} />;
 }

@@ -50,15 +50,12 @@ function Router() {
       <Route path="/invite/:token">
         {(params) => <InviteLanding token={params.token} />}
       </Route>
-      {/* juniperplan.com/admin, a shorter alias the member types directly
-          rather than reaching by clicking. Its own sign-in rather than a
-          bare redirect: signed out, this used to bounce through /app/admin's
-          RequireAuth straight to the member dashboard's "Welcome back" page,
-          which is the wrong front door for an admin and looks identical to
-          the consumer sign-in. AdminGate shows a distinct sign-in for a
-          signed-out visitor and hands off to /app/admin once a session
-          exists, where the real ADMIN_EMAILS gate and the app shell still
-          live (see admin-sign-in.tsx). */}
+      {/* juniperplan.com/admin: the only route into moderation and the
+          sign-ups roster, deliberately separate from the member app rather
+          than a shorter alias into it. AdminGate (admin-sign-in.tsx) owns
+          its own sign-in for a signed-out visitor and, once a session
+          exists, renders the Admin page directly in its own bare shell, with
+          none of JuniperApp's nav, providers, or onboarding gate. */}
       <Route path="/admin" component={AdminGate} />
       <Route path="/app/*?">
         {() => (
