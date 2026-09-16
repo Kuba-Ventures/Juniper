@@ -285,17 +285,17 @@ export function InstitutionPicker({
       {showConnected && connectedNames.length > 0 && (
         <div className="inst-sec">
           <div className="inst-cat-h">Connected</div>
-          <div className="inst-rows inst-rows-scroll">
+          <div className="inst-connected-grid">
             {connectedNames.map((name) => (
               <div
                 key={`connected-${name}`}
-                className="inst-row done"
+                className="inst-connected-tile"
                 aria-label={`${name}, already connected`}
               >
                 <RowMark name={name} />
                 <span className="inst-name">{name}</span>
-                <span className="inst-connected-tag">
-                  <Check size={11} strokeWidth={3} /> Connected
+                <span className="ict-check">
+                  <Check size={13} strokeWidth={3} />
                 </span>
               </div>
             ))}

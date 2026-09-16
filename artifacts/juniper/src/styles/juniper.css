@@ -1411,9 +1411,10 @@
 
 /* Stage 10c: credit-pull consent, one checkbox rather than a separate card
    (see CreditPullConsent in first-run-onboarding.tsx for why). */
-/* institution picker (connect flow): a Plaid search box, its result rows, and
-   the two fallback actions. Rows and not tiles, see institution-picker.tsx: the
-   curated multi-select gallery is gone, so there is no grid left to style.
+/* institution picker (connect flow): a Connected gallery, a Plaid search box,
+   its result rows, and the two fallback actions. Search stays rows, see
+   institution-picker.tsx: someone who typed a name is done choosing and wants
+   one tap. Connected is a grid (issue #427); see .inst-connected-grid below.
    .inst-cat-h is shared with the Layer card's category headers below. */
 .jnpr .inst-cat-h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--jnpr-ink-3);margin-bottom:9px}
 .jnpr .inst-searchbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--jnpr-line);border-radius:11px;background:var(--jnpr-surface);margin-bottom:12px}
@@ -1422,24 +1423,30 @@
 /* Connected sits above the search box and is separated from it, so "what I have"
    never reads as part of "what I typed". */
 .jnpr .inst-sec{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--jnpr-line)}
-/* Both lists scroll rather than growing: Plaid returns up to 10 hits and a
-   household can hold several connections, and neither may push the two fallback
-   actions below the fold. Connected is capped tighter because it is status, not
-   the thing being acted on. */
+/* The search/gallery lists scroll rather than growing: Plaid returns up to 10
+   hits and a household can hold several connections, and neither may push the
+   two fallback actions below the fold. */
 .jnpr .inst-rows{display:flex;flex-direction:column;gap:6px}
 .jnpr .inst-rows-scroll{max-height:272px;overflow-y:auto;padding-right:6px}
-.jnpr .inst-sec .inst-rows-scroll{max-height:140px}
+/* Connected is a gallery, not a scrolling list of rows (issue #427): a
+   condensed 3-row column read as capped even though every connected
+   institution was in the DOM, and it was the one place onboarding didn't
+   otherwise look like the Connections page it is confirming. Identity only,
+   no balance or account count: the point here is "did my bank take", and a
+   balance can still be mid-sync moments after linking. Uncapped height on
+   purpose, unlike the search/gallery lists above: once a bank is Connected it
+   never needs to scroll, it needs to be seen. */
+.jnpr .inst-connected-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px}
+.jnpr .inst-connected-tile{background:var(--jnpr-good-soft);border:1px solid var(--jnpr-good);border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:9px}
+.jnpr .inst-connected-tile .inst-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jnpr .inst-connected-tile .ict-check{flex:0 0 auto;display:flex;color:var(--jnpr-good)}
+.jnpr .inst-connected-tile .ict-check svg{width:14px;height:14px}
 .jnpr .inst-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;font-size:13px;
   color:var(--jnpr-ink);background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:10px;padding:8px 11px;cursor:pointer}
 .jnpr .inst-row:hover{border-color:var(--jnpr-accent)}
 .jnpr .inst-row:disabled{opacity:.55;cursor:default}
 .jnpr .inst-row-go{margin-left:auto;flex:0 0 auto;color:var(--jnpr-ink-3)}
 .jnpr .inst-row:hover .inst-row-go{color:var(--jnpr-accent)}
-/* already-connected row: a locked-in "done" state (green), and not clickable */
-.jnpr .inst-row.done{border-color:var(--jnpr-good);background:var(--jnpr-good-soft);cursor:default}
-.jnpr .inst-row.done:hover{border-color:var(--jnpr-good)}
-.jnpr .inst-connected-tag{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--jnpr-good)}
-.jnpr .inst-connected-tag svg{flex:0 0 auto}
 .jnpr .inst-logo{width:26px;height:26px;border-radius:7px;object-fit:cover;background:#fff;border:1px solid var(--jnpr-line);flex:0 0 auto}
 .jnpr .inst-mono{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:0 0 auto}
 /* last resort when neither Plaid nor our bundled art has a mark for the bank */
