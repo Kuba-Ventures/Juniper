@@ -14,6 +14,8 @@ export type PaycheckFields = Pick<
   | "expenseRent"
   | "expenseLoanPayments"
   | "expenseOtherEssentials"
+  | "balance401k"
+  | "balanceHsaFsa"
 >;
 
 export type CatKey =
@@ -23,6 +25,17 @@ export type CatKey =
   | "expenseRent"
   | "expenseLoanPayments"
   | "expenseOtherEssentials";
+
+// The two before-you're-paid categories that carry a current balance, not
+// just a per-paycheck contribution (health insurance is a premium, so it has
+// no counterpart). Keyed on the category's own CatKey so a balance field
+// shows only where it makes sense, rather than adding a parallel category
+// list of its own.
+export type BalanceKey = "balance401k" | "balanceHsaFsa";
+export const BALANCE_KEY_FOR: Partial<Record<CatKey, BalanceKey>> = {
+  deduction401k: "balance401k",
+  deductionHsaFsa: "balanceHsaFsa",
+};
 
 export const BEFORE_CATS: { key: CatKey; label: string }[] = [
   { key: "deduction401k", label: "401(k) / retirement" },

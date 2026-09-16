@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BEFORE_CATS, AFTER_CATS, fmtMoney, type CatKey } from "@/lib/paycheck-fields";
+import { Fragment, useState } from "react";
+import { BALANCE_KEY_FOR, BEFORE_CATS, AFTER_CATS, fmtMoney, type CatKey } from "@/lib/paycheck-fields";
 import type { PaycheckFormState } from "@/lib/use-paycheck-form";
 
 export function MoneyField({
@@ -95,17 +95,49 @@ export function CatRow({
   );
 }
 
-function catRowFor(form: PaycheckFormState, c: { key: CatKey; label: string; color?: string }) {
+// A second, narrower row under a checked category's contribution amount:
+// what is already built up, for the two categories that carry a balance
+// (401(k), HSA/FSA). Shown only while the category is checked, the same way
+// the amount field is only enabled then, so it never asks the question for
+// a category the member does not have.
+function BalanceRow({ amount, onAmount }: { amount: number | undefined; onAmount: (v: number | undefined) => void }) {
+  const display = amount != null ? amount.toLocaleString("en-US") : "";
   return (
-    <CatRow
-      key={c.key}
-      label={c.label}
-      checked={form.on[c.key]}
-      amount={form.amounts[c.key]}
-      onToggle={() => form.toggle(c.key)}
-      onAmount={(v) => form.setAmount(c.key, v)}
-      swatch={c.color}
-    />
+    <div className="snap-bal">
+      <span>Current balance, if known</span>
+      <div className="snap-amt">
+        <span>$</span>
+        <input
+          inputMode="numeric"
+          value={display}
+          placeholder="0"
+          onChange={(e) => {
+            const digits = e.target.value.replace(/[^\d]/g, "");
+            onAmount(digits === "" ? undefined : parseInt(digits, 10));
+          }}
+          aria-label="Current balance, if known"
+        />
+      </div>
+    </div>
+  );
+}
+
+function catRowFor(form: PaycheckFormState, c: { key: CatKey; label: string; color?: string }) {
+  const balanceKey = BALANCE_KEY_FOR[c.key];
+  return (
+    <Fragment key={c.key}>
+      <CatRow
+        label={c.label}
+        checked={form.on[c.key]}
+        amount={form.amounts[c.key]}
+        onToggle={() => form.toggle(c.key)}
+        onAmount={(v) => form.setAmount(c.key, v)}
+        swatch={c.color}
+      />
+      {balanceKey && form.on[c.key] && (
+        <BalanceRow amount={form.balances[balanceKey]} onAmount={(v) => form.setBalance(balanceKey, v)} />
+      )}
+    </Fragment>
   );
 }
 

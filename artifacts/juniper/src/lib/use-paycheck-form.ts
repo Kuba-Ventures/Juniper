@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CatKey, PaycheckFields } from "@/lib/paycheck-fields";
+import { BALANCE_KEY_FOR, type BalanceKey, type CatKey, type PaycheckFields } from "@/lib/paycheck-fields";
 
 // State + derived figures for editing a paycheck breakdown, shared by the
 // dashboard nudge and the onboarding paycheck step so the two surfaces cannot
@@ -22,12 +22,27 @@ export function usePaycheckForm(initial?: Partial<PaycheckFields>) {
     expenseLoanPayments: initial?.expenseLoanPayments,
     expenseOtherEssentials: initial?.expenseOtherEssentials,
   });
+  // Current balance, if known, for the two categories that carry one
+  // (401(k), HSA/FSA). Separate from `amounts`, which is the per-paycheck
+  // contribution, not the balance already built up.
+  const [balances, setBalances] = useState<Partial<Record<BalanceKey, number>>>({
+    balance401k: initial?.balance401k,
+    balanceHsaFsa: initial?.balanceHsaFsa,
+  });
 
   const toggle = (key: CatKey) => setOn((o) => ({ ...o, [key]: !o[key] }));
   const setAmount = (key: CatKey, v: number | undefined) => setAmounts((a) => ({ ...a, [key]: v }));
+  const setBalance = (key: BalanceKey, v: number | undefined) => setBalances((b) => ({ ...b, [key]: v }));
   // Unchecking a category clears its value, so a stray typed number cannot
   // ride along into the save unnoticed.
   const val = (key: CatKey): number | undefined => (on[key] ? amounts[key] : undefined);
+  // Same rule for a balance: it only means anything while its category is
+  // checked, so unchecking clears it the same way unchecking clears the
+  // contribution amount.
+  const balanceVal = (key: CatKey): number | undefined => {
+    const bKey = BALANCE_KEY_FOR[key];
+    return bKey && on[key] ? balances[bKey] : undefined;
+  };
 
   const rent = val("expenseRent") ?? 0;
   const loans = val("expenseLoanPayments") ?? 0;
@@ -52,6 +67,8 @@ export function usePaycheckForm(initial?: Partial<PaycheckFields>) {
     expenseRent: val("expenseRent"),
     expenseLoanPayments: val("expenseLoanPayments"),
     expenseOtherEssentials: val("expenseOtherEssentials"),
+    balance401k: balanceVal("deduction401k"),
+    balanceHsaFsa: balanceVal("deductionHsaFsa"),
   });
 
   return {
@@ -62,6 +79,9 @@ export function usePaycheckForm(initial?: Partial<PaycheckFields>) {
     amounts,
     setAmount,
     val,
+    balances,
+    setBalance,
+    balanceVal,
     leftover,
     barTotal,
     grossExtra,
