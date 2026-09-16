@@ -62,8 +62,79 @@ export type PlanGoal = {
   // stops belonging to that household (unshared, or the member leaves or is
   // removed), so a plan is never hidden from its owner with nowhere else to be.
   household_id?: string;
+  // The account this plan tracks instead of a hand-typed current_value: a
+  // linked Plaid account's `account_id`, or a manual account's `manual:<id>`
+  // (see FinanceData.accounts in lib/finances.ts, the same id namespace
+  // Connections and the Credit page already read). current_value is still
+  // written on every reconcile (see linkedAccountValue below and the sync
+  // effect in pages/app/plans.tsx), so every other reader of a plan's
+  // numbers (Overview's plan-progress-row, score-levers, household.tsx) sees
+  // the live figure too without needing to know linking exists.
+  linked_account_id?: string;
   [k: string]: unknown;
 };
+
+// The minimal shape a component needs to offer or resolve a linked account:
+// deliberately narrower than lib/finances.ts's Account, so this module does
+// not have to import it (plans.ts is read by score-levers.ts, which is kept
+// free of the finances seam). Constructed by the caller from FinanceData's
+// accounts.{cash,invest,debt}.
+export type LinkableAccount = { id: string; n: string; i: string; v: number };
+
+// Which of a member's own accounts make sense to track THIS plan's shape.
+// Payoff plans track a balance coming DOWN, so only debt accounts qualify;
+// save/buy plans track a balance going UP, so cash and investing accounts do.
+// Income has no balance to track at all (see PlanGoal.shape's own doc
+// comment), so it offers nothing.
+export function eligibleAccountsForShape(
+  shape: PlanShape,
+  accounts: { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] },
+): LinkableAccount[] {
+  if (shape === "payoff") return accounts.debt;
+  if (shape === "income") return [];
+  return [...accounts.cash, ...accounts.invest];
+}
+
+// Narrow FinanceData's accounts (n/i/v plus an optional id) down to the ones
+// that actually carry an id, the one thing a plan's linked_account_id has to
+// resolve back to. In practice that means "source === live": the pre-link
+// manual-onboarding layer (lib/manual-finances.ts) has never carried one.
+// Shared so every reader of a plan's numbers (the Plans page's card list, its
+// read-only detail view) filters the same way rather than three approximations
+// of it drifting apart.
+export function linkableAccountsFrom(accounts: {
+  cash: { n: string; i: string; v: number; id?: string | null }[];
+  invest: { n: string; i: string; v: number; id?: string | null }[];
+  debt: { n: string; i: string; v: number; id?: string | null }[];
+}): { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] } {
+  const withId = (list: { n: string; i: string; v: number; id?: string | null }[]) =>
+    list.filter((a) => !!a.id) as LinkableAccount[];
+  return { cash: withId(accounts.cash), invest: withId(accounts.invest), debt: withId(accounts.debt) };
+}
+
+// Resolve a plan's own `linked_account_id` against the member's current
+// account list. Searches all three buckets (not just the ones the shape would
+// offer going forward) so a plan whose shape changed after linking, or an
+// account that moved buckets, still resolves rather than silently unlinking.
+export function findLinkedAccount(
+  goal: PlanGoal | null | undefined,
+  accounts: { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] },
+): LinkableAccount | null {
+  const id = goal?.linked_account_id;
+  if (!id) return null;
+  const all = [...accounts.cash, ...accounts.invest, ...accounts.debt];
+  return all.find((a) => a.id === id) ?? null;
+}
+
+// The plan's `current` figure a linked account implies. Debt accounts carry a
+// negative `v` (see api/finances.ts's `group()`/`manualIn()`), so a payoff
+// plan's "paid off so far" is the target minus how much is still owed, not
+// the account's own value; a save/buy account's `v` is already the saved
+// amount. Floored at 0 the same way the rest of the payoff math is (a plan
+// cannot show negative progress).
+export function linkedAccountValue(shape: PlanShape, target: number, account: LinkableAccount): number {
+  return shape === "payoff" ? Math.max(0, target - Math.abs(account.v)) : Math.abs(account.v);
+}
 
 export type PlanKpi = {
   label: string;
