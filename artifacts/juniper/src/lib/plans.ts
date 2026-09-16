@@ -79,7 +79,11 @@ export type PlanGoal = {
 // not have to import it (plans.ts is read by score-levers.ts, which is kept
 // free of the finances seam). Constructed by the caller from FinanceData's
 // accounts.{cash,invest,debt}.
-export type LinkableAccount = { id: string; n: string; i: string; v: number };
+// `subtype` is Plaid's own (checking, savings, money market, cd, ira, ...),
+// optional because it means "unknown" for a manual account, never "checking":
+// inventing a subtype for a hand-entered row would be the same overclaim this
+// field exists to avoid.
+export type LinkableAccount = { id: string; n: string; i: string; v: number; subtype?: string | null };
 
 // Which of a member's own accounts make sense to track THIS plan's shape.
 // Payoff plans track a balance coming DOWN, so only debt accounts qualify;
@@ -103,11 +107,11 @@ export function eligibleAccountsForShape(
 // read-only detail view) filters the same way rather than three approximations
 // of it drifting apart.
 export function linkableAccountsFrom(accounts: {
-  cash: { n: string; i: string; v: number; id?: string | null }[];
-  invest: { n: string; i: string; v: number; id?: string | null }[];
-  debt: { n: string; i: string; v: number; id?: string | null }[];
+  cash: { n: string; i: string; v: number; id?: string | null; subtype?: string | null }[];
+  invest: { n: string; i: string; v: number; id?: string | null; subtype?: string | null }[];
+  debt: { n: string; i: string; v: number; id?: string | null; subtype?: string | null }[];
 }): { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] } {
-  const withId = (list: { n: string; i: string; v: number; id?: string | null }[]) =>
+  const withId = (list: { n: string; i: string; v: number; id?: string | null; subtype?: string | null }[]) =>
     list.filter((a) => !!a.id) as LinkableAccount[];
   return { cash: withId(accounts.cash), invest: withId(accounts.invest), debt: withId(accounts.debt) };
 }
@@ -556,6 +560,30 @@ export function monthsToClose(
   if (monthly <= remaining * r) return null;
   const months = Math.log(monthly / (monthly - remaining * r)) / Math.log(1 + r);
   return Number.isFinite(months) ? Math.ceil(months) : null;
+}
+
+// Months until a balance growing at `monthly` a month, compounding at
+// `annualRate`, carries `current` to `target`. NOT monthsToClose with a rate
+// plugged in: that function is a debt-amortization formula, where interest
+// accrues AGAINST the payment and a rate that outpaces it means the balance
+// never clears. Here growth works FOR the member, shrinking the time needed,
+// so it needs its own formula (future value of a growing annuity, solved for
+// n) rather than reusing the payoff one, which would wrongly return null
+// ("this will never finish") for a fast-growing balance instead of "sooner
+// than a flat rate would suggest."
+export function monthsToGrow(
+  current: number,
+  target: number,
+  monthly: number | null,
+  annualRate = 0,
+): number | null {
+  const remaining = target - current;
+  if (remaining <= 0) return 0;
+  if (monthly == null || monthly <= 0) return null;
+  const r = annualRate > 0 ? annualRate / 100 / 12 : 0;
+  if (r === 0) return Math.ceil(remaining / monthly);
+  const months = Math.log((target + monthly / r) / (current + monthly / r)) / Math.log(1 + r);
+  return Number.isFinite(months) && months > 0 ? Math.ceil(months) : null;
 }
 
 // "Mar 2027" from a month offset, for a date we derived rather than one the

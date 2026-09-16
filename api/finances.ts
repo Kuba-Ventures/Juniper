@@ -291,7 +291,7 @@ export default async function handler(req: Request): Promise<Response> {
         n: a.name, i: it.institution_name || a.subtype || a.type || "Account",
         v: debt ? -Math.abs(a.balance || 0) : (a.balance || 0),
         id: a.account_id, institutionId: it.institution_id, mask: a.mask,
-        type: a.type, currency: a.currency,
+        type: a.type, currency: a.currency, subtype: a.subtype,
         limit: a.limit != null && a.limit > 0 ? a.limit : null,
       })),
     );
