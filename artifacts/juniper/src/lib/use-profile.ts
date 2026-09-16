@@ -119,6 +119,8 @@ export function useProfile(email: string, metaName?: string): UseProfile {
               (data.expense_loan_payments as number | undefined) ?? prev?.expenseLoanPayments,
             expenseOtherEssentials:
               (data.expense_other_essentials as number | undefined) ?? prev?.expenseOtherEssentials,
+            balance401k: (data.balance_401k as number | undefined) ?? prev?.balance401k,
+            balanceHsaFsa: (data.balance_hsa_fsa as number | undefined) ?? prev?.balanceHsaFsa,
             totalSavings: (data.total_savings as number | undefined) ?? prev?.totalSavings,
             totalDebt: (data.total_debt as number | undefined) ?? prev?.totalDebt,
             goals: (data.goals as string[] | undefined) ?? prev?.goals,
@@ -179,6 +181,8 @@ export function useProfile(email: string, metaName?: string): UseProfile {
         expense_rent: p.expenseRent ?? null,
         expense_loan_payments: p.expenseLoanPayments ?? null,
         expense_other_essentials: p.expenseOtherEssentials ?? null,
+        balance_401k: p.balance401k ?? null,
+        balance_hsa_fsa: p.balanceHsaFsa ?? null,
         total_savings: p.totalSavings ?? null,
         total_debt: p.totalDebt ?? null,
         goals: p.goals ?? null,

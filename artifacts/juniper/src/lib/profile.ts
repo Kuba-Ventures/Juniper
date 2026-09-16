@@ -27,6 +27,11 @@ export type UserProfile = {
   expenseRent?: number;
   expenseLoanPayments?: number;
   expenseOtherEssentials?: number;
+  // Current balance, if known, for the two before-you're-paid categories
+  // that carry one (health insurance is a premium, not a balance). Same
+  // informational-only rule as the deduction fields above. See migration 0087.
+  balance401k?: number;
+  balanceHsaFsa?: number;
   totalSavings?: number;
   totalDebt?: number;
   goals?: string[];
