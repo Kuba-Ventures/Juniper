@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initAnalytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/lib/theme";
@@ -17,6 +17,7 @@ import JuniperApp from "@/pages/juniper-app";
 import InviteLanding from "@/pages/invite-landing";
 import JoinPartner from "@/pages/join-partner";
 import JoinHousehold from "@/pages/join-household";
+import AdminGate from "@/pages/admin-sign-in";
 import { RequireAuth } from "@/components/auth/require-auth";
 
 const queryClient = new QueryClient();
@@ -50,13 +51,15 @@ function Router() {
         {(params) => <InviteLanding token={params.token} />}
       </Route>
       {/* juniperplan.com/admin, a shorter alias the member types directly
-          rather than reaching by clicking. Redirects rather than duplicating
-          the route: /app/admin already carries the app shell and its own
-          ADMIN_EMAILS gate, and this is deliberately just the shorter door
-          into it. */}
-      <Route path="/admin">
-        <Redirect to="/app/admin" />
-      </Route>
+          rather than reaching by clicking. Its own sign-in rather than a
+          bare redirect: signed out, this used to bounce through /app/admin's
+          RequireAuth straight to the member dashboard's "Welcome back" page,
+          which is the wrong front door for an admin and looks identical to
+          the consumer sign-in. AdminGate shows a distinct sign-in for a
+          signed-out visitor and hands off to /app/admin once a session
+          exists, where the real ADMIN_EMAILS gate and the app shell still
+          live (see admin-sign-in.tsx). */}
+      <Route path="/admin" component={AdminGate} />
       <Route path="/app/*?">
         {() => (
           <RequireAuth>
