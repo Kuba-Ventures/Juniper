@@ -34,20 +34,16 @@ export const money0 = (n: number) =>
 
 // ── Merchant art ────────────────────────────────────────────────────────────
 //
-// The source is the bundled merchant art already in lib/mock-logos.ts, reached
-// through the same BrandTile that renders it everywhere else, with a colored
-// monogram as the fallback. That is the whole decision, and it is worth stating
-// why the two alternatives were not taken.
+// This is the LAST-RESORT tier: the bundled merchant art in lib/mock-logos.ts,
+// reached through the same BrandTile that renders it everywhere else, with a
+// colored monogram as the final fallback. `MerchantMark` (components/juniper/
+// merchant-mark.tsx) tries Plaid's own `logo_url` first, then the favicon-based
+// lookup in lib/merchant-domains.ts, and only falls here if both come back
+// empty or fail to load.
 //
 // `resolveInstitutionMark` in lib/institution-brand.ts is not it: that resolves
 // INSTITUTIONS (the bank you linked), keyed by Plaid institution_id. A merchant
 // is a different namespace and the two must not be crossed.
-//
-// Plaid's enrichment `logo_url` is not it either, at least not yet: the field is
-// not in our `transactions` table, so using it means a migration plus a change
-// to the sync writer plus a per-merchant image fetch from the client. That is a
-// real option later, and this helper is the seam it would slot into. Bundled art
-// ships today with no network round trip and no new column.
 //
 // Matching is on word boundaries, not substrings: "Ally" must not light up on
 // "Rally's", and a merchant string from Plaid is usually the brand plus noise

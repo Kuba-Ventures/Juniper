@@ -1,26 +1,36 @@
 // The mark beside a merchant on the transactions list and the recurring panel.
 //
-// THREE SOURCES, IN ORDER, AND EACH ONE IS A FALLBACK FOR THE LAST:
+// FOUR SOURCES, IN ORDER, AND EACH ONE IS A FALLBACK FOR THE LAST:
 //
-//   1. Plaid's own `logo_url` for that merchant, which arrives with Transactions
+//   1. Plaid's own `logo_url` for that merchant (or the `merchant_logos` cache
+//      it backfilled into, api/transactions.ts), which arrives with Transactions
 //      at no extra product and no extra call. This is the only source that
 //      keeps up with where people actually shop.
-//   2. Bundled brand art (lib/mock-logos.ts) via BrandTile, for the two dozen
-//      brands we ship images for.
-//   3. A monogram tinted with the category's colour.
+//   2. A live favicon lookup (lib/merchant-domains.ts) for ~300 common US
+//      brands, through the same favicon service partners.ts already trusts for
+//      affiliate cards. No image to host: a name resolves to a domain and the
+//      domain resolves to a logo at request time.
+//   3. Bundled brand art (lib/mock-logos.ts) via BrandTile, for the couple
+//      dozen brands shipped as hosted images (mostly institutions and demo
+//      listings, not real merchant strings).
+//   4. A monogram tinted with the category's colour.
 //
-// Bundled art is second rather than first on purpose. It is a curated list, and
-// on a real feed it covers almost nothing: of the merchants on one live account
-// only Shell resolved. Growing that list by hand is exactly the maintenance debt
-// the institution gallery was deleted for in #139.
+// Bundled art (3) is not where new merchant coverage should grow: it is a
+// curated, hosted-image list, and on a real feed it covers almost nothing (of
+// the merchants on one live account only Shell resolved). Growing THAT list
+// by hand is exactly the maintenance debt the institution gallery was deleted
+// for in #139, and it is the same "knowingly unlicensed" exposure this app
+// already carries for card art. Tier 2 exists so growing merchant coverage
+// costs a domain, not a hosted asset.
 //
 // A remote image can 404, or be blocked, or simply be slow, and a broken image
-// icon in a money list looks like a bug in the money. `onError` drops back to
-// the same tile the row would have had with no logo at all, so the worst case is
-// the previous behaviour rather than a hole.
+// icon in a money list looks like a bug in the money. Each tier's `onError`
+// drops to the next one, so the worst case is the monogram, same as before
+// this tier existed.
 import { useState } from "react";
 import { BrandTile } from "@/components/juniper/primitives";
 import { merchantMark, initial } from "@/lib/txn-format";
+import { merchantDomain } from "@/lib/merchant-domains";
 import type { SeriesKey } from "@/lib/mock-data";
 
 export function MerchantMark({ logo, merchant, name, k, paint, className }: {
@@ -32,19 +42,26 @@ export function MerchantMark({ logo, merchant, name, k, paint, className }: {
   paint?: string;
   className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
-  const fallback = <BrandTile name={merchantMark(merchant, name)} letter={initial(name)} k={k} paint={paint} />;
-  if (!logo || failed) return fallback;
-  return (
-    <img
-      className={className ?? "blogo"}
-      src={logo}
-      alt=""
-      loading="lazy"
-      // Decorative: the merchant name is right beside it in text, so announcing
-      // the image would just repeat it.
-      aria-hidden="true"
-      onError={() => setFailed(true)}
-    />
+  const domain = merchantDomain(merchant, name);
+  const [stage, setStage] = useState<"plaid" | "favicon" | "fallback">(
+    logo ? "plaid" : domain ? "favicon" : "fallback",
   );
+  const cls = className ?? "blogo";
+  // Decorative in every tier: the merchant name is right beside it in text,
+  // so announcing the image would just repeat it.
+  const imgProps = { className: cls, alt: "", loading: "lazy" as const, "aria-hidden": true };
+
+  if (stage === "plaid" && logo) {
+    return <img {...imgProps} src={logo} onError={() => setStage(domain ? "favicon" : "fallback")} />;
+  }
+  if (stage === "favicon" && domain) {
+    return (
+      <img
+        {...imgProps}
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        onError={() => setStage("fallback")}
+      />
+    );
+  }
+  return <BrandTile name={merchantMark(merchant, name)} letter={initial(name)} k={k} paint={paint} />;
 }
