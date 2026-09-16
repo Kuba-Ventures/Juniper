@@ -24,6 +24,11 @@ export interface Account {
   n: string; i: string; v: number; k: SeriesKey; apr?: string;
   id?: string; institutionId?: string | null; mask?: string | null;
   type?: string | null; currency?: string | null; limit?: number | null;
+  // Plaid's own subtype (checking, savings, money market, cd, ira, ...), on
+  // the wire since #289 like the rest of this row but unread until the pace
+  // check needed to tell a savings account from a checking one (a HYSA
+  // assumption applied to a checking balance would be a real overclaim).
+  subtype?: string | null;
 }
 export interface PlanIcon { }
 

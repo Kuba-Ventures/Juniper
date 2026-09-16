@@ -20,6 +20,7 @@ import {
   domainFromName,
   uniqueDomain,
   monthsToClose,
+  monthsToGrow,
   monthsUntil,
   monthLabelFromNow,
   formatTargetDate,
@@ -263,6 +264,25 @@ type PlanView = {
   linkedAccount: LinkableAccount | null;
 };
 
+// Long-run rate assumptions for a plan's own pace math, not anything Plaid
+// reports: neither /accounts/get nor /accounts/balance/get carries an
+// interest-rate or expected-return field for any account type, depository or
+// investment (the one place this app reads an interest rate at all is
+// api/plaid/liabilities.ts, for debt). Used at face value, not netted against
+// inflation, per the member's own call (Finley, 2026-09-16): these are raw
+// institutional rates, and ASSUMED_INFLATION_RATE exists only to flag a cash
+// rate that is not keeping pace, never to adjust the growth math itself.
+const ASSUMED_INVESTMENT_RATE = 8; // %/yr, a brokerage or retirement account
+const ASSUMED_HYSA_RATE = 3.4; // %/yr, Marcus's own current rate, applied to any savings-type account
+const ASSUMED_INFLATION_RATE = 3.5; // %/yr, comparison only
+
+// Plaid's own account subtypes that actually pay interest, so the HYSA rate
+// only reaches a savings-type balance, never a checking one sitting in the
+// same "cash" bucket. A manual account's subtype is always unknown (never
+// "checking"), so it gets no rate either, the same "don't invent it" rule
+// every other unmeasured figure in this app follows.
+const INTEREST_BEARING_SUBTYPES = new Set(["savings", "money market", "cd"]);
+
 function viewOf(
   plan: Plan,
   accounts: { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] },
@@ -280,17 +300,30 @@ function viewOf(
   const remaining = Math.max(0, target - current);
   const pct = target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0;
   const done = plan.status === "completed";
+  const isInvestmentAccount = !!linkedAccount && accounts.invest.some((a) => a.id === linkedAccount.id);
+  const isHysaAccount = !!linkedAccount?.subtype && INTEREST_BEARING_SUBTYPES.has(linkedAccount.subtype);
+  const hysaBelowInflation = isHysaAccount && ASSUMED_HYSA_RATE < ASSUMED_INFLATION_RATE;
 
   // Income has no monthly figure and no rate, so there is no pace to project
   // from: `months` stays null and a date only ever shows when the member set
   // one explicitly. Inventing a raise-and-therefore-date the same way `save`
   // projects a savings pace would be a number nobody gave us.
+  //
+  // Payoff and save/buy are opposite directions and need different formulas,
+  // not the same one with a rate swapped in: a payoff balance accrues
+  // interest AGAINST the payment (monthsToClose), while a save/buy balance
+  // grows FOR the member toward the target (monthsToGrow). An unlinked or
+  // checking-linked cash goal still gets rate 0: no yield figure applies.
+  const paceRate = isInvestmentAccount
+    ? ASSUMED_INVESTMENT_RATE
+    : isHysaAccount
+      ? ASSUMED_HYSA_RATE
+      : 0;
   const months = shape === "income"
     ? null
-    // A payoff balance keeps accruing, so its finish line has to account for
-    // the rate. Saving gets rate 0 on purpose: we do not know what yield the
-    // member's cash earns, and inventing one would overstate their pace.
-    : monthsToClose(remaining, monthly, shape === "payoff" ? (rate ?? 0) : 0);
+    : shape === "payoff"
+      ? monthsToClose(remaining, monthly, rate ?? 0)
+      : monthsToGrow(current, target, monthly, paceRate);
   const dateLabel = targetDate
     ? `${copy.readyPrefix} ${formatTargetDate(targetDate)}`
     : months != null && months > 0
@@ -325,14 +358,28 @@ function viewOf(
     // the same rule that keeps months/dateLabel from inventing one above.
     const deadline = targetDate ? monthsUntil(targetDate) : null;
     const behind = deadline != null && (months == null || months > deadline);
+    // Disclosed only when an assumed rate actually drove the number, so an
+    // unlinked or checking-linked goal's copy stays exactly as it was: an
+    // assumed rate presented without saying so is the one thing this app's
+    // other projections never do. The below-inflation note is independent of
+    // pace (it's true whether or not the plan is behind), so it appears
+    // whenever the account is HYSA-rated, not only in the "behind" branch.
+    const assumption = isInvestmentAccount
+      ? ` (assumes ${ASSUMED_INVESTMENT_RATE}%/yr growth)`
+      : isHysaAccount
+        ? ` (assumes ${ASSUMED_HYSA_RATE}%/yr)`
+        : "";
+    const inflationNote = hysaBelowInflation
+      ? ` Heads up: ${ASSUMED_HYSA_RATE}%/yr is below the ${ASSUMED_INFLATION_RATE}%/yr inflation assumption, so this balance may be losing real value over time.`
+      : "";
     if (behind) {
       statusClass = "behind";
       statusLabel = "Behind pace";
       next = months == null
-        ? `At ${money(monthly)}/mo this won't pay off before your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.`
-        : `At ${money(monthly)}/mo you'll reach this around ${monthLabelFromNow(months)} — after your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.`;
+        ? `At ${money(monthly)}/mo this won't pay off before your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.${assumption}${inflationNote}`
+        : `At ${money(monthly)}/mo you'll reach this around ${monthLabelFromNow(months)} — after your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.${assumption}${inflationNote}`;
     } else {
-      next = `Keep ${copy.contribVerb.toLowerCase()} ${money(monthly)} a month to stay on pace.`;
+      next = `Keep ${copy.contribVerb.toLowerCase()} ${money(monthly)} a month to stay on pace.${assumption}${inflationNote}`;
     }
   }
 
