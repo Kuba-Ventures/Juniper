@@ -44,7 +44,15 @@ export function localBrandLogo(name: string): string | null {
   if (alias && LOGOS[alias]) return LOGOS[alias];
   const merchantKey = LOGO_KEY[trimmed];
   if (merchantKey && LOGOS[merchantKey]) return LOGOS[merchantKey];
-  return LOGOS[norm.replace(/[^a-z0-9]/g, "")] ?? null;
+  const direct = LOGOS[norm.replace(/[^a-z0-9]/g, "")];
+  if (direct) return direct;
+  // Plaid names a payment app's account variant "<Name> - Personal" / "<Name> -
+  // Business" (Venmo, Cash App), which slugifies to a key ("venmopersonal") the
+  // bundled art was never filed under. Strip that trailing " - <word>" and retry
+  // once against the base name, so "Venmo - Personal" still finds "venmo".
+  const base = trimmed.replace(/\s+-\s+\S+$/, "");
+  if (base !== trimmed) return localBrandLogo(base);
+  return null;
 }
 
 // Plaid's primary_color is whatever the bank's own brand is, which runs from
