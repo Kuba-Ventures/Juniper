@@ -11,6 +11,24 @@ import {
   type PlaidInstitutionMatch,
 } from "@/lib/plaid";
 
+// Whether `name` (a search hit or a gallery's plain display name, e.g. "Venmo")
+// is already on file. `connected` is keyed by the exact institution name Plaid
+// or the manual form gave us, which for a payment app's account variant is
+// "<Name> - Personal" / "<Name> - Business" rather than the plain name, so an
+// exact-match lookup alone leaves an already-connected Venmo still offered as a
+// fresh gallery tile forever. Treat any connected name that starts with
+// "<name> - " as the same institution.
+function isConnected(name: string, connected?: Map<string, string>): boolean {
+  if (!connected?.size) return false;
+  const norm = normInstitutionName(name);
+  if (connected.has(norm)) return true;
+  const prefix = `${norm} - `;
+  for (const key of connected.keys()) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 // The "connect an account" surface (account discovery, tier 2). In order:
 //
 //   1. Search Plaid's real institution list. One tap on a result links that
@@ -193,7 +211,7 @@ export function InstitutionPicker({
   // Plaid's hits minus anything already on file, so a linked bank is never
   // offered as a fresh connection.
   const plaidVisible = useMemo(
-    () => plaidHits.filter((h) => !connected?.has(normInstitutionName(h.name))),
+    () => plaidHits.filter((h) => !isConnected(h.name, connected)),
     [plaidHits, connected],
   );
 
@@ -218,7 +236,7 @@ export function InstitutionPicker({
       GALLERY_GROUPS.map((group) => ({
         label: group.label,
         manualCategory: group.manualCategory,
-        institutions: group.institutions.filter((name) => !connected?.has(normInstitutionName(name))),
+        institutions: group.institutions.filter((name) => !isConnected(name, connected)),
       })).filter((group) => group.institutions.length > 0),
     [connected],
   );
