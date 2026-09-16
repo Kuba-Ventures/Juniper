@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/juniper/app-frame";
 import {
   fetchSubmissions, moderateSubmission, type Submission,
   fetchCancellationRequests, moderateCancellationRequest, type CancellationRequestRow,
-  fetchSignups, type SignupMember,
+  fetchSignups, deleteMember, type SignupMember,
 } from "@/lib/admin";
 import { money2 } from "@/lib/txn-format";
 
@@ -265,7 +265,16 @@ function relTime(iso: string): string {
   return `${Math.round(days / 30)}mo ago`;
 }
 
-function SignupRow({ m }: { m: SignupMember }) {
+function SignupRow({
+  m, confirming, busy, onRequestDelete, onCancelDelete, onConfirmDelete,
+}: {
+  m: SignupMember;
+  confirming: boolean;
+  busy: boolean;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}) {
   const chip = signupChip[m.status];
   return (
     <div className="sub-row" style={{ alignItems: "flex-start" }}>
@@ -279,22 +288,40 @@ function SignupRow({ m }: { m: SignupMember }) {
           {" · "}Active {relTime(m.lastActive)}
         </div>
       </div>
-      <span className={`cr ${chip.cls}`} style={chip.style}>{chip.label}</span>
+      {confirming ? (
+        <div className="sub-act">
+          <span style={{ fontSize: 12, color: "var(--jnpr-bad)", fontWeight: 600 }}>Delete for good?</span>
+          <button className="btn ghost sm" disabled={busy} onClick={onCancelDelete}>Cancel</button>
+          <button className="btn ghost sm danger" disabled={busy} onClick={onConfirmDelete}>
+            {busy ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span className={`cr ${chip.cls}`} style={chip.style}>{chip.label}</span>
+          <button className="btn ghost sm danger" onClick={onRequestDelete}>Delete</button>
+        </div>
+      )}
     </div>
   );
 }
 
-// Read-only, unlike Submissions/Cancellations: there is nothing here to
+// Mostly read-only, unlike Submissions/Cancellations: there is nothing here to
 // approve or reject, only real signup and usage facts (see api/admin/
 // signups.ts for exactly what "activated" and "last active" mean, and why
 // income/expenses/savings/debt/goals are deliberately absent — the same
-// cleanup that dropped them from the admin Sheet).
+// cleanup that dropped them from the admin Sheet). The one action is Delete,
+// for clearing a stray test or duplicate account out of the roster, gated
+// behind its own inline confirm since there's no undo (api/admin/
+// delete-member.ts).
 function SignupsUsage() {
   const [members, setMembers] = useState<SignupMember[]>([]);
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<SignupFilter>("all");
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -307,6 +334,16 @@ function SignupsUsage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const onDelete = async (userId: string) => {
+    setBusyId(userId);
+    const res = await deleteMember(userId);
+    setBusyId(null);
+    setConfirmingId(null);
+    if (!res.ok) { setError(res.error ?? "Couldn't delete this member."); return; }
+    setError(null);
+    setMembers((cur) => cur.filter((m) => m.userId !== userId));
+  };
 
   if (state === "forbidden") {
     return <div className="card" style={{ textAlign: "center", color: "var(--jnpr-ink-3)", padding: 40 }}>You don’t have access to this page.</div>;
@@ -379,7 +416,17 @@ function SignupsUsage() {
         </div>
         {shown.length ? (
           <div className="rows">
-            {shown.map((m) => <SignupRow key={m.userId} m={m} />)}
+            {shown.map((m) => (
+              <SignupRow
+                key={m.userId}
+                m={m}
+                confirming={confirmingId === m.userId}
+                busy={busyId === m.userId}
+                onRequestDelete={() => setConfirmingId(m.userId)}
+                onCancelDelete={() => setConfirmingId(null)}
+                onConfirmDelete={() => void onDelete(m.userId)}
+              />
+            ))}
           </div>
         ) : (
           <div style={{ padding: "20px 2px", color: "var(--jnpr-ink-3)", fontSize: 13, textAlign: "center" }}>

@@ -143,3 +143,24 @@ export async function fetchSignups(): Promise<SignupsResult> {
     return { ok: false, forbidden: false, error: "Couldn't reach the server." };
   }
 }
+
+// Real removal, not a reset: wipes the member's data and their auth account,
+// with no way back. See api/admin/delete-member.ts for exactly what that
+// means and why it's a separate, admin-only path from Settings' own
+// developer-gated "Reset account & start over".
+export async function deleteMember(userId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return { ok: false, error: "Please sign in." };
+    const res = await fetch("/api/admin/delete-member", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) return { ok: false, error: data.error || "Couldn't delete this member." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Couldn't reach the server." };
+  }
+}
