@@ -108,3 +108,38 @@ export async function moderateCancellationRequest(
     return { ok: false, error: "Couldn't reach the server." };
   }
 }
+
+// ── Sign-ups & usage roster ────────────────────────────────────────────────
+// Read-only, unlike the two queues above: there is nothing here for an admin
+// to approve or reject, only real signup and usage facts (see api/admin/
+// signups.ts for exactly what "activated" and "last active" mean and why
+// income/expenses/savings/debt/goals are deliberately absent).
+
+export interface SignupMember {
+  userId: string;
+  name: string | null;
+  email: string;
+  signedUp: string;
+  status: "active" | "onboarding" | "stalled";
+  accounts: number;
+  plans: number;
+  lastActive: string;
+}
+
+export type SignupsResult =
+  | { ok: true; members: SignupMember[] }
+  | { ok: false; forbidden: boolean; error: string };
+
+export async function fetchSignups(): Promise<SignupsResult> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return { ok: false, forbidden: false, error: "Please sign in." };
+    const res = await fetch("/api/admin/signups", { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 403) return { ok: false, forbidden: true, error: "You don't have access to this page." };
+    if (!res.ok) return { ok: false, forbidden: false, error: "Couldn't load members." };
+    const data = (await res.json()) as { members?: SignupMember[] };
+    return { ok: true, members: data.members ?? [] };
+  } catch {
+    return { ok: false, forbidden: false, error: "Couldn't reach the server." };
+  }
+}

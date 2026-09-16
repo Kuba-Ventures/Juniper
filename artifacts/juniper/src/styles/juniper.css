@@ -269,6 +269,11 @@
 
 .jnpr .big-num{font-size:38px;font-weight:700;letter-spacing:-.025em;line-height:1;color:var(--jnpr-ink)}
 .jnpr .head-note{font-size:11.5px;color:var(--jnpr-ink-3);font-weight:600}
+/* A compact sibling of .big-num, for a row of several small stat cards (the
+   admin sign-ups scorecard) where 38px would crowd four across a card. */
+.jnpr .adm-kpi-num{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.3;color:var(--jnpr-ink);margin-top:4px;font-variant-numeric:tabular-nums}
+.jnpr .adm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:640px){.jnpr .adm-kpis{grid-template-columns:1fr 1fr}}
 .jnpr .nw-note{font-size:11.5px;color:var(--jnpr-ink-3);line-height:1.5;margin:10px 0 0}
 .jnpr .delta{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:3px 8px;border-radius:20px}
 .jnpr .delta.up{color:var(--jnpr-good);background:var(--jnpr-good-soft)}.jnpr .delta.down{color:var(--jnpr-bad);background:var(--jnpr-bad-soft)}
