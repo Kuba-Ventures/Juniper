@@ -338,23 +338,22 @@ function viewOf(
   };
 }
 
-function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
-  v: PlanView;
-  onOpen: () => void;
-  onAsk: () => void;
-  chatCount: number;
-  /** Write one changed field back to the row. Resolves false if it did not save. */
-  onPatch: (patch: { name?: string; target?: number; linkedAccountId?: string | null; current?: number }) => Promise<boolean>;
-  // Already filtered to this plan's shape (payoff -> debt, save/buy -> cash +
-  // invest, income -> none) by the caller, which is the one place that also
-  // knows the full account list, so this component never has to re-derive the
-  // filter from `v.shape` itself.
+// The "link this plan to an account" control: a chip naming the linked
+// account (or an empty-state button) that opens a dropdown of eligible
+// accounts. Shared by PlanCard (the grid, where it autosaves on pick) and
+// EditForm (the edit modal), so there is one implementation of the picker UI
+// rather than two that can drift. Renders nothing when there is neither a
+// linked account to show nor anything eligible to offer.
+function PlanAccountLink({
+  title, linkedAccount, linkableAccounts, onLink,
+}: {
+  title: string;
+  linkedAccount: LinkableAccount | null;
   linkableAccounts: LinkableAccount[];
+  /** Resolves false if the choice did not save (network write callers only;
+      a purely-local caller like EditForm can just always resolve true). */
+  onLink: (acct: LinkableAccount | null) => Promise<boolean>;
 }) {
-  const copy = SHAPE_COPY[v.shape];
-  // Which field is open, if any. One at a time: two live inputs on one card
-  // means two pending writes racing over the same row.
-  const [editing, setEditing] = useState<null | "title" | "target">(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -363,12 +362,12 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
   const [ddPos, setDdPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // The dropdown portals to <body> rather than sitting where it's written,
-  // the same fix category-picker.tsx already needed for the same reason:
-  // `.plan-lg` is `overflow:hidden` (for its rounded corners), so an
-  // absolutely-positioned child clips at the card's own edge instead of
-  // floating over whatever sits beneath it. Position is measured off the chip
-  // itself, and re-measured on scroll/resize while open since the card can
-  // sit inside a scrolling grid.
+  // the same fix category-picker.tsx already needed for the same reason: both
+  // `.plan-lg` and `.modal` clip an absolutely-positioned child at their own
+  // edge (the modal via its scrolling `overflow-y:auto`) instead of floating
+  // it over whatever sits beneath it. Position is measured off the chip
+  // itself, and re-measured on scroll/resize while open since either host can
+  // scroll under it.
   const placeDd = useCallback(() => {
     const a = linkRef.current?.getBoundingClientRect();
     if (!a) return;
@@ -401,18 +400,103 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
     return () => document.removeEventListener("mousedown", onDown);
   }, [pickerOpen]);
 
+  if (!linkedAccount && linkableAccounts.length === 0) return null;
+
   const linkTo = async (acct: LinkableAccount | null) => {
     setPickerOpen(false);
     setError("");
     setBusy(true);
-    const ok = await onPatch(
+    const ok = await onLink(acct);
+    setBusy(false);
+    if (!ok) setError("That did not save. Check your connection and try again.");
+  };
+
+  return (
+    <div className="plan-link" ref={linkRef} onClick={(e) => e.stopPropagation()}>
+      {linkedAccount ? (
+        <button
+          type="button"
+          className="plan-link-chip"
+          disabled={busy}
+          onClick={() => setPickerOpen((s) => !s)}
+          aria-label={`Change the account linked to ${title}`}
+        >
+          <AccountMark name={linkedAccount.i} />
+          <span className="pl-info">
+            <span className="pl-name">{linkedAccount.n}</span>
+            <span className="pl-sub">{linkedAccount.i} · synced</span>
+          </span>
+          <span className="pl-bal">{money(Math.abs(linkedAccount.v))}</span>
+          <span className="pl-chev">⌄</span>
+        </button>
+      ) : (
+        <button type="button" className="plan-link-empty" disabled={busy} onClick={() => setPickerOpen((s) => !s)}>
+          <PlusIcon />Link an account to track this automatically
+        </button>
+      )}
+      {pickerOpen && ddPos && createPortal(
+        <div className="jnpr" style={{ display: "contents" }}>
+          <div
+            className="plan-link-dd"
+            ref={ddRef}
+            role="listbox"
+            aria-label={`Accounts you can link to ${title}`}
+            style={{ position: "fixed", top: ddPos.top, left: ddPos.left, width: ddPos.width }}
+          >
+            {linkableAccounts.length ? (
+              linkableAccounts.map((a) => (
+                <button key={a.id} type="button" className="pld-row" onClick={() => void linkTo(a)}>
+                  <AccountMark name={a.i} />
+                  <span className="pld-info">
+                    <span className="pld-name">{a.n}</span>
+                    <span className="pld-sub">{a.i}</span>
+                  </span>
+                  <span className="pld-bal">{money(Math.abs(a.v))}</span>
+                </button>
+              ))
+            ) : (
+              <div className="pld-none">No eligible linked accounts yet</div>
+            )}
+            {linkedAccount && (
+              <button type="button" className="pld-row pld-unlink" onClick={() => void linkTo(null)}>
+                Unlink and track manually
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+      {error && <div className="plan-err">{error}</div>}
+    </div>
+  );
+}
+
+function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
+  v: PlanView;
+  onOpen: () => void;
+  onAsk: () => void;
+  chatCount: number;
+  /** Write one changed field back to the row. Resolves false if it did not save. */
+  onPatch: (patch: { name?: string; target?: number; linkedAccountId?: string | null; current?: number }) => Promise<boolean>;
+  // Already filtered to this plan's shape (payoff -> debt, save/buy -> cash +
+  // invest, income -> none) by the caller, which is the one place that also
+  // knows the full account list, so this component never has to re-derive the
+  // filter from `v.shape` itself.
+  linkableAccounts: LinkableAccount[];
+}) {
+  const copy = SHAPE_COPY[v.shape];
+  // Which field is open, if any. One at a time: two live inputs on one card
+  // means two pending writes racing over the same row.
+  const [editing, setEditing] = useState<null | "title" | "target">(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const linkAccount = (acct: LinkableAccount | null) =>
+    onPatch(
       acct
         ? { linkedAccountId: acct.id, current: linkedAccountValue(v.shape, v.target, acct) }
         : { linkedAccountId: null },
     );
-    setBusy(false);
-    if (!ok) setError("That did not save. Check your connection and try again.");
-  };
 
   const commit = async (field: "title" | "target", raw: string) => {
     setEditing(null);
@@ -504,68 +588,12 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
           <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>{v.pct}% {copy.progressWord}</div>
         </div>
         <div className="bar"><i style={{ width: `${v.pct}%`, background: cssVar(v.color) }} /></div>
-        {(v.linkedAccount || linkableAccounts.length > 0) && (
-          <div className="plan-link" ref={linkRef} onClick={(e) => e.stopPropagation()}>
-            {v.linkedAccount ? (
-              <button
-                type="button"
-                className="plan-link-chip"
-                disabled={busy}
-                onClick={() => setPickerOpen((s) => !s)}
-                aria-label={`Change the account linked to ${v.title}`}
-              >
-                <AccountMark name={v.linkedAccount.i} />
-                <span className="pl-info">
-                  <span className="pl-name">{v.linkedAccount.n}</span>
-                  <span className="pl-sub">{v.linkedAccount.i} · synced</span>
-                </span>
-                <span className="pl-bal">{money(Math.abs(v.linkedAccount.v))}</span>
-                <span className="pl-chev">⌄</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="plan-link-empty"
-                disabled={busy}
-                onClick={() => setPickerOpen((s) => !s)}
-              >
-                <PlusIcon />Link an account to track this automatically
-              </button>
-            )}
-            {pickerOpen && ddPos && createPortal(
-              <div className="jnpr" style={{ display: "contents" }}>
-                <div
-                  className="plan-link-dd"
-                  ref={ddRef}
-                  role="listbox"
-                  aria-label={`Accounts you can link to ${v.title}`}
-                  style={{ position: "fixed", top: ddPos.top, left: ddPos.left, width: ddPos.width }}
-                >
-                  {linkableAccounts.length ? (
-                    linkableAccounts.map((a) => (
-                      <button key={a.id} type="button" className="pld-row" onClick={() => void linkTo(a)}>
-                        <AccountMark name={a.i} />
-                        <span className="pld-info">
-                          <span className="pld-name">{a.n}</span>
-                          <span className="pld-sub">{a.i}</span>
-                        </span>
-                        <span className="pld-bal">{money(Math.abs(a.v))}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="pld-none">No eligible linked accounts yet</div>
-                  )}
-                  {v.linkedAccount && (
-                    <button type="button" className="pld-row pld-unlink" onClick={() => void linkTo(null)}>
-                      Unlink and track manually
-                    </button>
-                  )}
-                </div>
-              </div>,
-              document.body,
-            )}
-          </div>
-        )}
+        <PlanAccountLink
+          title={v.title}
+          linkedAccount={v.linkedAccount}
+          linkableAccounts={linkableAccounts}
+          onLink={linkAccount}
+        />
         <div className="plan-meta">
           {copy.contribVerb && <span>{copy.contribVerb} <b>{v.monthly ? `${money(v.monthly)}/mo` : "not set"}</b></span>}
           {v.dateLabel && <span className="pm-date">{v.dateLabel}</span>}
@@ -1419,6 +1447,7 @@ export default function Plans({ profile = null, profileReady = false }: {
           onSaved={(plan) => { upsertLocal(plan); setModal({ k: "view", domain: plan.domain }); }}
           onDeleted={(domain) => { removeLocal(domain); close(); }}
           onClose={() => setModal({ k: "view", domain: editing.domain })}
+          linkable={linkable}
         />
       )}
     </div>
@@ -1432,6 +1461,7 @@ export default function Plans({ profile = null, profileReady = false }: {
 // household page is where it lives, so the editor has to reach it there.
 export function EditForm({
   plan, owned, onSaved, onDeleted, onClose,
+  linkable,
 }: {
   plan: Plan;
   /** False on a plan the member only partners on. Hides Delete, which the
@@ -1445,9 +1475,20 @@ export function EditForm({
   onSaved: (p: Plan) => void;
   onDeleted: (domain: string) => void;
   onClose: () => void;
+  /** The caller's linkable accounts (already narrowed to ones that carry an
+      id, via linkableAccountsFrom), for the "link this plan to an account"
+      control below. Omitted by a caller with no finances context (there is
+      none today), which simply hides the control the same way PlanCard hides
+      it when `linkableAccounts` is empty. */
+  linkable?: { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] };
 }) {
   const title = planTitle(plan);
   const nums = planNumbers(plan);
+  // Tracked apart from `draft` because linking has to survive a shape change
+  // (unlike `draft.icon`, which a shape change deliberately clears): a plan's
+  // linked account is a fact about which real balance funds it, not about the
+  // template it was framed from.
+  const [linkedAccountId, setLinkedAccountId] = useState<string | null>(plan.goal?.linked_account_id ?? null);
   const [draft, setDraft] = useState<Draft>({
     name: title,
     shape: planShape(plan),
@@ -1491,6 +1532,33 @@ export function EditForm({
     set({ target: numStr(total), rate: numStr(blended) });
   };
 
+  // Eligible accounts follow the current draft shape (a payoff plan wants
+  // debt accounts, a save/buy plan wants cash+invest), same rule PlanCard's
+  // caller applies; the already-linked account is resolved against every
+  // bucket instead, the same reasoning findLinkedAccount documents, so a
+  // plan whose shape just changed in this very form still shows what it is
+  // linked to rather than silently losing it from the chip.
+  const eligibleAccounts = useMemo(
+    () => (linkable ? eligibleAccountsForShape(draft.shape, linkable) : []),
+    [linkable, draft.shape],
+  );
+  const linkedAccountObj = useMemo(() => {
+    if (!linkedAccountId || !linkable) return null;
+    const all = [...linkable.cash, ...linkable.invest, ...linkable.debt];
+    return all.find((a) => a.id === linkedAccountId) ?? null;
+  }, [linkedAccountId, linkable]);
+  // Local only, unlike PlanCard's version: this form saves everything at
+  // once on "Save changes" rather than autosaving one field at a time, so
+  // picking an account here just updates the draft (and, on a link, the
+  // saved-so-far figure it implies) for `write()` to carry through.
+  // Unlinking hands the member back their last figure to edit by hand,
+  // exactly like the card's version, rather than resetting it to zero.
+  const linkAccount = async (acct: LinkableAccount | null) => {
+    setLinkedAccountId(acct ? acct.id : null);
+    if (acct) set({ current: numStr(linkedAccountValue(draft.shape, parseNum(draft.target), acct)) });
+    return true;
+  };
+
   const write = async (extra: { status?: Plan["status"] } = {}) => {
     setBusy(true);
     setError("");
@@ -1502,10 +1570,12 @@ export function EditForm({
       draft.shape === "payoff" && debts.length
         ? { ...restState, debts }
         : (Object.keys(restState).length ? restState : null);
+    const goal = goalFrom({ ...draft, name: draft.name.trim() || title }, plan.goal);
+    if (linkedAccountId) goal.linked_account_id = linkedAccountId; else delete goal.linked_account_id;
     const saved = await savePlan({
       domain: plan.domain,
       ...extra,
-      goal: goalFrom({ ...draft, name: draft.name.trim() || title }, plan.goal),
+      goal,
       current_state: nextState,
     });
     setBusy(false);
@@ -1561,6 +1631,12 @@ export function EditForm({
       <p>Update the goal, mark it done, or remove it. Changes save to your account.</p>
       {error && <div className="form-error">{error}</div>}
       <DraftFields draft={draft} set={set} />
+      <PlanAccountLink
+        title={title}
+        linkedAccount={linkedAccountObj}
+        linkableAccounts={eligibleAccounts}
+        onLink={linkAccount}
+      />
       {draft.shape === "payoff" && <DebtBreakdown debts={debts} onChange={setDebtsAndTotals} />}
       {draft.shape === "save" && (
         <InvestmentBreakdown onAdd={(amt) => set({ monthly: numStr(parseNum(draft.monthly) + amt) })} />
