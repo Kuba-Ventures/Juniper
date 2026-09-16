@@ -40,6 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { MerchantMark } from "@/components/juniper/merchant-mark";
+import { localBrandLogo } from "@/lib/institution-brand";
 import { PieView, BarsView, TreemapView, TrendView, FlowView, CHART_KINDS, type ChartKind } from "@/components/juniper/spend-charts";
 import { SubscriptionsPanel } from "@/components/juniper/subscriptions-panel";
 import { BudgetsPanel } from "@/components/juniper/budgets-panel";
@@ -487,7 +488,19 @@ export default function Transactions() {
         <td className="td-d">{fmtDay(t.d)}{t.pending && <span className="td-pend">Pending</span>}</td>
         <td className="td-merch">
           <div className="td-m">
-            <MerchantMark logo={t.logo} merchant={t.merchant} name={t.m} k={colorOf(t.g)} paint={paint(t.g, t.hue)} />
+            {/* Plaid's merchant art first, then the bank behind the row, then the
+               monogram MerchantMark falls back to on its own. The middle tier is
+               gated on there being no merchant at all: a bank transfer or card
+               payment ("External Withdrawal...", "Money Transfer from...") is
+               not a merchant transaction, so Plaid never names one and no
+               merchant art can ever cover it, while the institution is known
+               from the account. A real small business Plaid simply has no logo
+               for still falls through to the monogram, since it DOES have a
+               merchant name and showing a bank's mark on it would misattribute
+               the charge. Same rule subscriptions-panel.tsx uses for a fee. */}
+            <MerchantMark
+              logo={t.logo ?? (!t.merchant && t.institution ? localBrandLogo(t.institution) : null)}
+              merchant={t.merchant} name={t.m} k={colorOf(t.g)} paint={paint(t.g, t.hue)} />
             <span className="td-mn">
               <span>
                 {t.m}
