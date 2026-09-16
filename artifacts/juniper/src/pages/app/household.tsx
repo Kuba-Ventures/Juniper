@@ -13,7 +13,7 @@
 // cards, the same "card links deeper" pattern the individual and partner
 // Overviews already use) and so is Plans (sharing a plan to the household,
 // migration 0056 / household_plan_shares).
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { money } from "@/lib/mock-data";
 import { cssVar, PlanIcon } from "@/components/juniper/primitives";
@@ -26,7 +26,7 @@ import {
   type HouseholdAccount, type HouseholdPlan, type HouseholdRole, type AccountScope,
 } from "@/lib/household";
 import { InviteHouseholdModal } from "@/components/juniper/household-invite-modal";
-import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, isHouseholdPlan, SHAPE_ICON, type Plan } from "@/lib/plans";
+import { planTitle, planIcon, planColor, planNumbers, useMemberPlans, isHouseholdPlan, SHAPE_ICON, linkableAccountsFrom, type Plan } from "@/lib/plans";
 // EditForm comes from the Plans page rather than being rebuilt here (issue
 // #362): a plan created for the household no longer appears on the individual
 // Plans page, so this is the only place left that can edit, complete or delete
@@ -174,6 +174,7 @@ export function HouseholdView() {
   const closeModal = () => setModal(null);
   const { data: finances } = useFinances();
   const balances = balancesFromFinances(finances);
+  const linkable = useMemo(() => linkableAccountsFrom(finances.accounts), [finances.accounts]);
   // `allPlans`, not `plans`: this feeds CreateForm's `existing` (so
   // `uniqueDomain` sees every domain already on the account, household plans
   // included) and backs the Edit control below, which has to reach the plans
@@ -569,6 +570,7 @@ export function HouseholdView() {
           onSaved={(plan) => { upsertOwnPlanLocal(plan); closeModal(); refresh(); }}
           onDeleted={(domain) => { removeOwnPlanLocal(domain); closeModal(); refresh(); }}
           onClose={closeModal}
+          linkable={linkable}
         />
       )}
     </div>

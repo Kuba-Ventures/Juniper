@@ -630,8 +630,11 @@
    than CSS, and portaled to <body> rather than nested here: `.plan-lg` is
    `overflow:hidden`, so an absolutely-positioned child clips at the card's own
    edge instead of floating over the content below it, the same fix
-   category-picker.tsx already needed for `.tx-tablewrap`. */
-.jnpr .plan-link-dd{z-index:30;
+   category-picker.tsx already needed for `.tx-tablewrap`. z-index is above
+   `.modal-bg`'s 80, not just above the card grid: this control also renders
+   inside EditForm's modal, and a portal is a sibling of `.modal-bg` in the
+   DOM, so without this the modal's own overlay painted on top of it. */
+.jnpr .plan-link-dd{z-index:85;
   background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:12px;
   box-shadow:var(--jnpr-shadow-lg);padding:5px;max-height:220px;overflow-y:auto}
 .jnpr .pld-row{width:100%;display:flex;align-items:center;gap:9px;text-align:left;
