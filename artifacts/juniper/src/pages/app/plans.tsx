@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useSearch } from "wouter";
 import { PageHeader } from "@/components/juniper/app-frame";
 import { money } from "@/lib/mock-data";
@@ -23,17 +24,23 @@ import {
   formatTargetDate,
   PLAN_COLORS,
   SHAPE_ICON,
+  eligibleAccountsForShape,
+  findLinkedAccount,
+  linkedAccountValue,
+  linkableAccountsFrom,
   type Plan,
   type PlanColor,
   type PlanGoal,
   type PlanShape,
   type DebtItem,
+  type LinkableAccount,
   GOAL_ROUTES,
   unplannedGoals,
   type UnplannedGoal,
 } from "@/lib/plans";
 import { DebtBreakdown } from "@/components/juniper/debt-breakdown";
 import { InvestmentBreakdown } from "@/components/juniper/investment-breakdown";
+import { resolveInstitutionMark } from "@/lib/institution-brand";
 import type { UserProfile } from "@/lib/profile";
 // The plan-create form and its shared building blocks live here now, so
 // pages/app/household.tsx can mount the exact same form in place (issue #338
@@ -169,6 +176,22 @@ const PencilIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M15.5 4.5l4 4L8 20H4v-4z" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
 
+// The account-link chip's mark, at the same 26px the chip's row height wants.
+// Reuses lib/institution-brand's fallback chain (Plaid logo, then bundled
+// brand art, then a tinted monogram) rather than inventing a fourth one, the
+// same rule Connections and Credit already follow. No InstitutionBrand is
+// passed in: this module has no brand-color map handy, so a bank Plaid has no
+// bundled art for and no color for falls through to a plain glyph, same as an
+// institution-less manual account.
+function AccountMark({ name }: { name: string }) {
+  const mark = resolveInstitutionMark(name);
+  if (mark.kind === "logo") return <img className="pl-mark" src={mark.src} alt="" />;
+  if (mark.kind === "monogram") {
+    return <span className="pl-mark pl-mono" style={{ background: mark.background, color: mark.color }}>{mark.letter}</span>;
+  }
+  return <span className="pl-mark pl-mono">{(name.trim().charAt(0) || "?").toUpperCase()}</span>;
+}
+
 /* ------------------------------------------------------------------ *
  * Inline edit: one field, opened in place.
  *
@@ -231,12 +254,28 @@ type PlanView = {
   statusLabel: string;
   note: string;
   next: string;
+  // The account this plan is tracking, resolved against the member's current
+  // account list, or null if it never linked one or the linked account no
+  // longer resolves (unlinked bank, a manual row deleted). `current` above
+  // already reflects it (see linkedAccountValue in lib/plans.ts); this is only
+  // what the card needs to label the chip and offer Unlink.
+  linkedAccount: LinkableAccount | null;
 };
 
-function viewOf(plan: Plan): PlanView {
+function viewOf(
+  plan: Plan,
+  accounts: { cash: LinkableAccount[]; invest: LinkableAccount[]; debt: LinkableAccount[] },
+): PlanView {
   const shape = planShape(plan);
   const copy = SHAPE_COPY[shape];
-  const { current, target, monthly, targetDate, rate } = planNumbers(plan);
+  const nums = planNumbers(plan);
+  const { target, monthly, targetDate, rate } = nums;
+  const linkedAccount = findLinkedAccount(plan.goal, accounts);
+  // A linked account's live balance stands in for the hand-typed current_value
+  // the moment it resolves, so the pace math below (months to close, the
+  // status line) reacts to the SAME figure the card displays rather than a
+  // stale one from the last manual edit or the last sync's write-back.
+  const current = linkedAccount ? linkedAccountValue(shape, target, linkedAccount) : nums.current;
   const remaining = Math.max(0, target - current);
   const pct = target > 0 ? Math.min(100, Math.max(0, Math.round((current / target) * 100))) : 0;
   const done = plan.status === "completed";
@@ -295,17 +334,22 @@ function viewOf(plan: Plan): PlanView {
   return {
     domain: plan.domain, title: planTitle(plan), shape, icon: planIcon(plan), color: planColor(plan),
     current, target, pct, monthly, rate, dateLabel,
-    done, statusClass, statusLabel, note, next,
+    done, statusClass, statusLabel, note, next, linkedAccount,
   };
 }
 
-function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
+function PlanCard({ v, onOpen, onAsk, chatCount, onPatch, linkableAccounts }: {
   v: PlanView;
   onOpen: () => void;
   onAsk: () => void;
   chatCount: number;
   /** Write one changed field back to the row. Resolves false if it did not save. */
-  onPatch: (patch: { name?: string; target?: number }) => Promise<boolean>;
+  onPatch: (patch: { name?: string; target?: number; linkedAccountId?: string | null; current?: number }) => Promise<boolean>;
+  // Already filtered to this plan's shape (payoff -> debt, save/buy -> cash +
+  // invest, income -> none) by the caller, which is the one place that also
+  // knows the full account list, so this component never has to re-derive the
+  // filter from `v.shape` itself.
+  linkableAccounts: LinkableAccount[];
 }) {
   const copy = SHAPE_COPY[v.shape];
   // Which field is open, if any. One at a time: two live inputs on one card
@@ -313,6 +357,62 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
   const [editing, setEditing] = useState<null | "title" | "target">(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const linkRef = useRef<HTMLDivElement>(null);
+  const ddRef = useRef<HTMLDivElement>(null);
+  const [ddPos, setDdPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // The dropdown portals to <body> rather than sitting where it's written,
+  // the same fix category-picker.tsx already needed for the same reason:
+  // `.plan-lg` is `overflow:hidden` (for its rounded corners), so an
+  // absolutely-positioned child clips at the card's own edge instead of
+  // floating over whatever sits beneath it. Position is measured off the chip
+  // itself, and re-measured on scroll/resize while open since the card can
+  // sit inside a scrolling grid.
+  const placeDd = useCallback(() => {
+    const a = linkRef.current?.getBoundingClientRect();
+    if (!a) return;
+    setDdPos({ top: a.bottom + 6, left: a.left, width: a.width });
+  }, []);
+  useLayoutEffect(() => { if (pickerOpen) placeDd(); }, [pickerOpen, placeDd]);
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onScroll = () => placeDd();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [pickerOpen, placeDd]);
+
+  // A dropdown of plain buttons has no blur to close it the way InlineField's
+  // single input does, so it needs its own outside-click, same as any other
+  // popover in the app; the portaled panel is excluded via its own ref since
+  // it no longer lives inside linkRef's subtree.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (linkRef.current?.contains(t) || ddRef.current?.contains(t)) return;
+      setPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [pickerOpen]);
+
+  const linkTo = async (acct: LinkableAccount | null) => {
+    setPickerOpen(false);
+    setError("");
+    setBusy(true);
+    const ok = await onPatch(
+      acct
+        ? { linkedAccountId: acct.id, current: linkedAccountValue(v.shape, v.target, acct) }
+        : { linkedAccountId: null },
+    );
+    setBusy(false);
+    if (!ok) setError("That did not save. Check your connection and try again.");
+  };
 
   const commit = async (field: "title" | "target", raw: string) => {
     setEditing(null);
@@ -404,6 +504,68 @@ function PlanCard({ v, onOpen, onAsk, chatCount, onPatch }: {
           <div style={{ fontSize: 12, color: "var(--jnpr-ink-3)", fontWeight: 600 }}>{v.pct}% {copy.progressWord}</div>
         </div>
         <div className="bar"><i style={{ width: `${v.pct}%`, background: cssVar(v.color) }} /></div>
+        {(v.linkedAccount || linkableAccounts.length > 0) && (
+          <div className="plan-link" ref={linkRef} onClick={(e) => e.stopPropagation()}>
+            {v.linkedAccount ? (
+              <button
+                type="button"
+                className="plan-link-chip"
+                disabled={busy}
+                onClick={() => setPickerOpen((s) => !s)}
+                aria-label={`Change the account linked to ${v.title}`}
+              >
+                <AccountMark name={v.linkedAccount.i} />
+                <span className="pl-info">
+                  <span className="pl-name">{v.linkedAccount.n}</span>
+                  <span className="pl-sub">{v.linkedAccount.i} · synced</span>
+                </span>
+                <span className="pl-bal">{money(Math.abs(v.linkedAccount.v))}</span>
+                <span className="pl-chev">⌄</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="plan-link-empty"
+                disabled={busy}
+                onClick={() => setPickerOpen((s) => !s)}
+              >
+                <PlusIcon />Link an account to track this automatically
+              </button>
+            )}
+            {pickerOpen && ddPos && createPortal(
+              <div className="jnpr" style={{ display: "contents" }}>
+                <div
+                  className="plan-link-dd"
+                  ref={ddRef}
+                  role="listbox"
+                  aria-label={`Accounts you can link to ${v.title}`}
+                  style={{ position: "fixed", top: ddPos.top, left: ddPos.left, width: ddPos.width }}
+                >
+                  {linkableAccounts.length ? (
+                    linkableAccounts.map((a) => (
+                      <button key={a.id} type="button" className="pld-row" onClick={() => void linkTo(a)}>
+                        <AccountMark name={a.i} />
+                        <span className="pld-info">
+                          <span className="pld-name">{a.n}</span>
+                          <span className="pld-sub">{a.i}</span>
+                        </span>
+                        <span className="pld-bal">{money(Math.abs(a.v))}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="pld-none">No eligible linked accounts yet</div>
+                  )}
+                  {v.linkedAccount && (
+                    <button type="button" className="pld-row pld-unlink" onClick={() => void linkTo(null)}>
+                      Unlink and track manually
+                    </button>
+                  )}
+                </div>
+              </div>,
+              document.body,
+            )}
+          </div>
+        )}
         <div className="plan-meta">
           {copy.contribVerb && <span>{copy.contribVerb} <b>{v.monthly ? `${money(v.monthly)}/mo` : "not set"}</b></span>}
           {v.dateLabel && <span className="pm-date">{v.dateLabel}</span>}
@@ -476,7 +638,8 @@ function PlanDetailView({ plan, threads, onEdit, onClose }: {
   onEdit: () => void;
   onClose: () => void;
 }) {
-  const v = viewOf(plan);
+  const { data: financesData } = useFinances();
+  const v = viewOf(plan, useMemo(() => linkableAccountsFrom(financesData.accounts), [financesData.accounts]));
   const copy = SHAPE_COPY[v.shape];
   const [, navigate] = useLocation();
   // Same shape as EditForm's own debts read, and the same reason: current_state
@@ -933,10 +1096,20 @@ export default function Plans({ profile = null, profileReady = false }: {
   // date, a payoff rate, and a headline written by the guided dialogue all
   // survive a rename. `goalFrom` deliberately deletes fields it does not show;
   // this path shows two, so it must not use it.
-  const patchPlan = async (plan: Plan, patch: { name?: string; target?: number }) => {
+  const patchPlan = async (plan: Plan, patch: {
+    name?: string; target?: number; current?: number; linkedAccountId?: string | null;
+  }) => {
     const goal: PlanGoal = { ...(plan.goal ?? { headline: "" }) };
     if (patch.name !== undefined) goal.name = patch.name;
     if (patch.target !== undefined) goal.target_value = patch.target;
+    if (patch.current !== undefined) goal.current_value = patch.current;
+    if (patch.linkedAccountId !== undefined) {
+      // `current_value` is left exactly where it lands (the live figure at
+      // the moment of linking, or unlinking's last-synced figure): unlinking
+      // hands the member back a manual number to edit, not a reset to zero.
+      if (patch.linkedAccountId) goal.linked_account_id = patch.linkedAccountId;
+      else delete goal.linked_account_id;
+    }
     // Only when the row has none, on the same grounds as `goalFrom`: an
     // existing headline is synthesis text we did not write.
     if (!String(goal.headline ?? "").trim()) {
@@ -1050,10 +1223,41 @@ export default function Plans({ profile = null, profileReady = false }: {
   const balances = balancesFromFinances(data);
   const linked = source === "live";
 
-  const views = useMemo(() => plans.map(viewOf), [plans]);
+  // Only accounts with a real id can be linked to (a plan's linked_account_id
+  // has to resolve back to one), which in practice means "source === live":
+  // the pre-link manual-onboarding layer (lib/manual-finances.ts) has never
+  // carried one. Filtering here, once, is simpler than every reader guarding
+  // against an undefined id.
+  const linkable = useMemo(() => linkableAccountsFrom(data.accounts), [data.accounts]);
+
+  const views = useMemo(() => plans.map((p) => viewOf(p, linkable)), [plans, linkable]);
   // Domain is the row's key, so this is how a card gets back to the plan it was
   // built from without threading the row through PlanView.
   const byDomain = useMemo(() => new Map(plans.map((p) => [p.domain, p])), [plans]);
+
+  // Reconcile a linked plan's stored current_value against its account's live
+  // balance. Every OTHER reader of a plan's numbers (Overview's
+  // plan-progress-row, the Score's "ways to improve" levers, the household
+  // page) reads current_value straight off the row rather than through this
+  // page's own viewOf override, so without this write-back only the Plans
+  // page itself would ever show a linked plan's current figure. Runs once per
+  // settle: writing makes `plans` update via upsertLocal, which recomputes
+  // `linkable`'s dependents and finds nothing left to reconcile.
+  const syncedRef = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (source !== "live") return;
+    for (const p of plans) {
+      const acct = findLinkedAccount(p.goal, linkable);
+      if (!acct) continue;
+      const { target, current: have } = planNumbers(p);
+      const want = Math.round(linkedAccountValue(planShape(p), target, acct));
+      if (Math.round(have) === want) continue;
+      if (syncedRef.current.get(p.domain) === want) continue;
+      syncedRef.current.set(p.domain, want);
+      void patchPlan(p, { current: want });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, linkable, source]);
   const shown = views.filter((v) => (filter === "all" ? true : filter === "completed" ? v.done : !v.done));
   const viewing = modal?.k === "view" ? plans.find((p) => p.domain === modal.domain) ?? null : null;
   const editing = modal?.k === "edit" ? plans.find((p) => p.domain === modal.domain) ?? null : null;
@@ -1121,6 +1325,7 @@ export default function Plans({ profile = null, profileReady = false }: {
                   const p = byDomain.get(v.domain);
                   return p ? patchPlan(p, patch) : false;
                 }}
+                linkableAccounts={linked ? eligibleAccountsForShape(v.shape, linkable) : []}
               />
             ))
           ) : null}

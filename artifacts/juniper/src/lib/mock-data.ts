@@ -16,7 +16,15 @@ export type SeriesKey =
 export interface SpendCat { c: string; v: number; k: SeriesKey; e?: string; hue?: number | null }
 export interface Budget { c: string; s: number; l: number; e?: string; hue?: number | null }
 export interface Txn { m: string; c: string; v: number; d: string; k: SeriesKey; e?: string; hue?: number | null; inc?: boolean; logo?: string | null }
-export interface Account { n: string; i: string; v: number; k: SeriesKey; apr?: string }
+// id/mask/institutionId/type/currency/limit have been on the wire since #289 and
+// 0046 (Plaid's own account_id, or `manual:<id>` for a hand-entered one), but
+// no client type had declared them until the account-linking picker needed to
+// read `id` back off a row to resolve a plan's `linked_account_id`.
+export interface Account {
+  n: string; i: string; v: number; k: SeriesKey; apr?: string;
+  id?: string; institutionId?: string | null; mask?: string | null;
+  type?: string | null; currency?: string | null; limit?: number | null;
+}
 export interface PlanIcon { }
 
 export const netWorth = {

@@ -598,6 +598,53 @@
 .jnpr .plan-lg .next{font-size:12.5px;color:var(--jnpr-ink-2);margin-top:12px}.jnpr .plan-lg .next b{color:var(--jnpr-ink)}
 .jnpr .plan-meta{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--jnpr-ink-2);font-weight:600;margin:2px 0}
 .jnpr .plan-meta b{color:var(--jnpr-ink)}.jnpr .plan-meta .pm-date{color:var(--jnpr-ink-3)}
+
+/* Link a plan to an account, so its `current` figure tracks a live balance
+   instead of a hand-typed one (issue #427). `.plan-link` sits between the
+   progress bar and `.plan-meta`; `.plan-link-chip` (linked) and
+   `.plan-link-empty` (not yet) are both full-width real buttons, not divs
+   with an onClick, since this is the only way into the picker for a keyboard
+   user. `.pl-*` names the chip's own row; `.pld-*` the dropdown's suggestion
+   rows, deliberately matching the `.debt-sugg-*` naming convention
+   (debt-breakdown.tsx) so the two read as the same kind of "pick a linked
+   account" row on sight even though neither shares markup with the other. */
+.jnpr .plan-link{position:relative;margin:2px 0 4px}
+.jnpr .plan-link-chip{width:100%;display:flex;align-items:center;gap:8px;text-align:left;
+  background:var(--jnpr-surface-2);border:1px solid var(--jnpr-line);border-radius:10px;
+  padding:7px 9px;font:inherit;color:var(--jnpr-ink);cursor:pointer}
+.jnpr .plan-link-chip:hover{border-color:var(--jnpr-accent)}
+.jnpr .plan-link-empty{width:100%;display:flex;align-items:center;gap:6px;text-align:left;
+  background:none;border:1px dashed var(--jnpr-line);border-radius:10px;padding:8px 9px;
+  font:inherit;font-size:12px;color:var(--jnpr-ink-3);cursor:pointer}
+.jnpr .plan-link-empty svg{width:13px;height:13px}
+.jnpr .plan-link-empty:hover{border-color:var(--jnpr-accent);color:var(--jnpr-ink-2)}
+.jnpr .pl-mark{width:24px;height:24px;border-radius:7px;flex:0 0 auto;object-fit:cover;background:#fff;
+  border:1px solid var(--jnpr-line);display:grid;place-items:center;font-size:10px;font-weight:800}
+.jnpr .pl-mono{background:var(--jnpr-surface-3);color:var(--jnpr-ink-2)}
+.jnpr .pl-info{flex:1;min-width:0;line-height:1.25}
+.jnpr .pl-name{display:block;font-size:12px;font-weight:650;color:var(--jnpr-ink)}
+.jnpr .pl-sub{display:block;font-size:10.5px;color:var(--jnpr-ink-3)}
+.jnpr .pl-bal{font-size:12px;font-weight:700;color:var(--jnpr-accent-deep);white-space:nowrap}
+.jnpr .pl-chev{color:var(--jnpr-ink-3);font-size:10px}
+/* Positioned via inline style (top/left/width, measured off the chip) rather
+   than CSS, and portaled to <body> rather than nested here: `.plan-lg` is
+   `overflow:hidden`, so an absolutely-positioned child clips at the card's own
+   edge instead of floating over the content below it, the same fix
+   category-picker.tsx already needed for `.tx-tablewrap`. */
+.jnpr .plan-link-dd{z-index:30;
+  background:var(--jnpr-surface);border:1px solid var(--jnpr-line);border-radius:12px;
+  box-shadow:var(--jnpr-shadow-lg);padding:5px;max-height:220px;overflow-y:auto}
+.jnpr .pld-row{width:100%;display:flex;align-items:center;gap:9px;text-align:left;
+  background:none;border:0;border-radius:8px;padding:7px 8px;font:inherit;color:var(--jnpr-ink);cursor:pointer}
+.jnpr .pld-row:hover{background:var(--jnpr-surface-3)}
+.jnpr .pld-info{flex:1;min-width:0;line-height:1.25}
+.jnpr .pld-name{display:block;font-size:12px;font-weight:650}
+.jnpr .pld-sub{display:block;font-size:10.5px;color:var(--jnpr-ink-3)}
+.jnpr .pld-bal{font-size:12px;font-weight:700}
+.jnpr .pld-none{padding:9px 8px;font-size:11.5px;color:var(--jnpr-ink-3);text-align:center}
+.jnpr .pld-unlink{color:var(--jnpr-bad);font-weight:650;font-size:12px;justify-content:center;
+  border-top:1px solid var(--jnpr-line-2);margin-top:3px;padding-top:9px}
+
 /* A real button, not a hint. It was a span at opacity 0 revealed on hover, so
    opening a plan was mouse-only: nothing to tab to, and nothing announced. It
    still fades in on hover, and now also whenever it has focus, because a
