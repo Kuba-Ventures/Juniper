@@ -20,6 +20,7 @@ import {
   domainFromName,
   uniqueDomain,
   monthsToClose,
+  monthsUntil,
   monthLabelFromNow,
   formatTargetDate,
   PLAN_COLORS,
@@ -250,7 +251,7 @@ type PlanView = {
   rate: number | null;
   dateLabel: string | null;
   done: boolean;
-  statusClass: "ok" | "new" | "setup" | "done";
+  statusClass: "ok" | "new" | "setup" | "done" | "behind";
   statusLabel: string;
   note: string;
   next: string;
@@ -318,7 +319,21 @@ function viewOf(
     statusLabel = "New";
     next = "Set a monthly amount to get a finish date.";
   } else {
-    next = `Keep ${copy.contribVerb.toLowerCase()} ${money(monthly)} a month to stay on pace.`;
+    // "On track" only ever meant "a target and a monthly amount exist," with
+    // nothing comparing them to the date the member actually set. A plan with
+    // no target date has nothing to be behind on, so it stays "On track" by
+    // the same rule that keeps months/dateLabel from inventing one above.
+    const deadline = targetDate ? monthsUntil(targetDate) : null;
+    const behind = deadline != null && (months == null || months > deadline);
+    if (behind) {
+      statusClass = "behind";
+      statusLabel = "Behind pace";
+      next = months == null
+        ? `At ${money(monthly)}/mo this won't pay off before your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.`
+        : `At ${money(monthly)}/mo you'll reach this around ${monthLabelFromNow(months)} — after your ${formatTargetDate(targetDate!)} target. Raise the monthly amount, or Ask Juniper for a plan that fits the date.`;
+    } else {
+      next = `Keep ${copy.contribVerb.toLowerCase()} ${money(monthly)} a month to stay on pace.`;
+    }
   }
 
   const note = done

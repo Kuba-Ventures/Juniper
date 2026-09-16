@@ -567,6 +567,19 @@ export function monthLabelFromNow(months: number): string {
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
+// Months from now until `raw`, floored at 0, reading the same "YYYY-MM" or
+// Date-parseable formats formatTargetDate does. Null when the date cannot be
+// parsed, since a target date typed as free text ("next spring") has nothing
+// a pace check can measure against.
+export function monthsUntil(raw: string): number | null {
+  const ym = /^(\d{4})-(\d{2})$/.exec(raw.trim());
+  const d = ym ? new Date(Number(ym[1]), Number(ym[2]) - 1, 1) : new Date(raw);
+  if (Number.isNaN(d.getTime()) || (!ym && !/\d{4}/.test(raw))) return null;
+  const now = new Date();
+  const months = (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth());
+  return Math.max(0, months);
+}
+
 // "2028-06" (what the dialogue scripts store) or anything Date can parse, shown
 // the same way. Falls through to the raw string so a member-typed "next spring"
 // is displayed rather than swallowed.
