@@ -401,13 +401,35 @@ export const MERCHANT_DOMAINS: Record<string, string> = {
   Supercuts: "supercuts.com",
 };
 
+// Domains the favicon service has no real mark for. It answers these with its
+// own generic globe icon rather than an error, so `MerchantMark`'s onError
+// never fires for them: the tile would otherwise render that generic globe
+// forever instead of falling through to the bundled art or the monogram.
+// Found by fetching all 330 domains above and diffing the response bytes
+// against each other; every one of these nine came back byte-identical.
+// Worth re-checking occasionally, since a brand can gain a real favicon later.
+const NO_FAVICON = new Set([
+  "chick-fil-a.com",
+  "smoothieking.com",
+  "quiktrip.com",
+  "bp.com",
+  "citgo.com",
+  "groceryoutlet.com",
+  "24hourfitness.com",
+  "allstate.com",
+  "enterprise.com",
+]);
+
 const DOMAIN_NAMES = Object.keys(MERCHANT_DOMAINS).sort((a, b) => b.length - a.length);
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export function merchantDomain(raw: string | null, display: string): string | null {
   const hay = `${raw ?? ""} ${display}`;
   for (const name of DOMAIN_NAMES) {
-    if (new RegExp(`\\b${escapeRe(name)}\\b`, "i").test(hay)) return MERCHANT_DOMAINS[name];
+    if (new RegExp(`\\b${escapeRe(name)}\\b`, "i").test(hay)) {
+      const domain = MERCHANT_DOMAINS[name];
+      return NO_FAVICON.has(domain) ? null : domain;
+    }
   }
   return null;
 }
