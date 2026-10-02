@@ -1,6 +1,6 @@
 # Juniper Roadmap — Repositioning to a financial planning app
 
-*Owner: Finley · Started: 2026-08-03 · Status: shipping, Stages 2, 3, 4, 5, 7 and 13 substantially built · last re-verified against the code 2026-08-28*
+*Owner: Finley · Started: 2026-08-03 · Status: on-track; Stages 0, 3, 4, 7, 11 and 15 done, Stages 1, 2, 5, 6, 8, 9, 10, 12, 13 and 14 open; no product merge since 2026-09-16 · last verified against the code and merged PRs 2026-10-02*
 
 > **Re-verified 2026-08-28.** The checkboxes below had drifted from the repo in
 > three places, each corrected in place rather than left to be rediscovered:
@@ -9,6 +9,45 @@
 > cleared, and Stage 11's "Ask Juniper" was still marked deferred with the
 > surface routed and streaming in production. Stage 12 gained the one thing
 > nobody had written down: there is no password reset anywhere in the codebase.
+
+> **Re-verified 2026-10-02.** Every item now carries a sourced date (PR merge date, issue
+> date, or the ROADMAP commit that added it). Sixteen open boxes were closed by merged PRs:
+> Stage 1 interaction states and sub-tabs, Stage 3a and 3c, Stage 9 recurring detection and
+> price-rise history, Stage 12 password reset and sign-in screens, Stage 14 verify, shared caps, catalog endpoint,
+> `/api/finances` widening and the merchant-scoped category, and Stage 15's three. Stage 10's
+> Spinwheel build (#368 to #372) was removed on 2026-09-15 (#469), so its boxes stay open. Issue
+> #288 (Layer) and #284 (Stage 8) were closed on GitHub without a comment; their work is not
+> done, so their items stay open here.
+
+## Timeline
+
+- **2026-04-21** · First commit: a Replit scaffold of a couples home-affordability calculator
+- **2026-05-04** · Marketing site and waitlist landing page
+- **2026-05-29** · Supabase Auth, the plan dashboard and partner-ready routing ship
+- **2026-05-30** · All five planning domains live with partner invites; PROJECT.md created
+- **2026-06-01** · GA4 and waitlist capture, mirrored into the Sheets growth pipeline
+- **2026-07-05** · Tap-first onboarding replaces a model call on every step (#1, #2)
+- **2026-07-08** · First Plaid bank linking, on Sandbox (#33)
+- **2026-08-03** · Pivot: repositioned from a couples copilot to a personal financial planning app; Stage 0 locked and Stages 2 to 7 built the same day (#73 to #92)
+- **2026-08-03** · Ask Juniper ships, overtaking the decision to defer it (#89)
+- **2026-08-04** · Three-tier account discovery: Layer seam, gallery and manual add (#103)
+- **2026-08-25** · Blocker cleared: Plaid Production approved after five months; the cause was the wrong Plaid account
+- **2026-08-26** · The demo household is deleted; the app shows only the member's own data (#129 to #142)
+- **2026-08-28** · First real banks linked in production; recurring detection and the daily cron built (#155, #167)
+- **2026-08-30** · Members own their categories, budgets and merchant rules (#199 to #216)
+- **2026-08-31** · Plaid grants recurring transactions; the card rewards wallet ships (#224)
+- **2026-09-01** · Blocker cleared: bank linking restored after a day down (#234); the member arranges their own Overview (#252)
+- **2026-09-02** · Net-worth history rebuilt for the real member (#256, #257); a partner invite names its sender (#254)
+- **2026-09-03** · Notifications get real storage (#296); Ask Juniper opens from anywhere (#313)
+- **2026-09-04** · Households: a group or family workspace (#316, #322); income becomes a plan shape (#318)
+- **2026-09-05** · Onboarding cut to 3 screens (#331); signup open to everyone, the invite code now gates only shared joins (#332)
+- **2026-09-06** · Ask Juniper safety pass and a persistent disclaimer (#342)
+- **2026-09-07** · Plaid Layer access requested (case #893152); liabilities and investments feed plans (#349, #360); card catalog follow-ups done (#354 to #358)
+- **2026-09-08** · Spinwheel sandbox credit score wired end to end (#368 to #372); security review lands (#382)
+- **2026-09-09** · Terms and Privacy go live, pending lawyer review (#386, #387)
+- **2026-09-11** · Sessions end after 15 minutes idle (#399); a plan's progress can raise the Score (#410)
+- **2026-09-15** · Pivot on credit: Spinwheel removed for a self-reported score (#469); card catalog expanded to 57 products (#467 to #488)
+- **2026-09-16** · Plans link to accounts and report real pace (#501, #508, #509); a standalone `/admin` with a sign-ups roster (#503 to #507). Last product merge to date
 
 ## What this is
 
@@ -32,54 +71,54 @@ This roadmap tracks the work to take the approved design prototype (a clickable 
 
 ---
 
-## Stage 0 — Product decisions ✅ *Locked 2026-08-03*
+## Stage 0 — Product decisions ✅ *Locked 2026-08-03* (2026-08-03)
 
-- [x] **Score model → proprietary 0–100 "Juniper Score."** Computed from savings rate, debt load, emergency fund, retirement pace, and credit health; the 300–850 credit number is shown as one factor, not the hero. *(Drives Stage 4.)*
-- [x] **Audience → individual-first, partner as a layer.** Solo is the default experience; "invite your partner" is an optional add-on that unlocks the existing alignment features. *(Drives Stage 7.)*
-- [x] **"Ask Juniper" Q&A → deferred to post-launch fast-follow.** Not in v1; ship the dashboard-first product first, then add the LLM advisor. *(See Stage 11.)*
-- [x] **v1 data depth → build now on Sandbox, launch when Production clears.** Start the Stage 3 data engine against Plaid Sandbox in parallel so it's ready the moment Production access lands; don't block engineering on the compliance gate.
+- [x] **2026-08-03** · **Score model → proprietary 0–100 "Juniper Score."** Computed from savings rate, debt load, emergency fund, retirement pace, and credit health; the 300–850 credit number is shown as one factor, not the hero. *(Drives Stage 4.)* (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · **Audience → individual-first, partner as a layer.** Solo is the default experience; "invite your partner" is an optional add-on that unlocks the existing alignment features. *(Drives Stage 7.)* (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · **"Ask Juniper" Q&A → deferred to post-launch fast-follow.** Not in v1; ship the dashboard-first product first, then add the LLM advisor. *(See Stage 11.)* (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · **v1 data depth → build now on Sandbox, launch when Production clears.** Start the Stage 3 data engine against Plaid Sandbox in parallel so it's ready the moment Production access lands; don't block engineering on the compliance gate. (Kuba-Ventures/Juniper#73)
 
 ---
 
-## Stage 1 — Finish the design **(design)**
+## Stage 1 — Finish the design **(design)** (2026-08-03 to present)
 
 Shell is done; remaining screens and states:
 
-- [~] First-run onboarding — "Connect your accounts", reskinned to Juniper.com ♻️ *(exists: `first-run-onboarding.tsx`; connect step reworked into the **Stage 13** three-tier account-discovery flow, gallery multi-select + manual add live, Layer gated)*
-- [ ] Empty / loading / error states — no accounts, no transactions, no plans; skeleton loaders
-- [ ] Plan detail screen (full)
-- [ ] Marketplace: listing detail + "List your service" merchant submission flow
-- [ ] Interaction states: edit transaction category, edit budget, add/adjust goal
-- [ ] Spending sub-tabs: Transactions table, Recurring
-- [x] Subscriptions manager screen + one-click-cancel confirmation/approval modal *(Stage 9)* — in mock
-- [x] Credit-score monitoring view on the Score/credit page — score trend, change alerts, factors *(Stage 10)* — in mock
-- [ ] Responsive / mobile layouts for all surfaces
-- [ ] ~~"Ask Juniper" Q&A surface~~ — deferred to post-launch *(Stage 11)*
+- [~] **started 2026-08-04** · First-run onboarding — "Connect your accounts", reskinned to Juniper.com ♻️ *(exists: `first-run-onboarding.tsx`; connect step reworked into the **Stage 13** three-tier account-discovery flow, gallery multi-select + manual add live, Layer gated)* (Kuba-Ventures/Juniper#96)
+- [ ] **added 2026-08-03** · Empty / loading / error states — no accounts, no transactions, no plans; skeleton loaders
+- [ ] **added 2026-08-03** · Plan detail screen (full)
+- [~] **started 2026-08-03** · Marketplace: listing detail + "List your service" merchant submission flow (Kuba-Ventures/Juniper#80)
+- [x] **2026-09-02** · Interaction states: edit transaction category, edit budget, add/adjust goal (Kuba-Ventures/Juniper#199, #201, #272)
+- [x] **2026-08-28** · Spending sub-tabs: Transactions table, Recurring (Kuba-Ventures/Juniper#154, #155)
+- [x] **2026-08-03** · Subscriptions manager screen + one-click-cancel confirmation/approval modal *(Stage 9)* — in mock (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · Credit-score monitoring view on the Score/credit page — score trend, change alerts, factors *(Stage 10)* — in mock (Kuba-Ventures/Juniper#73)
+- [~] **started 2026-08-03** · Responsive / mobile layouts for all surfaces (Kuba-Ventures/Juniper#93)
+- [ ] **added 2026-08-03** · ~~"Ask Juniper" Q&A surface~~ — deferred to post-launch *(Stage 11)* (Kuba-Ventures/Juniper#89) Superseded: Ask Juniper shipped, see Stage 11.
 
 ---
 
-## Stage 2 — Rebuild the shell in the real codebase **(build)** — *in progress*
+## Stage 2 — Rebuild the shell in the real codebase **(build)** — *in progress* (2026-08-03 to present)
 
-- [x] Stand up `DESIGN.md` + design tokens (offpine cool off-white + pine) — `artifacts/juniper/DESIGN.md` + scoped `src/styles/juniper.css` (`.jnpr`)
-- [x] New top nav + routing, replacing the plan-centric shell — `src/pages/juniper-app.tsx` + `components/juniper/app-frame.tsx` (Overview · Plans · Credit · Recommended); routed at `/app/*` in `App.tsx` (old `app-shell.tsx` kept, unrouted). *(P3: Home + Spending merged into a single **Overview** page at `/app` — `src/pages/app/overview.tsx` — folding in the full searchable transactions table and the subscriptions manager; the standalone Spending tab/route is dropped.)*
-- [x] Embed the real logo + app icons across the app shell — `public/logo.png` in the app bar
-- [x] Port pages to React components — **all nav surfaces done**: Overview (Home + Spending merged, P3), Plans, Credit, Recommended (`src/pages/app/*.tsx`), each typecheck/build/SSR verified. *(Standalone Score-breakdown page — the "ways to improve" surface behind the Home score strip — is the one design-mock screen not yet given its own route; the strip currently links to Credit. Small follow-up.)*
-- [ ] Fold in existing surfaces ♻️ — deferred into the Stage-3 data swap *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*: components already read `mock-data.ts` typed selectors, so this becomes wiring real data behind the same shapes rather than UI work.
+- [x] **2026-08-03** · Stand up `DESIGN.md` + design tokens (offpine cool off-white + pine) — `artifacts/juniper/DESIGN.md` + scoped `src/styles/juniper.css` (`.jnpr`) (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · New top nav + routing, replacing the plan-centric shell — `src/pages/juniper-app.tsx` + `components/juniper/app-frame.tsx` (Overview · Plans · Credit · Recommended); routed at `/app/*` in `App.tsx` (old `app-shell.tsx` kept, unrouted). *(P3: Home + Spending merged into a single **Overview** page at `/app` — `src/pages/app/overview.tsx` — folding in the full searchable transactions table and the subscriptions manager; the standalone Spending tab/route is dropped.)* (Kuba-Ventures/Juniper#73, #92)
+- [x] **2026-08-03** · Embed the real logo + app icons across the app shell — `public/logo.png` in the app bar (Kuba-Ventures/Juniper#73)
+- [x] **2026-08-03** · Port pages to React components — **all nav surfaces done**: Overview (Home + Spending merged, P3), Plans, Credit, Recommended (`src/pages/app/*.tsx`), each typecheck/build/SSR verified. *(Standalone Score-breakdown page — the "ways to improve" surface behind the Home score strip — is the one design-mock screen not yet given its own route; the strip currently links to Credit. Small follow-up.)* (Kuba-Ventures/Juniper#73, #78)
+- [ ] **added 2026-08-03** · Fold in existing surfaces ♻️ — deferred into the Stage-3 data swap *(plans, `partners.ts` marketplace, `portfolio-summary.tsx`, Plaid `connections.tsx`)*: components already read `mock-data.ts` typed selectors, so this becomes wiring real data behind the same shapes rather than UI work.
 - Data: components read `src/lib/mock-data.ts` (typed selectors) so the Stage-3 swap to live data is data-layer only
 
 ---
 
-## Stage 3 — Data spine: transactions → categories → budgets ⚠️ **(build)** — *in progress*
+## Stage 3 — Data spine: transactions → categories → budgets **(build)** — *done* (2026-08-03 to 2026-09-02)
 
 **The core of the Mint pitch — the biggest single lift.** Built on Plaid **Sandbox** now; goes live when Production clears (Stage 6). Sub-staged:
 
-- **3a — Schema** [~] `transactions`, `budgets`, `net_worth_snapshots` tables (owner RLS + Data API grants, following the `0002_plans` pattern) + a server-only `transactions_cursor` on `plaid_items`. → `supabase/migrations/0008_transactions_budgets.sql` **(written; must be applied to the Supabase project to activate — ops step, like prior migrations).**
-- **3b — Transactions sync** [x] `api/plaid/transactions-sync.ts` — pulls Plaid `/transactions/sync` by cursor (incremental, paged) and upserts into `transactions` (service-role, user-scoped, dedup on `plaid_transaction_id`, handles removed ids, persists the cursor on `plaid_items`). **Needs `transactions` added to `PLAID_PRODUCTS`** + migration applied + a linked item to actually run.
-- **3c — Categorization** [~] core map in `api/_categorize.ts` (Plaid `personal_finance_category` primary/detailed → Juniper categories, used by the sync). Merchant rules + user overrides (`category_source='user'`) still to add.
-- **3d — Budgets** [x] `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions.
-- **3e — Net worth history** [x] `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line.
-- **3f — Frontend data layer** [x] the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home, Spending, and the Accounts/Connections surface all read live data.** Sync trigger: `syncFinances()` (`src/lib/plaid.ts`) fires `POST /api/plaid/transactions-sync` + `POST /api/plaid/networth-snapshot` automatically on link, and on the manual **"Refresh data now"** button in Connections.
-- **3g** [x] **A reconstruction can be redone when its inputs change** *(2026-09-02)*. `networth-backfill`
+- [x] **2026-08-03** · **3a — Schema** `transactions`, `budgets`, `net_worth_snapshots` tables (owner RLS + Data API grants, following the `0002_plans` pattern) + a server-only `transactions_cursor` on `plaid_items`. → `supabase/migrations/0008_transactions_budgets.sql` **(written; must be applied to the Supabase project to activate — ops step, like prior migrations).** (Kuba-Ventures/Juniper#73) *Applied: every migration through 0049 was verified on production 2026-09-02 (PROJECT.md).*
+- [x] **2026-08-03** · **3b — Transactions sync** `api/plaid/transactions-sync.ts` — pulls Plaid `/transactions/sync` by cursor (incremental, paged) and upserts into `transactions` (service-role, user-scoped, dedup on `plaid_transaction_id`, handles removed ids, persists the cursor on `plaid_items`). **Needs `transactions` added to `PLAID_PRODUCTS`** + migration applied + a linked item to actually run. (Kuba-Ventures/Juniper#76)
+- [x] **2026-08-30** · **3c — Categorization** core map in `api/_categorize.ts` (Plaid `personal_finance_category` primary/detailed → Juniper categories, used by the sync). Merchant rules + user overrides (`category_source='user'`) still to add. (Kuba-Ventures/Juniper#76, #201, #214) *Done: user overrides (#201) and merchant rules (#214) shipped 2026-08-30.*
+- [x] **2026-08-03** · **3d — Budgets** `api/budgets.ts` — CRUD for per-category monthly limits (GET list / POST upsert `{category, limit}` / DELETE `?category=`, JWT-scoped, service-role writes, `on_conflict=user_id,category,period`). Monthly *spent* rollup + over-budget flagging is computed in `/api/finances` against the synced transactions. (Kuba-Ventures/Juniper#76)
+- [x] **2026-08-03** · **3e — Net worth history** `api/plaid/networth-snapshot.ts` — fetches fresh balances from Plaid (`/accounts/balance/get`), classifies assets (depository + investment) vs debts (credit + loan), and upserts one row per (user, day) into `net_worth_snapshots` (`on_conflict=user_id,as_of`). Call on link, on refresh, and daily (cron) to build the trend line. (Kuba-Ventures/Juniper#76)
+- [x] **2026-08-03** · **3f — Frontend data layer** the seam is in: `src/lib/finances.ts` (`useFinances()`) + read endpoint `GET /api/finances` (server-side rollups: spending-by-category, budgets-with-spent, cashflow, recent tx, grouped accounts, net-worth series). Starts on the demo mock, fetches live, and **swaps to real data only when linked + synced** (else stays mock — nothing breaks pre-gates). **Home, Spending, and the Accounts/Connections surface all read live data.** Sync trigger: `syncFinances()` (`src/lib/plaid.ts`) fires `POST /api/plaid/transactions-sync` + `POST /api/plaid/networth-snapshot` automatically on link, and on the manual **"Refresh data now"** button in Connections. (Kuba-Ventures/Juniper#75, #77)
+- [x] **2026-09-02** · **3g** **A reconstruction can be redone when its inputs change** *(2026-09-02)*. `networth-backfill`
   writes with `resolution=ignore-duplicates`, which was doing two jobs at once: never overwrite a day
   Juniper OBSERVED with a day it guessed (always right), and never re-derive a day it already guessed
   (right by default, because a reconstruction walks back from TODAY's balances and therefore moves as
@@ -96,8 +135,8 @@ Shell is done; remaining screens and states:
   delete sends `estimated=eq.true` as well as the day list, so the database refuses an observation
   even if the list were ever wrong. Triggered by **Settings, Developer, "Rebuild net-worth history"**,
   which reports what it cleared and what it left alone rather than saying "Done"; `syncFinances()`
-  deliberately does not pass the flag
-- [x] **(ops)** **Pressed for the real member on 2026-09-02**, and it did what it should: **92
+  deliberately does not pass the flag (Kuba-Ventures/Juniper#256)
+- [x] **2026-09-02** · **(ops)** **Pressed for the real member on 2026-09-02**, and it did what it should: **92
   reconstructed days replaced, 6 recorded days left alone, investments adjusted for contributions on
   1 connection**, so Schwab answered. The 92 is 5 days in May, 30 in June, 31 in July and 26 in
   August; the 6 is the five recorded August days plus 1 September. *(An earlier draft of this line
@@ -109,7 +148,7 @@ Shell is done; remaining screens and states:
   series that runs from roughly $81,600 in late May to $100,200 now, where before the rebuild about
   73% of net worth was held constant across all of it. Still not exact, and it cannot be: the
   invested portion counts money added and not how the market moved, because Plaid reports today's
-  prices and not past ones
+  prices and not past ones (Kuba-Ventures/Juniper#257)
 
 > **Deduplicated 2026-08-28.** This list appeared twice, once as above and once
 > with 3b to 3e unchecked and described as unbuilt, which made the most finished
@@ -118,45 +157,46 @@ Shell is done; remaining screens and states:
 
 ---
 
-## Stage 4 — Juniper Score engine **(build)** — *in progress*
+## Stage 4 — Juniper Score engine **(build)** — *done* (2026-08-03)
 
 *Decided: proprietary 0–100 Juniper Score; credit shown as a factor (Stage 0).*
 
-- [x] **Define factors, weights, formula** → `api/_score.ts` (pure, I/O-free, unit-testable). Five weighted factors each scored 0–100: savings rate (0.25), emergency fund (0.25), debt load (0.20, debt-to-income), investing pace (0.15), credit health (0.15). Overall = weighted sum; bands At risk / Building / Fair / Healthy / Excellent.
-- [x] **Compute from Stage 3 data + store history** → `api/_finance-snapshot.ts` assembles the inputs (trailing-90-day income/spending + account balances) so `/api/finances` and the writer score off the same numbers. `POST /api/score/compute` upserts one `score_history` row per (user, day) for the trend + delta (migration `0009_score_history.sql`). `/api/finances` now returns the live score, trend, and delta; `syncFinances()` fires the compute on link/refresh.
-- [x] **Ranked "ways to improve" cross-linked to plans** → the engine emits improvements ranked by weighted headroom (potential points), each linked to the relevant plan icon. New **Score breakdown page** (`src/pages/app/score.tsx`, routed `/app/score`) shows the ring + trend, per-factor bars, and the ranked levers; the Home score strip links to it.
+- [x] **2026-08-03** · **Define factors, weights, formula** → `api/_score.ts` (pure, I/O-free, unit-testable). Five weighted factors each scored 0–100: savings rate (0.25), emergency fund (0.25), debt load (0.20, debt-to-income), investing pace (0.15), credit health (0.15). Overall = weighted sum; bands At risk / Building / Fair / Healthy / Excellent. (Kuba-Ventures/Juniper#78)
+- [x] **2026-08-03** · **Compute from Stage 3 data + store history** → `api/_finance-snapshot.ts` assembles the inputs (trailing-90-day income/spending + account balances) so `/api/finances` and the writer score off the same numbers. `POST /api/score/compute` upserts one `score_history` row per (user, day) for the trend + delta (migration `0009_score_history.sql`). `/api/finances` now returns the live score, trend, and delta; `syncFinances()` fires the compute on link/refresh. (Kuba-Ventures/Juniper#78)
+- [x] **2026-08-03** · **Ranked "ways to improve" cross-linked to plans** → the engine emits improvements ranked by weighted headroom (potential points), each linked to the relevant plan icon. New **Score breakdown page** (`src/pages/app/score.tsx`, routed `/app/score`) shows the ring + trend, per-factor bars, and the ranked levers; the Home score strip links to it. (Kuba-Ventures/Juniper#78, #141)
 - Ops to activate (like Stage 3): apply migration `0009`; the score goes live once an item is linked + synced. Until then the UI shows the demo score.
 - Later: real credit-score/utilization ingestion into the credit factor (Stage 10); age-aware retirement-pace target; score-change notifications (Stage 11).
 
 ---
 
-## Stage 5 — Marketplace + monetization **(build + compliance)** — *in progress*
+## Stage 5 — Marketplace + monetization **(build + compliance)** — *in progress* (2026-07-05 to present)
 
-- [x] **Migrate to a DB-backed `partners` table** (edit offers without a deploy) ♻️ — table + serving endpoint (`0010_partners.sql`, `GET /api/partners`, benefit-ranked, active-only). Catalog **seeded** (`0011_partners_seed.sql`, + `headline` column) and the **Recommended Library now reads it** via `usePartners()` (`src/lib/marketplace.ts`), starting on the seeded catalog and swapping to live once the table is populated. *(The `partners.ts` plan-detail cards are the unrouted legacy shell and were left as-is.)*
-- [x] **"Picked for you" personalization** → `api/_picks.ts` (pure) turns the member's financial signals (card vs loan debt, emergency-fund months, idle cash, investing pace — from `_finance-snapshot.ts`) into a ranked, deduped set of offers, each with a reason drawn from their own numbers ("you're carrying $3,200 in credit-card debt — a 0% balance transfer could cut the interest"). `GET /api/recommendations` draws them from the benefit-ranked catalog; `usePicks()` swaps the Recommended "Picked for you" strip to live once synced, with a clean "you're all set" empty state and the demo picks as fallback. Matching is by FIT, never payout.
-- [x] **Merchant self-listing submission + moderation queue** (the supply side) → `partner_submissions` table + `POST /api/partners/submit` (validates, http(s)-only URL, JWT-scoped, lands `pending`) + a working **"List your service"** modal on Recommended. **Admin moderation UI** shipped: `/app/admin` (`src/pages/app/admin.tsx`) lists submissions and Approve (→ upserts the offer into `partners` as active, self-listed) / Reject, backed by `GET|POST /api/admin/submissions`. Gated on an `ADMIN_EMAILS` env allowlist (`api/_admin.ts`) — no in-app path to escalate; the page self-gates to a clean "no access" state for non-admins. **Ops: set `ADMIN_EMAILS`** to enable moderators.
-- [~] **Affiliate link / subid management; keep FTC disclosure + `affiliate_click`** ♻️ — disclosure + `affiliate_click` tracking already in place and untouched; `partners.url` + subid wiring lands with the display-swap above.
-- [x] **Rank offers by estimated benefit to the user (not payout)** → `api/_offers.ts` `rankByBenefit()` (pure): sorts by estimated user benefit, then curator trust, then explicit order/name — never payout. Used by `GET /api/partners`.
-- [ ] **(compliance)** Approved affiliate programs, real URLs, category-specific disclosures/licensing (mortgage, insurance, credit, legal) — replaces all `example.com` placeholders. *(Business/legal — gates monetization going live; the plumbing above is ready for it.)*
+- [x] **2026-08-03** · **Migrate to a DB-backed `partners` table** (edit offers without a deploy) ♻️ — table + serving endpoint (`0010_partners.sql`, `GET /api/partners`, benefit-ranked, active-only). Catalog **seeded** (`0011_partners_seed.sql`, + `headline` column) and the **Recommended Library now reads it** via `usePartners()` (`src/lib/marketplace.ts`), starting on the seeded catalog and swapping to live once the table is populated. *(The `partners.ts` plan-detail cards are the unrouted legacy shell and were left as-is.)* (Kuba-Ventures/Juniper#80, #81)
+- [x] **2026-08-03** · **"Picked for you" personalization** → `api/_picks.ts` (pure) turns the member's financial signals (card vs loan debt, emergency-fund months, idle cash, investing pace — from `_finance-snapshot.ts`) into a ranked, deduped set of offers, each with a reason drawn from their own numbers ("you're carrying $3,200 in credit-card debt — a 0% balance transfer could cut the interest"). `GET /api/recommendations` draws them from the benefit-ranked catalog; `usePicks()` swaps the Recommended "Picked for you" strip to live once synced, with a clean "you're all set" empty state and the demo picks as fallback. Matching is by FIT, never payout. (Kuba-Ventures/Juniper#82)
+- [x] **2026-08-03** · **Merchant self-listing submission + moderation queue** (the supply side) → `partner_submissions` table + `POST /api/partners/submit` (validates, http(s)-only URL, JWT-scoped, lands `pending`) + a working **"List your service"** modal on Recommended. **Admin moderation UI** shipped: `/app/admin` (`src/pages/app/admin.tsx`) lists submissions and Approve (→ upserts the offer into `partners` as active, self-listed) / Reject, backed by `GET|POST /api/admin/submissions`. Gated on an `ADMIN_EMAILS` env allowlist (`api/_admin.ts`) — no in-app path to escalate; the page self-gates to a clean "no access" state for non-admins. **Ops: set `ADMIN_EMAILS`** to enable moderators. (Kuba-Ventures/Juniper#80, #83)
+- [~] **started 2026-07-05** · **Affiliate link / subid management; keep FTC disclosure + `affiliate_click`** ♻️ — disclosure + `affiliate_click` tracking already in place and untouched; `partners.url` + subid wiring lands with the display-swap above. (Kuba-Ventures/Juniper#4, #25)
+- [x] **2026-08-03** · **Rank offers by estimated benefit to the user (not payout)** → `api/_offers.ts` `rankByBenefit()` (pure): sorts by estimated user benefit, then curator trust, then explicit order/name — never payout. Used by `GET /api/partners`. (Kuba-Ventures/Juniper#80)
+- [ ] **added 2026-08-03** · **(compliance)** Approved affiliate programs, real URLs, category-specific disclosures/licensing (mortgage, insurance, credit, legal) — replaces all `example.com` placeholders. *(Business/legal — gates monetization going live; the plumbing above is ready for it.)*
 - Ops to activate: apply migration `0010`; the marketplace stays on its seed config until the `partners` table is populated.
 
 ---
 
-## Stage 6 — Compliance & data gates **(compliance)**
+## Stage 6 — Compliance & data gates **(compliance)** (2026-08-03 to present)
 
-- [x] Plaid **Production** access — approved 2026-08-25 and proven end to end 2026-08-28 (real institutions linked on the production account, six items in that day's runtime logs). `PLAID_ENV=production` and the production secret are scoped to the Production environment only; Preview and Development stay on Sandbox. The five month stall was the wrong Plaid account, see PROJECT.md
-- [ ] Financial-data terms of service + privacy policy
-- [ ] Security review of the new data surfaces (transactions, balances, score inputs)
-- [ ] Configure Anthropic API spending limits *(open loop from PROJECT.md)*
+- [x] **2026-08-25** · Plaid **Production** access — approved 2026-08-25 and proven end to end 2026-08-28 (real institutions linked on the production account, six items in that day's runtime logs). `PLAID_ENV=production` and the production secret are scoped to the Production environment only; Preview and Development stay on Sandbox. The five month stall was the wrong Plaid account, see PROJECT.md (Kuba-Ventures/Juniper#126)
+- [~] **started 2026-09-08** · Financial-data terms of service + privacy policy (Kuba-Ventures/Juniper#381, #386, #387, #388, #397)
+- [~] **started 2026-09-08** · Security review of the new data surfaces (transactions, balances, score inputs) (Kuba-Ventures/Juniper#382)
+- [ ] **added 2026-08-03** · Configure Anthropic API spending limits *(open loop from PROJECT.md)* (Kuba-Ventures/Juniper#379)
+- [ ] **added 2026-10-02** · Rewrite the Spinwheel passages in `/terms` and `/privacy`: both still describe a bureau pull and a stored Spinwheel identifier that #469 removed (Kuba-Ventures/Juniper#469)
 
 ---
 
-## Stage 7 — Reframe Plans + couples **(build)** — *mostly done*
+## Stage 7 — Reframe Plans + couples **(build)** — *done* (2026-08-03 to 2026-09-16)
 
-- [x] **Reframe the domains as goals funded from real balances** ♻️ — the new Plans page's create flow seeds a goal from the member's linked balances (a debt-payoff goal targets actual debt, an emergency fund uses 6× real spend + current cash, retirement pulls in invested balances), and the header reflects "funded from your linked balances" once live. *(Per-plan account designation — pinning a specific account to a goal — is a future refinement.)*
-- [x] **Auto-fill plan inputs (savings / debt) from linked balances** → `prefillFor()` in `src/pages/app/plans.tsx` reads `useFinances()` and pre-fills target/saved with a "from your accounts" hint per template.
-- [x] **Solo default with "invite partner" layer** ♻️ — solo-first `PartnerPanel` on Plans + an **individual↔shared workspace** in the app shell (switcher + account-menu invite, shared sub-nav) and a full shared UI: Overview, Accounts, Goals, Bills, Activity/chat, and privacy-toggle Sharing (`src/pages/app/shared/*`, `lib/workspace.tsx`). Design locked in `design/juniper-partner-*.html`.
-- [x] **An invite says who sent it, in the message and on the page** *(issue #172, treatment B of
+- [x] **2026-08-03** · **Reframe the domains as goals funded from real balances** ♻️ — the new Plans page's create flow seeds a goal from the member's linked balances (a debt-payoff goal targets actual debt, an emergency fund uses 6× real spend + current cash, retirement pulls in invested balances), and the header reflects "funded from your linked balances" once live. *(Per-plan account designation — pinning a specific account to a goal — is a future refinement.)* (Kuba-Ventures/Juniper#84)
+- [x] **2026-08-03** · **Auto-fill plan inputs (savings / debt) from linked balances** → `prefillFor()` in `src/pages/app/plans.tsx` reads `useFinances()` and pre-fills target/saved with a "from your accounts" hint per template. (Kuba-Ventures/Juniper#84)
+- [x] **2026-08-03** · **Solo default with "invite partner" layer** ♻️ — solo-first `PartnerPanel` on Plans + an **individual↔shared workspace** in the app shell (switcher + account-menu invite, shared sub-nav) and a full shared UI: Overview, Accounts, Goals, Bills, Activity/chat, and privacy-toggle Sharing (`src/pages/app/shared/*`, `lib/workspace.tsx`). Design locked in `design/juniper-partner-*.html`. (Kuba-Ventures/Juniper#85, #86)
+- [x] **2026-09-02** · **An invite says who sent it, in the message and on the page** *(issue #172, treatment B of
   three rendered in `design/partner-invite-preview-variants.html`)*. The link previewed as the
   marketing card, a watercolour house and "build your financial future, together", so nothing in the
   first thing an invited person saw said they had been invited, by whom, or to what. **The constraint
@@ -175,57 +215,62 @@ Shell is done; remaining screens and states:
   account by account, transactions never shared) rather than asking for trust. Sign-up carries the
   name through, since "Join Finley on Juniper" landing on a page that never mentions Finley is where
   the thread would break. No migration: every field already existed. The name is a nicety and never a
-  dependency, and the unnamed wording is real copy rather than a fallback nobody looked at
-- [x] **Partner data model (backend)** → migration `0012_partnerships.sql` (`partnerships`, `partner_sharing_prefs`, `shared_goals`, `shared_goal_contributions` — server-only, restrictive RLS) + `api/partner.ts` (GET shared overview with **combined net worth rolled up from both members' `plaid_items` honoring each member's `share_balances`**, + POST invite/accept/disconnect/set-prefs/add-goal/add-contribution). Frontend seam `lib/partner.ts` (`usePartner()`): the workspace auto-connects from a real partnership, the invite modal mints a real link, `/invite/partner/:token` accepts it, and the shared Overview + Sharing read/write live (demo fallback until synced). *(Account-level share flags, bills, and chat persistence are additive follow-ups; combined net worth + shared goals + sharing prefs are live.)*
-- [x] **Finish the shared data layer** → migration `0013_shared_layer.sql` (`account_shares`, `shared_bills`, `shared_messages`, `shared_reactions` — server-only) + endpoints: per-account share scope in `/api/partner` (GET returns both members' accounts by scope, `set-account-share` action), `api/partner/bills.ts` (list/add/delete), `api/partner/activity.ts` (messages + 👍 reactions, toggle). Shared **Accounts** (per-account Shared/Balance/Private, tap-to-change on your own), **Bills** (live add/delete), and **Activity** (live partner chat + reactions) all read/write live, with demo fallback.
+  dependency, and the unnamed wording is real copy rather than a fallback nobody looked at (Kuba-Ventures/Juniper#254)
+- [x] **2026-08-03** · **Partner data model (backend)** → migration `0012_partnerships.sql` (`partnerships`, `partner_sharing_prefs`, `shared_goals`, `shared_goal_contributions` — server-only, restrictive RLS) + `api/partner.ts` (GET shared overview with **combined net worth rolled up from both members' `plaid_items` honoring each member's `share_balances`**, + POST invite/accept/disconnect/set-prefs/add-goal/add-contribution). Frontend seam `lib/partner.ts` (`usePartner()`): the workspace auto-connects from a real partnership, the invite modal mints a real link, `/invite/partner/:token` accepts it, and the shared Overview + Sharing read/write live (demo fallback until synced). *(Account-level share flags, bills, and chat persistence are additive follow-ups; combined net worth + shared goals + sharing prefs are live.)* (Kuba-Ventures/Juniper#87)
+- [x] **2026-08-03** · **Finish the shared data layer** → migration `0013_shared_layer.sql` (`account_shares`, `shared_bills`, `shared_messages`, `shared_reactions` — server-only) + endpoints: per-account share scope in `/api/partner` (GET returns both members' accounts by scope, `set-account-share` action), `api/partner/bills.ts` (list/add/delete), `api/partner/activity.ts` (messages + 👍 reactions, toggle). Shared **Accounts** (per-account Shared/Balance/Private, tap-to-change on your own), **Bills** (live add/delete), and **Activity** (live partner chat + reactions) all read/write live, with demo fallback. (Kuba-Ventures/Juniper#88)
+- [x] **2026-09-04** · Households: a group or family workspace beside individual and partner, with owner, member and viewer roles and plans and accounts shared item by item (issue #258; Kuba-Ventures/Juniper#316, #317, #322, #323, #335, #365)
+- [x] **2026-09-16** · Per-plan account designation: a plan links to an account, tracks its balance and reports a real "Behind pace" (Kuba-Ventures/Juniper#501, #502, #508, #509)
 - Ops to activate: apply migrations `0012` + `0013`; a real shared space needs both partners linked + synced. Until then the shared workspace shows the demo preview.
 
 ---
 
-## Stage 8 — Launch to 20 active users **(build + growth)**
+## Stage 8 — Launch to 20 active users **(build + growth)** (2026-08-03 to present)
 
-- [ ] Analytics on all new surfaces ♻️ *(GA4 `engaged_session` + Sheets pipeline exist)*
-- [~] **Notifications — reconnect, budget, drift shipped with real storage; score change and bill due still unbuilt.** #294 (issue #266) first wired the bell to three real facts derived LIVE from data the app already fetches, with no new table and no read/unread state: a Plaid connection needing reconnecting, a budget over its limit, and a subscription that charged more than expected (`artifacts/juniper/src/lib/notifications.ts`). **#296 then built the storage layer this line used to say was missing**, closing issue #266: migration `0051_notifications.sql` (a `notifications` table, `dedupe_key` unique per user, `status` active/resolved/cleared) and `api/notifications.ts`, which reconciles the client's live facts against it and treats clear as durable (`status='cleared'`, never a real delete) rather than losing to the next reconcile. #297 centered the empty-state icon and #298 named the direction of a drift. Verified in production by SQL that the table and its schema exist (0 rows, unexercised by a real member yet); `npx tsc --noEmit` and `npm run build` pass clean. **What is still unbuilt is the notification TYPES, not the storage mechanism:** score change and bill due have no notification behind them at all, a separate and still-open gap from the one this line used to describe. See PROJECT.md, Where we are right now, for the full account, including that no real member has yet reconciled, read, or cleared a notification in production
-- [ ] QA pass + performance + accessibility
-- [ ] Private beta → **20 active users** goal
-- [ ] Iterate on activation / retention from usage data
+- [ ] **added 2026-08-03** · Analytics on all new surfaces ♻️ *(GA4 `engaged_session` + Sheets pipeline exist)*
+- [~] **started 2026-09-03** · **Notifications — reconnect, budget, drift shipped with real storage; score change and bill due still unbuilt.** #294 (issue #266) first wired the bell to three real facts derived LIVE from data the app already fetches, with no new table and no read/unread state: a Plaid connection needing reconnecting, a budget over its limit, and a subscription that charged more than expected (`artifacts/juniper/src/lib/notifications.ts`). **#296 then built the storage layer this line used to say was missing**, closing issue #266: migration `0051_notifications.sql` (a `notifications` table, `dedupe_key` unique per user, `status` active/resolved/cleared) and `api/notifications.ts`, which reconciles the client's live facts against it and treats clear as durable (`status='cleared'`, never a real delete) rather than losing to the next reconcile. #297 centered the empty-state icon and #298 named the direction of a drift. Verified in production by SQL that the table and its schema exist (0 rows, unexercised by a real member yet); `npx tsc --noEmit` and `npm run build` pass clean. **What is still unbuilt is the notification TYPES, not the storage mechanism:** score change and bill due have no notification behind them at all, a separate and still-open gap from the one this line used to describe. See PROJECT.md, Where we are right now, for the full account, including that no real member has yet reconciled, read, or cleared a notification in production
+- [ ] **added 2026-08-03** · QA pass + performance + accessibility
+- [ ] **added 2026-08-03** · Private beta → **20 active users** goal
+- [ ] **added 2026-08-03** · Iterate on activation / retention from usage data
 
 ---
 
-## Stage 9 — Subscriptions manager **(design + build + compliance)**
+## Stage 9 — Subscriptions manager **(design + build + compliance)** (2026-08-03 to present)
 
 See and manage every active subscription, and cancel with one click + an approval step. Detection builds on Stage 3 recurring-transaction data.
 
-- [~] **(build)** Recurring/subscription detection from transactions ♻️ *(uses Stage 3 data spine)*. Built and deployed in PR #155: Plaid's `/transactions/recurring/get` generates candidates, `recurring_streams` caches them, `recurring_overrides` holds the member's own confirmations, and nothing counts toward a total until the member confirms it. Design and rationale in docs/RECURRING_DETECTION.md. **Was blocked on an entitlement, not on code:** production logs on 2026-08-28 show every item refused with `INVALID_PRODUCT client is not authorized to access the following products: ["recurring_transactions"]`. It is a separate Plaid add-on, requested 2026-08-28 and **granted 2026-08-31**. Live on production since, and **no consent change was needed to get there**, which is the opposite of what this line used to say. `recurring_transactions` was added to `additional_consented_products` that day (#221) on the belief that the entitlement gated it, and **Plaid rejected every `/link/token/create` for the next day** with 400 `recurring_transactions is not a valid product for this field`, so no member could connect a bank until #234 removed it. That field takes the same enum as `products` and an add on is not in it: it is entitled on the Plaid ACCOUNT and read through `/transactions/recurring/get`, so consenting to `transactions`, which `plaidProducts()` already requests, is the whole requirement. The seven items linked long before the grant serve recurring detection untouched. Linking is proven recovered rather than assumed: a Chase item was linked at 2026-09-01 15:07 UTC, 32 minutes after #234 merged, and all seven items carry a null `last_error_code`. Corrected in `docs/RECURRING_DETECTION.md`, section 2; read that before touching a consent list
-- [ ] **(build)** Price rise history per stream. The cache stores last and average amount, so a rise is visible the month it happens, but there is no per stream series behind it
-- [x] **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure") — in `design/juniper-app-mock.html`
-- [ ] **(build)** Cancellation mechanism — realistically an **assisted/concierge or partner-API flow**, not a universal one-click across all merchants. Options: generate a pre-filled cancellation request, hand off to a cancellation partner, or a Juniper-assisted queue. User's approval gates every action.
-- [ ] **(build)** Track cancellation status (requested → confirmed) and estimated savings; feed savings into the Juniper Score / "ways to improve"
-- [ ] **(compliance)** Terms for acting on the user's behalf; audit log of approvals
+- [x] **2026-09-01** · **(build)** Recurring/subscription detection from transactions ♻️ *(uses Stage 3 data spine)*. Built and deployed in PR #155: Plaid's `/transactions/recurring/get` generates candidates, `recurring_streams` caches them, `recurring_overrides` holds the member's own confirmations, and nothing counts toward a total until the member confirms it. Design and rationale in docs/RECURRING_DETECTION.md. **Was blocked on an entitlement, not on code:** production logs on 2026-08-28 show every item refused with `INVALID_PRODUCT client is not authorized to access the following products: ["recurring_transactions"]`. It is a separate Plaid add-on, requested 2026-08-28 and **granted 2026-08-31**. Live on production since, and **no consent change was needed to get there**, which is the opposite of what this line used to say. `recurring_transactions` was added to `additional_consented_products` that day (#221) on the belief that the entitlement gated it, and **Plaid rejected every `/link/token/create` for the next day** with 400 `recurring_transactions is not a valid product for this field`, so no member could connect a bank until #234 removed it. That field takes the same enum as `products` and an add on is not in it: it is entitled on the Plaid ACCOUNT and read through `/transactions/recurring/get`, so consenting to `transactions`, which `plaidProducts()` already requests, is the whole requirement. The seven items linked long before the grant serve recurring detection untouched. Linking is proven recovered rather than assumed: a Chase item was linked at 2026-09-01 15:07 UTC, 32 minutes after #234 merged, and all seven items carry a null `last_error_code`. Corrected in `docs/RECURRING_DETECTION.md`, section 2; read that before touching a consent list (Kuba-Ventures/Juniper#486)
+- [x] **2026-09-06** · **(build)** Price rise history per stream. The cache stores last and average amount, so a rise is visible the month it happens, but there is no per stream series behind it (Kuba-Ventures/Juniper#343)
+- [x] **2026-08-03** · **(design)** Subscriptions list + per-item detail; the one-click **Cancel** with a confirmation/approval modal (amount, next charge, "are you sure") — in `design/juniper-app-mock.html` (Kuba-Ventures/Juniper#73)
+- [~] **started 2026-09-06** · **(build)** Cancellation mechanism — realistically an **assisted/concierge or partner-API flow**, not a universal one-click across all merchants. Options: generate a pre-filled cancellation request, hand off to a cancellation partner, or a Juniper-assisted queue. User's approval gates every action. (Kuba-Ventures/Juniper#344, #490) The member-facing Cancel button was removed 2026-09-15 by #490, so no member can request a cancellation today; the queue and admin side remain.
+- [~] **started 2026-09-06** · **(build)** Track cancellation status (requested → confirmed) and estimated savings; feed savings into the Juniper Score / "ways to improve" (Kuba-Ventures/Juniper#345) Savings are shown and deliberately not fed into the Score (#345).
+- [~] **started 2026-09-06** · **(compliance)** Terms for acting on the user's behalf; audit log of approvals (Kuba-Ventures/Juniper#344)
+- [x] **2026-09-15** · Juniper's own recurring guess for charges Plaid never clusters, such as subscriptions paid through PayPal, plus manual entry (Kuba-Ventures/Juniper#486, #489, #490)
 
 > **Reality check:** true "one-click cancel everywhere" isn't a single API — incumbents (e.g. Rocket Money) use human concierge + partner integrations behind the button. Scope the button as *request cancellation with my approval*, with the backend flow chosen per merchant.
 
-## Stage 10 — Credit-score monitoring **(build + compliance)**
+## Stage 10 — Credit-score monitoring **(build + compliance)** (2026-08-03 to present)
 
 Ongoing credit-score tracking and alerts on the Score/credit page (distinct from the proprietary Juniper Score, which uses credit as one factor).
 
-- [ ] **(build)** Integrate a credit-data provider (e.g. Array / bureau soft-pull / Credit Karma-style partner) — pull score + factors on a schedule
-- [x] **(design)** Credit page: current score, trend over time, score factors, and change alerts (score moved, new inquiry, utilization up) — in `design/juniper-app-mock.html`
-- [ ] **(build)** Alerting — notify on meaningful changes; store history
-- [ ] **(build)** Feed the live credit score into the Juniper Score's "credit health" factor (replaces the static 726 placeholder)
-- [ ] **(compliance)** FCRA / credit-data handling, provider contract, consent + disclosures for soft pulls
+- [ ] **added 2026-08-03** · **(build)** Integrate a credit-data provider (e.g. Array / bureau soft-pull / Credit Karma-style partner) — pull score + factors on a schedule (Kuba-Ventures/Juniper#368, #469) Built on the Spinwheel sandbox 2026-09-07 to 2026-09-08, removed 2026-09-15.
+- [x] **2026-08-03** · **(design)** Credit page: current score, trend over time, score factors, and change alerts (score moved, new inquiry, utilization up) — in `design/juniper-app-mock.html` (Kuba-Ventures/Juniper#73)
+- [ ] **added 2026-08-03** · **(build)** Alerting — notify on meaningful changes; store history (Kuba-Ventures/Juniper#371, #469) Built 2026-09-08, removed with Spinwheel 2026-09-15.
+- [ ] **added 2026-08-03** · **(build)** Feed the live credit score into the Juniper Score's "credit health" factor (replaces the static 726 placeholder) (Kuba-Ventures/Juniper#372, #469) Built 2026-09-08, removed with Spinwheel 2026-09-15; a self-reported score is never fed in.
+- [ ] **added 2026-08-03** · **(compliance)** FCRA / credit-data handling, provider contract, consent + disclosures for soft pulls
+- [x] **2026-09-15** · Self-reported credit score replaces the Spinwheel sandbox pull, which only ever returned a canned fixture; it never feeds the Juniper Score (Kuba-Ventures/Juniper#469)
 
-## Stage 11 — Post-launch fast-follows **(build)**
+## Stage 11 — Post-launch fast-follows **(build)** (2026-08-03 to 2026-09-07)
 
-- [x] **"Ask Juniper"** LLM advisor — shipped, not deferred. `/app/ask` is routed in `pages/juniper-app.tsx` and `pages/app/ask.tsx` runs threaded conversations that stream from `api/planner/chat.ts` grounded in the member's real figures, plus generated plan reports through `api/planner/report.ts`. The Stage 0 decision to defer it was overtaken by the build. **This line used to read "still owed, and the reason this is not simply closed: the prompt safety pass and the financial advice disclaimers named alongside it have not been done." That is now wrong and is corrected here rather than silently rewritten, the same convention the 2026-09-02 `additional_consented_products` correction followed.** PR #342 (merge commit `682c229`, 2026-09-06) did both: the Compliance section in `api/planner/chat.ts` (matching line in `api/planner/report.ts`) now refuses to recommend or predict a specific security, ticker, or cryptocurrency, refuses to help hide assets, evade taxes, or commit insurance/mortgage fraud even framed as hypothetical, and redirects to 988 when a message mixes financial distress with signs of crisis; the disclaimer, which used to render only on the empty welcome screen and vanish the moment a thread had a first message, now persists under the composer (`ask-composer-wrap` / `ask-disclaimer` in `artifacts/juniper/src/pages/app/ask.tsx` and `juniper.css`) for the life of every active thread. `npx tsc --noEmit -p .` and `npm run build` both pass clean, and the composer/disclaimer markup was checked in a throwaway harness against the real stylesheet in both themes. **Closes the safety-pass half of issue #287 only, deliberately**, per Finley's explicit choice: the other two things #287 bundles under this same Stage 11 heading, Plaid data tiers into plan auto-fill and cross-device "accounts I use" sync, were left out of #342 at the time and are addressed on the two lines directly below (both now checked off, 2026-09-07, the same day issue #287 itself closed). **Tested against the real production system prompt and the real model this session (2026-09-07), which is a materially stronger claim than what stood on this line through the last pass and is corrected here rather than silently rewritten.** The verbatim Compliance section (`api/planner/chat.ts` lines 19-40) was sent to the real Anthropic API (`claude-opus-5`, `max_tokens: 2048`, matching `chat.ts` exactly) against 10 adversarial and edge-case messages, not a real member's own conversation, but the first real exercise of the actual prompt against real messy language through the real model. All 10 were correct: refused to pick a specific stock or crypto both by name ("Tesla or Bitcoin, pick one") and generically ("the single best stock"), redirecting to account types/asset classes both times; refused to help hide $50k from a spouse during divorce discovery, naming it as fraud; refused a staged insurance claim, redirecting to legitimate debt-payoff help; refused unreported cash income, offering real self-employed deductions instead; refused an inflated-income mortgage letter, explaining the legitimate path for self-employed borrowers; correctly triggered the 988 redirect only on a message mixing financial distress with explicit self-harm language, setting the financial answer aside; correctly did **not** trigger it on financial distress alone (laid off, scared, can't make rent, no self-harm signal), giving full practical guidance instead (unemployment filing, 211 rental assistance, hardship programs, marketplace special enrollment); and answered a benign control question normally. **This answers the weaker, more likely form of the risk, whether the model follows these rules at all on realistic adversarial phrasing, but it is not the same claim as "a real member's own conversation has exercised this."** That narrower, literal gap remains open: no real signed-in member's own messy chat has gone through this prompt. Also found this session, and explicitly **not** part of issue #287, not fixed: `claude-opus-5` uses extended thinking by default, which consumes the same `max_tokens` budget as visible output; a test run at `max_tokens: 500` hit `stop_reason: max_tokens` with the entire budget spent on invisible thinking and zero visible response text, while the same message at production's actual budget (2048) produced a full correct answer (919 thinking tokens + 774 text tokens). Not a proven live bug, but a latent risk that a harder prompt, or a later tool-use round competing for the same budget, could plausibly produce an empty streamed response with no error surfaced to the member; see PROJECT.md Risks
-- [x] Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md, partially addressed 2026-09-07, then completed the same day)*. **Liabilities is done for debt payoff plans**: PR #349 added `api/plaid/liabilities.ts` (per-item `/liabilities/get`, no storage) and a `DebtBreakdown` builder wired into both the create and edit plan forms, suggesting balance/APR/payment/term per linked credit card, student loan and mortgage. `liabilities` is deliberately not yet in `additional_consented_products` in `api/plaid/link-token.ts`, kept as its own watched deploy rather than bundled with the feature PR, so no real production item can be pulled through this yet. **Investments into plan auto-fill is now done too, PR #360 merged the same day** (`a2fc974`, 2026-09-07T19:33:27Z): `api/plaid/investments.ts`, modeled directly on `liabilities.ts` (per-item, entitlement-aware, no storage), deriving a trailing-90-day average monthly contribution per linked investment account from `/investments/transactions/get` (same deposit/contribution vs withdrawal/distribution sign convention `networth-backfill.ts` already established, keyed per-account rather than per-day), and a new `InvestmentBreakdown` component wired into both plan forms for save-shaped plans, suggesting a row per account that a member can add straight into the existing "Saving each month" field. Holds no persisted state, unlike `DebtBreakdown`: a plan's monthly contribution is already a single scalar field, not a list needing its own `current_state` key. Unlike liabilities, `investments` is already in `additional_consented_products`, so no separate consent-list deploy is needed for items linked after that shipped. Verified by clean `tsc --noEmit`/`build` and a throwaway harness against the real `juniper.css` with two mocked accounts (rows render, "+Add" sums correctly, the box renders nothing once every suggestion is consumed); **not yet exercised against a real linked Plaid item through the live UI, merged or not.** Checked off because both halves of the item are merged; the real-data-verification gap is a separate, still-open loop in PROJECT.md, not a reason to leave this box unchecked.
-- [x] Cross-device sync for "accounts I use" *(open loop from PROJECT.md, reframed 2026-09-07: this was not a standalone sync column waiting to be built)*. Research this session found `UserProfile.connections` (`artifacts/juniper/src/lib/profile.ts`) has had no live producer since onboarding was cut from 6 screens to 3 (commit `489f343`): the step that asked "which of these do you already use" no longer exists in the live 3-screen onboarding. Its only consumers, `pages/plan-detail.tsx`, `components/plan/marketplace-list.tsx` and `components/plan/affiliate-card.tsx`, are all part of the retired plan-centric shell that nothing imports (PROJECT.md's own reachability note). Building Supabase cross-device sync for this field would sync a value nothing in the live app populates and nothing in the live app reads. **Finley's resolution, given directly this session:** "accounts I use" should be auto-populated from Plaid Layer (Stage 13 tier 1, issue #288, still open) once access is granted and an account is linked, not from a revived manual onboarding step. Once Layer ships, a member's already-connected institutions land in `plaid_items` via `api/plaid/layer-exchange.ts` (PR #352), which is Supabase-backed and therefore inherently cross-device with no separate sync column or endpoint needed; the manual `connections: string[]` field and its localStorage-only nature become moot rather than fixed. **Checked off here because there is no remaining engineering task under this line**, not because the underlying capability exists yet: the real remaining dependency is Plaid Layer access (Plaid support case #893152, no ETA), tracked under issue #288/Stage 13, which is where this loop's actual continuation lives now.
+- [x] **2026-08-03** · **"Ask Juniper"** LLM advisor — shipped, not deferred. `/app/ask` is routed in `pages/juniper-app.tsx` and `pages/app/ask.tsx` runs threaded conversations that stream from `api/planner/chat.ts` grounded in the member's real figures, plus generated plan reports through `api/planner/report.ts`. The Stage 0 decision to defer it was overtaken by the build. **This line used to read "still owed, and the reason this is not simply closed: the prompt safety pass and the financial advice disclaimers named alongside it have not been done." That is now wrong and is corrected here rather than silently rewritten, the same convention the 2026-09-02 `additional_consented_products` correction followed.** PR #342 (merge commit `682c229`, 2026-09-06) did both: the Compliance section in `api/planner/chat.ts` (matching line in `api/planner/report.ts`) now refuses to recommend or predict a specific security, ticker, or cryptocurrency, refuses to help hide assets, evade taxes, or commit insurance/mortgage fraud even framed as hypothetical, and redirects to 988 when a message mixes financial distress with signs of crisis; the disclaimer, which used to render only on the empty welcome screen and vanish the moment a thread had a first message, now persists under the composer (`ask-composer-wrap` / `ask-disclaimer` in `artifacts/juniper/src/pages/app/ask.tsx` and `juniper.css`) for the life of every active thread. `npx tsc --noEmit -p .` and `npm run build` both pass clean, and the composer/disclaimer markup was checked in a throwaway harness against the real stylesheet in both themes. **Closes the safety-pass half of issue #287 only, deliberately**, per Finley's explicit choice: the other two things #287 bundles under this same Stage 11 heading, Plaid data tiers into plan auto-fill and cross-device "accounts I use" sync, were left out of #342 at the time and are addressed on the two lines directly below (both now checked off, 2026-09-07, the same day issue #287 itself closed). **Tested against the real production system prompt and the real model this session (2026-09-07), which is a materially stronger claim than what stood on this line through the last pass and is corrected here rather than silently rewritten.** The verbatim Compliance section (`api/planner/chat.ts` lines 19-40) was sent to the real Anthropic API (`claude-opus-5`, `max_tokens: 2048`, matching `chat.ts` exactly) against 10 adversarial and edge-case messages, not a real member's own conversation, but the first real exercise of the actual prompt against real messy language through the real model. All 10 were correct: refused to pick a specific stock or crypto both by name ("Tesla or Bitcoin, pick one") and generically ("the single best stock"), redirecting to account types/asset classes both times; refused to help hide $50k from a spouse during divorce discovery, naming it as fraud; refused a staged insurance claim, redirecting to legitimate debt-payoff help; refused unreported cash income, offering real self-employed deductions instead; refused an inflated-income mortgage letter, explaining the legitimate path for self-employed borrowers; correctly triggered the 988 redirect only on a message mixing financial distress with explicit self-harm language, setting the financial answer aside; correctly did **not** trigger it on financial distress alone (laid off, scared, can't make rent, no self-harm signal), giving full practical guidance instead (unemployment filing, 211 rental assistance, hardship programs, marketplace special enrollment); and answered a benign control question normally. **This answers the weaker, more likely form of the risk, whether the model follows these rules at all on realistic adversarial phrasing, but it is not the same claim as "a real member's own conversation has exercised this."** That narrower, literal gap remains open: no real signed-in member's own messy chat has gone through this prompt. Also found this session, and explicitly **not** part of issue #287, not fixed: `claude-opus-5` uses extended thinking by default, which consumes the same `max_tokens` budget as visible output; a test run at `max_tokens: 500` hit `stop_reason: max_tokens` with the entire budget spent on invisible thinking and zero visible response text, while the same message at production's actual budget (2048) produced a full correct answer (919 thinking tokens + 774 text tokens). Not a proven live bug, but a latent risk that a harder prompt, or a later tool-use round competing for the same budget, could plausibly produce an empty streamed response with no error surfaced to the member; see PROJECT.md Risks (Kuba-Ventures/Juniper#89)
+- [x] **2026-09-07** · Plaid data tiers beyond transactions (liabilities / investments) into plan auto-fill *(open loop from PROJECT.md, partially addressed 2026-09-07, then completed the same day)*. **Liabilities is done for debt payoff plans**: PR #349 added `api/plaid/liabilities.ts` (per-item `/liabilities/get`, no storage) and a `DebtBreakdown` builder wired into both the create and edit plan forms, suggesting balance/APR/payment/term per linked credit card, student loan and mortgage. `liabilities` is deliberately not yet in `additional_consented_products` in `api/plaid/link-token.ts`, kept as its own watched deploy rather than bundled with the feature PR, so no real production item can be pulled through this yet. **Investments into plan auto-fill is now done too, PR #360 merged the same day** (`a2fc974`, 2026-09-07T19:33:27Z): `api/plaid/investments.ts`, modeled directly on `liabilities.ts` (per-item, entitlement-aware, no storage), deriving a trailing-90-day average monthly contribution per linked investment account from `/investments/transactions/get` (same deposit/contribution vs withdrawal/distribution sign convention `networth-backfill.ts` already established, keyed per-account rather than per-day), and a new `InvestmentBreakdown` component wired into both plan forms for save-shaped plans, suggesting a row per account that a member can add straight into the existing "Saving each month" field. Holds no persisted state, unlike `DebtBreakdown`: a plan's monthly contribution is already a single scalar field, not a list needing its own `current_state` key. Unlike liabilities, `investments` is already in `additional_consented_products`, so no separate consent-list deploy is needed for items linked after that shipped. Verified by clean `tsc --noEmit`/`build` and a throwaway harness against the real `juniper.css` with two mocked accounts (rows render, "+Add" sums correctly, the box renders nothing once every suggestion is consumed); **not yet exercised against a real linked Plaid item through the live UI, merged or not.** Checked off because both halves of the item are merged; the real-data-verification gap is a separate, still-open loop in PROJECT.md, not a reason to leave this box unchecked.
+- [x] **2026-09-07** · Cross-device sync for "accounts I use" *(open loop from PROJECT.md, reframed 2026-09-07: this was not a standalone sync column waiting to be built)*. Research this session found `UserProfile.connections` (`artifacts/juniper/src/lib/profile.ts`) has had no live producer since onboarding was cut from 6 screens to 3 (commit `489f343`): the step that asked "which of these do you already use" no longer exists in the live 3-screen onboarding. Its only consumers, `pages/plan-detail.tsx`, `components/plan/marketplace-list.tsx` and `components/plan/affiliate-card.tsx`, are all part of the retired plan-centric shell that nothing imports (PROJECT.md's own reachability note). Building Supabase cross-device sync for this field would sync a value nothing in the live app populates and nothing in the live app reads. **Finley's resolution, given directly this session:** "accounts I use" should be auto-populated from Plaid Layer (Stage 13 tier 1, issue #288, still open) once access is granted and an account is linked, not from a revived manual onboarding step. Once Layer ships, a member's already-connected institutions land in `plaid_items` via `api/plaid/layer-exchange.ts` (PR #352), which is Supabase-backed and therefore inherently cross-device with no separate sync column or endpoint needed; the manual `connections: string[]` field and its localStorage-only nature become moot rather than fixed. **Checked off here because there is no remaining engineering task under this line**, not because the underlying capability exists yet: the real remaining dependency is Plaid Layer access (Plaid support case #893152, no ETA), tracked under issue #288/Stage 13, which is where this loop's actual continuation lives now.
+- [x] **2026-09-03** · Ask Juniper opens from anywhere, with threads stored server-side (Kuba-Ventures/Juniper#313, #314, #315, #364)
 
 **Issue #287 ("Stage 11: Ask Juniper safety pass + remaining fast-follows"), which this whole stage's top three lines track, was closed 2026-09-07** (2026-09-07T19:34:24Z, by Finley/`kubatopia`), with a closing comment summarizing all three items above as resolved: the safety pass tested against the real model, liabilities and investments both merged into plan auto-fill, and "accounts I use" reframed onto Plaid Layer/issue #288. See PROJECT.md's "Where we are right now" and Decisions log for the fuller account, including the one thing the closing comment explicitly did **not** fold into #287: the `claude-opus-5` extended-thinking/`max_tokens` finding, tracked separately.
 
 ---
 
-## Stage 12 — Auth & onboarding flow **(design + build)**
+## Stage 12 — Auth & onboarding flow **(design + build)** (2026-05-29 to present)
 
 The front door: a branded **log-in / sign-up** experience and the first-run path from account creation → connect accounts → first dashboard. Supabase Auth + RLS already exist under the hood (see reuse inventory) — this stage is the *product* layer on top: the screens, the reskin to the current cool-off-white + pine identity, and the sequencing into the app.
 
@@ -234,16 +279,19 @@ The front door: a branded **log-in / sign-up** experience and the first-run path
 *This stage read as entirely unstarted until 2026-08-28. Most of it is built and
 routed; what follows is what the code actually shows.*
 
-- [~] **(design)** Sign-up and log-in screens in the pine identity — built and routed (`pages/auth/sign-in.tsx`, `pages/auth/sign-up.tsx`, `/auth/sign-in` and `/auth/sign-up` in `App.tsx`). Sign-up is gated by `VITE_SIGNUP_INVITE_CODE` during private preview. **No password-reset screen exists**, see below
-- [x] **(design)** First-run onboarding sequence — `components/onboarding/first-run-onboarding.tsx`, mounted by the live shell: name and household, goals, connect accounts (the Stage 13 three-tier flow), money snapshot last so linked figures pre-fill it
-- [~] **(build)** Wire screens to Supabase Auth — email and password is wired (`signInWithPassword`, `signUp` with `emailRedirectTo` built from the current origin). Magic link and Google OAuth are not, and are optional
-- [ ] **(build) A member who forgets their password cannot get back in.** There is no `resetPasswordForEmail` call and no update-password screen anywhere in the repo, verified by grep on 2026-08-28. Supabase can send the mail, so this is one screen, one callback route, and one call. It gates any beta with real members, because the alternative is resetting people by hand in the Supabase dashboard
-- [~] **(build)** Empty/first-run dashboard state — the seam is real (`hasTransactions` from `/api/finances`, no demo fallback since #140), and Overview waits on real rows rather than showing zeroes. The deliberate nudge screen that ties it together is still the design item under Stage 1
-- [x] Account settings surface — `components/juniper/settings-modal.tsx` (account, appearance, developer tools under `DEVELOPER_EMAILS`), with linked institutions on `/app/connections`
+- [x] **2026-08-28** · **(design)** Sign-up and log-in screens in the pine identity — built and routed (`pages/auth/sign-in.tsx`, `pages/auth/sign-up.tsx`, `/auth/sign-in` and `/auth/sign-up` in `App.tsx`). Sign-up is gated by `VITE_SIGNUP_INVITE_CODE` during private preview. **No password-reset screen exists**, see below (Kuba-Ventures/Juniper#96, #164) *Corrected 2026-10-02: #164 added `/auth/forgot` and `/auth/reset` on 2026-08-28, so a reset screen does exist.*
+- [x] **2026-08-04** · **(design)** First-run onboarding sequence — `components/onboarding/first-run-onboarding.tsx`, mounted by the live shell: name and household, goals, connect accounts (the Stage 13 three-tier flow), money snapshot last so linked figures pre-fill it (Kuba-Ventures/Juniper#96, #331)
+- [~] **started 2026-05-29** · **(build)** Wire screens to Supabase Auth — email and password is wired (`signInWithPassword`, `signUp` with `emailRedirectTo` built from the current origin). Magic link and Google OAuth are not, and are optional (Kuba-Ventures/Juniper#96)
+- [x] **2026-08-28** · **(build) A member who forgets their password cannot get back in.** There is no `resetPasswordForEmail` call and no update-password screen anywhere in the repo, verified by grep on 2026-08-28. Supabase can send the mail, so this is one screen, one callback route, and one call. It gates any beta with real members, because the alternative is resetting people by hand in the Supabase dashboard (Kuba-Ventures/Juniper#164, #416) *Done 2026-08-28: #164 added `/auth/forgot` and `/auth/reset`; #416 (2026-09-11) asks for the new password twice.*
+- [~] **started 2026-08-26** · **(build)** Empty/first-run dashboard state — the seam is real (`hasTransactions` from `/api/finances`, no demo fallback since #140), and Overview waits on real rows rather than showing zeroes. The deliberate nudge screen that ties it together is still the design item under Stage 1
+- [x] **2026-08-04** · Account settings surface — `components/juniper/settings-modal.tsx` (account, appearance, developer tools under `DEVELOPER_EMAILS`), with linked institutions on `/app/connections` (Kuba-Ventures/Juniper#97, #311)
+- [x] **2026-09-05** · Onboarding cut from 6 screens to 3; the household question moved onto sign-up (issue #267; Kuba-Ventures/Juniper#331)
+- [x] **2026-09-11** · Password typed twice on sign-up and reset; the session ends on tab close and after 15 minutes idle (Kuba-Ventures/Juniper#398, #399, #416)
+- [x] **2026-09-14** · Paycheck breakdown step after Connect accounts (Kuba-Ventures/Juniper#417, #419, #496)
 
 ---
 
-## Stage 13 — Account discovery & connect **(build)** — *in progress*
+## Stage 13 — Account discovery & connect **(build)** — *in progress* (2026-08-04 to present)
 
 The "connect your accounts" experience, reworked so a new user reaches a
 populated dashboard with the least possible friction. Inspired by the Credit
@@ -256,11 +304,11 @@ never-used-Plaid users get a good path:
   phone number, Plaid recognizes the returning network user and surfaces the
   accounts they've already connected elsewhere, categorized, with a "select all",
   no per-institution login. This is the headline flow.
-  - [x] **Seam built:** `api/plaid/layer-session.ts` (`/session/token/create`
+  - [x] **2026-08-04** · **Seam built:** `api/plaid/layer-session.ts` (`/session/token/create`
     with a Layer template) + `createLayerSession()` + `layerEnabled()` flag
     (`src/lib/plaid.ts`) + a gated `LayerDiscovery` phone-entry component wired
-    into onboarding **and** Connections. Inert until turned on.
-  - [x] **The live exchange was wrong, not just unverified, and it is now fixed**
+    into onboarding **and** Connections. Inert until turned on. (Kuba-Ventures/Juniper#103)
+  - [x] **2026-09-07** · **The live exchange was wrong, not just unverified, and it is now fixed**
     (issue #288, PR #352, 2026-09-07). This line used to say the scaffold "reuses
     the standard public-token exchange" and was "marked to re-verify end-to-end,"
     which framed this as a verification gap. It was a real defect: a completed
@@ -278,7 +326,7 @@ never-used-Plaid users get a good path:
     responses shaped like Plaid's own docs examples. **Still not run against a
     real Layer session**, which needs the access below and, per Plaid's docs,
     can never be exercised on Sandbox even once granted, only Production.
-  - [ ] **Activate (ops), corrected 2026-09-07: this is not a Plaid Production
+  - [ ] **added 2026-09-07** · **Activate (ops), corrected 2026-09-07: this is not a Plaid Production
     prerequisite plus a dashboard toggle, it is a direct request to Plaid with
     no self-serve path at all.** Confirmed by logging into the Plaid dashboard
     and checking directly: no "Layer" product exists in the Products catalog or
@@ -287,13 +335,13 @@ never-used-Plaid users get a good path:
     Once granted: create a **Layer template** in the Plaid dashboard, set
     `PLAID_LAYER_TEMPLATE_ID` + flip `VITE_PLAID_LAYER=1`, then run a real
     end-to-end Layer session against Production, the only environment this path
-    can ever be tested on per Plaid's own docs.
-  - [x] **Demo mode for Sandbox testing:** `VITE_PLAID_LAYER=demo` runs the full
+    can ever be tested on per Plaid's own docs. *Issue #288 was closed 2026-09-11 with no comment; nothing in the repo shows Plaid granted the case, so this stays open.*
+  - [x] **2026-08-05** · **Demo mode for Sandbox testing:** `VITE_PLAID_LAYER=demo` runs the full
     tier-1 UX without Production, phone entry, a "recognizing you…" beat, then a
     **Juniper-rendered categorized account list with Select all** (the experience
     the real Plaid-hosted Layer screen provides). Recognized accounts are mocked
     and, on connect, saved as manual accounts so they actually land on the
-    dashboard + net worth. `LayerDiscovery` branches live vs demo.
+    dashboard + net worth. `LayerDiscovery` branches live vs demo. (Kuba-Ventures/Juniper#105)
   - **Known limit:** Layer only knows accounts *already in the Plaid network for
     that person*. It is not an omniscient "every account you own" lookup, hence
     tiers 2 + 3 are permanent, not stopgaps.
@@ -303,28 +351,28 @@ never-used-Plaid users get a good path:
   Select all** and a **sequential Plaid Link queue**, pick everything you use,
   connect it in one pass (Plaid opens each institution's login in turn), plus
   **Search all institutions** for small/regional banks.
-  - [x] `institution-picker.tsx` rewritten to the multi-select gallery (search,
-    per-category + global select-all, expanded catalog, dedupe by name).
-  - [x] `src/lib/use-link-queue.ts` — the sequential Link hook (ref-driven,
+  - [x] **2026-08-04** · `institution-picker.tsx` rewritten to the multi-select gallery (search,
+    per-category + global select-all, expanded catalog, dedupe by name). (Kuba-Ventures/Juniper#103, #139, #465) *Superseded in part: #139 (2026-08-26) dropped the curated gallery for Plaid's own list; #465 (2026-09-15) brought back a short common-institutions gallery.*
+  - [x] **2026-08-04** · `src/lib/use-link-queue.ts` — the sequential Link hook (ref-driven,
     per-item token, skip-on-exit, progress "Connecting 2 of 4…"), shared by
-    onboarding + Connections.
+    onboarding + Connections. (Kuba-Ventures/Juniper#103)
 
 - **Tier 3 — Manual add** ✅ *works today, no gates.* For institutions Plaid
   can't link (small/regional banks, many employer 401(k) providers) or anything
   the user prefers to enter by hand, so their account list + net worth can be
   complete without a live connection. Balances are user-maintained.
-  - [x] Migration `0014_manual_accounts.sql` (owner RLS + Data API grants,
+  - [x] **2026-08-04** · Migration `0014_manual_accounts.sql` (owner RLS + Data API grants,
     `0002`/`0008` pattern), `api/manual-accounts.ts` (CRUD), client
     `src/lib/manual-accounts.ts`, `ManualAccountForm` component, surfaced in
-    onboarding + the Connections list (with a "Manual" tag + remove).
-  - [x] **Manual balances fold into net worth + the account rollup** via a
+    onboarding + the Connections list (with a "Manual" tag + remove). (Kuba-Ventures/Juniper#103)
+  - [x] **2026-08-05** · **Manual balances fold into net worth + the account rollup** via a
     shared `api/_manual-accounts.ts` (fetch + bucket + sum): `GET /api/finances`
     appends them to the cash/invest/debt groups (so net worth picks them up),
     the net-worth **snapshot writer** adds them to the trend, and
     `_finance-snapshot.ts` folds them into the **Juniper Score** inputs (cash /
     investing / card / loan by category + `kind`). Counted on the linked path
     today (a Plaid-linked user who also hand-adds a 401(k)/regional bank); a
-    net-worth-only live view for *manual-only* users is a further follow-up.
+    net-worth-only live view for *manual-only* users is a further follow-up. (Kuba-Ventures/Juniper#104)
 
 - Ops to activate (like the rest of Stage 3): apply migration `0014`; manual add
   works as soon as it's applied. Tiers 1/2 need Plaid configured; tier 1
@@ -332,7 +380,7 @@ never-used-Plaid users get a good path:
 
 ---
 
-## Stage 14: Card rewards on the Credit page **(build)**, *shipped, behind two unapplied migrations*
+## Stage 14: Card rewards on the Credit page **(build)**, *shipped; production state of `0069`, `0070` and `0073` to `0086` unverified* (2026-08-31 to present)
 
 Cannibalizes the Credit Karma Cards Optimizer (issue #168): identify which card each linked account
 is, a per-category rewards earning guide, a benefits tracker, and recommendations. Distinct from Stage
@@ -340,43 +388,43 @@ is, a per-category rewards earning guide, a benefits tracker, and recommendation
 Design record: `design/card-rewards-variants.html`, three rendered treatments, A chosen. Full
 rationale in `docs/CARD_REWARDS.md`.
 
-- [x] **(build)** Curated card catalog with enforced provenance → migration `0031_card_products.sql`
+- [x] **2026-08-31** · **(build)** Curated card catalog with enforced provenance → migration `0031_card_products.sql`
   (`card_products`, `card_product_earn`, `card_product_benefits`, plus `member_cards` and
   `card_benefit_uses` for the member's own layer). `source_url` and `as_of` are NOT NULL on all three
   catalog tables, so a rate cannot exist without saying where it came from, and `verified` is FALSE on
   everything the seed writes with the page saying so. No product Juniper integrates returns rewards
-  terms: Plaid's `liabilities` gives APRs and limits, not earn rates.
-- [x] **(build)** Seed of 10 common US cards, 18 earn rows, 36 benefits → `0032_card_products_seed.sql`.
+  terms: Plaid's `liabilities` gives APRs and limits, not earn rates. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** Seed of 10 common US cards, 18 earn rows, 36 benefits → `0032_card_products_seed.sql`.
   `ON CONFLICT DO NOTHING`, never `DO UPDATE`, so a re-run cannot overwrite a row somebody verified by
   hand. Rotating categories, portal-only rates and signup bonuses are deliberately excluded, each for a
-  reason recorded in the migration header.
-- [x] **(build)** The maths, pure and I/O-free → `api/_rewards.ts`, exercised by 54 cases in
+  reason recorded in the migration header. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** The maths, pure and I/O-free → `api/_rewards.ts`, exercised by 54 cases in
   `scripts/src/check-rewards.ts` with no database, no Plaid account and no session. The four things it
   guards: a cap drops to the card's BASE rate rather than stopping, a points rate is only comparable
   once a valuation is applied and that valuation is disclosed, a leaf category beats its group, and the
-  annual fee is subtracted before a card is recommended.
-- [x] **(build)** Which card is which, answered by the MEMBER → `api/member-cards.ts` plus
+  annual fee is subtracted before a card is recommended. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** Which card is which, answered by the MEMBER → `api/member-cards.ts` plus
   `components/juniper/card-identify.tsx`. Plaid returns an account name like "CREDIT CARD" and nothing
   that identifies a product, so there is no auto-confirm path anywhere: `confidence` orders the picker
   and a tap is the only thing that writes a row. "My card is not listed" is a stored answer rather than
-  a dismissal, so a member holding something outside the catalog stops being asked.
-- [x] **(build)** Rewards earning guide, ordered by the member's OWN spend rather than a fixed
-  Groceries / Gas / Dining / Travel → `components/juniper/rewards-guide.tsx`.
-- [x] **(build)** Benefits tracker → `api/card-benefits.ts` plus
+  a dismissal, so a member holding something outside the catalog stops being asked. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** Rewards earning guide, ordered by the member's OWN spend rather than a fixed
+  Groceries / Gas / Dining / Travel → `components/juniper/rewards-guide.tsx`. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** Benefits tracker → `api/card-benefits.ts` plus
   `components/juniper/benefits-tracker.tsx`. `period_key` (`2026-08` / `2026-Q3` / `2026` / `once`) is
   computed server-side and never accepted from the client, which is what makes a recurring credit reset
   with no cron job. Nothing is ticked automatically: a matching charge proves a purchase, not that the
-  issuer applied a credit.
-- [x] **(build)** Recommendations → `components/juniper/card-switches.tsx`. "Worth switching" compares
+  issuer applied a credit. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** Recommendations → `components/juniper/card-switches.tsx`. "Worth switching" compares
   cards the member already holds, so it needs no application, no hard pull and no affiliate link.
   "Cards that would beat yours" names catalog cards they do not hold and **carries no URL**, because
   every affiliate link here is still a placeholder and a credit-card application is the category where
-  that matters most (`docs/CREDIT_PROVIDER.md` section 4).
-- [x] **(ops)** Applied `0031` and `0032` to the production Supabase project on 2026-08-31 (Finley),
+  that matters most (`docs/CREDIT_PROVIDER.md` section 4). (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(ops)** Applied `0031` and `0032` to the production Supabase project on 2026-08-31 (Finley),
   verified at 10 products / 18 earn rows / 36 benefits. The surface is live: a production screenshot on
   issue #211 shows the Identify prompt rendering and the Chase, Capital One and Discover institution
-  marks resolving.
-- [x] **(build)** **A limit the bank does not report can be set by the member** (issue #211, migration
+  marks resolving. (Kuba-Ventures/Juniper#224)
+- [x] **2026-08-31** · **(build)** **A limit the bank does not report can be set by the member** (issue #211, migration
   `0033_member_card_limit.sql`). Plaid returns `balances.limit` only when the issuer sends it, and on
   real production data Chase reports $9,000 while Capital One and Discover report nothing, so
   utilization was computed from one card of three. Treatment A of three
@@ -385,13 +433,13 @@ rationale in `docs/CARD_REWARDS.md`.
   carries a "You set this" badge and the utilization figure says how many of its limits came from them,
   because one is a fact and the other is a claim. And it **never reaches the Juniper Score**:
   `_finance-snapshot.ts` reads bank-reported limits only and carries a comment saying not to join
-  `member_cards` in, since otherwise anybody could raise their own score by typing a generous number.
-- [x] **(ops)** Applied `0033` to the production Supabase project on 2026-08-31 (Finley), and verified
+  `member_cards` in, since otherwise anybody could raise their own score by typing a generous number. (Kuba-Ventures/Juniper#225)
+- [x] **2026-08-31** · **(ops)** Applied `0033` to the production Supabase project on 2026-08-31 (Finley), and verified
   from `information_schema`: `credit_limit` numeric, `credit_limit_set_at` timestamptz, and
   `product_answered` boolean defaulting to `true`, which is the value the no-backfill argument rests on.
   The migration tree is now 0001 to 0033. #225's code was already deployed at the time, which was safe
-  only because `readConfirmations` treats the new columns as optional and retries without them.
-- [x] **(build)** **The catalog offers the name printed on the card** (migration
+  only because `readConfirmations` treats the new columns as optional and retries without them. (Kuba-Ventures/Juniper#226)
+- [x] **2026-08-31** · **(build)** **The catalog offers the name printed on the card** (migration
   `0034_card_products_variants.sql`, 8 more products, taking it to 18 products / 31 earn rows / 50
   benefits). Found by the first real production test of #211: the member's card says "Quicksilver
   Student" and 0032 could only offer plain "Quicksilver". Student and legacy brandings (SavorOne) now
@@ -401,8 +449,8 @@ rationale in `docs/CARD_REWARDS.md`.
   ALREADY HOLDS, since `switchIdeas` would then advise moving spend off it. So Apple Card, Bilt, Citi
   Custom Cash and BoA Customized Cash are absent (headline earning is conditional on a payment method, a
   transaction count, or a category chosen per cycle), as are Sapphire Reserve and Amex Gold (recently
-  moved annual fees, which `upgradeIdeas` subtracts, so a stale figure inverts the recommendation).
-- [x] **(build)** **Better card faces and a wallet the cards sit in** (`design/card-wallet-variants.html`,
+  moved annual fees, which `upgradeIdeas` subtracts, so a stale figure inverts the recommendation). (Kuba-Ventures/Juniper#227)
+- [x] **2026-08-31** · **(build)** **Better card faces and a wallet the cards sit in** (`design/card-wallet-variants.html`,
   one face proposal and three wallet treatments, A chosen). Still no issuer card art, which is licensed
   and gated on the same issuer relationship as the marketplace: a face is the stored brand colour plus
   the issuer's own Plaid logo, with the network in plain type rather than as its own mark. `shortCardName`
@@ -413,8 +461,8 @@ rationale in `docs/CARD_REWARDS.md`.
   spreading it needed 816px inside a 352px box, a 34px vertical reveal showed only "CHASE" on both Chase
   cards, and a 54px reveal with the name stacked under the mask left both Discover cards reading
   "Disco...". Vertical also scales: a fifth card costs 54px of height rather than width the hero does
-  not have.
-- [x] **(build)** **Somewhere to put real card art, and faces big enough to read** (migration
+  not have. (Kuba-Ventures/Juniper#228)
+- [x] **2026-08-31** · **(build)** **Somewhere to put real card art, and faces big enough to read** (migration
   `0035_card_product_art.sql`). `art_url` plus `art_license`, paired by a CHECK for the same reason a
   rate needs `source_url`. The column SHIPS EMPTY on purpose: the images are issuer marketing assets and
   choosing a source is a licensing decision for the product owner, not the migration author, so the app
@@ -423,8 +471,8 @@ rationale in `docs/CARD_REWARDS.md`.
   approval Stage 5 needs), a licensed card-data vendor, or a deliberate decision about issuer-hosted
   URLs. Sizes moved to the real card aspect of 1.586:1, and `sm` went from 26x17 to 60x38, which is the
   one that matters: at chip size the picker was asking somebody to choose between five Capital One cards
-  by shade of grey.
-- [x] **(build)** **An overpaid card is not debt** (`api/_credit-balance.ts`, mirrored client-side,
+  by shade of grey. (Kuba-Ventures/Juniper#229)
+- [x] **2026-08-31** · **(build)** **An overpaid card is not debt** (`api/_credit-balance.ts`, mirrored client-side,
   10 cases in `scripts/src/check-credit-balance.ts`). Found on real production data: a Capital One card
   at -328.21 with a $4,400 limit drew as "$328 of $4,400 limit, Used 7%" when the member was using none
   of it, because Plaid reports a credit balance as NEGATIVE when the account is in credit and five places
@@ -432,63 +480,63 @@ rationale in `docs/CARD_REWARDS.md`.
   debt-load factor, the Score's credit factor and net worth, so a refund the issuer owed made the
   member's score worse twice and their net worth smaller. Overall utilization read 5% where the truth is
   3%. A card in credit is now zero debt rather than a positive asset, deliberately: it is nearly always
-  transient and folding it into net worth would make the trend jump on something that is not wealth.
-- [x] **(build)** **Repair the trademark symbols mangled in transit** (`0036`). Not a migration bug:
+  transient and folding it into net worth would make the trend jump on something that is not wealth. (Kuba-Ventures/Juniper#230)
+- [x] **2026-08-31** · **(build)** **Repair the trademark symbols mangled in transit** (`0036`). Not a migration bug:
   `0032` and `0034` are correct UTF-8 (`C2 AE`, verified), and the macOS clipboard carried raw bytes into
   the SQL editor which read them as MacRoman, so thirteen names rendered as "Chase Freedom Flex" plus two
   pieces of punctuation. The repair sets each name from a known-good value with `chr(174)` and
   `chr(8480)`, and contains no byte above ASCII anywhere including its comments, because a repair holding
-  the sequence that got mangled would arrive as broken as the thing it repairs.
-- [x] **(ops)** Apply `0035` and `0036` to the production Supabase project. Both applied; verified
-  against `information_schema`.
+  the sequence that got mangled would arrive as broken as the thing it repairs. (Kuba-Ventures/Juniper#230)
+- [x] **2026-08-31** · **(ops)** Apply `0035` and `0036` to the production Supabase project. Both applied; verified
+  against `information_schema`. (Kuba-Ventures/Juniper#231)
 
-- [x] **Decide where card art comes from.** Decided: rehost the issuers' own renders on Juniper's origin
+- [x] **2026-08-31** · **Decide where card art comes from.** Decided: rehost the issuers' own renders on Juniper's origin
   as a stopgap, margin-trimmed, with the issuers' placeholder cardholder names ("D. BARRETT",
   "LEE M CARDHOLDER", "LINDA WALKER") erased so a stranger's name never appears on a member's card.
   Unlicensed and knowingly so - see the header of `0037` for the full position and the one-line revert.
-  Superseded the moment an affiliate brand pack lands, which is the same approval Stage 5 waits on.
-- [x] **Card art, stage B: the three Chase Freedom cards** (`0038`). The ribbon mask is intersected with
+  Superseded the moment an affiliate brand pack lands, which is the same approval Stage 5 waits on. (Kuba-Ventures/Juniper#231)
+- [x] **2026-08-31** · **Card art, stage B: the three Chase Freedom cards** (`0038`). The ribbon mask is intersected with
   the upper-right corner triangle, which is what lets the colour threshold be loose enough to catch its
   antialiased edge without also erasing the word UNLIMITED. The ribbon juts past the card edge, so the
   card width is reconstructed from its height at the true 1.586 ratio rather than trimmed to the opaque
-  bounds (which measured the ribbon: 1.519). All 18 products now carry art.
+  bounds (which measured the ribbon: 1.519). All 18 products now carry art. (Kuba-Ventures/Juniper#231)
 
-- [x] **Two-tier catalog** (`0039`). `card_products.tier` is `featured` (researched rates, feeds the
+- [x] **2026-09-01** · **Two-tier catalog** (`0039`). `card_products.tier` is `featured` (researched rates, feeds the
   earning guide and the switch and upgrade rows) or `listed` (name, issuer, network, fee, art -- exists
   so the Identify picker can name any card a member holds, and is kept out of everything rate-driven).
   `base_multiplier` became nullable so "no rate known" is representable instead of defaulting to a
   plausible-looking 1 percent, and 0031's points-need-a-valuation CHECK now binds featured rows only --
   otherwise naming a co-brand in a picker would require inventing a cents-per-point for every airline
-  and hotel currency in the country.
-- [x] **Eleven more Chase products** (`0040`, art in `0041`). Every Chase card that earns cash back or
+  and hotel currency in the country. (Kuba-Ventures/Juniper#233)
+- [x] **2026-09-01** · **Eleven more Chase products** (`0040`, art in `0041`). Every Chase card that earns cash back or
   Ultimate Rewards: Sapphire Reserve, Reserve for Business, all four Ink cards, Amazon Visa, Prime Visa,
   DoorDash, Instacart, and Slate Edge as the first `listed` row. Rates read from the issuer's own
   rewards-program text rather than the comparison-page summary, so these eleven ship `verified = TRUE`.
   The ~30 co-brands are deliberately excluded: each earns its own currency and would need an invented
-  valuation that then drives the dollar figures in "cards that would beat yours".
+  valuation that then drives the dollar figures in "cards that would beat yours". (Kuba-Ventures/Juniper#233)
 
-- [x] **Benefits for the premium cards** (`0044`, schema in `0043`). 59 rows across the two Sapphire
+- [x] **2026-09-01** · **Benefits for the premium cards** (`0044`, schema in `0043`). 59 rows across the two Sapphire
   Reserves, Ink Business Preferred and Premier, and the three cards `0042` adds. Coverage LIMITS carry a
   NULL value rather than their limit: `value_amount` is summed by the tracker, so "up to $10,000 per
-  item" of purchase protection is not $10,000 of annual value.
-- [x] **`expires_on` on benefits** (`0043`). Card perks increasingly carry a published end date -- six of
+  item" of purchase protection is not $10,000 of annual value. (Kuba-Ventures/Juniper#235)
+- [x] **2026-09-01** · **`expires_on` on benefits** (`0043`). Card perks increasingly carry a published end date -- six of
   the Sapphire Reserve's do -- and without a column for it they had to be omitted entirely, because a
   tracker with no way to represent an ending would ask somebody in 2028 to use a credit that stopped in
   2027. `trackBenefits` drops an expired benefit before it reaches the tracker, the group counts or the
-  unused-value total; the client shows "ends 31 Dec 2027" rather than letting one vanish silently.
-- [x] **Three premium products** (`0042`, art in `0045`): Amex Platinum, Amex Gold, Capital One Venture X.
+  unused-value total; the client shows "ends 31 Dec 2027" rather than letting one vanish silently. (Kuba-Ventures/Juniper#235)
+- [x] **2026-09-01** · **Three premium products** (`0042`, art in `0045`): Amex Platinum, Amex Gold, Capital One Venture X.
   Membership Rewards is valued at 1.0 cent -- Amex's own statement-credit floor, deliberately conservative
-  -- on the same basis the Capital One miles row already used, so nothing is invented.
+  -- on the same basis the Capital One miles row already used, so nothing is invented. (Kuba-Ventures/Juniper#235)
 
-- [ ] **A merchant- and portal-scoped earn category.** The taxonomy cannot say "5 percent at Amazon",
+- [x] **2026-09-07** · **A merchant- and portal-scoped earn category.** The taxonomy cannot say "5 percent at Amazon",
   "8x through Chase Travel", "5x through Amex Travel" or "10x through Capital One Travel", so those rates
   are omitted and the cards are understated: Prime Visa, Amazon Visa, DoorDash, Instacart, both Sapphire
   Reserves, Ink Business Premier, **and now the Amex Platinum and Venture X, whose every headline rate is
   portal-booked**. The Platinum consequently reads as a 1x card whose case is entirely its credits. Same
   shape as the rotating-category gap on Freedom Flex and Discover it. This is the fourth migration in a
-  row to record the same omission and is now the largest single source of understatement in the catalog.
+  row to record the same omission and is now the largest single source of understatement in the catalog. (Kuba-Ventures/Juniper#356)
 
-- [x] **A credit limit on a hand-entered card** (`0046`). The only route that makes utilization agree
+- [x] **2026-09-01** · **A credit limit on a hand-entered card** (`0046`). The only route that makes utilization agree
   with the member's own credit report, because the card it exists for can never arrive through Plaid:
   see the authorized-user entry below. `manual_accounts` (`0014`) already existed for "anything Plaid
   cannot reach, entered by hand" and its `category = 'credit'` rows already counted as card debt in net
@@ -500,8 +548,8 @@ rationale in `docs/CARD_REWARDS.md`.
   **"You added this"**, deliberately distinct from #211's "You set this": that one is a limit on a
   BANK-LINKED card, where Juniper can see the account and only the limit was missing. A manual card gets
   no `member_cards` row, so it is never in the Identify queue, never has rewards data, and contributes
-  limit and balance only. States rendered in `design/manual-credit-card.html`.
-- [x] **A member-typed limit still cannot reach the Juniper Score**, and that is now checkable rather
+  limit and balance only. States rendered in `design/manual-credit-card.html`. (Kuba-Ventures/Juniper#237)
+- [x] **2026-09-01** · **A member-typed limit still cannot reach the Juniper Score**, and that is now checkable rather
   than merely commented. Same rule as #211, and the whole risk in `0046`: the Score is a figure Juniper
   asserts from what it can measure, so a limit somebody typed must not move it, or the member is scoring
   themselves. The isolation is structural, not a convention. The shared `fetchManualAccounts` the score
@@ -512,15 +560,15 @@ rationale in `docs/CARD_REWARDS.md`.
   check rather than quietly making the Score member-editable. Also corrected a comment in
   `api/_finance-snapshot.ts` that `0046` had made stale: it said a hand-added card carries no credit line
   at all, which was the old reason for excluding it. A member can now enter one, and it is still
-  excluded, on the stronger ground.
-- [x] **(ops)** **`0046` applied to production on 2026-09-01, by Finley**, ahead of the deploy rather
+  excluded, on the stronger ground. (Kuba-Ventures/Juniper#237)
+- [x] **2026-09-01** · **(ops)** **`0046` applied to production on 2026-09-01, by Finley**, ahead of the deploy rather
   than after it, which is safe for this one: both columns are nullable and every read and write carries
   a fallback for their absence. Its verification SELECT returned exactly what the migration's own
   `Expect` comment predicted, **24 manual accounts, 0 with a limit, 0 with a mask**, so no existing row
   was touched. Verified before that against a scratch Postgres: `0014` then `0046` applies clean,
   re-running `0046` is a no-op, pre-existing rows survive with both columns NULL, and the CHECKs refuse
-  a limit on a banking account, a zero limit and a negative one.
-- [ ] **Four manual credit accounts already exist in production**, which that same SELECT surfaced and
+  a limit on a banking account, a zero limit and a negative one. (Kuba-Ventures/Juniper#237)
+- [ ] **added 2026-09-01** · **Four manual credit accounts already exist in production**, which that same SELECT surfaced and
   the plan for this work did not anticipate: `credit_accounts = 4`, none of them with a limit. They have
   been counting as card debt in net worth since `0014` and were invisible on the Credit page, and the
   moment this ships all four appear there, badged "You added this", reading "no limit added" and "Used:
@@ -530,14 +578,14 @@ rationale in `docs/CARD_REWARDS.md`.
   before assuming the page is wrong**. Any of them that are real cards want their limits; any that are
   duplicates of a Plaid-linked card want removing, since a duplicate would double-count in both net
   worth and utilization - Finley
-- [ ] **Confirm the four figures on the real member's Credit page** once `0046` is applied and the
+- [ ] **added 2026-09-01** · **Confirm the four figures on the real member's Credit page** once `0046` is applied and the
   Freedom Unlimited is entered by hand ($20,000 limit, mask 4417, balance $0). Expect **$562 of $37,900
   across 4 cards**, which rounds to **1 percent** (`562 / 37900 = 1.48`), the card badged "You added
   this", the card ABSENT from the Identify prompt, and the **Juniper Score unchanged by the addition**.
   The last of those is the one that proves the score isolation held in production rather than only in the
   check script. Note the plan for this work predicted 2 percent, which was a rounding slip; 1 percent is
   the correct reading of the same arithmetic - Finley
-- [x] **The wallet draws the cards still to be identified**, which reverses a deliberate decision and
+- [x] **2026-09-01** · **The wallet draws the cards still to be identified**, which reverses a deliberate decision and
   is recorded as a reversal rather than as a new feature. `CardWallet` filtered to
   `cards.filter(c => c.product)` and its docblock gave the reason: an unidentified card has no brand
   colour to borrow, so an outline in the pocket would read as a rendering fault rather than as a card
@@ -553,8 +601,8 @@ rationale in `docs/CARD_REWARDS.md`.
   `CardIdentifyPrompt`, a counter rather than a boolean so the same slot can be tapped again after a
   dismissal, rather than mounting a second picker in the hero. No new CSS. The docblock was rewritten
   rather than left asserting the opposite of the code, and it records what changed and what changed it.
-  States rendered in `design/card-wallet-unidentified.html`.
-- [x] **A manual account can be edited in place.** Closes the loop `0046` opened: Connections offered
+  States rendered in `design/card-wallet-unidentified.html`. (Kuba-Ventures/Juniper#238)
+- [x] **2026-09-01** · **A manual account can be edited in place.** Closes the loop `0046` opened: Connections offered
   add and remove only, so a member who entered a card and left the limit blank had to remove it and add
   it again, and the Credit page had to link to "Manage on Connections" because it could not honestly
   promise an editor. It says **"Edit on Connections"** now. Treatment B of three, rendered in
@@ -569,8 +617,8 @@ rationale in `docs/CARD_REWARDS.md`.
   without which the next "Add an account" would open prefilled and silently overwrite. `credit_limit`
   and `mask` are deliberately NOT treated alike when their fields are hidden: the limit must be cleared,
   because `0046`'s CHECK refuses one outside the credit category, while a mask is valid on any category
-  and is preserved, since clearing it would be silent data loss decided by a layout choice.
-- [ ] **The $20,000 Chase Freedom Unlimited is an authorized-user card on somebody else's login, so
+  and is preserved, since clearing it would be silent data loss decided by a layout choice. (Kuba-Ventures/Juniper#239)
+- [ ] **added 2026-09-01** · **The $20,000 Chase Freedom Unlimited is an authorized-user card on somebody else's login, so
   Plaid can never return it. Blocked on a credit-data provider, not on relinking.** Reconciled against
   Credit Karma on 2026-08-31: CK reports $37,900 of limit across four cards (Freedom Unlimited $20,000,
   Sapphire Preferred $9,000, Discover it Chrome $4,500, Quicksilver Student $4,400) and Juniper sees
@@ -586,7 +634,7 @@ rationale in `docs/CARD_REWARDS.md`.
   through Plaid at all: it is gated on the same credit-data provider Stage 10 score tracking waits on.
   A member-entered manual credit account is the only route that makes the figures match the report.
   Affects net worth and utilization, not just this page
-- [ ] **Utilization and the Juniper Score read low on limit for this member, and it is not an
+- [ ] **added 2026-09-01** · **Utilization and the Juniper Score read low on limit for this member, and it is not an
   arithmetic bug.** A consequence of the authorized-user card above, recorded separately so nobody
   re-diagnoses it in the code: with a $562 balance, Juniper computes `$562 / $17,900 = 3%` while the
   bureau computes `$562 / $37,900 = 1.5%`, because Juniper's denominator is missing the $20,000 limit it
@@ -594,7 +642,7 @@ rationale in `docs/CARD_REWARDS.md`.
   material if a balance is ever carried. The Juniper Score inherits the same skew through its
   utilization factor. The arithmetic in `api/_credit-balance.ts` is correct; the denominator is
   incomplete. Closes when the limit is present, whether by a manual credit account or by a provider
-- [ ] **Set a limit on a real card and confirm the Identify prompt still counts it.** The one assumption
+- [ ] **added 2026-08-31** · **Set a limit on a real card and confirm the Identify prompt still counts it.** The one assumption
   in #211 that has never touched Postgres: `product_answered` is written FALSE only when a limit
   CREATES the row, so setting a limit on an unidentified card must leave it in the Identify queue. If it
   is wrong the card silently leaves that queue and never gets its rewards data, with nothing on screen
@@ -602,7 +650,7 @@ rationale in `docs/CARD_REWARDS.md`.
   yet identified. Also worth checking on the same pass: the row reads "$328 of $8,000 limit" with a
   "You set this" badge, and the utilization line picks the card up and says one of its limits came from
   the member - Finley
-- [x] **The wallet holds the hand-entered card too.** Reported on 2026-09-01 after `0046` shipped: the
+- [x] **2026-09-01** · **The wallet holds the hand-entered card too.** Reported on 2026-09-01 after `0046` shipped: the
   Credit cards list said **4 cards** and the wallet under it said **3**, with the Freedom Unlimited the
   one absent. The same shape of complaint that drove the wallet change above, and the same answer, so
   the counts agree again. Treatment A of three, rendered in `design/wallet-manual-card-variants.html`.
@@ -622,8 +670,8 @@ rationale in `docs/CARD_REWARDS.md`.
   which `member_cards.plaid_account_id` would allow without a migration since it is plain TEXT with no
   foreign key, but the rewards maths keys on per-account spend from `transactions.account_id` that a
   hand-entered card has none of, so its rates would be right and its "what this is costing you" figures
-  blank or wrong. Worth doing only alongside that.
-- [x] **The issuer's mark comes off a card that has real art.** Reported on 2026-09-01 as "circles and
+  blank or wrong. Worth doing only alongside that. (Kuba-Ventures/Juniper#241)
+- [x] **2026-09-01** · **The issuer's mark comes off a card that has real art.** Reported on 2026-09-01 as "circles and
   squares overlaying the cards". They were institution logos: `.cr-face-logo` flattens Plaid's mark to a
   pure white silhouette (`brightness(0) invert(1)`), which is right on a synthesized face, since Plaid
   ships dark marks meant for a light tile and they would vanish into a navy card, and wrong twice on a
@@ -633,8 +681,8 @@ rationale in `docs/CARD_REWARDS.md`.
   `.cr-pocket .cr-face-art .cr-face-iss` sets it white with a text-shadow for exactly this case and was
   unreachable for every institution that has a logo, which is most of them. Only the wallet strip ever
   saw it; a full face with art hides its whole top line. Verified that a card with a logo and NO art
-  still draws the mark, which is the case the filter exists for.
-- [x] **A hand-entered card can say which card it is** (`0047`), so it stops being the one face in the
+  still draws the mark, which is the case the filter exists for. (Kuba-Ventures/Juniper#242)
+- [x] **2026-09-01** · **A hand-entered card can say which card it is** (`0047`), so it stops being the one face in the
   wallet Juniper cannot draw. The catalog has held the Freedom Unlimited artwork since `0038` and
   nothing could point at it. Treatment A of three, rendered in
   `design/manual-card-identity-variants.html`: one more credit-only field on the form that already
@@ -654,8 +702,8 @@ rationale in `docs/CARD_REWARDS.md`.
   **A bug the build turned up:** `identityOf` calls `artOf`, and `manual` is built before the
   no-linked-accounts early return, so with `artOf` declared where it used to sit it was in the temporal
   dead zone and naming a card threw a `ReferenceError`. It threw only once a card was actually named,
-  which is to say only for the feature being added. The art map moved above its first use.
-- [x] **The card art names the card, and the overlay stops competing with it.** Reported on 2026-09-01
+  which is to say only for the feature being added. The art map moved above its first use. (Kuba-Ventures/Juniper#242)
+- [x] **2026-09-01** · **The card art names the card, and the overlay stops competing with it.** Reported on 2026-09-01
   as the labels clogging the holder. The pocket painted issuer, mask and product name over every card,
   and the reason recorded in the stylesheet was that a covered card shows only its top 54px while the
   artwork's own name may sit below that line. **Rendered against the real catalog art, the premise did
@@ -671,8 +719,8 @@ rationale in `docs/CARD_REWARDS.md`.
   Capital One art puts its wordmark top-right, so the mask overlaps it there, exactly as it did before
   this change. **The known risk, stated rather than designed around:** a future card whose art carries no
   name in its top 54px will read as four digits and a picture. The fix then is that card's art, not a
-  label over every card in the catalog.
-- [x] **The card holder is a real holder, and the member picks its material** (`0048`). Two defects
+  label over every card in the catalog. (Kuba-Ventures/Juniper#243)
+- [x] **2026-09-01** · **The card holder is a real holder, and the member picks its material** (`0048`). Two defects
   behind the reported formatting errors, both arithmetic rather than taste: `FACE_H` in the component
   said 124 with a comment claiming it matched `.cr-face-lg`, which is **149px** at desktop, so every
   computed height was 25px short; and **nothing clipped the stack**, so collapsing reserved 148px for
@@ -698,8 +746,8 @@ rationale in `docs/CARD_REWARDS.md`.
   unhooked ten descendant rules, including the ones that hide the issuer and product name over card art,
   so the labels removed a change earlier came straight back. All ten rescoped.
   The real cost of the feature is not the styles, it is that six of them times light/dark times
-  collapsed/expanded is 24 states, which is why the set is six and not ten.
-- [x] **A cover on the front, and a tap opens the card rather than nudging it.** Two follow-ups from
+  collapsed/expanded is 24 states, which is why the set is six and not ten. (Kuba-Ventures/Juniper#244)
+- [x] **2026-09-01** · **A cover on the front, and a tap opens the card rather than nudging it.** Two follow-ups from
   looking at the shipped holder beside the reference photograph. **The cover:** the front card used to
   lie fully visible on top of the pocket, which is not how a wallet works, so `.cr-holder-cover` now sits
   in front of the WHOLE stack and every card shows about a quarter of itself (`FACE_H / 4`), which is
@@ -728,8 +776,8 @@ rationale in `docs/CARD_REWARDS.md`.
   shape now: every card, a quarter of each, the cover across the front, and a foot that states the count.
   The clip's height and the cards' offsets are functions of the card count alone, so both transitions
   went with it rather than being left to animate a state change that no longer exists. The cover stays at
-  84px: its depth is about looking like a wallet, not about fitting the text it lost.
-- [x] **#250 reversed three of the paragraphs above, and they are left standing because the reasoning
+  84px: its depth is about looking like a wallet, not about fitting the text it lost. (Kuba-Ventures/Juniper#246, #247, #248)
+- [x] **2026-09-01** · **#250 reversed three of the paragraphs above, and they are left standing because the reasoning
   is the record.** Read against the code on 2026-09-02, since a stage that describes the shape of a
   thing is worth checking against the thing: the cover is **168px**, not 84 (`COVER_H` in
   `components/juniper/rewards-guide.tsx`, commented as the block plus the stitch plus the room the
@@ -739,25 +787,25 @@ rationale in `docs/CARD_REWARDS.md`.
   one shape" directly. `FACE_H` is still derived from the ID-1 ratio rather than from a constant, which
   is the one decision in this run that survived every revision of the holder
 
-- [x] **(ops)** **`0031` to `0048` are all applied to production**, which replaces the eleven separate
+- [x] **2026-09-02** · **(ops)** **`0031` to `0048` are all applied to production**, which replaces the eleven separate
   "Apply 00xx" boxes that used to sit in this stage and had gone stale as they were ticked off in the
   Supabase editor and not here. Settled on 2026-09-02 by reading the schema and the data rather than
   the checkboxes: **32 card products (31 featured, all 32 carrying art), 52 earn rows, 109 benefits of
   which 10 have an `expires_on`, 4 `member_cards` rows, 5 manual credit accounts (1 with a member-set
   limit, 1 identified to a catalog product), and 1 profile with a holder style chosen.** Every column
   those figures rest on belongs to a migration in this range, so the range is applied. With 0049 the
-  tree is 0001 to 0049
-- [ ] **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
+  tree is 0001 to 0049 (Kuba-Ventures/Juniper#268)
+- [x] **2026-09-07** · **(build)** Verify the 10 seeded products against their own `source_url` and flip `verified` to
   TRUE. An afternoon with ten tabs open, and the highest-value follow-up in this stage: until it is
-  done every member sees the "not yet re-checked" caveat.
-- [ ] **(build)** Shared caps. Discover it Chrome caps gas and restaurants at $1,000 a quarter
+  done every member sees the "not yet re-checked" caveat. (Kuba-Ventures/Juniper#354)
+- [x] **2026-09-07** · **(build)** Shared caps. Discover it Chrome caps gas and restaurants at $1,000 a quarter
   COMBINED and `card_product_earn` caps per row, so the arithmetic is optimistic for somebody who
   spends heavily in both. The fine print on screen is right; a shared-cap column is the fix if a second
-  card ever needs one.
-- [ ] **(build)** Move `catalog` out of the `/api/card-rewards` response into its own searchable
+  card ever needs one. (Kuba-Ventures/Juniper#355)
+- [x] **2026-09-07** · **(build)** Move `catalog` out of the `/api/card-rewards` response into its own searchable
   endpoint once the catalog passes a few hundred products. It rides along today only because ten
-  products are free to send.
-- [x] **The Juniper Score no longer flashes a number it cannot vouch for.** Reported from production on
+  products are free to send. (Kuba-Ventures/Juniper#357)
+- [x] **2026-09-01** · **The Juniper Score no longer flashes a number it cannot vouch for.** Reported from production on
   2026-09-01: a hard refresh showed **53**, then **97**. Not an arithmetic bug and not caused by the
   `0046` work, which never touched the score path. The cause is in the `lib/finances.ts` seam: the manual
   layer is built synchronously from the local profile so a hand-onboarded member sees their own figures
@@ -776,57 +824,60 @@ rationale in `docs/CARD_REWARDS.md`.
   still drawn from the manual layer, so a dashed "now" sat beside a manual "39". Verified against both
   real pages mounted with a deliberately slow `/api/finances`: every figure dashed at first paint, the
   manual score never rendered at all, and the card measured identical in both states (Overview 76px,
-  Score 187px)
-- [ ] **(build)** Widen the `/api/finances` rollup with `limit` and per-account spend, which is what
+  Score 187px) (Kuba-Ventures/Juniper#240)
+- [x] **2026-09-07** · **(build)** Widen the `/api/finances` rollup with `limit` and per-account spend, which is what
   would let the Credit page stop reading outside the `lib/finances.ts` seam. Open since #132, and this
-  stage widened the exception by one endpoint rather than closing it.
+  stage widened the exception by one endpoint rather than closing it. (Kuba-Ventures/Juniper#358)
+- [x] **2026-09-11** · A transaction flags when a different linked card would have earned more (issue #406; Kuba-Ventures/Juniper#414, #451, #453)
+- [x] **2026-09-15** · Catalog expansion: 40 products added, then the 15 without real issuer art removed, leaving 57 in the migrations (Kuba-Ventures/Juniper#467, #470, #472 to #488)
+- [ ] **added 2026-09-15** · **(ops)** Apply `0069`, `0070` and `0073` to `0086` to production and verify; their PRs record them as held for review, and only `0072` is recorded as applied (Kuba-Ventures/Juniper#467, #468, #472 to #488)
 
-## Stage 15: The member arranges their own Overview **(build)**, *shipped, behind one unapplied migration*
+## Stage 15: The member arranges their own Overview **(build)**, *shipped* (2026-09-01 to 2026-09-07)
 
 The dashboard was the most-visited page in the app and the same page for everybody, in an order
 somebody chose once and re-argued in comments on the file more than once. It is now the member's:
 which cards are on it, and in what order. Issue #251. Design record:
 `design/dashboard-widgets-variants.html`, four rendered treatments, A chosen.
 
-- [x] **(design)** Four treatments rendered and compared: the cards themselves as the editor (A), a
+- [x] **2026-09-01** · **(design)** Four treatments rendered and compared: the cards themselves as the editor (A), a
   list of widget names in a side panel (B), the page shrunk to a labelled map in a sheet (C), and a
   hybrid holding scale copies of the real cards (D). **A chosen**, because it is the only one where
   the member is looking at the actual card while deciding whether they want it. The cost is real and
   was named rather than designed around: the drags are 300px cards, so a keyboard path had to be built
-  beside it rather than after it.
-- [x] **(build)** `dashboard_layout` on `user_profiles` (migration `0049`), holding **the order and
+  beside it rather than after it. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** `dashboard_layout` on `user_profiles` (migration `0049`), holding **the order and
   the hidden set, never the visible list**. A widget added later is absent from every layout saved
   before it existed, so a stored visible list would switch every new card OFF for every existing
   member, with nothing on screen to say one exists, and it would do it to exactly the people who have
   used Juniper long enough to have arranged their page. The CHECK constrains the SHAPE and
   deliberately not the widget ids, unlike `holder_style` in `0048`: the ids are the app's registry, so
-  a closed list would mean a migration before every new card.
-- [x] **(build)** The registry and the reconciliation in `src/lib/dashboard-layout.ts`. A widget the
+  a closed list would mean a migration before every new card. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** The registry and the reconciliation in `src/lib/dashboard-layout.ts`. A widget the
   stored order does not mention keeps its REGISTRY position rather than being appended, so a card
   added in the middle of the default lands in the middle for a member who arranged the ones around it.
-  Absence means "the registry decides", which is what lets a widget ship off.
-- [x] **(build)** Two widgets that ship OFF, in the shelf: **Cards and rewards** (Credit) and
+  Absence means "the registry decides", which is what lets a widget ship off. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** Two widgets that ship OFF, in the shelf: **Cards and rewards** (Credit) and
   **Recurring charges** (Transactions). Off because #251's own rule is that a member who never touches
   this sees exactly the page they saw before, and a summary of a surface that already has its own page
   should be something they asked for. A widget in the shelf costs nothing: both hooks take `active` and
-  do not fetch while it is false.
-- [x] **(build)** One set of rows behind both surfaces. `src/lib/credit-cards.ts` now owns the card
+  do not fetch while it is false. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** One set of rows behind both surfaces. `src/lib/credit-cards.ts` now owns the card
   projection, the limit precedence and the utilization figure, and the Credit page reads it too, so the
   widget and the page cannot answer "what is your utilization" differently. Same failure the shared
-  "Together" total had when a figure was derived apart from the list it sat above.
-- [x] **(build)** A hidden widget cannot hide a fact. The member-set-limit note travels with
+  "Together" total had when a figure was derived apart from the list it sat above. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** A hidden widget cannot hide a fact. The member-set-limit note travels with
   utilization, the point-value disclosure with a rewards rate, the unset-cadence count with the
-  recurring total, in the widget as on the page.
-- [x] **(build)** An empty widget does not hold its slot: it collapses out of the live page and is
+  recurring total, in the widget as on the page. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** An empty widget does not hold its slot: it collapses out of the live page and is
   drawn as a dashed placeholder ONLY while arranging, so the slot the member gave it is still theirs to
-  move. `ConnectNudge` is not a widget and never enters the order.
-- [x] **(build)** Pointer events rather than the native HTML5 drag, which does not fire for touch at
+  move. `ConnectNudge` is not a widget and never enters the order. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(build)** Pointer events rather than the native HTML5 drag, which does not fire for touch at
   all, plus a real keyboard path: every grip is a button, and the arrow keys move the card it belongs
   to, with the move announced. Three stale-closure bugs were caught by driving the real component
   rather than by reading it: two shelf chips tapped in one tick put only one widget back, a held arrow
   key would have done the same, and a fast tap could leave the board stuck mid-drag. The order, the
-  hidden set and the dragged id are all refs for that reason.
-- [x] **(ops)** **`0049` applied to production on 2026-09-01, by Finley**, before the deploy. Its
+  hidden set and the dragged id are all refs for that reason. (Kuba-Ventures/Juniper#252)
+- [x] **2026-09-01** · **(ops)** **`0049` applied to production on 2026-09-01, by Finley**, before the deploy. Its
   verification SELECT returned exactly what the migration's own `Expect` comment predicted,
   **4 profiles, 0 arranged**, so no existing row was touched. Additive and safe in either order with
   the deploy anyway: the column is nullable and a member with no layout gets the
@@ -836,19 +887,19 @@ which cards are on it, and in what order. Issue #251. Design record:
   non-string id, a missing `order`, a missing `hidden`, a string `v` and a 65-element order is refused.
   **The missing-key cases are the ones worth knowing about:** `->` on an absent key returns SQL NULL,
   `jsonb_typeof(NULL)` is NULL, and a CHECK whose expression is NULL PASSES, so the first version of
-  the constraint accepted a layout with no `order` at all - Finley
-- [ ] **(build)** Personal Overview only, deliberately. The shared space builds its nav from what the
+  the constraint accepted a layout with no `order` at all - Finley (Kuba-Ventures/Juniper#252, #253)
+- [x] **2026-09-07** · **(build)** Personal Overview only, deliberately. The shared space builds its nav from what the
   partnership holds rather than from a declaration (`components/juniper/shared-frame.tsx`), so "which
   cards are on it" is already answered there by the content, and a second, member-owned answer would be
   a third source of truth about a page two people share. Whether one member may arrange a page both of
-  them look at is a question about the partnership, not about layout - Finley
-- [ ] **(build)** Resizable widgets, a widget gallery, and per-widget settings are out of scope and
+  them look at is a question about the partnership, not about layout - Finley (Kuba-Ventures/Juniper#347, #348) *Answered 2026-09-07: each partner arranges their own view of the shared Overview (issue #290, migration `0060`).*
+- [x] **2026-09-03** · **(build)** Resizable widgets, a widget gallery, and per-widget settings are out of scope and
   stay out. Order and visibility only. The nearest real request beyond that is a card the member
   DEFINES (pick a category, pick a metric), which needs a stored definition per card rather than a
-  stored order, and is a different feature - Finley
-- [ ] **(build)** Five more widgets could ship off in the shelf with an hour each, since each is an
+  stored order, and is a different feature - Finley (Kuba-Ventures/Juniper#274, #282, #291) *Partly reversed 2026-09-03: per-widget sizes shipped (issue #259, #274 to #282, #291). A widget gallery and member-defined cards are still out.*
+- [x] **2026-09-07** · **(build)** Five more widgets could ship off in the shelf with an hour each, since each is an
   existing component with a home page: Score levers, Benefits tracker, Connection health, and the
-  Together summary. Not built - Finley
+  Together summary. Not built - Finley (Kuba-Ventures/Juniper#346) *Done 2026-09-07: Score levers, Benefits tracker, Connection health and Together summary ship off in the shelf.*
 
 ## Critical path (read this first)
 
